@@ -48,8 +48,7 @@ Lấy thông tin bàn theo `tableId`.
 ### 1. Clone và cấu hình
 
 ```bash
-git clone https://github.com/lequochuy05/qr-ordering.git
-cd qr-ordering 
+git clone https://github.com/lequochuy05/order_by_qr.git
 ```
 ### 2. Cập nhật file application.properties:
 spring.datasource.url=jdbc:mysql://localhost:3306/qr_ordering
