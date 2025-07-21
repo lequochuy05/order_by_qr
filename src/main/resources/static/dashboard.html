@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
+</head>
+<body>
+  <div class="table-number">Bàn: <span id="tableNumber">00</span></div>
+  <div class="slide">
+    <div class="slide-item active">
+      <img src="/images/slide1.png" alt="Slide 1">
+    </div>
+    <div class="slide-item">
+      <img src="/images/slide2.png" alt="Slide 2">
+    </div>
+    <div class="slide-item">
+      <img src="/images/slide2.png" alt="Slide 2">
+    </div>
+  </div>
+
+  <div class="categories" id="categoryList"></div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const tableId = urlParams.get("tableId");
+
+    // Gán số bàn
+   fetch(`http://192.168.1.7:8080/api/tables/${tableId}`)
+    .then(res => res.json())
+    .then(table => {
+      document.getElementById("tableNumber").textContent = table.tableNumber;
+    });
+
+    // Tải danh mục
+    fetch("http://192.168.1.7:8080/api/categories")
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("categoryList");
+        data.forEach(cate => {
+          const div = document.createElement("div");
+          div.className = "category";
+          div.onclick = () => {
+            window.location.href = `/menu.html?tableId=${tableId}&categoryId=${cate.id}`;
+          };
+          div.innerHTML = `
+            <img src="${cate.img}" alt="cate-img">
+            <div>${cate.name}</div>
+          `;
+          container.appendChild(div);
+        });
+      });
+
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide-item');
+    setInterval(() => {
+      slides[currentSlide].classList.remove('active');
+      currentSlide = (currentSlide + 1) % slides.length;
+      slides[currentSlide].classList.add('active');
+    }, 10000); // 10 giây chuyển slide
+  </script>
+</body>
+</html>
