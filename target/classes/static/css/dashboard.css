@@ -1,0 +1,100 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #fff;
+  margin: 0;
+  padding: 12px;
+  max-width: 100vw;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Số bàn */
+.table-number {
+  text-align: center;
+  font-size: 22px;
+  color: #d81b60;
+  margin: 12px 0 24px;
+  font-weight: bold;
+}
+
+/* Slide show */
+.slide {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 0 auto 24px;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.slide-item {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.slide-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.slide-item.active {
+  opacity: 1;
+}
+
+/* Danh mục */
+.categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  width: 100%;
+  padding: 0 6px 20px; /* thêm padding-bottom */
+  box-sizing: border-box;
+}
+
+.category {
+  background: #f7f7f7;
+  border-radius: 14px;
+  text-align: center;
+  margin: 2px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transition: transform 0.2s, background 0.3s;
+}
+
+.category:hover {
+  background: #ececec;
+  transform: scale(1.03);
+}
+
+.category img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+
+.category div {
+  font-weight: bold;
+  color: #333;
+  font-size: 15px;
+}
+
+/* Responsive tweak */
+@media (max-width: 420px) {
+
+
+  .category img {
+    aspect-ratio: 16 / 10;
+  }
+
+  .slide {
+    border-radius: 12px;
+  }
+}
