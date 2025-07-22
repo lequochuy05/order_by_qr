@@ -28,4 +28,7 @@ public class OrderItem {
 
     @Column(name = "quantity")
     private int quantity;
+    
+    @Column(name = "prepared")
+    private boolean prepared = false;
 }

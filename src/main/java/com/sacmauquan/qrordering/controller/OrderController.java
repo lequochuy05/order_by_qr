@@ -5,17 +5,23 @@ import com.sacmauquan.qrordering.model.*;
 import com.sacmauquan.qrordering.repository.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
+
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/orders")
 @CrossOrigin(origins = "*")
 public class OrderController {
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -35,13 +41,26 @@ public class OrderController {
         DiningTable table = tableRepository.findById(orderRequest.getTableId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + orderRequest.getTableId()));
 
-        Order order = new Order();
-        order.setTable(table);
-        order.setStatus(orderRequest.getStatus() != null ? orderRequest.getStatus() : "PENDING");
-        order.setCreatedAt(LocalDateTime.now());
+        // ✅ Kiểm tra nếu đã có order PENDING
+        Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");
 
-        List<OrderItem> orderItems = new ArrayList<>();
-        double totalAmount = 0;
+        boolean isNewOrder = false;
+
+        if (order == null) {
+            order = new Order();
+            order.setTable(table);
+            order.setStatus("PENDING");
+            order.setCreatedAt(LocalDateTime.now());
+            order.setOrderItems(new ArrayList<>());
+            order.setTotalAmount(0);
+            isNewOrder = true;
+
+            // ✅ Cập nhật trạng thái bàn
+            table.setStatus("Đang phục vụ");
+            tableRepository.save(table);
+        }
+
+        double totalAmount = order.getTotalAmount();
 
         for (OrderRequest.ItemRequest itemReq : orderRequest.getItems()) {
             if (itemReq.getMenuItemId() == null || itemReq.getQuantity() <= 0) {
@@ -58,15 +77,72 @@ public class OrderController {
             orderItem.setUnitPrice(menuItem.getPrice());
 
             totalAmount += menuItem.getPrice() * itemReq.getQuantity();
-            orderItems.add(orderItem);
+            order.getOrderItems().add(orderItem);
         }
 
         order.setTotalAmount(totalAmount);
-        order.setOrderItems(orderItems);
+        Order savedOrder = orderRepository.save(order); // cascade lưu luôn orderItems
 
-        Order savedOrder = orderRepository.save(order); // cascade sẽ lưu luôn OrderItem
+        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+
         return ResponseEntity.ok(savedOrder);
     }
 
-    
+    @GetMapping
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+
+        order.setStatus(body.get("status"));
+        return ResponseEntity.ok(orderRepository.save(order));
+    }
+
+    @PutMapping("/items/{itemId}/prepared")
+    public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn"));
+
+        item.setPrepared(true);
+        orderItemRepository.save(item);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/table/{tableId}/current")
+    public ResponseEntity<?> getCurrentOrderByTable(@PathVariable Long tableId) {
+        Order order = orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING");
+
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(order);
+    }
+
+    @PutMapping("/{id}/pay")
+    public ResponseEntity<?> payOrder(@PathVariable Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+
+        if (!order.getStatus().equals("PENDING")) {
+            return ResponseEntity.badRequest().body("Đơn đã được thanh toán hoặc đã hủy.");
+        }
+
+        order.setStatus("PAID");
+        orderRepository.save(order);
+
+        // Cập nhật trạng thái bàn về trống
+        DiningTable table = order.getTable();
+        table.setStatus("Trống");
+        tableRepository.save(table);
+
+        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+
+        return ResponseEntity.ok("Thanh toán thành công");
+    }
 }
