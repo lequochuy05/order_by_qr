@@ -29,6 +29,10 @@ public class OrderItem {
     @Column(name = "quantity")
     private int quantity;
     
+    @Column(name = "notes")
+    private String notes;
+    
     @Column(name = "prepared")
     private boolean prepared = false;
+
 }

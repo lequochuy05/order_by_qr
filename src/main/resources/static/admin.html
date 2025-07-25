@@ -83,7 +83,7 @@
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <script>
-const BASE_URL = "http://192.168.1.7:8080"; // cập nhật IP nếu cần
+const BASE_URL = "http://192.168.1.7:8080";
 let currentOpenTableId = null;
 let stompClient = null;
 
@@ -121,10 +121,13 @@ function showDetails(tableId) {
         .then(order => {
             const modalBody = document.getElementById("modalBody");
             modalBody.innerHTML = order.orderItems.map(item => `
-                <p>
-                    ${item.menuItem.name} x${item.quantity} - 
-                    ${item.prepared ? '✅ Đã làm' : `<button onclick="markPrepared(${item.id})">Đã xong</button>`}
-                </p>
+                <div style="margin-bottom: 8px;">
+                    <strong>${item.menuItem.name}</strong> x${item.quantity}
+                    ${item.notes ? `<div style="font-style: italic; color: #555;">📝 Ghi chú: ${item.notes}</div>` : ''}
+                    <div style="margin-top: 4px;">
+                        ${item.prepared ? '✅ <span style="color: green;">Đã làm</span>' : `<button onclick="markPrepared(${item.id})">Đã xong</button>`}
+                    </div>
+                </div>
             `).join('');
             document.getElementById("modal").style.display = "flex";
         });
@@ -139,15 +142,11 @@ function markPrepared(itemId) {
     fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method: 'PUT' })
         .then(() => {
             if (currentOpenTableId) showDetails(currentOpenTableId);
-            // Không cần gọi loadTables, sẽ được cập nhật qua WebSocket
         });
 }
 
 function pay(orderId, tableId) {
-    fetch(`${BASE_URL}/api/orders/${orderId}/pay`, { method: 'PUT' })
-        .then(() => {
-            // Không cần loadTables, WebSocket sẽ tự cập nhật
-        });
+    fetch(`${BASE_URL}/api/orders/${orderId}/pay`, { method: 'PUT' });
 }
 
 function connectWebSocket() {

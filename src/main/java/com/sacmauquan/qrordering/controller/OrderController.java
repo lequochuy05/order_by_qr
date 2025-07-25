@@ -75,6 +75,7 @@ public class OrderController {
             orderItem.setMenuItem(menuItem);
             orderItem.setQuantity(itemReq.getQuantity());
             orderItem.setUnitPrice(menuItem.getPrice());
+            orderItem.setNotes(itemReq.getNotes()); 
 
             totalAmount += menuItem.getPrice() * itemReq.getQuantity();
             order.getOrderItems().add(orderItem);
