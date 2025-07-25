@@ -23,4 +23,5 @@ public class MenuItem {
     @ManyToOne
     @JoinColumn(name = "cate_id")
     private Category category;
+
 }

@@ -16,5 +16,6 @@ public class OrderRequest {
     public static class ItemRequest {
         private Long menuItemId;
         private int quantity;
+        private String notes; 
     }
 }
