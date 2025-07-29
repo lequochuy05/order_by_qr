@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Open Sans', sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #151f28;
+    }
+
+    .square {
+      position: relative;
+      width: 400px;
+      height: 500px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .square i {
+      position: absolute;
+      inset: 0;
+      border: 2px solid #fff;
+      transition: 0.5s;
+    }
+
+    .square i:nth-child(1) {
+      border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
+      animation: animate 6s linear infinite;
+    }
+
+    .square i:nth-child(2) {
+      border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
+      animation: animate 4s linear infinite;
+    }
+
+    .square i:nth-child(3) {
+      border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
+      animation: animate2 10s linear infinite;
+    }
+
+    @keyframes animate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes animate2 {
+      0% { transform: rotate(360deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    .register {
+      position: absolute;
+      width: 260px;
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .register h2 {
+      font-size: 1.8em;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+
+    .inputBx {
+      width: 100%;
+    }
+
+    .inputBx input,
+    .inputBx select {
+      width: 100%;
+      padding: 10px 16px;
+      background: transparent;
+      border: 2px solid #fff;
+      border-radius: 40px;
+      font-size: 0.95em;
+      color: #fff;
+      outline: none;
+    }
+
+    .inputBx input::placeholder {
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .inputBx select {
+      background-color: transparent;
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .inputBx input[type="submit"] {
+      background: linear-gradient(45deg, #ff357a, #fff172);
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      color: #000;
+      transition: 0.3s;
+    }
+
+    .inputBx input[type="submit"]:hover {
+      opacity: 0.9;
+    }
+
+    .bottom-link {
+      margin-top: 5px;
+      font-size: 0.85em;
+      color: #fff;
+    }
+
+    .bottom-link a {
+      color: #39f77b;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="square">
+    <i style="--clr:#00ff0a;"></i>
+    <i style="--clr:#ff0057;"></i>
+    <i style="--clr:#fffd44;"></i>
+
+    <form class="register">
+      <h2>Đăng ký</h2>
+
+      <div class="inputBx">
+        <input type="text" placeholder="Họ tên" required>
+      </div>
+
+      <div class="inputBx">
+        <input type="text" placeholder="Số điện thoại" required>
+      </div>
+
+      <div class="inputBx">
+        <input type="email" placeholder="Email" required>
+      </div>
+
+      <div class="inputBx">
+        <select required>
+          <option value="">-- Chọn vai trò --</option>
+          <option value="staff">Nhân viên</option>
+          <option value="manager">Quản lý</option>
+        </select>
+      </div>
+
+      <div class="inputBx">
+        <input type="password" placeholder="Mật khẩu" required>
+      </div>
+
+      <div class="inputBx">
+        <input type="password" placeholder="Xác nhận mật khẩu" required>
+      </div>
+
+      <div class="inputBx">
+        <input type="submit" value="Tạo tài khoản">
+      </div>
+
+      <div class="bottom-link">
+        Đã có tài khoản? <a href="#">Đăng nhập</a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>
