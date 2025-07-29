@@ -22,7 +22,7 @@
   </div>
 
   <script>
-    const API_BASE_URL = "http://192.168.1.7:8080";
+    const BASE_URL = "http://192.168.1.9:8080";
 
     let tableId = null;
     let cart = {};
@@ -38,7 +38,7 @@
       }
 
       document.getElementById('categoryFilter').value = categoryId;
-      fetch(`${API_BASE_URL}/api/tables/${tableId}`)
+      fetch(`${BASE_URL}/api/tables/${tableId}`)
         .then(res => res.json())
         .then(table => {
           document.getElementById('tableNumber').textContent = table.tableNumber;
@@ -48,7 +48,7 @@
     });
 
     function loadCategories() {
-      fetch(`${API_BASE_URL}/api/categories`)
+      fetch(`${BASE_URL}/api/categories`)
         .then(res => res.json())
         .then(categories => {
           const select = document.getElementById('categoryFilter');
@@ -68,8 +68,8 @@
 
     function loadMenu(categoryId) {
       const url = categoryId === "all"
-        ? `${API_BASE_URL}/api/menu`
-        : `${API_BASE_URL}/api/menu/category/${categoryId}`;
+        ? `${BASE_URL}/api/menu`
+        : `${BASE_URL}/api/menu/category/${categoryId}`;
 
       fetch(url)
         .then(res => res.json())
@@ -137,7 +137,7 @@
         return;
       }
 
-      fetch(`${API_BASE_URL}/api/orders`, {
+      fetch(`${BASE_URL}/api/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

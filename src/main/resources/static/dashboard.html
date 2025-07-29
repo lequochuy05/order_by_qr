@@ -16,9 +16,6 @@
     <div class="slide-item">
       <img src="/images/slide2.png" alt="Slide 2">
     </div>
-    <div class="slide-item">
-      <img src="/images/slide2.png" alt="Slide 2">
-    </div>
   </div>
 
   <div class="categories" id="categoryList"></div>
@@ -26,16 +23,16 @@
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const tableId = urlParams.get("tableId");
-
+    const BASE_URL = "http://192.168.1.9:8080";
     // Gán số bàn
-   fetch(`http://192.168.1.7:8080/api/tables/${tableId}`)
+   fetch(`${BASE_URL}/api/tables/${tableId}`)
     .then(res => res.json())
     .then(table => {
       document.getElementById("tableNumber").textContent = table.tableNumber;
     });
 
     // Tải danh mục
-    fetch("http://192.168.1.7:8080/api/categories")
+    fetch(`${BASE_URL}/api/categories`)
       .then(res => res.json())
       .then(data => {
         const container = document.getElementById("categoryList");
@@ -53,13 +50,14 @@
         });
       });
 
+    // Tự động chuyển slide
     let currentSlide = 0;
     const slides = document.querySelectorAll('.slide-item');
     setInterval(() => {
       slides[currentSlide].classList.remove('active');
       currentSlide = (currentSlide + 1) % slides.length;
       slides[currentSlide].classList.add('active');
-    }, 10000); // 10 giây chuyển slide
+    }, 5000);
   </script>
 </body>
 </html>

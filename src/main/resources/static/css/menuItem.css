@@ -130,3 +130,16 @@ body {
   border-radius: 6px;
   outline: none;
 }
+
+.order-button {
+  width: 100%;
+  padding: 12px;
+  background: #d81b60;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
