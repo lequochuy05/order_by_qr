@@ -2,182 +2,89 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Đăng ký</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap');
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Open Sans', sans-serif;
-    }
-
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #151f28;
-    }
-
-    .square {
-      position: relative;
-      width: 400px;
-      height: 500px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .square i {
-      position: absolute;
-      inset: 0;
-      border: 2px solid #fff;
-      transition: 0.5s;
-    }
-
-    .square i:nth-child(1) {
-      border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
-      animation: animate 6s linear infinite;
-    }
-
-    .square i:nth-child(2) {
-      border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
-      animation: animate 4s linear infinite;
-    }
-
-    .square i:nth-child(3) {
-      border-radius: 41% 44% 56% 59% / 38% 62% 63% 37%;
-      animation: animate2 10s linear infinite;
-    }
-
-    @keyframes animate {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    @keyframes animate2 {
-      0% { transform: rotate(360deg); }
-      100% { transform: rotate(0deg); }
-    }
-
-    .register {
-      position: absolute;
-      width: 260px;
-      padding: 20px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      align-items: center;
-      z-index: 10;
-    }
-
-    .register h2 {
-      font-size: 1.8em;
-      color: #fff;
-      margin-bottom: 10px;
-    }
-
-    .inputBx {
-      width: 100%;
-    }
-
-    .inputBx input,
-    .inputBx select {
-      width: 100%;
-      padding: 10px 16px;
-      background: transparent;
-      border: 2px solid #fff;
-      border-radius: 40px;
-      font-size: 0.95em;
-      color: #fff;
-      outline: none;
-    }
-
-    .inputBx input::placeholder {
-      color: rgba(255, 255, 255, 0.75);
-    }
-
-    .inputBx select {
-      background-color: transparent;
-      color: rgba(255, 255, 255, 0.85);
-    }
-
-    .inputBx input[type="submit"] {
-      background: linear-gradient(45deg, #ff357a, #fff172);
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      color: #000;
-      transition: 0.3s;
-    }
-
-    .inputBx input[type="submit"]:hover {
-      opacity: 0.9;
-    }
-
-    .bottom-link {
-      margin-top: 5px;
-      font-size: 0.85em;
-      color: #fff;
-    }
-
-    .bottom-link a {
-      color: #39f77b;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng Ký</title>
+  <link rel="stylesheet" href="css/login.css"> <!-- Dùng lại CSS login cho đồng nhất -->
 </head>
 <body>
-  <div class="square">
-    <i style="--clr:#00ff0a;"></i>
-    <i style="--clr:#ff0057;"></i>
-    <i style="--clr:#fffd44;"></i>
-
-    <form class="register">
-      <h2>Đăng ký</h2>
-
-      <div class="inputBx">
-        <input type="text" placeholder="Họ tên" required>
+  <div class="login-container">
+    <h2 class="login-title">Đăng Ký</h2>
+    <form class="register-form">
+      <div class="input-group">
+        <input type="text" placeholder="Họ tên" id="fullName" required>
       </div>
-
-      <div class="inputBx">
-        <input type="text" placeholder="Số điện thoại" required>
+      <div class="input-group">
+        <input type="text" placeholder="Số điện thoại" id="phone" required>
       </div>
-
-      <div class="inputBx">
-        <input type="email" placeholder="Email" required>
+      <div class="input-group">
+        <input type="email" placeholder="Email" id="email" required>
       </div>
-
-      <div class="inputBx">
-        <select required>
+      <div class="input-group">
+        <select id="role" required>
           <option value="">-- Chọn vai trò --</option>
-          <option value="staff">Nhân viên</option>
-          <option value="manager">Quản lý</option>
+          <option value="STAFF">Nhân viên</option>
+          <option value="MANAGER">Quản lý</option>
         </select>
       </div>
-
-      <div class="inputBx">
-        <input type="password" placeholder="Mật khẩu" required>
+      <div class="input-group">
+        <input type="password" placeholder="Mật khẩu" id="password" required>
       </div>
-
-      <div class="inputBx">
-        <input type="password" placeholder="Xác nhận mật khẩu" required>
+      <div class="input-group">
+        <input type="password" placeholder="Xác nhận mật khẩu" id="confirmPassword" required>
       </div>
+      <button type="submit" class="login-btn">Tạo tài khoản</button>
 
-      <div class="inputBx">
-        <input type="submit" value="Tạo tài khoản">
-      </div>
-
-      <div class="bottom-link">
-        Đã có tài khoản? <a href="#">Đăng nhập</a>
+      <div class="register-link">
+        <p>Đã có tài khoản?<i><a href="/login.html">Đăng nhập ngay</a></i></p>
       </div>
     </form>
   </div>
+
+
+  <script>
+    const BASE_URL = "http://192.168.1.9:8080";
+    document.querySelector('.register').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const fullName = document.querySelector('input[placeholder="Họ tên"]').value;
+    const phone = document.querySelector('input[placeholder="Số điện thoại"]').value;
+    const email = document.querySelector('input[placeholder="Email"]').value;
+    const password = document.querySelectorAll('input[type="password"]')[0].value;
+    const confirmPassword = document.querySelectorAll('input[type="password"]')[1].value;
+    const role = document.querySelector('select').value.toUpperCase();
+
+    if (password !== confirmPassword) {
+      alert("Mật khẩu xác nhận không trùng khớp!");
+      return;
+    }
+
+    const payload = {
+      fullName, phone, email, password, role
+    };
+
+  
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.text();
+
+      if (res.ok) {
+        alert("Đăng ký thành công!");
+        window.location.href = "/login.html";
+      } else {
+        alert("Lỗi: " + data);
+      }
+    } catch (err) {
+      alert("Lỗi kết nối server!");
+    }
+  });
+</script>
+
 </body>
 </html>

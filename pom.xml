@@ -43,12 +43,7 @@
             <version>8.0.33</version>
         </dependency>
 
-        <!-- ZXing for QR code generation -->
-        <dependency>
-            <groupId>com.google.zxing</groupId>
-            <artifactId>javase</artifactId>
-            <version>3.5.3</version>
-        </dependency>
+        
 
         <!-- Spring Boot Test for unit testing -->
         <dependency>
@@ -69,6 +64,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
     </dependencies>
