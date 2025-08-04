@@ -1,169 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-	<meta charset="UTF-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="stylesheet" href="/css/login.css">
-	<title>Animated Login Page</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css?family=Open+Sans:400,600,700&display=swap');
-*
-{
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
-	font-family: 'Open Sans', sans-serif;
-}
-body
-{
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 100vh;
-	background: #151f28;
-}
-.square
-{
-	position: relative;
-	width: 500px;
-	height: 500px;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-.square i
-{
-	position: absolute;
-	inset: 0;
-	border: 2px solid #fff;
-	transition: 0.5s;
-}
-.square i:nth-child(1)
-{
-	border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
-	animation: animate 6s linear infinite;
-}
-.square i:nth-child(2)
-{
-	border-radius: 41% 44% 56% 59%/38% 62% 63% 37%;
-	animation: animate 4s linear infinite;
-}
-.square i:nth-child(3)
-{
-	border-radius: 41% 44% 56% 59%/38% 62% 63% 37%;
-	animation: animate2 10s linear infinite;
-}
-.square:hover i
-{
-	border: 6px solid var(--clr);
-	filter: drop-shadow(0 0 20px var(--clr));
-}
-@keyframes animate
-{
-	0%
-	{
-		transform: rotate(0deg);
-	}
-	100%
-	{
-		transform: rotate(360deg);
-	}
-}
-@keyframes animate2
-{
-	0%
-	{
-		transform: rotate(360deg);
-	}
-	100%
-	{
-		transform: rotate(0deg);
-	}
-}
-.login 
-{
-	position: absolute;
-	width: 300px;
-	height: 100%;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	flex-direction: column;
-	gap: 20px;
-}
-.login h2 
-{
-	font-size: 2em;
-	color: #fff;
-}
-.login .inputBx 
-{
-	position: relative;
-	width: 100%;
-}
-.login .inputBx input 
-{
-	position: relative;
-	width: 100%;
-	padding: 12px 20px;
-	background: transparent;
-	border: 2px solid #fff;
-	border-radius: 40px;
-	font-size: 1.2em;
-	color: #fff;
-	box-shadow: none;
-	outline: none;
-}
-.login .inputBx input[type="submit"]
-{
-	width: 100%;
-	background: #0078ff;
-	background: linear-gradient(45deg,#ff357a,#fff172);
-	border: none;
-	cursor: pointer;
-}
-.login .inputBx input::placeholder 
-{
-	color: rgba(255,255,255,0.75);
-}
-.login .links
-{
-	position: relative;
-	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: 0 20px;
-}
-.login .links a 
-{
-	color: #fff;
-	text-decoration: none;
-}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Đăng Nhập</title>
+  <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
-	<div class="square">
-		<i style="--clr:#00ff0a;"></i>
-		<i style="--clr:#ff0057;"></i>
-		<i style="--clr:#fffd44;"></i>
-		<div class="login">
-			<h2>Đăng nhập</h2>
-			<div class="inputBx">
-				<input type="text" placeholder="Email">
-			</div>
-			<div class="inputBx">
-				<input type="password" placeholder="Mật khẩu">
-			</div>
-			<div class="inputBx">
-				<input type="submit" value="Đăng nhập">
-			</div>
-			<div class="links">
-				<a href="#">Quên mật khẩu</a>
-				<a href="#">Đăng ký</a>
-			</div>
-		</div>
-	</div>
+  <div class="login-container">
+    <h2 class="login-title">Đăng Nhập</h2>
+    <form class="login-form">
+      <div class="input-group">
+        <input type="text" placeholder="Email" id="email" required>
+      </div>
+      <div class="input-group">
+        <input type="password" placeholder="Mật khẩu" id="password" required>
+      </div>
+      <div class="forgot-link">
+        <a href="#">Quên mật khẩu?</a>
+      </div>
+      <button type="submit" class="login-btn">Đăng nhập</button>
+
+      <div class="social-login">
+        <p>Hoặc đăng nhập bằng</p>
+        <div class="social-icons">
+          <img src="images/google.png" alt="Google">
+          <img src="images/facebook.png" alt="Facebook">
+          <img src="images/twitter.png" alt="Twitter">
+        </div>
+      </div>
+
+      <div class="register-link">
+        <p>Nếu bạn chưa có tài khoản? <i><a href="/register.html">Đăng ký ngay</a></i></p>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const BASE_URL = "http://192.168.1.9:8080";
+    document.querySelector('.login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const payload = { email, password };
+      try {
+        const response = await fetch(`${BASE_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const error = await response.text();
+          alert("Đăng nhập thất bại: " + error);
+          return;
+        }
+        const data = await response.json();
+
+        localStorage.setItem("userId", data.userId);
+        localStorage.setItem("fullname", data.fullName);
+        localStorage.setItem("role", data.role);
+
+        if (data.role === "MANAGER") {
+          window.location.href = "/admin/table-manager.html";
+        } else if (data.role === "STAFF") {
+          window.location.href = "/admin/table-manager.html";
+        } else {
+          alert("Không xác định được vai trò người dùng.");
+        }
+
+      } catch (err) {
+        alert("Lỗi khi kết nối server: " + err.message);
+      }
+    });
+  </script>
 </body>
 </html>

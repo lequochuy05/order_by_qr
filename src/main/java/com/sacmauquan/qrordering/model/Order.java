@@ -32,4 +32,11 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> orderItems;
+
+    @ManyToOne
+    @JoinColumn(name = "paid_by")
+    private User paidBy;
+
+    @Column(name = "payment_time")
+    private LocalDateTime paymentTime;
 }
