@@ -29,6 +29,16 @@ public class DiningTableService {
         return diningTableRepository.save(table);
     }
 
+    public DiningTable updateStatusAndCapacity(Long id, String status, Integer capacity) {
+        DiningTable table = diningTableRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Bàn không tồn tại với id " + id));
+        
+        table.setStatus(status);
+        table.setCapacity(capacity);
+        
+        return diningTableRepository.save(table);
+    }
+
     public void deleteTable(Long id) {
         if (!diningTableRepository.existsById(id)) {
             throw new IllegalArgumentException("Bàn với ID " + id + " không tồn tại");

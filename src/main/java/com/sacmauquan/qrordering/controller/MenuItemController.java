@@ -26,31 +26,31 @@ public class MenuItemController {
         return menuItemService.getItemsByCategory(categoryId);
     }
 
-    // @GetMapping("/{id}")
-    // public ResponseEntity<MenuItem> getItemById(@PathVariable Long id) {
-    //     return menuItemService.getItemById(id)
-    //             .map(ResponseEntity::ok)
-    //             .orElse(ResponseEntity.notFound().build());
-    // }
+    @GetMapping("/{id}")
+    public ResponseEntity<MenuItem> getItemById(@PathVariable Long id) {
+        return menuItemService.getItemById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-    // @PostMapping
-    // public ResponseEntity<MenuItem> createItem(@RequestBody MenuItem item) {
-    //     return ResponseEntity.ok(menuItemService.createItem(item));
-    // }
+    @PostMapping
+    public ResponseEntity<MenuItem> createItem(@RequestBody MenuItem item) {
+        return ResponseEntity.ok(menuItemService.createItem(item));
+    }
 
-    // @PutMapping("/{id}")
-    // public ResponseEntity<MenuItem> updateItem(@PathVariable Long id, @RequestBody MenuItem updated) {
-    //     return menuItemService.updateItem(id, updated)
-    //             .map(ResponseEntity::ok)
-    //             .orElse(ResponseEntity.notFound().build());
-    // }
+    @PutMapping("/{id}")
+    public ResponseEntity<MenuItem> updateItem(@PathVariable Long id, @RequestBody MenuItem updated) {
+        return menuItemService.updateItem(id, updated)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
-    // @DeleteMapping("/{id}")
-    // public ResponseEntity<?> deleteItem(@PathVariable Long id) {
-    //     if (menuItemService.deleteItem(id)) {
-    //         return ResponseEntity.ok().build();
-    //     } else {
-    //         return ResponseEntity.notFound().build();
-    //     }
-    // }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteItem(@PathVariable Long id) {
+        if (menuItemService.deleteItem(id)) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

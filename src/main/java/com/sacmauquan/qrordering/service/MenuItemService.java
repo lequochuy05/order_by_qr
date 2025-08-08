@@ -22,29 +22,29 @@ public class MenuItemService {
         return menuItemRepository.findByCategoryId(categoryId);
     }
 
-    // public Optional<MenuItem> getItemById(Long id) {
-    //     return menuItemRepository.findById(id);
-    // }
+    public Optional<MenuItem> getItemById(Long id) {
+        return menuItemRepository.findById(id);
+    }
 
-    // public MenuItem createItem(MenuItem item) {
-    //     return menuItemRepository.save(item);
-    // }
+    public MenuItem createItem(MenuItem item) {
+        return menuItemRepository.save(item);
+    }
 
-    // public Optional<MenuItem> updateItem(Long id, MenuItem updated) {
-    //     return menuItemRepository.findById(id).map(item -> {
-    //         item.setName(updated.getName());
-    //         item.setPrice(updated.getPrice());
-    //         item.setImg(updated.getImg());
-    //         item.setCategory(updated.getCategory());
-    //         return menuItemRepository.save(item);
-    //     });
-    // }
+    public Optional<MenuItem> updateItem(Long id, MenuItem updated) {
+        return menuItemRepository.findById(id).map(item -> {
+            item.setName(updated.getName());
+            item.setPrice(updated.getPrice());
+            item.setImg(updated.getImg());
+            item.setCategory(updated.getCategory());
+            return menuItemRepository.save(item);
+        });
+    }
 
-    // public boolean deleteItem(Long id) {
-    //     if (menuItemRepository.existsById(id)) {
-    //         menuItemRepository.deleteById(id);
-    //         return true;
-    //     }
-    //     return false;
-    // }
+    public boolean deleteItem(Long id) {
+        if (menuItemRepository.existsById(id)) {
+            menuItemRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
 }
