@@ -22,7 +22,7 @@
   </div>
 
   <script>
-    const BASE_URL = "http://192.168.1.9:8080";
+    const BASE_URL = "http://192.168.1.8:8080";
 
     let tableId = null;
     let cart = {};
@@ -33,7 +33,7 @@
       const categoryId = urlParams.get('categoryId') || 'all';
 
       if (!tableId) {
-        alert("Không tìm thấy tableId trên URL");
+        alert("Không tìm thấy tableId trong URL!");
         return;
       }
 

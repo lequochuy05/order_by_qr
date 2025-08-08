@@ -221,6 +221,10 @@ h1 {
     background-color: var(--color-sidebar-hover);
 }
 
+.sidebar.active {
+    left: 0;
+}
+
 .close-btn {
     position: absolute;
     top: 10px;

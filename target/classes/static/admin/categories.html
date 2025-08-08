@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý danh mục</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+        <h1>Quản lý danh mục</h1>
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
+        <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="categories.html">Quản lý danh mục</a>
+        <a href="item-manager.html">Quản lý món ăn</a>
+        <a href="table-manager.html">Quản lý bàn</a>
+        <a href="orders-manager.html">Quản lý đơn hàng</a>
+    </div>
+
+    <!-- Admin actions -->
+    <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
+        <button class="btn" onclick="showAddCategory()" style="font-size: 20px;">➕ Thêm danh mục</button>
+    </div>
+
+    <!-- Category list -->
+    <div class="table-grid" id="categoryContainer"></div>
+
+    <!-- Modal thêm danh mục -->
+    <div id="addCategoryModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-x" onclick="closeAddCategoryModal()">&times;</span> 
+            <h3>Thêm danh mục</h3>
+            <input type="text" id="newCategoryName" placeholder="Tên danh mục" style="width: 100%; padding: 8px;"/>
+            <input type="text" id="newCategoryImg" placeholder="Link ảnh" style="width: 100%; padding: 8px; margin-top:8px;"/>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn" onclick="submitNewCategory()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal sửa danh mục -->
+    <div id="editCategoryModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-x" onclick="closeEditCategoryModal()">&times;</span> 
+            <h3>Cập nhật danh mục</h3>
+            <input type="text" id="editCategoryName" style="width: 100%; padding: 8px;"/>
+            <input type="text" id="editCategoryImg" placeholder="Link ảnh" style="width: 100%; padding: 8px; margin-top:8px;"/>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn" onclick="submitEditCategory()">Lưu</button>
+            </div>
+        </div>
+    </div>
+<script src="js/common.js"></script>
+<script src="js/categories.js"></script>
+
+</body>
+</html>

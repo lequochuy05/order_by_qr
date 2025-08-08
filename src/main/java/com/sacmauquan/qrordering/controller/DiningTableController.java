@@ -45,7 +45,33 @@ public class DiningTableController {
         return ResponseEntity.ok(response);
     }
 
-    // === Helper methods ===
+   
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DiningTableResponse> updateTable(
+            @PathVariable Long id,
+            @RequestBody DiningTableRequest request) {
+
+        try {
+            DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
+            return ResponseEntity.ok(convertToResponse(updated));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTable(@PathVariable Long id) {
+        try {
+            tableService.deleteTable(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+     // === Helper methods ===
     private DiningTable convertToEntity(DiningTableRequest request) {
         DiningTable table = new DiningTable();
         
@@ -65,15 +91,5 @@ public class DiningTableController {
         response.setStatus(table.getStatus());
         response.setCapacity(table.getCapacity());
         return response;
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTable(@PathVariable Long id) {
-        try {
-            tableService.deleteTable(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
     }
 }

@@ -3,291 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <title>Quản lý bàn ăn</title>
-    <link rel="stylesheet" href="css/table-manager.css">
+    <link rel="stylesheet" href="css/style.css">
 
 </head>
 <body>
-<div class="header">
-    <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
-    <h1>Quản lý bàn ăn</h1>
-    <div class="user-info" id="userInfo"></div>
-</div>
-
-<div class="sidebar" id="sidebar">
-  <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-  <a href="#" onclick="goToDashboard()">Bảng điều khiển</a>
-  <a href="#" onclick="goToCategories()">Quản lý danh mục</a>
-  <a href="#" onclick="goToMenuItems()">Quản lý món ăn</a>
-  <a href="#" onclick="goToTables()">Quản lý bàn</a>
-  <a href="#" onclick="goToOrders()">Quản lý đơn hàng</a>
-</div>
-
-<div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
-        <button class="btn" onclick="showAddTable()" style=" font-size: 20px;">➕ Thêm bàn</button>
+    <!-- Tiêu đề -->
+    <div class="header">
+        <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+        <h1>Quản lý bàn ăn</h1>
+        <div class="user-info" id="userInfo"></div>
     </div>
 
-<div class="table-grid" id="tableContainer"></div>
-
-
-<!-- Modal cho chi tiết đơn hàng -->
-<div id="modal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <span class="modal-close" onclick="closeModal()">&times;</span>
-        <h3>Chi tiết đơn</h3>
-        <div id="modalBody"></div>
+    <!-- Thanh bên -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
+         <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="categories.html">Quản lý danh mục</a>
+        <a href="item-manager.html">Quản lý món ăn</a>
+        <a href="table-manager.html">Quản lý bàn</a>
+        <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
-</div>
-<!-- Modal cho thêm bàn mới -->
-<div id="addTableModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <span class="close-x" onclick="closeAddTableModal()">&times;</span> 
-        <h3>Thêm bàn mới</h3>
-        <div>
-            <input type="number" id="newTableNumber" placeholder="Nhập số bàn" style="width: 100%; padding: 8px;"/>
-            <input type="number" id="newTableCapacity" placeholder="Nhập sức chứa" style="width: 100%; padding: 8px; margin-top: 8px;"/>
+
+    <!-- Thêm bàn (dành cho admin) -->
+    <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
+            <button class="btn" onclick="showAddTable()" style=" font-size: 20px;">➕ Thêm bàn</button>
+    </div>
+
+    <!-- Bộ lọc bàn -->
+    <div style="text-align: center; margin: 15px;">
+        <label for="tableFilter"><strong>Lọc bàn:</strong></label>
+        <select id="tableFilter" onchange="loadTables()" style="padding: 6px; font-size: 16px;">
+            <option value="ALL">Tất cả</option>
+            <option value="Trống">Trống</option>
+            <option value="Đang phục vụ">Đang phục vụ</option>
+            <option value="Chờ thanh toán">Chờ thanh toán</option>
+        </select>
+    </div>
+
+    <!-- Danh sách bàn -->
+    <div class="table-grid" id="tableContainer"></div>
+
+    <!-- Modal cho chi tiết đơn hàng -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h3>Chi tiết đơn</h3>
+            <div id="modalBody"></div>
         </div>
-        <div style="margin-top: 15px; text-align: right;">
-            <button class="btn" onclick="submitNewTable()">Lưu</button>
+    </div>
+    <!-- Modal cho thêm bàn mới -->
+    <div id="addTableModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-x" onclick="closeAddTableModal()">&times;</span> 
+            <h3>Thêm bàn mới</h3>
+            <div>
+                <input type="number" id="newTableNumber" placeholder="Nhập số bàn" style="width: 100%; padding: 8px;"/>
+                <input type="number" id="newTableCapacity" placeholder="Nhập sức chứa" style="width: 100%; padding: 8px; margin-top: 8px;"/>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn" onclick="submitNewTable()">Lưu</button>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Modal cập nhật bàn -->
+    <div id="editTableModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-x" onclick="closeEditTableModal()">&times;</span> 
+            <h3>Cập nhật bàn</h3>
+            <div>
+                <label>Số bàn</label>
+                <input type="text" id="editTableNumber" readonly style="width: 100%; padding: 8px; background-color: #eee;"/>
+                
+                <label style="margin-top:8px;">QR Code URL</label>
+                <input type="text" id="editQrCodeUrl" readonly style="width: 100%; padding: 8px; background-color: #eee;"/>
+
+                <label style="margin-top:8px;">Trạng thái</label>
+                <select id="editStatus" style="width: 100%; padding: 8px;">
+                    <option value="Trống">Trống</option>
+                    <option value="Đang phục vụ">Đang phục vụ</option>
+                    <option value="Chờ thanh toán">Chờ thanh toán</option>
+                </select>
+
+                <label style="margin-top:8px;">Sức chứa</label>
+                <input type="number" id="editCapacity" style="width: 100%; padding: 8px;"/>
+            </div>
+            <div style="margin-top: 15px; text-align: right;">
+                <button class="btn" onclick="submitEditTable()">Lưu</button>
+            </div>
+        </div>
+    </div>
+
 
 
 <!-- WebSocket JS -->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
-
-<script>
-    const BASE_URL = "http://192.168.1.9:8080";
-    let currentOpenTableId = null;
-    let stompClient = null;
-    const previousOrders = {};
-    const role = localStorage.getItem("role");
-
-    function loadTables() {
-        fetch(BASE_URL + "/api/tables")
-            .then(res => res.json())
-            .then(tables => {
-                const container = document.getElementById('tableContainer');
-                container.innerHTML = '';
-
-                tables
-                .sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber))
-                .forEach(table => {
-                    const card = document.createElement('div');
-                    card.className = 'table-card';
-
-                    fetch(`${BASE_URL}/api/orders/table/${table.id}/current`)
-                        .then(res => res.ok ? res.json() : null)
-                        .then(order => {
-                            card.innerHTML = `
-                                <h3>Bàn ${table.tableNumber}</h3>
-                                <p class="status">Trạng thái: ${table.status}</p>
-                                <p>Tổng tiền: ${order ? order.totalAmount.toLocaleString('vi-VN') + ' VND' : '0 VND'}</p>
-                                <button class="btn btn-detail" onclick="showDetails(${table.id})">Chi tiết</button>
-                                ${order ? `<button class='btn btn-pay' onclick='pay(${order.id}, ${table.id})'>Thanh toán</button>` : ''}
-                                ${role === 'MANAGER' ? `
-                                    <button class="btn" onclick="showEditTable(${table.id}, ${table.tableNumber})">✏️</button>
-                                    <button class="btn" onclick="deleteTable(${table.id})">🗑️</button>` : ''}
-                            `;
-                            container.appendChild(card);
-
-                            if (order) {
-                                const prev = previousOrders[table.id];
-                                const itemCount = order.orderItems?.length || 0;
-
-                                if (!prev || order.totalAmount !== prev.totalAmount || itemCount !== prev.itemCount) {
-                                    highlightCard(card);
-                                }
-
-                                previousOrders[table.id] = {
-                                    totalAmount: order.totalAmount,
-                                    itemCount: itemCount
-                                };
-                            }
-                        });
-                })
-                .catch(error => {
-                    console.error("Lỗi khi tải đơn hàng:", error);
-                });
-            });
-    }
-
-    function showAddTable() {
-        document.getElementById("newTableNumber").value = "";
-        document.getElementById("addTableModal").style.display = "flex";
-    }
-
-    function closeAddTableModal() {
-        document.getElementById("addTableModal").style.display = "none";
-    }
-
-    async function submitNewTable() {
-    const number = document.getElementById("newTableNumber").value.trim();
-    const capacity = document.getElementById("newTableCapacity").value.trim();
-
-    if (!number || !capacity) {
-        alert("Vui lòng nhập đầy đủ số bàn và sức chứa!");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${BASE_URL}/api/tables`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                qrCodeUrl: "",
-                 tableNumber: String(number),
-                status: "Trống",
-                capacity: capacity
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || "Lỗi khi thêm bàn mới!");
-        }
-
-        closeAddTableModal();
-        loadTables();
-    } catch (error) {
-        console.error(error);
-        alert("Đã xảy ra lỗi: " + error.message);
-    }
-}
-
-    async function showEditTable(id, currentNumber) {
-        const newNumber = prompt("Nhập số bàn mới:", currentNumber);
-        if (!newNumber) return;
-
-        try {
-            const res = await fetch(`${BASE_URL}/api/tables/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ tableNumber: newNumber })
-            });
-
-            if (!res.ok) throw new Error("Cập nhật số bàn thất bại!");
-
-            loadTables();
-        } catch (error) {
-            console.error(error);
-            alert("Lỗi khi cập nhật bàn: " + error.message);
-        }
-    }
-
-    async function deleteTable(id) {
-        if (!confirm("Bạn có chắc muốn xóa bàn này không?")) return;
-
-        try {
-            const res = await fetch(`${BASE_URL}/api/tables/${id}`, {
-                method: "DELETE"
-            });
-
-            if (!res.ok) throw new Error("Không thể xóa bàn.");
-
-            loadTables();
-        } catch (error) {
-            console.error(error);
-            alert("Lỗi khi xóa bàn: " + error.message);
-        }
-    }
-
-
-    function highlightCard(cardElement) {
-        cardElement.classList.add('highlight');
-        setTimeout(() => {
-            cardElement.classList.remove('highlight');
-        }, 5000);
-    }
-
-    function showDetails(tableId) {
-        currentOpenTableId = tableId;
-        fetch(`${BASE_URL}/api/orders/table/${tableId}/current`)
-            .then(res => res.json())
-            .then(order => {
-                const modalBody = document.getElementById("modalBody");
-                modalBody.innerHTML = order.orderItems.map(item => `
-                    <div class="order-item">
-                        <strong>${item.menuItem.name} x${item.quantity}</strong>
-                        ${item.notes ? `<div class="order-note">Ghi chú: ${item.notes}</div>` : ''}
-                        <div>
-                            ${item.prepared 
-                                ? `<span class="status-prepared">Đã làm</span>` 
-                                : `<button class="btn-prepared" onclick="markPrepared(${item.id})">Đã xong</button>`}
-                        </div>
-                    </div>
-                `).join('');
-                document.getElementById("modal").style.display = "flex";
-            });
-    }
-
-    function closeModal() {
-        currentOpenTableId = null;
-        document.getElementById("modal").style.display = "none";
-    }
-
-    function markPrepared(itemId) {
-        fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method: 'PUT' })
-            .then(() => {
-                if (currentOpenTableId) showDetails(currentOpenTableId);
-            });
-    }
-
-    function pay(orderId, tableId) {
-        const userId = localStorage.getItem("userId");
-        if (!userId) {
-            alert("Không xác định được người dùng!");
-            return;
-        }
-
-        fetch(`${BASE_URL}/api/orders/${orderId}/pay?userId=${userId}`, { method: 'PUT' })
-            .then(response => {
-                if (!response.ok) throw new Error("Lỗi khi thanh toán");
-                alert("Thanh toán thành công!");
-                loadTables(); 
-            })
-            .catch(error => {
-                console.error("Lỗi:", error);
-                alert("Thanh toán thất bại: " + error.message);
-            });
-    }
-
-    function connectWebSocket() {
-        const socket = new SockJS(BASE_URL + "/ws");
-        stompClient = Stomp.over(socket);
-        stompClient.connect({}, () => {
-            stompClient.subscribe("/topic/tables", () => {
-                //console.log("Nhận cập nhật WebSocket từ server");
-                loadTables();
-            });
-        });
-    }
-
-    loadTables();
-    connectWebSocket();
-
-    const fullname = localStorage.getItem("fullname");
-    if (fullname) {
-        document.getElementById("userInfo").innerHTML = `
-            <p style="color: white;">Xin chào, <span style="color: white;">${fullname}</span></p>
-            <a href="#" style="color: #00f; text-decoration: underline;" onclick="logout()">Đăng xuất</a>
-        `;
-    }
-
-    if (role === "MANAGER") {
-        document.getElementById("adminActions").style.display = "block";
-    } else {
-        document.getElementById("adminActions").style.display = "none";
-    }
-
-    function logout() {
-        localStorage.removeItem("fullname");
-        localStorage.removeItem("role");
-        window.location.href = "/login.html";
-    }
-</script>
-
+<script src="js/common.js"></script>
+<script src="js/table-manager.js"></script>
 
 </body>
 </html>
