@@ -1,10 +1,11 @@
 package com.sacmauquan.qrordering.repository;
 
 import com.sacmauquan.qrordering.model.DiningTable;
-
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface DiningTableRepository extends JpaRepository<DiningTable, Long> {
-    
-}
+import java.util.Optional;
 
+public interface DiningTableRepository extends JpaRepository<DiningTable, Long> {
+    boolean existsByTableNumber(String tableNumber);
+    Optional<DiningTable> findByTableNumber(String tableNumber);
+}

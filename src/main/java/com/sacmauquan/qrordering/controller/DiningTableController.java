@@ -30,44 +30,38 @@ public class DiningTableController {
     @GetMapping
     public ResponseEntity<List<DiningTableResponse>> getAllTables() {
         List<DiningTableResponse> responses = tableService.getAllTablesSorted()
-                .stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+                .stream().map(this::convertToResponse).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
 
     @PostMapping
-    public ResponseEntity<DiningTableResponse> createTable(@RequestBody DiningTableRequest request) {
-        DiningTable table = convertToEntity(request);
-        System.out.println(">>> Received table: " + table);
-        DiningTable savedTable = tableService.createTable(table);
-        DiningTableResponse response = convertToResponse(savedTable);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<?> createTable(@RequestBody DiningTableRequest request) {
+        try {
+            DiningTable table = convertToEntity(request);
+            DiningTable saved = tableService.createTable(table);
+            return ResponseEntity.ok(convertToResponse(saved));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+        }
     }
 
-   
-
     @PutMapping("/{id}")
-    public ResponseEntity<DiningTableResponse> updateTable(
-            @PathVariable Long id,
-            @RequestBody DiningTableRequest request) {
-
+    public ResponseEntity<?> updateTable(@PathVariable Long id, @RequestBody DiningTableRequest request) {
         try {
             DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
             return ResponseEntity.ok(convertToResponse(updated));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
         }
     }
 
-
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTable(@PathVariable Long id) {
+    public ResponseEntity<?> deleteTable(@PathVariable Long id) {
         try {
             tableService.deleteTable(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
         }
     }
 

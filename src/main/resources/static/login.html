@@ -1,20 +1,21 @@
+<!-- resources/static/login.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Đăng Nhập</title>
-  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/login.css" />
 </head>
 <body>
   <div class="login-container">
     <h2 class="login-title">Đăng Nhập</h2>
-    <form class="login-form">
+    <form class="login-form" novalidate>
       <div class="input-group">
-        <input type="text" placeholder="Email" id="email" required>
+        <input type="email" placeholder="Email" id="email" required />
       </div>
       <div class="input-group">
-        <input type="password" placeholder="Mật khẩu" id="password" required>
+        <input type="password" placeholder="Mật khẩu" id="password" required />
       </div>
       <div class="forgot-link">
         <a href="/forget-password.html">Quên mật khẩu?</a>
@@ -24,9 +25,9 @@
       <div class="social-login">
         <p>Hoặc đăng nhập bằng</p>
         <div class="social-icons">
-          <img src="images/google.png" alt="Google">
-          <img src="images/facebook.png" alt="Facebook">
-          <img src="images/twitter.png" alt="Twitter">
+          <img src="images/google.png" alt="Google" />
+          <img src="images/facebook.png" alt="Facebook" />
+          <img src="images/twitter.png" alt="Twitter" />
         </div>
       </div>
 
@@ -36,43 +37,9 @@
     </form>
   </div>
 
-  <script>
-    const BASE_URL = "http://192.168.1.8:8080";
-    document.querySelector('.login-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/login.js"></script>
 
-      const payload = { email, password };
-      try {
-        const response = await fetch(`${BASE_URL}/api/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-          const error = await response.text();
-          alert("Đăng nhập thất bại: " + error);
-          return;
-        }
-        const data = await response.json();
-
-        localStorage.setItem("userId", data.userId);
-        localStorage.setItem("fullname", data.fullName);
-        localStorage.setItem("role", data.role);
-
-        if (data.role === "MANAGER") {
-          window.location.href = "/admin/table-manager.html";
-        } else if (data.role === "STAFF") {
-          window.location.href = "/admin/table-manager.html";
-        } else {
-          alert("Không xác định được vai trò người dùng.");
-        }
-
-      } catch (err) {
-        alert("Lỗi khi kết nối server: " + err.message);
-      }
-    });
-  </script>
 </body>
 </html>

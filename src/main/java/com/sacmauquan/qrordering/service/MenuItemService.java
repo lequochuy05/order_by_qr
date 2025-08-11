@@ -27,11 +27,20 @@ public class MenuItemService {
     }
 
     public MenuItem createItem(MenuItem item) {
+        if (menuItemRepository.existsByNameIgnoreCase(item.getName())) {
+            throw new IllegalArgumentException("Tên món đã tồn tại");
+        }
         return menuItemRepository.save(item);
     }
 
     public Optional<MenuItem> updateItem(Long id, MenuItem updated) {
         return menuItemRepository.findById(id).map(item -> {
+            // chỉ kiểm tra trùng nếu đổi tên
+            if (!item.getName().equalsIgnoreCase(updated.getName())) {
+                if (menuItemRepository.existsByNameIgnoreCase(updated.getName())) {
+                    throw new IllegalArgumentException("Tên món đã tồn tại");
+                }
+            }
             item.setName(updated.getName());
             item.setPrice(updated.getPrice());
             item.setImg(updated.getImg());

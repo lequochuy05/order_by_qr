@@ -1,10 +1,11 @@
+<!-- resources/static/menu.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css/menuItem.css">
-    <title>Đặt Món</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/menuItem.css">
+  <title>Đặt Món</title>
 </head>
 <body>
   <div class="container">
@@ -18,16 +19,16 @@
 
     <div id="menuItems"></div>
 
-    <button class="order-button" onclick="placeOrder()">Đặt món</button>
+    <button class="order-button" id="orderBtn" onclick="placeOrder()">Đặt món</button>
   </div>
 
   <script>
     const BASE_URL = "http://192.168.1.8:8080";
 
     let tableId = null;
-    let cart = {};
+    let cart = {}; // { menuItemId: quantity }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const urlParams = new URLSearchParams(window.location.search);
       tableId = urlParams.get('tableId');
       const categoryId = urlParams.get('categoryId') || 'all';
@@ -37,123 +38,145 @@
         return;
       }
 
-      document.getElementById('categoryFilter').value = categoryId;
-      fetch(`${BASE_URL}/api/tables/${tableId}`)
-        .then(res => res.json())
-        .then(table => {
-          document.getElementById('tableNumber').textContent = table.tableNumber;
-        });
+      try {
+        const res = await fetch(`${BASE_URL}/api/tables/${tableId}`);
+        if (!res.ok) throw new Error(await res.text());
+        const table = await res.json();
+        document.getElementById('tableNumber').textContent = table.tableNumber ?? tableId;
+      } catch (e) {
+        // vẫn hiển thị tableId để người dùng biết đang ở bàn nào
+        document.getElementById('tableNumber').textContent = tableId;
+      }
 
-      loadCategories();
+      await loadCategories(categoryId);
     });
 
-    function loadCategories() {
-      fetch(`${BASE_URL}/api/categories`)
-        .then(res => res.json())
-        .then(categories => {
-          const select = document.getElementById('categoryFilter');
-          select.innerHTML = `<option value="all">Tất cả</option>`;
-          categories.forEach(cat => {
-            const option = document.createElement('option');
-            option.value = cat.id;
-            option.textContent = cat.name;
-            select.appendChild(option);
-          });
-
-          const selected = new URLSearchParams(window.location.search).get('categoryId') || 'all';
-          select.value = selected;
-          loadMenu(selected);
+    async function loadCategories(selected) {
+      try {
+        const res = await fetch(`${BASE_URL}/api/categories`);
+        const categories = res.ok ? await res.json() : [];
+        const select = document.getElementById('categoryFilter');
+        select.innerHTML = `<option value="all">Tất cả</option>`;
+        categories.forEach(cat => {
+          const option = document.createElement('option');
+          option.value = cat.id;
+          option.textContent = cat.name;
+          select.appendChild(option);
         });
+        select.value = selected || 'all';
+        await loadMenu(select.value);
+      } catch (e) {
+        alert("Không tải được danh mục!");
+      }
     }
 
-    function loadMenu(categoryId) {
+    async function loadMenu(categoryId) {
+      // reset giỏ khi đổi danh mục để tránh dữ liệu cũ
+      cart = {};
+      const container = document.getElementById("menuItems");
+      container.innerHTML = "Đang tải...";
+
       const url = categoryId === "all"
         ? `${BASE_URL}/api/menu`
-        : `${BASE_URL}/api/menu/category/${categoryId}`;
+        : `${BASE_URL}/api/menu/category/${encodeURIComponent(categoryId)}`;
 
-      fetch(url)
-        .then(res => res.json())
-        .then(items => {
-          const container = document.getElementById("menuItems");
-          container.innerHTML = "";
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(await res.text());
+        const items = await res.json();
 
-          items.forEach(item => {
-            cart[item.id] = 0;
+        container.innerHTML = "";
+        if (!Array.isArray(items) || items.length === 0) {
+          container.innerHTML = `<div style="text-align:center;color:#666;padding:16px;">Chưa có món nào.</div>`;
+          return;
+        }
 
-            container.innerHTML += `
+        items.forEach(item => {
+          cart[item.id] = 0;
+          const price = (item.price ?? 0).toLocaleString('vi-VN');
+
+          container.insertAdjacentHTML('beforeend', `
             <div class="menu-item">
-                <img src="${item.img}" alt="${item.name}">
-                <div class="details">
-                <div class="name">${item.name}</div>
-                <div class="price">${item.price.toLocaleString('vi-VN')} VND</div>
-                </div>
-                <div class="actions">
+              <img src="${item.img || ''}" alt="${item.name || ''}">
+              <div class="details">
+                <div class="name">${item.name || ''}</div>
+                <div class="price">${price} VND</div>
+              </div>
+              <div class="actions">
                 <div class="quantity">
-                    <button onclick="updateQuantity('${item.id}', -1)">-</button>
-                    <span id="qty-${item.id}">0</span>
-                    <button onclick="updateQuantity('${item.id}', 1)">+</button>
+                  <button onclick="updateQuantity('${item.id}', -1)">-</button>
+                  <span id="qty-${item.id}">0</span>
+                  <button onclick="updateQuantity('${item.id}', 1)">+</button>
                 </div>
                 <button class="note-toggle-btn" onclick="toggleNote('${item.id}')">Thêm ghi chú</button>
-                <div class="note" id="note-box-${item.id}">
-                    <input type="text" id="note-${item.id}" placeholder="...">
+                <div class="note" id="note-box-${item.id}" style="display:none;">
+                  <input type="text" id="note-${item.id}" placeholder="...">
                 </div>
-                </div>
+              </div>
             </div>
-            `;
-
-          });
+          `);
         });
+      } catch (e) {
+        container.innerHTML = `<div style="color:#e11d48;">Không tải được thực đơn.</div>`;
+      }
     }
 
     function toggleNote(itemId) {
-        const noteBox = document.getElementById(`note-box-${itemId}`);
-        if (noteBox.style.display === 'none' || noteBox.style.display === '') {
-            noteBox.style.display = 'block';
-        } else {
-            noteBox.style.display = 'none';
-        }
+      const noteBox = document.getElementById(`note-box-${itemId}`);
+      noteBox.style.display = (noteBox.style.display === 'block') ? 'none' : 'block';
     }
 
     function updateQuantity(itemId, change) {
       const qtyEl = document.getElementById(`qty-${itemId}`);
-      let qty = parseInt(qtyEl.textContent) + change;
-      if (qty < 0) qty = 0;
+      let qty = parseInt(qtyEl.textContent || '0', 10) + change;
+      if (isNaN(qty) || qty < 0) qty = 0;
       qtyEl.textContent = qty;
       cart[itemId] = qty;
     }
 
-    function placeOrder() {
-      const orderItems = Object.keys(cart).map(id => {
-        const noteInput = document.getElementById(`note-${id}`);
-        return {
-          menuItemId: parseInt(id),
-          quantity: cart[id],
-          notes: noteInput ? noteInput.value : null
-        };
-      }).filter(item => item.quantity > 0);
+    async function placeOrder() {
+      const btn = document.getElementById('orderBtn');
+      btn.disabled = true;
 
-      if (orderItems.length === 0) {
-        alert("Vui lòng chọn ít nhất 1 món!");
-        return;
-      }
+      try {
+        const orderItems = Object.keys(cart).map(id => {
+          const noteInput = document.getElementById(`note-${id}`);
+          return {
+            menuItemId: parseInt(id, 10),
+            quantity: cart[id],
+            notes: noteInput ? noteInput.value || null : null
+          };
+        }).filter(item => item.quantity > 0);
 
-      fetch(`${BASE_URL}/api/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tableId: tableId,
-          status: "PENDING",
-          items: orderItems
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        alert("Đặt món thành công! Mã đơn: " + data.id);
-        window.location.href = `/dashboard.html?tableId=${tableId}`;
-      })
-      .catch(err => {
+        if (orderItems.length === 0) {
+          alert("Vui lòng chọn ít nhất 1 món!");
+          return;
+        }
+
+        const res = await fetch(`${BASE_URL}/api/orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tableId: Number(tableId),
+            status: "PENDING",
+            items: orderItems
+          })
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          alert(`Đặt món thất bại (${res.status}): ${msg}`);
+          return;
+        }
+
+        const data = await res.json();
+        alert("Đặt món thành công! Mã đơn: " + (data.id ?? ''));
+        window.location.href = `/dashboard.html?tableId=${encodeURIComponent(tableId)}`;
+      } catch (err) {
         alert("Lỗi đặt món: " + err.message);
-      });
+      } finally {
+        btn.disabled = false;
+      }
     }
   </script>
 </body>
