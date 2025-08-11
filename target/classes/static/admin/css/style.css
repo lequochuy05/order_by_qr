@@ -1,3 +1,4 @@
+/* resource/static/admin/css/style.css */
 :root {
     --color-background: #f9f9f9;
     --color-text-primary: #333;
@@ -51,9 +52,9 @@ h1 {
     margin-top: 1rem;
 }
 
-.status {
+/* .status {
     font-weight: bold;
-}
+} */
 
 .btn {
     margin-top: 0.5rem;
@@ -64,14 +65,13 @@ h1 {
 }
 
 .btn-detail {
-    background-color: var(--color-primary);
+    background-color: var(--color-primary) !important;
     color: var(--color-white);
 }
 
 .btn-pay {
-    background-color: var(--color-success);
+    background-color: var(--color-success) !important;
     color: var(--color-white);
-    margin-left: 5px;
 }
 
 .modal {
@@ -84,7 +84,7 @@ h1 {
 }
 
 .modal-content {
-     position: relative; 
+    position: relative; 
     background: var(--color-white);
     padding: 1.5rem;
     border-radius: 12px;
@@ -138,20 +138,31 @@ h1 {
     margin-bottom: 6px;
 }
 
-.btn-prepared {
-    background-color: var(--color-order-prepared-bg);
-    color: var(--color-order-prepared-text);
-    border: 1px solid var(--color-success);
-    font-size: 14px;
-    padding: 5px 8px;
-    border-radius: 4px;
-    cursor: pointer;
+.order-item.prepared {
+  background-color: var(--color-order-prepared-bg); /* xanh nhạt */
+  border-left-color: var(--color-success);
+  opacity: 0.95;
+}
+
+.btn-prepared[disabled] {
+  opacity: .6;
+  cursor: not-allowed;
 }
 
 .status-prepared {
     color: #27ae60;
     font-weight: bold;
 }
+
+.btn-cancel-item{
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-cancel-item[disabled]{ opacity:.5; cursor:not-allowed; }
 
 .btn-close {
     background-color: var(--color-danger);
@@ -166,9 +177,9 @@ h1 {
     margin-right: auto;
 }
 
-.highlight {
-    animation: flash 1s ease-in-out 3;
-    border: 2px solid var(--color-warning);
+.table-card.highlight {
+  animation: flash 1s ease-in-out 3;      /* nháy 3 lần */
+  border: 2px solid var(--color-warning); /* viền vàng */
 }
 
 @keyframes flash {
@@ -184,6 +195,32 @@ h1 {
     padding: 20px;
     background: linear-gradient(135deg, var(--color-header-gradient-start), var(--color-header-gradient-end));
     color: var(--color-white);
+}
+.header-clock {
+  position: absolute;
+  right: 20px;         
+  top: 10px;    
+  display: inline-block;
+  min-width: 120px;
+  padding: 8px 14px;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 1px;
+  
+  background: rgba(19, 19, 19, 0.2); 
+  border: 1px solid rgba(4, 0, 0, 0.4);
+  backdrop-filter: blur(8px);            
+  
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  
+  color: #fff;                        
+  font-size: 16px;
+}
+
+.header-clock:hover {
+  background: rgba(34, 8, 8, 0.3);
+  border-color: rgba(0, 0, 0, 0.6);
 }
 
 .menu-btn {
@@ -239,7 +276,7 @@ h1 {
 .user-info {
     position: absolute;
     right: 20px;
-    top: 30px;
+    top: 60px;
     text-align: right;
     font-size: 20px;
     color: var(--color-white);
@@ -279,6 +316,14 @@ h1 {
         font-size: 14px;
         padding: 0.75rem;
     }
+
+    .header-clock{
+    right: 180px;
+    top: 18px;
+    padding: 6px 10px;
+    min-width: 96px;
+    font-size: 14px;
+  }
 }
 
 /* Điện thoại: nhỏ hơn 480px */

@@ -6,6 +6,7 @@ import com.sacmauquan.qrordering.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -14,24 +15,15 @@ import java.util.*;
 @Service
 public class OrderService {
 
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    @Autowired private SimpMessagingTemplate messagingTemplate;
+    @Autowired private OrderRepository orderRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private OrderItemRepository orderItemRepository;
+    @Autowired private MenuItemRepository menuItemRepository;
+    @Autowired private DiningTableRepository tableRepository;
 
-    @Autowired
-    private OrderRepository orderRepository;
-
-     @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private OrderItemRepository orderItemRepository;
-
-    @Autowired
-    private MenuItemRepository menuItemRepository;
-
-    @Autowired
-    private DiningTableRepository tableRepository;
-
+    // ===================== CREATE ORDER (thêm món) =====================
+    @Transactional
     public Order createOrder(OrderRequest orderRequest) {
         if (orderRequest == null || orderRequest.getItems() == null || orderRequest.getItems().isEmpty()) {
             throw new IllegalArgumentException("Đơn hàng không hợp lệ");
@@ -41,9 +33,6 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + orderRequest.getTableId()));
 
         Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");
-
-        boolean isNewOrder = false;
-
         if (order == null) {
             order = new Order();
             order.setTable(table);
@@ -51,10 +40,6 @@ public class OrderService {
             order.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
             order.setOrderItems(new ArrayList<>());
             order.setTotalAmount(0);
-            isNewOrder = true;
-
-            table.setStatus("Đang phục vụ");
-            tableRepository.save(table);
         }
 
         double totalAmount = order.getTotalAmount();
@@ -63,31 +48,70 @@ public class OrderService {
             if (itemReq.getMenuItemId() == null || itemReq.getQuantity() <= 0) {
                 throw new IllegalArgumentException("Món ăn không hợp lệ");
             }
-
             MenuItem menuItem = menuItemRepository.findById(itemReq.getMenuItemId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn với ID: " + itemReq.getMenuItemId()));
 
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setMenuItem(menuItem);
-            orderItem.setQuantity(itemReq.getQuantity());
-            orderItem.setUnitPrice(menuItem.getPrice());
-            orderItem.setNotes(itemReq.getNotes());
+            OrderItem oi = new OrderItem();
+            oi.setOrder(order);
+            oi.setMenuItem(menuItem);
+            oi.setQuantity(itemReq.getQuantity());
+            oi.setUnitPrice(menuItem.getPrice());
+            oi.setNotes(itemReq.getNotes());
+            oi.setPrepared(false);           // món mới luôn là chưa làm
 
             totalAmount += menuItem.getPrice() * itemReq.getQuantity();
-            order.getOrderItems().add(orderItem);
+            order.getOrderItems().add(oi);
         }
 
         order.setTotalAmount(totalAmount);
-        Order savedOrder = orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+
+        // Có món chưa làm -> chắc chắn "Đang phục vụ"
+        DiningTable t = saved.getTable();
+        t.setStatus("Đang phục vụ");
+        tableRepository.save(t);
 
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
-
-        return savedOrder;
+        return saved;
     }
 
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    public List<Order> getAllOrders() { return orderRepository.findAll(); }
+
+    // ===================== CANCEL 1 ITEM (hủy món lẻ) =====================
+    @Transactional
+    public void cancelOrderItem(Long itemId) {
+        OrderItem item = orderItemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
+
+        if (item.isPrepared()) {
+            throw new RuntimeException("Món đã làm, không thể hủy");
+        }
+
+        Order order = item.getOrder();
+
+        // Trừ tiền đơn
+        double minus = (Optional.ofNullable(item.getUnitPrice()).orElse(0.0)) * item.getQuantity();
+        order.setTotalAmount(Math.max(0, order.getTotalAmount() - minus));
+
+        // Xóa món
+        order.getOrderItems().remove(item);         // tránh orphan trong bộ nhớ
+        orderItemRepository.delete(item);
+
+        // Nếu hết món -> CANCEL đơn & bàn Trống; nếu còn -> giữ PENDING và tính lại trạng thái
+        List<OrderItem> left = orderItemRepository.findByOrderId(order.getId());
+        if (left.isEmpty()) {
+            order.setStatus("CANCELLED");
+            orderRepository.save(order);
+
+            DiningTable table = order.getTable();
+            table.setStatus("Trống");
+            tableRepository.save(table);
+        } else {
+            orderRepository.save(order);
+            recalcTableStatus(order);               // <-- QUAN TRỌNG
+        }
+
+        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
     }
 
     public Order updateStatus(Long id, String status) {
@@ -97,31 +121,45 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    // ===================== MARK PREPARED =====================
+    @Transactional
     public void markItemPrepared(Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn"));
-        item.setPrepared(true);
-        orderItemRepository.save(item);
+
+        if (!item.isPrepared()) {
+            item.setPrepared(true);
+            orderItemRepository.save(item);
+        }
+
+        Order order = orderRepository.findById(item.getOrder().getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+
+        recalcTableStatus(order);                   // <-- dùng chung 1 luật
+
+        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
     }
 
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
-    return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
-}
+        return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
+    }
 
+    // ===================== PAY =====================
+    @Transactional
     public String payOrder(Long id, Long userId) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
 
-        if (!order.getStatus().equals("PENDING")) {
+        if (!"PENDING".equals(order.getStatus())) {
             throw new RuntimeException("Đơn đã được thanh toán hoặc đã hủy.");
         }
-        
+
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
 
         order.setStatus("PAID");
         order.setPaidBy(currentUser);
-        order.setPaymentTime(LocalDateTime.now());  
+        order.setPaymentTime(LocalDateTime.now());
         orderRepository.save(order);
 
         DiningTable table = order.getTable();
@@ -129,7 +167,20 @@ public class OrderService {
         tableRepository.save(table);
 
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
-
         return "Thanh toán thành công";
+    }
+
+    // ===================== RULE: TÍNH LẠI TRẠNG THÁI BÀN =====================
+    private void recalcTableStatus(Order order) {
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        DiningTable table = order.getTable();
+
+        if (items == null || items.isEmpty()) {
+            table.setStatus("Trống");
+        } else {
+            boolean allPrepared = items.stream().allMatch(OrderItem::isPrepared);
+            table.setStatus(allPrepared ? "Chờ thanh toán" : "Đang phục vụ");
+        }
+        tableRepository.save(table);
     }
 }

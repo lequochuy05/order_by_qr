@@ -1,46 +1,44 @@
 package com.sacmauquan.qrordering.service;
 
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import com.sacmauquan.qrordering.model.Category;
 import com.sacmauquan.qrordering.repository.CategoryRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import java.util.NoSuchElementException;
 
 @Service
+@RequiredArgsConstructor
 public class CategoryService {
-    @Autowired
-    private CategoryRepository categoryRepository;
+  private final CategoryRepository repo;
 
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+  public Page<Category> search(String q, Pageable pageable) {
+    return repo.search(q, pageable);
+  }
+
+  public Category create(Category c) {
+    if (repo.existsByNameIgnoreCase(c.getName()))
+      throw new IllegalArgumentException("Tên danh mục đã tồn tại");
+    return repo.save(c);
+  }
+
+  public Category update(Integer id, Category input) {
+    Category exist = repo.findById(id)
+      .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
+
+    if (!exist.getName().equalsIgnoreCase(input.getName())
+        && repo.existsByNameIgnoreCase(input.getName())) {
+      throw new IllegalArgumentException("Tên danh mục đã tồn tại");
     }
+    exist.setName(input.getName());
+    exist.setImg(input.getImg());
+    return repo.save(exist);
+  }
 
-    public Optional<Category> getCategoryById(Integer id) {
-        return categoryRepository.findById(id);
-    }
-
-    public Category createCategory(Category category) {
-        return categoryRepository.save(category);
-    }
-
-    public Category updateCategory(Integer id, Category categoryDetails) {
-        return categoryRepository.findById(id)
-                .map(category -> {
-                    category.setName(categoryDetails.getName());
-                    category.setImg(categoryDetails.getImg());
-                    return categoryRepository.save(category);
-                })
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục với id: " + id));
-    }
-
-    public void deleteCategory(Integer id) {
-        if (!categoryRepository.existsById(id)) {
-            throw new RuntimeException("Không tìm thấy danh mục với id: " + id);
-        }
-        categoryRepository.deleteById(id);
-    }
-
+  public void delete(Integer id) {
+    if (!repo.existsById(id)) throw new NoSuchElementException("Không tìm thấy danh mục");
+    repo.deleteById(id);
+  }
 }

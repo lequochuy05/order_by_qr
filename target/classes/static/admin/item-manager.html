@@ -1,26 +1,32 @@
+<!-- resource/static/admin/item-manager.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Quản lý món ăn</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/item-manager.css" />
 </head>
 <body>
 <!-- Tiêu đề -->
-    <div class="header">
+    <div class="header">    
         <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
         <h1>Quản lý món ăn</h1>
+
+        <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+
         <div class="user-info" id="userInfo"></div>
     </div>
     
     <!-- Thanh bên -->
     <div class="sidebar" id="sidebar">
         <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-         <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="dashboard.html">Thống kê</a>
         <a href="categories.html">Quản lý danh mục</a>
         <a href="item-manager.html">Quản lý món ăn</a>
         <a href="table-manager.html">Quản lý bàn</a>
+        <a href="staff-manager.html">Quản lý nhân viên</a>
         <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
 
@@ -41,12 +47,68 @@
     <div class="table-grid" id="menuItemContainer"></div>   
 
     <!-- Modal thêm món ăn -->
-    
+    <div id="addItemModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddItemModal()">&times;</span>
+        <h2>Thêm món ăn</h2>
+        <div class="form-group">
+            <label for="addName">Tên món</label>
+            <input id="addName" type="text" required />
+        </div>
+        <div class="form-group">
+            <label for="addPrice">Giá</label>
+            <input id="addPrice" type="number" min="0" required />
+        </div>
+        <div class="form-group">
+            <label for="addImg">Ảnh (URL)</label>
+            <input id="addImg" type="text" placeholder="https://..." required />
+        </div>
+        <div class="form-group">
+            <label for="addCategory">Danh mục</label>
+            <select id="addCategory"></select>
+        </div>
+        <div id="addError" class="form-error"></div>
+        <div style="text-align:right; margin-top: 12px;">
+            <button class="btn" onclick="submitNewItem()">Lưu</button>
+        </div>
+    </div>
+    </div>
 
     <!-- Modal sửa món ăn -->
+    <div id="editItemModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditItemModal()">&times;</span>
+        <h2>Sửa món ăn</h2>
+        <div class="form-group">
+            <label for="editName">Tên món</label>
+            <input id="editName" type="text" required />
+        </div>
+        <div class="form-group">
+            <label for="editPrice">Giá</label>
+            <input id="editPrice" type="number" min="0"  required/>
+        </div>
+        <div class="form-group">
+            <label for="editImg">Ảnh (URL)</label>
+            <input id="editImg" type="text" placeholder="https://..." required />
+        </div>
+        <div class="form-group">
+            <label for="editCategory">Danh mục</label>
+            <select id="editCategory"></select>
+        </div>
+        <div id="editError" class="form-error"></div>
+        <div style="text-align:right; margin-top: 12px;">
+            <button class="btn" onclick="submitEditItem()">Cập nhật</button>
+        </div>
+    </div>
+    </div>
+
     
+    <script src="js/config.js"></script>
+    <script src="js/auth-fetch.js"></script>
     <script src="js/common.js"></script>
     <script src="js/items.js"></script>
    
+
+    
 </body>
 </html>

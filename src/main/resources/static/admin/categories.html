@@ -1,25 +1,35 @@
+<!-- resource/static/admin/categories.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <title>Quản lý danh mục</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/item-manager.css">
 </head>
 <body>
     <!-- Header -->
     <div class="header">
         <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
         <h1>Quản lý danh mục</h1>
+
+        <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+        
         <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <div style="text-align:center; margin: 10px 0;">
+        <input id="cateSearch" placeholder="Tìm theo tên danh mục..." style="padding:8px; width: 280px;"/>
     </div>
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-        <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="dashboard.html">Thống kê</a>
         <a href="categories.html">Quản lý danh mục</a>
         <a href="item-manager.html">Quản lý món ăn</a>
         <a href="table-manager.html">Quản lý bàn</a>
+        <a href="staff-manager.html">Quản lý nhân viên</a>
         <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
 
@@ -32,30 +42,55 @@
     <div class="table-grid" id="categoryContainer"></div>
 
     <!-- Modal thêm danh mục -->
-    <div id="addCategoryModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close-x" onclick="closeAddCategoryModal()">&times;</span> 
-            <h3>Thêm danh mục</h3>
-            <input type="text" id="newCategoryName" placeholder="Tên danh mục" style="width: 100%; padding: 8px;"/>
-            <input type="text" id="newCategoryImg" placeholder="Link ảnh" style="width: 100%; padding: 8px; margin-top:8px;"/>
-            <div style="margin-top: 15px; text-align: right;">
-                <button class="btn" onclick="submitNewCategory()">Lưu</button>
-            </div>
-        </div>
-    </div>
+<div id="addCategoryModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeAddCategoryModal()">&times;</span>
+        <h2>Thêm danh mục</h2>
 
-    <!-- Modal sửa danh mục -->
-    <div id="editCategoryModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close-x" onclick="closeEditCategoryModal()">&times;</span> 
-            <h3>Cập nhật danh mục</h3>
-            <input type="text" id="editCategoryName" style="width: 100%; padding: 8px;"/>
-            <input type="text" id="editCategoryImg" placeholder="Link ảnh" style="width: 100%; padding: 8px; margin-top:8px;"/>
-            <div style="margin-top: 15px; text-align: right;">
-                <button class="btn" onclick="submitEditCategory()">Lưu</button>
-            </div>
+        <div class="form-group">
+        <label for="newCategoryName">Tên danh mục</label>
+        <input type="text" id="newCategoryName" placeholder="Tên danh mục" />
+        </div>
+
+        <div class="form-group">
+        <label for="newCategoryImg">Link ảnh</label>
+        <input type="text" id="newCategoryImg" placeholder="https://..." />
+        </div>
+
+        <div id="addCategoryError" class="form-error"></div>
+
+        <div style="text-align:right; margin-top: 12px;">
+        <button class="btn primary" onclick="submitNewCategory()">Lưu</button>
         </div>
     </div>
+</div>
+
+<!-- Modal sửa danh mục -->
+<div id="editCategoryModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditCategoryModal()">&times;</span>
+        <h2>Cập nhật danh mục</h2>
+
+        <div class="form-group">
+        <label for="editCategoryName">Tên danh mục</label>
+        <input type="text" id="editCategoryName" required />
+        </div>
+
+        <div class="form-group">
+        <label for="editCategoryImg">Link ảnh</label>
+        <input type="text" id="editCategoryImg" placeholder="https://..." required />
+        </div>
+
+        <div id="editCategoryError" class="form-error"></div>
+
+        <div style="text-align:right; margin-top: 12px;">
+        <button class="btn primary" onclick="submitEditCategory()">Lưu</button>
+        </div>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/auth-fetch.js"></script>
 <script src="js/common.js"></script>
 <script src="js/categories.js"></script>
 

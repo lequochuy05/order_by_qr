@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý nhân viên</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/item-manager.css">
+  <link rel="stylesheet" href="css/staff-manager.css">
+</head>
+<body>
+    <div class="header">
+        <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+        <h1>Quản lý nhân viên</h1>
+        <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <!-- Sidebar đồng bộ -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
+        <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="categories.html">Quản lý danh mục</a>
+        <a href="item-manager.html">Quản lý món ăn</a>
+        <a href="table-manager.html">Quản lý bàn</a>
+        <a href="staff-manager.html">Quản lý nhân viên</a>
+        <a href="orders-manager.html">Quản lý đơn hàng</a>
+    </div>
+
+
+    <div class="container">
+        <div class="sm-header">
+            <h2>Danh sách nhân viên</h2>
+            <div class="chips" id="stats">
+                <span class="chip" id="statTotal">Tổng: 0</span>
+                <span class="chip" id="statManager">Quản lý: 0</span>
+                <span class="chip" id="statStaff">Nhân viên: 0</span>
+                <span class="chip" id="statActive">Đang hoạt động: 0</span>
+            </div>
+            </div>
+
+            <div class="panel" style="padding:16px; margin-bottom:14px">
+            <div class="toolbar">
+                <input id="searchInput" placeholder="Tìm theo tên, email, SĐT..." />
+                <select id="roleFilter">
+                <option value="">Lọc theo vai trò</option>
+                <option value="MANAGER">Quản lý</option>
+                <option value="STAFF">Nhân viên</option>
+                </select>
+                <select id="statusFilter">
+                <option value="">Lọc theo trạng thái</option>
+                <option value="ACTIVE">Đang hoạt động</option>
+                <option value="INACTIVE">Ngừng</option>
+                </select>
+                <div class="toolbar-actions">
+                <button class="btn secondary" id="exportBtn">Xuất CSV</button>
+                <button class="btn" id="addBtnTop">+ Thêm nhân viên</button>
+                </div>
+            </div>
+            </div>
+
+            <div class="panel">
+            <div class="table-wrap">
+                <table id="employeeTable">
+                <thead>
+                    <tr>
+                    <th class="sortable" data-key="fullName">Họ và tên <span class="arrow">⇅</span></th>
+                    <th>Email</th>
+                    <th>SĐT</th>
+                    <th class="sortable" data-key="role">Vai trò <span class="arrow">⇅</span></th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                    <th style="width:160px">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+                </table>
+            </div>
+            <div class="footer-bar">
+                <div id="selectionInfo" class="muted"></div>
+                <div class="pagination">
+                <button id="prevPage">«</button>
+                <span class="page" id="pageInfo">1 / 1</span>
+                <button id="nextPage">»</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal: Add/Edit -->
+<dialog id="formModal">
+<form id="employeeForm" method="dialog">
+    <div class="modal-header">
+    <strong id="modalTitle">Thêm nhân viên</strong>
+    <button class="btn ghost" type="button" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+    <input type="hidden" id="id" />
+    <div class="form-grid">
+        <div>
+        <label>Họ tên</label>
+        <input id="fullName" placeholder="VD: Nguyễn Văn A" required />
+        </div>
+        <div>
+        <label>Số điện thoại</label>
+        <input id="phone" placeholder="VD: 0901234567" />
+        </div>
+        <div>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="VD: a@gmail.com" />
+        </div>
+        
+        <div>
+        <label>Vai trò</label>
+        <select id="role" required>
+            <option value="STAFF">Nhân viên</option>
+            <option value="MANAGER">Quản lý</option>
+        </select>
+        </div>
+        <div>
+        <label>Trạng thái</label>
+        <select id="status">
+            <option value="ACTIVE">Đang hoạt động</option>
+            <option value="INACTIVE">Ngừng</option>
+        </select>
+        </div>
+        
+    </div>
+    </div>
+    <div class="modal-footer">
+    <button class="btn secondary" type="button" onclick="resetForm()">Làm mới</button>
+    <button class="btn" id="saveBtn" value="default">Lưu</button>
+    </div>
+</form>
+</dialog>
+
+<!-- Minimal Toast -->
+<div id="toast" style="position:fixed; right:16px; bottom:16px; padding:10px 14px; background:#0b7; color:#001; border-radius:10px; display:none; box-shadow:var(--shadow)"></div>
+
+<script src="js/config.js"></script>
+<script src="js/auth-fetch.js"></script>
+<script src="js/common.js"></script>
+<script src="js/staff-manager.js"></script>
+
+</body>
+</html>

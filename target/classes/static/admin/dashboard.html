@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý thống kê</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+  <div class="header">
+        <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+        <h1>Quản lý thống kê</h1>
+        <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <!-- Sidebar đồng bộ -->
+    <div class="sidebar" id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
+        <a href="dashboard.html">Bảng điều khiển</a>
+        <a href="categories.html">Quản lý danh mục</a>
+        <a href="item-manager.html">Quản lý món ăn</a>
+        <a href="table-manager.html">Quản lý bàn</a>
+        <a href="staff-manager.html">Quản lý nhân viên</a>
+        <a href="orders-manager.html">Quản lý đơn hàng</a>
+    </div>
+
+  <div class="container">
+    <div class="header-sm">
+      
+      <div class="legend" id="rangeLabel"></div>
+    </div>
+
+    <div class="toolbar card" style="padding:12px">
+      <input type="date" id="from" lang="vi" class="span-2" />
+      <input type="date" id="to" lang="vi" class="span-2" />
+     
+      <div style="display:flex; gap:8px; justify-content:flex-end">
+        <button class="btn ghost" data-preset="7">7 ngày</button>
+        <button class="btn ghost" data-preset="30">30 ngày</button>
+        <button class="btn" id="applyBtn">Áp dụng</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="label">Doanh thu</div><div class="value" id="kpiRevenue">0 VND</div><div class="sub" id="kpiRevChange">—</div></div>
+      <div class="kpi"><div class="label">Số đơn</div><div class="value" id="kpiOrders">0</div><div class="sub" id="kpiAvg">Giá trị TB: 0 VND</div></div>
+      <div class="kpi"><div class="label">Top nhân viên</div><div class="value" id="kpiTopEmp">—</div><div class="sub" id="kpiTopEmpRev">—</div></div>
+      <div class="kpi"><div class="label">Tỷ lệ hoạt động</div><div class="value" id="kpiActive">—</div><div class="sub">Nhân viên có đơn trong kỳ</div></div>
+    </div>
+
+    <div class="grid">
+      <div class="card col-8">
+        <div class="hd"><strong>Doanh thu theo thời gian</strong><span class="legend" id="seriesLegend">VNĐ</span></div>
+        <div class="bd">
+          <canvas id="revenueChart" height="260"></canvas>
+        </div>
+      </div>
+      <div class="card col-4">
+        <div class="hd"><strong>Hiệu suất nhân viên</strong><span class="legend">Theo doanh thu</span></div>
+        <div class="bd">
+          <table id="empTable">
+            <thead>
+              <tr><th>Nhân viên</th><th style="width:40%">Doanh thu</th><th align="right">Đơn</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="hd"><strong>Chi tiết đơn hàng (trong kỳ)</strong>
+        <div style="display:flex; gap:8px">
+          <button class="btn secondary" id="exportCsv">Xuất CSV</button>
+        </div>
+      </div>
+      <div class="bd">
+        <table id="orderTable">
+          <thead>
+            <tr><th>Ngày</th><th>Mã đơn</th><th>Nhân viên</th><th align="right">Giá trị ( VND)</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+
+    <script src="js/config.js"></script>
+    <script src="js/auth-fetch.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/dashboard.js"></script>
+
+
+</body>
+</html>

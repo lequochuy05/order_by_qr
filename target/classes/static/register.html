@@ -1,23 +1,24 @@
+<!-- resources/static/register.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Đăng Ký</title>
-  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/login.css" />
 </head>
 <body>
   <div class="login-container">
     <h2 class="login-title">Đăng Ký</h2>
-    <form class="register-form">
+    <form class="register-form" novalidate>
       <div class="input-group">
-        <input type="text" placeholder="Họ tên" id="fullName" required>
+        <input type="text" placeholder="Họ tên" id="fullName" required />
       </div>
       <div class="input-group">
-        <input type="text" placeholder="Số điện thoại" id="phone" required>
+        <input type="text" placeholder="Số điện thoại" id="phone" />
       </div>
       <div class="input-group">
-        <input type="email" placeholder="Email" id="email" required>
+        <input type="email" placeholder="Email" id="email" required />
       </div>
       <div class="input-group">
         <select id="role" required>
@@ -27,64 +28,21 @@
         </select>
       </div>
       <div class="input-group">
-        <input type="password" placeholder="Mật khẩu" id="password" required>
+        <input type="password" placeholder="Mật khẩu" id="password" required />
       </div>
       <div class="input-group">
-        <input type="password" placeholder="Xác nhận mật khẩu" id="confirmPassword" required>
+        <input type="password" placeholder="Xác nhận mật khẩu" id="confirmPassword" required />
       </div>
       <button type="submit" class="login-btn">Tạo tài khoản</button>
 
       <div class="register-link">
-        <p>Đã có tài khoản? <i><a href="/login.html"> Đăng nhập ngay</a></i></p>
+        <p>Đã có tài khoản? <i><a href="/login.html">Đăng nhập ngay</a></i></p>
       </div>
     </form>
   </div>
 
-
-  <script>
-    const BASE_URL = "http://192.168.1.8:8080";
-    document.querySelector('.register').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const fullName = document.querySelector('input[placeholder="Họ tên"]').value;
-    const phone = document.querySelector('input[placeholder="Số điện thoại"]').value;
-    const email = document.querySelector('input[placeholder="Email"]').value;
-    const password = document.querySelectorAll('input[type="password"]')[0].value;
-    const confirmPassword = document.querySelectorAll('input[type="password"]')[1].value;
-    const role = document.querySelector('select').value.toUpperCase();
-
-    if (password !== confirmPassword) {
-      alert("Mật khẩu xác nhận không trùng khớp!");
-      return;
-    }
-
-    const payload = {
-      fullName, phone, email, password, role
-    };
-
-  
-    try {
-      const res = await fetch(`${BASE_URL}/api/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.text();
-
-      if (res.ok) {
-        alert("Đăng ký thành công!");
-        window.location.href = "/login.html";
-      } else {
-        alert("Lỗi: " + data);
-      }
-    } catch (err) {
-      alert("Lỗi kết nối server!");
-    }
-  });
-</script>
-
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/register.js"></script>
 </body>
 </html>

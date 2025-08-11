@@ -34,23 +34,28 @@ public class MenuItemController {
     }
 
     @PostMapping
-    public ResponseEntity<MenuItem> createItem(@RequestBody MenuItem item) {
-        return ResponseEntity.ok(menuItemService.createItem(item));
+    public ResponseEntity<?> createItem(@RequestBody MenuItem item) {
+        try {
+            return ResponseEntity.ok(menuItemService.createItem(item));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+        }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MenuItem> updateItem(@PathVariable Long id, @RequestBody MenuItem updated) {
-        return menuItemService.updateItem(id, updated)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> updateItem(@PathVariable Long id, @RequestBody MenuItem updated) {
+        try {
+            return menuItemService.updateItem(id, updated)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteItem(@PathVariable Long id) {
-        if (menuItemService.deleteItem(id)) {
-            return ResponseEntity.ok().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        if (menuItemService.deleteItem(id)) return ResponseEntity.ok().build();
+        return ResponseEntity.notFound().build();
     }
 }

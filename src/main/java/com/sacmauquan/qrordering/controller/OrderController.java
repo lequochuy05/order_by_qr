@@ -55,8 +55,8 @@ public class OrderController {
     @GetMapping("/table/{tableId}/current")
     public ResponseEntity<?> getCurrentOrderByTable(@PathVariable Long tableId) {
         return orderService.getCurrentOrderByTable(tableId)
-            .map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
    @PutMapping("/{orderId}/pay")
@@ -64,6 +64,16 @@ public class OrderController {
         try {
             orderService.payOrder(orderId, userId);
             return ResponseEntity.ok("Đã thanh toán");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
+        try {
+            orderService.cancelOrderItem(itemId);
+            return ResponseEntity.ok("Đã hủy món");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
