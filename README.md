@@ -56,16 +56,16 @@ Khách hàng chỉ cần quét mã QR trên bàn, hệ thống sẽ hiển thị
 -  Maven
 -  Trình duyệt hỗ trợ Fetch API & WebSocket.
 2. Cài đặt
-# Clone dự án
+-  clone dự án:
 git clone https://github.com/lequochuy05/order_by_qr.git
 cd order_by_qr
 
-# Cấu hình MySQL trong application.properties
-spring.datasource.url=jdbc:mysql://localhost:3306/qr_ordering
-spring.datasource.username=root
-spring.datasource.password=123456
+-  Cấu hình MySQL trong application.properties
++ spring.datasource.url=jdbc:mysql://localhost:3306/qr_ordering
++ spring.datasource.username=root
++ spring.datasource.password=123456
 
-# Chạy backend
+-  Chạy backend
 mvn spring-boot:run
 ---
 👨‍💻 Tác giả
