@@ -49,24 +49,6 @@ Khách hàng chỉ cần quét mã QR trên bàn, hệ thống sẽ hiển thị
 6. Giao diện nhân viên – nhận đơn, thêm món, cập nhật trạng thái, thanh toán.
 7. Giao diện khách hàng – xem menu, chọn món, gửi đơn.
 
-⚡ Hướng dẫn cài đặt & chạy
-1. Yêu cầu hệ thống
--  Java 17+
--  MySQL 8+
--  Maven
--  Trình duyệt hỗ trợ Fetch API & WebSocket.
-2. Cài đặt
--  clone dự án:
-git clone https://github.com/lequochuy05/order_by_qr.git
-cd order_by_qr
-
--  Cấu hình MySQL trong application.properties
-+ spring.datasource.url=jdbc:mysql://localhost:3306/qr_ordering
-+ spring.datasource.username=root
-+ spring.datasource.password=123456
-
--  Chạy backend
-mvn spring-boot:run
 ---
 👨‍💻 Tác giả
 Lê Quốc Huy – Developer
