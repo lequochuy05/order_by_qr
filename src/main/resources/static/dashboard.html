@@ -20,45 +20,10 @@
 
   <div class="categories" id="categoryList"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/dashboard.js"></script>
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const tableId = urlParams.get("tableId");
-    const BASE_URL = "http://192.168.1.8:8080";
-    // Gán số bàn
-   fetch(`${BASE_URL}/api/tables/${tableId}`)
-    .then(res => res.json())
-    .then(table => {
-      document.getElementById("tableNumber").textContent = table.tableNumber;
-    });
-
-    // Tải danh mục
-    fetch(`${BASE_URL}/api/categories`)
-      .then(res => res.json())
-      .then(data => {
-        const container = document.getElementById("categoryList");
-        data.forEach(cate => {
-          const div = document.createElement("div");
-          div.className = "category";
-          div.onclick = () => {
-            window.location.href = `/menu.html?tableId=${tableId}&categoryId=${cate.id}`;
-          };
-          div.innerHTML = `
-            <img src="${cate.img}" alt="cate-img">
-            <div>${cate.name}</div>
-          `;
-          container.appendChild(div);
-        });
-      });
-
-    // Tự động chuyển slide
-    let currentSlide = 0;
-    const slides = document.querySelectorAll('.slide-item');
-    setInterval(() => {
-      slides[currentSlide].classList.remove('active');
-      currentSlide = (currentSlide + 1) % slides.length;
-      slides[currentSlide].classList.add('active');
-    }, 5000);
-  </script>
 </body>
 </html>

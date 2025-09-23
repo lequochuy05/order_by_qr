@@ -1,6 +1,9 @@
-// src/main/resources/static/admin/js/items.js
+// resources/static/admin/js/items.js
+
+// Hiển thị nút thêm cho MANAGER
 if (role === "MANAGER") {
-    document.getElementById("adminActions").style.display = "block";
+  const a = document.getElementById("adminActions");
+  if (a) a.style.display = "block";
 }
 
 const BASE_URL = window.APP_BASE_URL || location.origin;
@@ -8,32 +11,54 @@ const BASE_URL = window.APP_BASE_URL || location.origin;
 let allCategories = [];
 let editingItemId = null;
 
-// -------- helpers ----------
+// ===== Helpers =====
 function byId(id) { return document.getElementById(id); }
+
 function showError(id, msg) {
   const el = byId(id);
   if (!el) return;
   el.textContent = msg || '';
   el.style.display = msg ? 'block' : 'none';
 }
+
 function escapeHtml(s='') {
   return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
+
+// Cho phép URL tuyệt đối http(s) và URL tương đối bắt đầu bằng '/'
 function safeUrl(u='') {
   try {
+    if (typeof u === 'string' && u.startsWith('/')) return u;
     const url = new URL(u, location.origin);
     return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : '';
   } catch { return ''; }
 }
 
-
-// ---------- bootstrap ----------
+// ===== Bootstrap =====
 window.addEventListener('DOMContentLoaded', async () => {
-  await fetchCategories();   // fill filter + modal selects
-  await loadMenuItems();     // render list
+  // Preview thêm
+  const addFile = byId('addImgFile'), addPrev = byId('addImgPreview');
+  if (addFile && addPrev) {
+    addFile.addEventListener('change', e => {
+      const f = e.target.files?.[0];
+      if (f) { addPrev.src = URL.createObjectURL(f); addPrev.style.display = 'block'; }
+      else { addPrev.src = ''; addPrev.style.display = 'none'; }
+    });
+  }
+  // Preview sửa
+  const editFile = byId('editImgFile'), editPrev = byId('editImgPreview');
+  if (editFile && editPrev) {
+    editFile.addEventListener('change', e => {
+      const f = e.target.files?.[0];
+      if (f) { editPrev.src = URL.createObjectURL(f); editPrev.style.display = 'block'; }
+    });
+  }
+
+  await fetchCategories();
+  await loadMenuItems();
 });
 
-// ---------- categories (for filters/selects) ----------
+// ===== Categories (filter + selects) =====
 async function fetchCategories() {
   const res = await fetch(`${BASE_URL}/api/categories`);
   const data = res.ok ? await res.json() : [];
@@ -51,7 +76,7 @@ async function fetchCategories() {
     });
   }
 
-  // Add/Edit modal selects
+  // Add/Edit selects
   const addSel  = byId('addCategory');
   const editSel = byId('editCategory');
   [addSel, editSel].forEach(sel => {
@@ -66,7 +91,7 @@ async function fetchCategories() {
   });
 }
 
-// ---------- load items ----------
+// ===== Load items =====
 window.loadMenuItems = async function () {
   const container = byId('menuItemContainer');
   if (!container) return;
@@ -100,8 +125,8 @@ window.loadMenuItems = async function () {
           <p><strong>Giá:</strong> ${(it.price ?? 0).toLocaleString('vi-VN')}đ</p>
           ${(window.role === 'MANAGER') ? `
             <div style="display:flex;gap:8px;justify-content:center;">
-              <button class="btn" onclick="showEditItem(${Number(it.id)})">Sửa</button>
-              <button class="btn red" onclick="deleteItem(${Number(it.id)})">Xóa</button>
+              <button class="btn" onclick="showEditItem(${Number(it.id)})">✏️</button>
+              <button class="btn red" onclick="deleteItem(${Number(it.id)})">🗑️</button>
             </div>` : ''
           }
         </div>
@@ -113,58 +138,65 @@ window.loadMenuItems = async function () {
   }
 };
 
-// ---------- ADD ----------
+// ===== ADD =====
 window.showAddItem = function () {
   if (window.role !== 'MANAGER') return;
   byId('addName').value = '';
   byId('addPrice').value = '';
-  byId('addImg').value = '';
+  const f = byId('addImgFile'); if (f) f.value = '';
+  const prev = byId('addImgPreview'); if (prev) { prev.src = ''; prev.style.display = 'none'; }
   if (allCategories.length > 0) byId('addCategory').value = String(allCategories[0].id);
   showError('addError', '');
   byId('addItemModal').style.display = 'flex';
 };
+
 window.closeAddItemModal = function () {
   byId('addItemModal').style.display = 'none';
 };
-
 
 window.submitNewItem = async function () {
   if (window.role !== 'MANAGER') return;
 
   const name = byId('addName').value.trim();
   const priceVal = Number(byId('addPrice').value || 0);
-  const img = byId('addImg').value.trim();
+  const file = byId('addImgFile')?.files?.[0] || null;
   const cateId = Number(byId('addCategory').value);
-
-  
 
   if (!name || isNaN(priceVal) || priceVal < 0 || !cateId) {
     showError('addError', 'Vui lòng kiểm tra lại các trường nhập.');
     return;
   }
 
-  if (allCategories.length > 0) {
-      // Lấy toàn bộ items trước khi tạo để check trùng
-      const resItems = await fetch(`${BASE_URL}/api/menu`);
-      const existingItems = resItems.ok ? await resItems.json() : [];
-      if (existingItems.some(it => it.name.trim().toLowerCase() === name.toLowerCase())) {
-          showError('addError', 'Tên món đã tồn tại, vui lòng chọn tên khác.');
-          return;
-      }
-  }
+  // Check trùng tên (nhẹ nhàng, không chặn nếu lỗi tải danh sách)
+  try {
+    const resItems = await fetch(`${BASE_URL}/api/menu`);
+    const existingItems = resItems.ok ? await resItems.json() : [];
+    if (existingItems.some(it => (it.name||'').trim().toLowerCase() === name.toLowerCase())) {
+      showError('addError', 'Tên món đã tồn tại, vui lòng chọn tên khác.');
+      return;
+    }
+  } catch {}
 
   try {
+    // 1) Tạo món trước (chưa có ảnh)
     const res = await $fetch(`${BASE_URL}/api/menu`, {
       method: 'POST',
-      body: JSON.stringify({
-        name, price: priceVal, img,
-        category: { id: cateId }
-      })
+      body: JSON.stringify({ name, price: priceVal, category: { id: cateId } })
     });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || 'Tạo món thất bại');
+    if (!res.ok) throw new Error(await res.text() || 'Tạo món thất bại');
+    const created = await res.json(); // {id,...}
+
+    // 2) Nếu có file -> upload ảnh
+    if (file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const up = await $fetch(`${BASE_URL}/api/menu/${created.id}/image`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!up.ok) throw new Error(await up.text() || 'Upload ảnh thất bại');
     }
+
     window.closeAddItemModal();
     await loadMenuItems();
   } catch (e) {
@@ -172,10 +204,12 @@ window.submitNewItem = async function () {
   }
 };
 
-// ---------- EDIT ----------
+// ===== EDIT =====
 window.showEditItem = async function (id) {
   if (window.role !== 'MANAGER') return;
   showError('editError', '');
+  const f = byId('editImgFile'); if (f) f.value = '';
+  const prev = byId('editImgPreview'); if (prev) { prev.src = ''; prev.style.display = 'none'; }
 
   try {
     const res = await fetch(`${BASE_URL}/api/menu/${Number(id)}`);
@@ -185,26 +219,29 @@ window.showEditItem = async function (id) {
     editingItemId = Number(it.id);
     byId('editName').value = it.name ?? '';
     byId('editPrice').value = it.price ?? 0;
-    byId('editImg').value = it.img ?? '';
     const currentCateId = it.category?.id;
     if (currentCateId) byId('editCategory').value = String(currentCateId);
     else if (allCategories.length > 0) byId('editCategory').value = String(allCategories[0].id);
+
+    if (it.img && prev) { prev.src = safeUrl(it.img); prev.style.display = 'block'; }
 
     byId('editItemModal').style.display = 'flex';
   } catch (e) {
     alert(e.message || 'Lỗi tải chi tiết món');
   }
 };
+
 window.closeEditItemModal = function () {
   byId('editItemModal').style.display = 'none';
   editingItemId = null;
 };
+
 window.submitEditItem = async function () {
   if (window.role !== 'MANAGER' || !editingItemId) return;
 
   const name = byId('editName').value.trim();
   const priceVal = Number(byId('editPrice').value || 0);
-  const img = byId('editImg').value.trim();
+  const file = byId('editImgFile')?.files?.[0] || null;
   const cateId = Number(byId('editCategory').value);
 
   if (!name || isNaN(priceVal) || priceVal < 0 || !cateId) {
@@ -213,17 +250,24 @@ window.submitEditItem = async function () {
   }
 
   try {
+    // 1) Cập nhật thông tin
     const res = await $fetch(`${BASE_URL}/api/menu/${editingItemId}`, {
       method: 'PUT',
-      body: JSON.stringify({
-        name, price: priceVal, img,
-        category: { id: cateId }
-      })
+      body: JSON.stringify({ name, price: priceVal, category: { id: cateId } })
     });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || 'Cập nhật thất bại');
+    if (!res.ok) throw new Error(await res.text() || 'Cập nhật thất bại');
+
+    // 2) Nếu có file -> upload ảnh
+    if (file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const up = await $fetch(`${BASE_URL}/api/menu/${editingItemId}/image`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!up.ok) throw new Error(await up.text() || 'Upload ảnh thất bại');
     }
+
     window.closeEditItemModal();
     await loadMenuItems();
   } catch (e) {
@@ -231,23 +275,21 @@ window.submitEditItem = async function () {
   }
 };
 
-// ---------- DELETE ----------
+// ===== DELETE =====
 window.deleteItem = async function (id) {
   if (window.role !== 'MANAGER') return;
   if (!confirm('Xác nhận xóa món này?')) return;
 
   try {
     const res = await $fetch(`${BASE_URL}/api/menu/${Number(id)}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || 'Xóa thất bại');
-    }
+    if (!res.ok) throw new Error(await res.text() || 'Xóa thất bại');
     await loadMenuItems();
   } catch (e) {
     alert(e.message || 'Có lỗi khi xóa');
   }
 };
 
+// (Không dùng tới, nhưng giữ nếu cần parse lỗi tay)
 async function readErr(res) {
   try {
     const ct = res.headers.get('content-type') || '';

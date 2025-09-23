@@ -27,7 +27,6 @@
         <a href="item-manager.html">Quản lý món ăn</a>
         <a href="table-manager.html">Quản lý bàn</a>
         <a href="staff-manager.html">Quản lý nhân viên</a>
-        <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
 
     <!-- Thêm món ăn (dành cho admin) -->
@@ -60,8 +59,11 @@
             <input id="addPrice" type="number" min="0" required />
         </div>
         <div class="form-group">
-            <label for="addImg">Ảnh (URL)</label>
-            <input id="addImg" type="text" placeholder="https://..." required />
+            <label for="addImgFile">Chọn ảnh</label>
+            <input id="addImgFile" type="file" accept="image/*" />
+            <div style="margin-top:8px">
+                <img id="addImgPreview" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
+            </div>
         </div>
         <div class="form-group">
             <label for="addCategory">Danh mục</label>
@@ -76,30 +78,34 @@
 
     <!-- Modal sửa món ăn -->
     <div id="editItemModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <span class="close" onclick="closeEditItemModal()">&times;</span>
-        <h2>Sửa món ăn</h2>
-        <div class="form-group">
-            <label for="editName">Tên món</label>
-            <input id="editName" type="text" required />
+        <div class="modal-content">
+            <span class="close" onclick="closeEditItemModal()">&times;</span>
+            <h2>Sửa món ăn</h2>
+            <div class="form-group">
+                <label for="editName">Tên món</label>
+                <input id="editName" type="text" required />
+            </div>
+            <div class="form-group">
+                <label for="editPrice">Giá</label>
+                <input id="editPrice" type="number" min="0"  required/>
+            </div>
+            <div class="form-group">
+                <label for="editImgFile">Đổi ảnh (tuỳ chọn)</label>
+                <input id="editImgFile" type="file" accept="image/*" />
+                <div style="margin-top:8px">
+                    <img id="editImgPreview" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editCategory">Danh mục</label>
+                <select id="editCategory"></select>
+            </div>
+            <div id="editError" class="form-error"></div>
+            <div style="text-align:right; margin-top: 12px;">
+                <button class="btn" onclick="submitEditItem()">Cập nhật</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="editPrice">Giá</label>
-            <input id="editPrice" type="number" min="0"  required/>
-        </div>
-        <div class="form-group">
-            <label for="editImg">Ảnh (URL)</label>
-            <input id="editImg" type="text" placeholder="https://..." required />
-        </div>
-        <div class="form-group">
-            <label for="editCategory">Danh mục</label>
-            <select id="editCategory"></select>
-        </div>
-        <div id="editError" class="form-error"></div>
-        <div style="text-align:right; margin-top: 12px;">
-            <button class="btn" onclick="submitEditItem()">Cập nhật</button>
-        </div>
-    </div>
     </div>
 
     

@@ -11,7 +11,7 @@
 
   <div class="header">
         <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
-        <h1>Quản lý thống kê</h1>
+        <h1>Bảng điều khiển</h1>
         <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
         <div class="user-info" id="userInfo"></div>
     </div>
@@ -24,12 +24,11 @@
         <a href="item-manager.html">Quản lý món ăn</a>
         <a href="table-manager.html">Quản lý bàn</a>
         <a href="staff-manager.html">Quản lý nhân viên</a>
-        <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
 
   <div class="container">
     <div class="header-sm">
-      
+      <h2>Thống kê</h2>
       <div class="legend" id="rangeLabel"></div>
     </div>
 
@@ -74,7 +73,7 @@
     <div class="card" style="margin-top:14px">
       <div class="hd"><strong>Chi tiết đơn hàng (trong kỳ)</strong>
         <div style="display:flex; gap:8px">
-          <button class="btn secondary" id="exportCsv">Xuất CSV</button>
+          <button class="btn secondary" id="exportBtn" onclick="exportCsv()">Xuất CSV</button>
         </div>
       </div>
       <div class="bd">

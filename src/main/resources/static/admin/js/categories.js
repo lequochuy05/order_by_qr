@@ -1,8 +1,6 @@
-// src/main/resources/static/admin/js/categories.js
-// KHÔNG khai báo lại 'role' ở đây (đã có trong common.js)
-
+// resources/static/admin/js/categories.js
 if (role === "MANAGER") {
-    document.getElementById("adminActions").style.display = "block";
+  document.getElementById("adminActions").style.display = "block";
 }
 
 const BASE_URL = window.APP_BASE_URL || location.origin;
@@ -23,7 +21,7 @@ async function loadCategories() {
     : `${BASE_URL}/api/categories`;
 
   try {
-    const res = await fetch(url); // GET public
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Lỗi tải danh mục');
 
     const data = q ? await res.json() : { content: await res.json(), totalPages: 1 };
@@ -75,10 +73,11 @@ function renderPagination(totalPages) {
   }
 }
 
-// ===== Modal - export ra window để HTML gọi được =====
+// ===== Modal =====
 window.showAddCategory = function () {
   byId('newCategoryName').value = '';
-  byId('newCategoryImg').value = '';
+  const file = byId('newCategoryImgFile'); file.value = '';
+  const prev = byId('newCategoryPreview'); prev.style.display = 'none'; prev.src = '';
   showError('addCategoryError', '');
   byId('addCategoryModal').style.display = 'flex';
 };
@@ -88,21 +87,35 @@ window.closeAddCategoryModal = function () {
 
 window.submitNewCategory = async function () {
   const name = byId('newCategoryName').value.trim();
-  const img  = byId('newCategoryImg').value.trim();
+  const file = byId('newCategoryImgFile').files[0] || null;
   const errId = 'addCategoryError';
   showError(errId, '');
 
   if (!name) { showError(errId, 'Vui lòng nhập tên danh mục'); return; }
 
   try {
-    const res = await $fetch(`${BASE_URL}/api/categories`, {
+    // 1) Tạo category trước (chưa có ảnh)
+    const resCreate = await $fetch(`${BASE_URL}/api/categories`, {
       method: 'POST',
-      body: JSON.stringify({ name, img })
+      body: JSON.stringify({ name })
     });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || 'Tạo danh mục thất bại');
+    if (!resCreate.ok) throw new Error(await resCreate.text() || 'Tạo danh mục thất bại');
+    const created = await resCreate.json(); // {id, name, img?}
+
+    // 2) Nếu có file ảnh -> upload
+    if (file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resUp = await $fetch(`${BASE_URL}/api/categories/${created.id}/image`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!resUp.ok) {
+        const t = await resUp.text();
+        throw new Error(t || 'Upload ảnh thất bại');
+      }
     }
+
     window.closeAddCategoryModal();
     page = 0;
     loadCategories();
@@ -114,7 +127,13 @@ window.submitNewCategory = async function () {
 window.showEditCategory = function (id, name, img) {
   editingCategoryId = Number(id);
   byId('editCategoryName').value = name || '';
-  byId('editCategoryImg').value = img || '';
+
+  // reset file & preview
+  const file = byId('editCategoryImgFile'); file.value = '';
+  const prev = byId('editCategoryPreview');
+  if (img) { prev.src = safeUrl(img); prev.style.display = 'block'; }
+  else { prev.src = ''; prev.style.display = 'none'; }
+
   showError('editCategoryError', '');
   byId('editCategoryModal').style.display = 'flex';
 };
@@ -124,21 +143,31 @@ window.closeEditCategoryModal = function () {
 
 window.submitEditCategory = async function () {
   const name = byId('editCategoryName').value.trim();
-  const img  = byId('editCategoryImg').value.trim();
+  const file = byId('editCategoryImgFile').files[0] || null;
   const errId = 'editCategoryError';
   showError(errId, '');
 
   if (!name) { showError(errId, 'Tên danh mục không được rỗng'); return; }
 
   try {
-    const res = await $fetch(`${BASE_URL}/api/categories/${editingCategoryId}`, {
+    // 1) Cập nhật name
+    const resUpdate = await $fetch(`${BASE_URL}/api/categories/${editingCategoryId}`, {
       method: 'PUT',
-      body: JSON.stringify({ name, img })
+      body: JSON.stringify({ name })
     });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || 'Cập nhật thất bại');
+    if (!resUpdate.ok) throw new Error(await resUpdate.text() || 'Cập nhật thất bại');
+
+    // 2) Nếu có file -> upload ảnh
+    if (file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const resUp = await $fetch(`${BASE_URL}/api/categories/${editingCategoryId}/image`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!resUp.ok) throw new Error(await resUp.text() || 'Upload ảnh thất bại');
     }
+
     window.closeEditCategoryModal();
     loadCategories();
   } catch (e) {
@@ -150,15 +179,37 @@ window.deleteCategory = async function (id) {
   if (!confirm('Bạn có chắc muốn xóa danh mục này?')) return;
   try {
     const res = await $fetch(`${BASE_URL}/api/categories/${Number(id)}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(t || 'Xóa thất bại');
-    }
+    if (!res.ok) throw new Error(await res.text() || 'Xóa thất bại');
     loadCategories();
   } catch (e) {
     alert(e.message || 'Có lỗi khi xóa danh mục');
   }
 };
+
+// ===== Preview ảnh khi chọn file =====
+(function bindFilePreviews(){
+  const addFile = document.getElementById('newCategoryImgFile');
+  const addPrev = document.getElementById('newCategoryPreview');
+  if (addFile) addFile.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) {
+      const url = URL.createObjectURL(f);
+      addPrev.src = url; addPrev.style.display = 'block';
+    } else {
+      addPrev.src = ''; addPrev.style.display = 'none';
+    }
+  });
+
+  const editFile = document.getElementById('editCategoryImgFile');
+  const editPrev = document.getElementById('editCategoryPreview');
+  if (editFile) editFile.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) {
+      const url = URL.createObjectURL(f);
+      editPrev.src = url; editPrev.style.display = 'block';
+    }
+  });
+})();
 
 // ===== Utils =====
 function byId(id) { return document.getElementById(id); }
@@ -179,10 +230,8 @@ function escapeHtml(s = '') {
   return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 function safeUrl(u = '') {
-  try {
-    const url = new URL(u, location.origin);
-    return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : '';
-  } catch { return ''; }
+  try { const url = new URL(u, location.origin); return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : u; }
+  catch { return u; }
 }
 
 // ===== Boot =====

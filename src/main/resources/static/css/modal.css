@@ -1,0 +1,92 @@
+/*  Modal (reusable)  */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;       
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal.show { display: flex; }
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
+}
+
+.modal__dialog {
+  position: relative;
+  width: min(92vw, 420px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.15);
+  overflow: hidden;
+  animation: modalPop .18s ease-out;
+}
+
+@keyframes modalPop {
+  from { transform: translateY(6px); opacity: .8; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+}
+.modal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  flex: 1;
+}
+.modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  opacity: .7;
+}
+.modal__close:hover { opacity: 1; }
+
+.modal__body {
+  padding: 16px;
+  color: #374151;
+  font-size: 15px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 16px;
+}
+
+.btn {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn--primary { background: #3498db; color: #fff; }
+.btn--primary:hover { background: #2980b9; }
+
+/* Biến thể type */
+.modal--error .modal__header { background: #fde8e8; }
+.modal--error .modal__title  { color: #d93025; }
+
+.modal--info .modal__header  { background: #eef6ff; }
+.modal--info .modal__title   { color: #2563eb; }
+
+.modal--success .modal__header { background: #e8f7ee; }
+.modal--success .modal__title  { color: #16a34a; }
+
