@@ -11,173 +11,59 @@
   <div class="container">
     <div class="table-title">Bàn: <span id="tableNumber">00</span></div>
 
-    <div class="category-filter">
-      <select id="categoryFilter" onchange="loadMenu(this.value)">
-        <option value="all">Tất cả</option>
-      </select>
+    <div class="menu-toolbar grid-toolbar">
+      <!-- Danh mục -->
+      <label class="control cell cat">
+        <span class="icon">🍽️</span>
+        <select id="categoryFilter" onchange="loadMenu(this.value)">
+          <option value="all">Tất cả</option>
+        </select>
+      </label>
+
+      <!-- Sắp xếp -->
+      <label class="control cell sort">
+        <span class="icon">↕</span>
+        <select id="sortBy" onchange="reloadWithSort()" aria-label="Sắp xếp">
+          <option value="default">Mặc định</option>
+          <option value="price-asc">Giá ↑</option>
+          <option value="price-desc">Giá ↓</option>
+        </select>
+      </label>
+
+      <!-- Tìm kiếm -->
+      <label class="control cell search hide-sm">
+        <span class="icon">🔎</span>
+        <input id="quickSearch" type="search" placeholder="Tìm món..." oninput="filterByName(this.value)">
+      </label>
     </div>
+
+
 
     <div id="menuItems"></div>
 
-    <button class="order-button" id="orderBtn" onclick="placeOrder()">Đặt món</button>
+    <button class="order-button" id="orderBtn" onclick="openConfirm()">Đặt món</button>
+</div>
+  <!-- Modal xác nhận -->
+<div id="confirmModal" class="modal hidden">
+  <div class="modal-backdrop" onclick="closeConfirm()"></div>
+  <div class="modal-body">
+    <h3>Xác nhận đặt món</h3>
+    <div id="confirmList" class="confirm-list"></div>
+    <div class="confirm-total">
+      Tổng cộng: <b id="confirmTotal">0</b> VND
+    </div>
+    <div class="confirm-actions">
+      <button class="btn ghost" onclick="closeConfirm()">Sửa</button>
+      <button class="btn" id="confirmBtn" onclick="confirmOrder()">Xác nhận</button>
+    </div>
   </div>
+</div>
 
-  <script>
-    const BASE_URL = "http://192.168.1.8:8080";
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
-    let tableId = null;
-    let cart = {}; // { menuItemId: quantity }
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      tableId = urlParams.get('tableId');
-      const categoryId = urlParams.get('categoryId') || 'all';
-
-      if (!tableId) {
-        alert("Không tìm thấy tableId trong URL!");
-        return;
-      }
-
-      try {
-        const res = await fetch(`${BASE_URL}/api/tables/${tableId}`);
-        if (!res.ok) throw new Error(await res.text());
-        const table = await res.json();
-        document.getElementById('tableNumber').textContent = table.tableNumber ?? tableId;
-      } catch (e) {
-        // vẫn hiển thị tableId để người dùng biết đang ở bàn nào
-        document.getElementById('tableNumber').textContent = tableId;
-      }
-
-      await loadCategories(categoryId);
-    });
-
-    async function loadCategories(selected) {
-      try {
-        const res = await fetch(`${BASE_URL}/api/categories`);
-        const categories = res.ok ? await res.json() : [];
-        const select = document.getElementById('categoryFilter');
-        select.innerHTML = `<option value="all">Tất cả</option>`;
-        categories.forEach(cat => {
-          const option = document.createElement('option');
-          option.value = cat.id;
-          option.textContent = cat.name;
-          select.appendChild(option);
-        });
-        select.value = selected || 'all';
-        await loadMenu(select.value);
-      } catch (e) {
-        alert("Không tải được danh mục!");
-      }
-    }
-
-    async function loadMenu(categoryId) {
-      // reset giỏ khi đổi danh mục để tránh dữ liệu cũ
-      cart = {};
-      const container = document.getElementById("menuItems");
-      container.innerHTML = "Đang tải...";
-
-      const url = categoryId === "all"
-        ? `${BASE_URL}/api/menu`
-        : `${BASE_URL}/api/menu/category/${encodeURIComponent(categoryId)}`;
-
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(await res.text());
-        const items = await res.json();
-
-        container.innerHTML = "";
-        if (!Array.isArray(items) || items.length === 0) {
-          container.innerHTML = `<div style="text-align:center;color:#666;padding:16px;">Chưa có món nào.</div>`;
-          return;
-        }
-
-        items.forEach(item => {
-          cart[item.id] = 0;
-          const price = (item.price ?? 0).toLocaleString('vi-VN');
-
-          container.insertAdjacentHTML('beforeend', `
-            <div class="menu-item">
-              <img src="${item.img || ''}" alt="${item.name || ''}">
-              <div class="details">
-                <div class="name">${item.name || ''}</div>
-                <div class="price">${price} VND</div>
-              </div>
-              <div class="actions">
-                <div class="quantity">
-                  <button onclick="updateQuantity('${item.id}', -1)">-</button>
-                  <span id="qty-${item.id}">0</span>
-                  <button onclick="updateQuantity('${item.id}', 1)">+</button>
-                </div>
-                <button class="note-toggle-btn" onclick="toggleNote('${item.id}')">Thêm ghi chú</button>
-                <div class="note" id="note-box-${item.id}" style="display:none;">
-                  <input type="text" id="note-${item.id}" placeholder="...">
-                </div>
-              </div>
-            </div>
-          `);
-        });
-      } catch (e) {
-        container.innerHTML = `<div style="color:#e11d48;">Không tải được thực đơn.</div>`;
-      }
-    }
-
-    function toggleNote(itemId) {
-      const noteBox = document.getElementById(`note-box-${itemId}`);
-      noteBox.style.display = (noteBox.style.display === 'block') ? 'none' : 'block';
-    }
-
-    function updateQuantity(itemId, change) {
-      const qtyEl = document.getElementById(`qty-${itemId}`);
-      let qty = parseInt(qtyEl.textContent || '0', 10) + change;
-      if (isNaN(qty) || qty < 0) qty = 0;
-      qtyEl.textContent = qty;
-      cart[itemId] = qty;
-    }
-
-    async function placeOrder() {
-      const btn = document.getElementById('orderBtn');
-      btn.disabled = true;
-
-      try {
-        const orderItems = Object.keys(cart).map(id => {
-          const noteInput = document.getElementById(`note-${id}`);
-          return {
-            menuItemId: parseInt(id, 10),
-            quantity: cart[id],
-            notes: noteInput ? noteInput.value || null : null
-          };
-        }).filter(item => item.quantity > 0);
-
-        if (orderItems.length === 0) {
-          alert("Vui lòng chọn ít nhất 1 món!");
-          return;
-        }
-
-        const res = await fetch(`${BASE_URL}/api/orders`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tableId: Number(tableId),
-            status: "PENDING",
-            items: orderItems
-          })
-        });
-
-        if (!res.ok) {
-          const msg = await res.text();
-          alert(`Đặt món thất bại (${res.status}): ${msg}`);
-          return;
-        }
-
-        const data = await res.json();
-        alert("Đặt món thành công! Mã đơn: " + (data.id ?? ''));
-        window.location.href = `/dashboard.html?tableId=${encodeURIComponent(tableId)}`;
-      } catch (err) {
-        alert("Lỗi đặt món: " + err.message);
-      } finally {
-        btn.disabled = false;
-      }
-    }
-  </script>
+  <script src="js/config.js"></script>
+  <script src="js/menu.js"></script>
+  
 </body>
 </html>

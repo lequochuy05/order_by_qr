@@ -8,8 +8,10 @@ function fmtDDMMYYYY(s){
   return d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 function ymd(d){
-  const x = new Date(d || Date.now()); x.setHours(0,0,0,0);
-  return x.toISOString().slice(0,10);
+  const x = new Date(d || Date.now()); 
+  x.setHours(0,0,0,0);
+  const local = new Date(x.getTime() - x.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0,10);
 }
 
 async function readErr(res){
@@ -21,6 +23,12 @@ async function readErr(res){
   }
   return raw;
 }
+
+// Xuất CSV
+async function exportCsv(){
+    alert("Chức năng xuất CSV chưa được triển khai.");
+}
+
 async function $fetch(url){
   const f = (typeof window.authFetch === 'function') ? window.authFetch : fetch;
   const res = await f(url, { headers: { 'Accept': 'application/json' } });
@@ -34,9 +42,9 @@ async function fetchStats(fromDate, toDate){
   const rev = await $fetch(`${BASE}/api/stats/revenue?${q}`);            // backend trả theo ngày
   const emp = await $fetch(`${BASE}/api/stats/employees?${q}`);
   const ods = await $fetch(`${BASE}/api/stats/orders?${q}`);
-  if (!Array.isArray(rev) || !Array.isArray(emp) || !Array.isArray(ods)) {
-    throw new Error('API stats trả về sai dạng (không phải mảng).');
-  }
+  // if (!Array.isArray(rev) || !Array.isArray(emp) || !Array.isArray(ods)) {
+  //   throw new Error('API stats trả về sai dạng (không phải mảng).');
+  // }
   return { rev, emp, ods };
 }
 
@@ -161,9 +169,12 @@ async function apply(){
 
 // boot
 window.addEventListener('DOMContentLoaded', () => {
-  const to = new Date(); to.setHours(0,0,0,0);
-  const from = new Date(to); from.setDate(to.getDate()-6); // mặc định 7 ngày
-  $('#from').valueAsDate = from; $('#to').valueAsDate = to;
+  const to = new Date(); 
+  to.setHours(0,0,0,0);
+  const from = new Date(to); 
+  from.setDate(to.getDate()-1); // mặc định 1 ngày
+    $('#from').valueAsDate = from;
+    $('#to').valueAsDate = to;
 
   // 7 ngày & 30 ngày
   document.querySelectorAll('.toolbar [data-preset]').forEach(b=>{

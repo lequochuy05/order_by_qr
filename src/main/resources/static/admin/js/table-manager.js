@@ -1,5 +1,4 @@
 // /admin/js/table-manager.js
-
 if (role === "MANAGER") {
     document.getElementById("adminActions").style.display = "block";
 }
@@ -10,6 +9,17 @@ let _isFirstLoad = true;                 // nháy khi reload lần đầu
 const _prevOrders = {};                  // { [tableId]: { totalAmount, itemCount } }
 let _stomp = null;                       // websocket client
 let _renderToken = 0;                    // chặn render chồng
+
+const fmtVND = n => Number(n || 0).toLocaleString('vi-VN') + ' VND';
+
+// Lưu snapshot đơn trước khi thanh toán để in hóa đơn
+let _payContext = {
+  order: null,      // dữ liệu order snapshot
+  table: null,      // dữ liệu table (số bàn)
+  paidBy: null,     // tên người thu (localStorage.fullname)
+  paidAt: null      // thời điểm thanh toán
+};
+
 
 // ===== helpers =====
 const $id = (s) => document.getElementById(s);
@@ -168,7 +178,7 @@ window.showDetails = async function (tableId) {
 
         <div style="display:flex; gap:8px; align-items:center;">
           ${it.prepared
-            ? `<span class="status-prepared">Đã làm</span>`
+            ? `<span class="status-prepared">Đã phục vụ</span>`
             : `<button class="btn-prepared" onclick="markPrepared(${it.id})">Đã xong</button>
               <button class="btn-cancel-item" onclick="cancelItem(${it.id})">Hủy món</button>`}
         </div>
@@ -212,22 +222,241 @@ window.markPrepared = async function(itemId){
 };
 
 // Thanh toán đơn hàng
+// ===== Thanh toán: mở modal xác nhận =====
 window.pay = async function (orderId, tableId) {
   const uid = localStorage.getItem('userId');
-  if (!uid) { alert('Không xác định được người dùng'); return; }
+  if (!uid) { showError?.('Không xác định được người dùng', 'Lỗi'); return; }
+
+  // Reset UI modal
+  _payContext = { order: null, table: null, paidBy: localStorage.getItem('fullname') || '—', paidAt: null };
+  const payModal = $id('payModal');
+  const infoEl   = $id('payInfo');
+  const itemsEl  = $id('payItems');
+  const sumEl    = $id('paySummary');
+  const errEl    = $id('payError');
+  const btnOK    = $id('btnConfirmPay');
+  const btnInv   = $id('btnViewInvoice');
+
+  itemsEl.innerHTML = '';
+  sumEl.textContent = '';
+  errEl.style.display = 'none';
+  btnOK.style.display = 'inline-block';
+  btnInv.style.display = 'none';
+
+  payModal.style.display = 'flex';
+  infoEl.innerHTML = `<div style="color:#6b7280;">Đang tải thông tin đơn hàng...</div>`;
+
   try {
-    const res = await $fetch(`${BASE_URL}/api/orders/${orderId}/pay?userId=${uid}`, { method: 'PUT' });
-    if (!res.ok) throw new Error(await $readErr(res));
-    alert('Thanh toán thành công!');
-    // WS sẽ bắn sự kiện và loadTables() sẽ chạy lại
+    // Lấy thông tin bàn (để hiển thị số bàn)
+    const resTable = await $fetch(`${BASE_URL}/api/tables/${tableId}`);
+    const table = resTable.ok ? await resTable.json() : { tableNumber: tableId };
+    _payContext.table = table;
+
+    // Lấy order hiện tại của bàn
+    const res = await $fetch(`${BASE_URL}/api/orders/table/${tableId}/current`);
+    if (res.status === 404 || res.status === 204) {
+      infoEl.innerHTML = `<span style="color:#ef4444;">Bàn ${table.tableNumber}: không có đơn hiện tại.</span>`;
+      btnOK.style.display = 'none';
+      return;
+    }
+    if (!res.ok) {
+      const m = await $readErr(res);
+      infoEl.innerHTML = `<span style="color:#ef4444;">${m || 'Không tải được đơn hiện tại'}</span>`;
+      btnOK.style.display = 'none';
+      return;
+    }
+
+    const order = await jsonOrNull(res);
+    _payContext.order = order; // lưu snapshot để in
+
+    // Render phần đầu
+    infoEl.innerHTML = `
+      <div><strong>Bàn:</strong> ${table.tableNumber}</div>
+      <div><strong>Mã đơn:</strong> ${order?.id ?? '—'}</div>
+    `;
+
+    // Render danh sách món
+    const rows = (order?.orderItems || []).map(it => {
+      const name = it?.menuItem?.name ?? '(Món)';
+      const price = it?.menuItem?.price ?? 0;
+      const qty = it?.quantity ?? 0;
+      const notes = it?.notes ? `<div style="font-size:12px;color:#6b7280;">Ghi chú: ${it.notes}</div>` : '';
+      const line = price * qty;
+      return `
+        <tr>
+          <td style="padding:10px;border-bottom:1px solid #eee;">
+            ${name} ${notes}
+          </td>
+          <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${qty}</td>
+          <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(price)}</td>
+          <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(line)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    itemsEl.innerHTML = rows || `
+      <tr><td colspan="4" style="padding:12px;text-align:center;color:#6b7280;">Không có món</td></tr>
+    `;
+
+    const total = order?.totalAmount ?? (order?.orderItems || []).reduce((s,it)=>s+(it?.menuItem?.price||0)*(it?.quantity||0),0);
+    sumEl.innerHTML = `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(total)}</span>`;
+
+    // Lưu id để confirm
+    _payContext.orderId = orderId;
+    _payContext.tableId = tableId;
   } catch (e) {
-    alert(e.message || 'Thanh toán thất bại');
+    infoEl.innerHTML = `<span style="color:#ef4444;">${e.message || 'Lỗi kết nối'}</span>`;
+    $id('btnConfirmPay').style.display = 'none';
   }
 };
 
-// =========================
+window.closePayModal = function () { $id('payModal').style.display = 'none'; };
+
+
+// ===== Xác nhận thanh toán =====
+window.confirmPay = async function () {
+  const uid = localStorage.getItem('userId');
+  if (!uid) { showError?.('Không xác định được người dùng', 'Lỗi'); return; }
+
+  const errEl  = $id('payError');
+  const btnOK  = $id('btnConfirmPay');
+  const btnInv = $id('btnViewInvoice');
+
+  errEl.style.display = 'none';
+  btnOK.disabled = true; btnOK.textContent = 'Đang xử lý...';
+
+  try {
+    const res = await $fetch(`${BASE_URL}/api/orders/${_payContext.orderId}/pay?userId=${uid}`, { method:'PUT' });
+    if (!res.ok) throw new Error(await $readErr(res));
+
+    _payContext.paidAt = new Date();
+
+    // Hiển thị nút xem/in hóa đơn
+    btnOK.style.display = 'none';
+    btnInv.style.display = 'inline-block';
+    showSuccess?.('Thanh toán thành công!', 'Thành công');
+
+    // Đợi WS cập nhật, hoặc chủ động reload
+    await sleep(200);
+    loadTables();
+  } catch (e) {
+    errEl.textContent = e.message || 'Thanh toán thất bại';
+    errEl.style.display = 'block';
+  } finally {
+    btnOK.disabled = false; btnOK.textContent = 'Xác nhận thanh toán';
+  }
+};
+
+// ===== Xem / In hóa đơn =====
+window.viewInvoice = function () {
+  if (!_payContext?.order) return;
+
+  const html = buildInvoiceHTML({
+    order: _payContext.order,
+    table: _payContext.table,
+    paidBy: _payContext.paidBy,
+    paidAt: _payContext.paidAt || new Date()
+  });
+
+  const win = window.open('', 'INVOICE', 'width=720,height=880');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+};
+
+// Tạo HTML hóa đơn (in đẹp, A5/A4 đều ok)
+function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
+  const items = order?.orderItems || [];
+  const rows = items.map(it => {
+    const name = it?.menuItem?.name ?? '';
+    const price = it?.menuItem?.price ?? 0;
+    const qty = it?.quantity ?? 0;
+    const notes = it?.notes ? ` <em style="color:#6b7280;font-style:italic;">(${it.notes})</em>` : '';
+    const line = price * qty;
+    return `
+      <tr>
+        <td>${name}${notes}</td>
+        <td style="text-align:center;">${qty}</td>
+        <td style="text-align:right;">${fmtVND(price)}</td>
+        <td style="text-align:right;">${fmtVND(line)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const total = order?.totalAmount ?? items.reduce((s,it)=>s+(it?.menuItem?.price||0)*(it?.quantity||0),0);
+  const timeStr = new Date(paidAt).toLocaleString('vi-VN');
+
+  return `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Hóa đơn - Bàn ${table?.tableNumber ?? ''}</title>
+  <style>
+    *{box-sizing:border-box} body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans","Liberation Sans",sans-serif; color:#111827; padding:24px}
+    .bill{max-width:720px;margin:0 auto}
+    .brand{font-weight:800;font-size:20px}
+    .muted{color:#6b7280}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px solid #eee}
+    th{background:#f8fafc;text-align:left}
+    .tot{font-weight:700;font-size:16px}
+    .right{text-align:right}
+    @media print{ .no-print{display:none} body{padding:0} .bill{margin:0} }
+  </style>
+</head>
+<body>
+  <div class="bill">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="brand">Sắc màu quán</div>
+        <div class="muted">V328+9QR, Đại Minh, Đại Lộc, Quảng Nam</div>
+        <div class="muted">Số điện thoại: 0706163387</div>
+      </div>
+      <div style="text-align:right">
+        <div><strong>HÓA ĐƠN THANH TOÁN</strong></div>
+        <div class="muted">Mã đơn: ${order?.id ?? ''}</div>
+        <div class="muted">Bàn: ${table?.tableNumber ?? ''}</div>
+        <div class="muted">Thời gian: ${timeStr}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50%;">Món</th>
+          <th style="width:10%;text-align:center;">SL</th>
+          <th style="width:20%;text-align:right;">Đơn giá</th>
+          <th style="width:20%;text-align:right;">Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td colspan="4" class="muted">Không có món</td></tr>`}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="right tot">Tổng cộng</td>
+          <td class="tot right">${fmtVND(total)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;margin-top:18px">
+      <div class="muted">Thu ngân: ${paidBy || '—'}</div>
+      <div class="muted">Xin cảm ơn & hẹn gặp lại!</div>
+    </div>
+
+    <div style="margin-top:16px" class="no-print">
+      <button style="padding: 8px 12px; background-color: #4CAF50; color: white; border: none; border-radius: 4px;" onclick="window.print()">In hóa đơn</button>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+
 // CRUD BÀN (Add / Edit / Delete)
-// =========================
 
 // --- Thêm bàn ---
 window.showAddTable = function () {

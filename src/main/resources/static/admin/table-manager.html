@@ -6,6 +6,7 @@
     <title>Quản lý bàn ăn</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/item-manager.css">
+    <link rel="stylesheet" href="../css/modal.css">
 
 </head>
 <body>
@@ -21,13 +22,12 @@
 
     <!-- Thanh bên -->
     <div class="sidebar" id="sidebar">
-        <b class="close-btn" onclick="toggleSidebar()">&#9776;</b  utton>
-         <a href="dashboard.html">Thống kê</a>
+        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
+        <a href="dashboard.html">Thống kê</a>
         <a href="categories.html">Quản lý danh mục</a>
         <a href="item-manager.html">Quản lý món ăn</a>
         <a href="table-manager.html">Quản lý bàn</a>
         <a href="staff-manager.html">Quản lý nhân viên</a>
-        <a href="orders-manager.html">Quản lý đơn hàng</a>
     </div>
 
     <!-- Thêm bàn (dành cho admin) -->
@@ -119,6 +119,41 @@
     </div>
   </div>
 </div>
+
+<!-- Modal xác nhận thanh toán -->
+<div id="payModal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:720px;">
+    <span class="close" onclick="closePayModal()">&times;</span>
+    <h2>Xác nhận thanh toán</h2>
+
+    <div id="payInfo" style="margin:8px 0 12px;color:#374151;"></div>
+
+    <div class="table-responsive" style="max-height:320px;overflow:auto;border:1px solid #eee;border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#f8fafc;">
+            <th style="text-align:left;padding:10px;border-bottom:1px solid #eee;">Món</th>
+            <th style="text-align:center;padding:10px;border-bottom:1px solid #eee;">SL</th>
+            <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Đơn giá</th>
+            <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody id="payItems"></tbody>
+      </table>
+    </div>
+
+    <div id="paySummary" style="text-align:right;margin-top:12px;font-weight:600;"></div>
+
+    <div id="payError" class="form-error" style="display:none;margin-top:8px;"></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn" onclick="closePayModal()">Hủy</button>
+      <button class="btn primary" id="btnConfirmPay" onclick="confirmPay()">Xác nhận thanh toán</button>
+      <button class="btn" id="btnViewInvoice" style="display:none;" onclick="viewInvoice()">Xem/In hóa đơn</button>
+    </div>
+  </div>
+</div>
+
 
 
 <script src="js/config.js"></script>

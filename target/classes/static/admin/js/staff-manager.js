@@ -7,6 +7,8 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 const $id = s => document.getElementById(s);
 const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
 
+
+
 // ===== state =====
 let allUsers = [];
 let view = { q:'', role:'', status:'', sortKey:'createdAt', sortDir:'desc', page:1, pageSize:5 };
@@ -30,7 +32,7 @@ function render(){
   // filter
   const q = ($id('searchInput').value||'').toLowerCase().trim();
   const role = $id('roleFilter').value;
-  const status = $id('statusFilter').value; // nếu bạn có status ở backend, giữ; nếu chưa có thì bỏ filter này hoặc map mặc định "ACTIVE"
+  const status = $id('statusFilter').value;
 
   let data = allUsers.filter(u=>{
     const hay = `${u.fullName||''} ${u.email||''} ${u.phone||''}`.toLowerCase();
@@ -51,9 +53,9 @@ function render(){
   });
 
   // stats
-  $('#statTotal').textContent   = `Tổng: ${data.length}`;
-  $('#statManager').textContent = `Quản lý: ${data.filter(x=>x.role==='MANAGER').length}`;
-  $('#statStaff').textContent   = `Nhân viên: ${data.filter(x=>x.role==='STAFF').length}`;
+  $('#statTotal').textContent   = `Tổng: ${data.length} |`;
+  $('#statManager').textContent = `Quản lý: ${data.filter(x=>x.role==='MANAGER').length} |`;
+  $('#statStaff').textContent   = `Nhân viên: ${data.filter(x=>x.role==='STAFF').length} |`;
   $('#statActive').textContent  = `Đang hoạt động: ${data.filter(x=> (x.status||'ACTIVE')==='ACTIVE').length}`;
 
   // pagination
@@ -117,6 +119,7 @@ $id('nextPage').addEventListener('click', ()=>{ view.page++; render(); });
 
 // ===== export =====
 $id('exportBtn').addEventListener('click', ()=>{
+  if (window.role !== 'MANAGER') return alert('Chỉ quản lý mới có quyền sửa nhân viên');
   const headers = ['Họ tên','Email','SĐT','Vai trò','Trạng thái', 'Ngày tạo'];
   const rows = allUsers.map(u=>[
     u.fullName||'', u.email||'', u.phone||'',

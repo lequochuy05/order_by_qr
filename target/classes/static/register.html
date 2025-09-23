@@ -40,6 +40,17 @@
       </div>
     </form>
   </div>
+  <!-- Reusable Modal -->
+   <div id="modal-container"></div>
+
+  <script>
+      fetch('/common.html')
+      .then(r => r.text())
+      .then(html => {
+        document.getElementById('modal-container').innerHTML = html;
+      });
+
+  </script>
 
   <script src="js/config.js"></script>
   <script src="js/common.js"></script>
