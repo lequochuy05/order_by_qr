@@ -1,4 +1,4 @@
-/*  Modal (reusable)  */
+
 .modal {
   position: fixed;
   inset: 0;
@@ -90,3 +90,101 @@
 .modal--success .modal__header { background: #e8f7ee; }
 .modal--success .modal__title  { color: #16a34a; }
 
+/* ====== Modal sửa món ====== */
+#editModal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.45);
+  z-index: 2000;
+}
+#editModal.hidden { display: none; }
+
+#editModal .modal-body {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  width: 380px;
+  max-width: 95%;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  animation: fadeInScale 0.25s ease;
+}
+
+#editModal h3 {
+  margin-top: 0;
+  margin-bottom: 14px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+#editModal label {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+#editModal input,
+#editModal textarea {
+  width: 95%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+}
+#editModal input:focus,
+#editModal textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+}
+
+#editModal textarea {
+  resize: vertical;
+  min-height: 60px;
+  max-height: 160px;
+}
+
+#editModal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+#editModal .modal-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+#editModal .modal-actions button:first-child {
+  background: #e5e7eb;
+  color: #374151;
+}
+#editModal .modal-actions button:first-child:hover {
+  background: #d1d5db;
+}
+
+#editModal .modal-actions button:last-child {
+  background: #2563eb;
+  color: #fff;
+}
+#editModal .modal-actions button:last-child:hover {
+  background: #1e40af;
+}
+
+/* Hiệu ứng hiện modal */
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}

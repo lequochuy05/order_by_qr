@@ -144,7 +144,6 @@ window.showDetails = async function (tableId) {
   window.currentOpenTableId = tableId;
   const modal = $id('modal');
   const body  = $id('modalBody');
- 
 
   body.innerHTML = `<div style="text-align:center;color:#6b7280;padding:12px;">Đang tải...</div>`;
   modal.style.display = 'flex';
@@ -179,8 +178,11 @@ window.showDetails = async function (tableId) {
         <div style="display:flex; gap:8px; align-items:center;">
           ${it.prepared
             ? `<span class="status-prepared">Đã phục vụ</span>`
-            : `<button class="btn-prepared" onclick="markPrepared(${it.id})">Đã xong</button>
-              <button class="btn-cancel-item" onclick="cancelItem(${it.id})">Hủy món</button>`}
+            : `
+              <button class="btn-prepared" onclick="markPrepared(${it.id})">Đã xong</button>
+              <button class="btn-cancel-item" onclick="cancelItem(${it.id})">Hủy món</button>
+              <button class="btn-edit-item" onclick="openEditItem(${it.id}, ${it.quantity}, '${it.notes || ''}')">Sửa đơn</button>
+            `}
         </div>
       </div>
     `).join('');
@@ -188,6 +190,51 @@ window.showDetails = async function (tableId) {
     body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">${e.message || 'Lỗi kết nối'}</div>`;
   }
 };
+window.closeModal = function () { $id('modal').style.display = 'none'; };
+
+// ====== Sửa món ======
+window.openEditItem = function (itemId, qty, notes) {
+  $id('editModal').classList.remove('hidden');
+  $id('editQuantity').value = qty;
+  $id('editNotes').value = notes || '';
+  window._currentEditItemId = itemId;
+};
+
+window.closeEditModal = function () {
+  $id('editModal').classList.add('hidden');
+  window._currentEditItemId = null;
+};
+
+window.saveEdit = async function () {
+  const itemId = window._currentEditItemId;
+  const qty = Number($id('editQuantity').value);
+  const notes = $id('editNotes').value;
+
+  if (!qty || qty <= 0) {
+    alert("Số lượng phải > 0");
+    return;
+  }
+
+  try {
+    const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity: qty, notes })
+    });
+    if (!res.ok) throw new Error(await $readErr(res));
+
+    closeEditModal();
+
+    // Reload lại modal chi tiết
+    if (typeof window.currentOpenTableId === 'number') {
+      showDetails(window.currentOpenTableId);
+    }
+  } catch (e) {
+    alert(e.message || 'Sửa món thất bại');
+  }
+};
+
+
+
 window.closeModal = function () { $id('modal').style.display = 'none'; };
 
 // Hủy món
@@ -592,6 +639,9 @@ window.deleteTable = async function (id) {
     alert(e.message || 'Không thể xóa bàn');
   }
 };
+
+
+
 
 
 // ===== WS =====

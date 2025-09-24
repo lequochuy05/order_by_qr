@@ -19,6 +19,7 @@ public class OrderController {
     @Autowired
     private OrderService orderService;
 
+    // ===================== CREATE ORDER (thêm món) =====================
     @PostMapping
     public ResponseEntity<?> createOrder(@RequestBody OrderRequest orderRequest) {
         try {
@@ -28,6 +29,7 @@ public class OrderController {
         }
     }
 
+    // ===================== OTHER ORDER OPERATIONS =====================
     @GetMapping
     public List<Order> getAllOrders() {
         return orderService.getAllOrders();
@@ -59,15 +61,35 @@ public class OrderController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
-   @PutMapping("/{orderId}/pay")
-    public ResponseEntity<?> payOrder(@PathVariable Long orderId, @RequestParam Long userId) {
+    @PutMapping("/items/{itemId}")
+    public ResponseEntity<?> updateOrderItem(
+            @PathVariable Long itemId,
+            @RequestBody Map<String, Object> body) {
         try {
-            orderService.payOrder(orderId, userId);
-            return ResponseEntity.ok("Đã thanh toán");
+            int qty = (int) body.getOrDefault("quantity", 1);
+            String notes = (String) body.getOrDefault("notes", "");
+            return ResponseEntity.ok(orderService.updateOrderItem(itemId, qty, notes));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+
+
+    @PutMapping("/{orderId}/pay")
+    public ResponseEntity<?> payOrder(@PathVariable Long orderId,
+                                    @RequestParam Long userId) {
+        try {
+            String result = orderService.payOrder(orderId, userId);
+            return ResponseEntity.ok(Map.of("message", result));
+        } catch (IllegalStateException e) {
+            // còn món chưa làm → báo lỗi rõ ràng
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
 
     @DeleteMapping("/items/{itemId}")
     public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
