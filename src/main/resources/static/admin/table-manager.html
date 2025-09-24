@@ -120,6 +120,25 @@
   </div>
 </div>
 
+<!-- Modal sửa món trong đơn -->
+<div id="editModal" class="modal hidden">
+  <div class="modal-backdrop" onclick="closeEditModal()"></div>
+  <div class="modal-body">
+    <h3>Sửa món</h3>
+    <label>Số lượng</label>
+    <input type="number" id="editQuantity" min="1">
+
+    <label>Ghi chú</label>
+    <textarea id="editNotes"></textarea>
+
+    <div class="modal-actions">
+      <button onclick="closeEditModal()">Hủy</button>
+      <button onclick="saveEdit()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+
 <!-- Modal xác nhận thanh toán -->
 <div id="payModal" class="modal" style="display:none;">
   <div class="modal-content" style="max-width:720px;">

@@ -124,6 +124,11 @@ h1{color: var(--text);}
 }
 .btn-cancel-item[disabled]{ opacity:.5; cursor:not-allowed; }
 
+.btn-edit-item{
+  background: transparent; border: 1px solid var(--danger);
+  color: var(--sidebar-bg); padding: 5px 10px; border-radius: 6px; cursor: pointer;
+}
+
 .btn-close{
   background-color: var(--danger); color:#fff;
   padding: 8px 16px; margin-top: 12px; border: none; border-radius: 6px;

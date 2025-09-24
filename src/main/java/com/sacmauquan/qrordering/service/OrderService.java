@@ -144,6 +144,44 @@ public class OrderService {
         return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
     }
 
+    // ===================== UPDATE ORDER ITEM (sửa món) =====================
+    @Transactional
+    public OrderItem updateOrderItem(Long itemId, int quantity, String notes) {
+        OrderItem item = orderItemRepository.findById(itemId)
+            .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
+
+        if (item.isPrepared()) {
+            throw new RuntimeException("Món đã làm, không thể sửa");
+        }
+
+        Order order = item.getOrder();
+
+        // Trừ đi tiền cũ
+        double oldLine = item.getUnitPrice() * item.getQuantity();
+        order.setTotalAmount(Math.max(0, order.getTotalAmount() - oldLine));
+
+        // Cập nhật
+        item.setQuantity(quantity);
+        item.setNotes(notes);
+
+        // Cộng lại tiền mới
+        double newLine = item.getUnitPrice() * item.getQuantity();
+        order.setTotalAmount(order.getTotalAmount() + newLine);
+
+        orderItemRepository.save(item);
+        orderRepository.save(order);
+
+        // cập nhật trạng thái bàn
+        recalcTableStatus(order);
+
+        // bắn WS cho UI tự reload
+        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+
+        return item;
+    }
+
+
+
     // ===================== PAY =====================
     @Transactional
     public String payOrder(Long id, Long userId) {
@@ -152,6 +190,13 @@ public class OrderService {
 
         if (!"PENDING".equals(order.getStatus())) {
             throw new RuntimeException("Đơn đã được thanh toán hoặc đã hủy.");
+        }
+
+        // Kiểm tra xem có món nào chưa làm (prepared = 0)
+        boolean hasUnprepared = order.getOrderItems().stream()
+            .anyMatch(item -> !item.isPrepared());
+        if (hasUnprepared) {
+            throw new IllegalStateException("Đơn hàng còn món chưa hoàn tất, không thể thanh toán.");
         }
 
         User currentUser = userRepository.findById(userId)
