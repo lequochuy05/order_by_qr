@@ -1,10 +1,15 @@
 package com.sacmauquan.qrordering.model;
 
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "menu_item")
 @Getter
 @Setter
@@ -23,5 +28,10 @@ public class MenuItem {
     @ManyToOne
     @JoinColumn(name = "cate_id")
     private Category category;
+
+    @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({"menuItem"})   // tránh vòng lặp khi serialize
+    private List<ComboItem> comboItems;
+
 
 }

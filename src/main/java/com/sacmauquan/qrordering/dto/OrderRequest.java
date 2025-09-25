@@ -9,6 +9,13 @@ import java.util.List;
 public class OrderRequest {
     private Long tableId;
     private String status;
+
+    // Mã voucher (nếu có)
+    private String voucherCode;
+
+    //Combo ID (nếu có)
+    private List<Long> comboIds;
+
     private List<ItemRequest> items;
 
     @Getter

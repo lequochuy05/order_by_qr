@@ -56,9 +56,9 @@ public class SecurityConfig {
         .requestMatchers("/api/auth/**").permitAll()
 
         // public GET
-        .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu/**", "/api/tables/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/combos/**", "/api/orders/**").permitAll()
         // khách tạo đơn
-        .requestMatchers(HttpMethod.POST, "/api/orders").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
         // admin
         .requestMatchers(HttpMethod.POST,   "/api/categories/**", "/api/menu/**", "/api/tables/**").hasRole("MANAGER")
