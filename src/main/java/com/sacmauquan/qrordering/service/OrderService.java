@@ -1,5 +1,6 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
 import com.sacmauquan.qrordering.model.*;
 import com.sacmauquan.qrordering.repository.*;
@@ -21,17 +22,21 @@ public class OrderService {
     @Autowired private OrderItemRepository orderItemRepository;
     @Autowired private MenuItemRepository menuItemRepository;
     @Autowired private DiningTableRepository tableRepository;
+    @Autowired private ComboRepository comboRepository;
+    @Autowired private DiscountService discountService;
 
-    // ===================== CREATE ORDER (thêm món) =====================
+    // ===================== CREATE ORDER (thêm món / combo, cộng dồn) =====================
     @Transactional
-    public Order createOrder(OrderRequest orderRequest) {
-        if (orderRequest == null || orderRequest.getItems() == null || orderRequest.getItems().isEmpty()) {
+    public Order createOrder(OrderRequest req) {
+        if ((req.getItems() == null || req.getItems().isEmpty())
+                && (req.getComboIds() == null || req.getComboIds().isEmpty())) {
             throw new IllegalArgumentException("Đơn hàng không hợp lệ");
         }
 
-        DiningTable table = tableRepository.findById(orderRequest.getTableId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn với ID: " + orderRequest.getTableId()));
+        DiningTable table = tableRepository.findById(req.getTableId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableId()));
 
+        // 🔑 lấy order PENDING hiện tại, nếu chưa có thì tạo mới
         Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");
         if (order == null) {
             order = new Order();
@@ -39,45 +44,94 @@ public class OrderService {
             order.setStatus("PENDING");
             order.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
             order.setOrderItems(new ArrayList<>());
-            order.setTotalAmount(0);
+            order.setTotalAmount(0d);
         }
 
-        double totalAmount = order.getTotalAmount();
+        // ----- 1) Món lẻ -----
+        if (req.getItems() != null) {
+            for (OrderRequest.ItemRequest it : req.getItems()) {
+                if (it.getMenuItemId() == null || it.getQuantity() <= 0)
+                    throw new IllegalArgumentException("Món ăn không hợp lệ");
 
-        for (OrderRequest.ItemRequest itemReq : orderRequest.getItems()) {
-            if (itemReq.getMenuItemId() == null || itemReq.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Món ăn không hợp lệ");
+                MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
+
+                // kiểm tra món đã tồn tại trong order chưa (id + notes)
+                Optional<OrderItem> exist = order.getOrderItems().stream()
+                        .filter(oi -> oi.getMenuItem() != null
+                                && oi.getMenuItem().getId().equals(mi.getId())
+                                && Objects.equals(oi.getNotes(), it.getNotes())
+                                && oi.getCombo() == null) // chỉ áp dụng cho món lẻ
+                        .findFirst();
+
+                if (exist.isPresent()) {
+                    OrderItem oi = exist.get();
+                    oi.setQuantity(oi.getQuantity() + it.getQuantity());
+                } else {
+                    OrderItem oi = new OrderItem();
+                    oi.setOrder(order);
+                    oi.setMenuItem(mi);
+                    oi.setCombo(null);
+                    oi.setQuantity(it.getQuantity());
+                    oi.setUnitPrice(mi.getPrice());
+                    oi.setNotes(it.getNotes());
+                    oi.setPrepared(false);
+                    order.getOrderItems().add(oi);
+                }
             }
-            MenuItem menuItem = menuItemRepository.findById(itemReq.getMenuItemId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn với ID: " + itemReq.getMenuItemId()));
-
-            OrderItem oi = new OrderItem();
-            oi.setOrder(order);
-            oi.setMenuItem(menuItem);
-            oi.setQuantity(itemReq.getQuantity());
-            oi.setUnitPrice(menuItem.getPrice());
-            oi.setNotes(itemReq.getNotes());
-            oi.setPrepared(false);           // món mới luôn là chưa làm
-
-            totalAmount += menuItem.getPrice() * itemReq.getQuantity();
-            order.getOrderItems().add(oi);
         }
 
-        order.setTotalAmount(totalAmount);
+        // ----- 2) Combo -----
+        if (req.getComboIds() != null) {
+            for (Long comboId : req.getComboIds()) {
+                Combo combo = comboRepository.findById(comboId)
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + comboId));
+                if (combo.getActive() == null || !combo.getActive()) continue;
+
+                // kiểm tra combo đã tồn tại trong order chưa
+                Optional<OrderItem> exist = order.getOrderItems().stream()
+                        .filter(oi -> oi.getCombo() != null && oi.getCombo().getId().equals(combo.getId()))
+                        .findFirst();
+
+                if (exist.isPresent()) {
+                    OrderItem oi = exist.get();
+                    oi.setQuantity(oi.getQuantity() + 1);
+                } else {
+                    OrderItem oi = new OrderItem();
+                    oi.setOrder(order);
+                    oi.setCombo(combo);
+                    oi.setMenuItem(null);
+                    oi.setQuantity(1);
+                    oi.setUnitPrice(combo.getPrice());
+                    oi.setNotes(null);
+                    oi.setPrepared(false);
+                    order.getOrderItems().add(oi);
+                }
+            }
+        }
+
+        // ----- 3) Tính lại tổng tiền -----
+        double subtotal = order.getOrderItems().stream()
+                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
+                .sum();
+
+        double finalTotal = discountService.applyDiscountsFromSubtotal(subtotal, req.getVoucherCode());
+        order.setTotalAmount(finalTotal);
+
         Order saved = orderRepository.save(order);
 
-        // Có món chưa làm -> chắc chắn "Đang phục vụ"
-        DiningTable t = saved.getTable();
-        t.setStatus("Đang phục vụ");
-        tableRepository.save(t);
+        // cập nhật trạng thái bàn
+        table.setStatus("Đang phục vụ");
+        tableRepository.save(table);
 
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
         return saved;
     }
 
+    // ===================== GET ALL ORDERS =====================
     public List<Order> getAllOrders() { return orderRepository.findAll(); }
 
-    // ===================== CANCEL 1 ITEM (hủy món lẻ) =====================
+    // ===================== CANCEL 1 ITEM =====================
     @Transactional
     public void cancelOrderItem(Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
@@ -88,18 +142,13 @@ public class OrderService {
         }
 
         Order order = item.getOrder();
-
-        // Trừ tiền đơn
         double minus = (Optional.ofNullable(item.getUnitPrice()).orElse(0.0)) * item.getQuantity();
         order.setTotalAmount(Math.max(0, order.getTotalAmount() - minus));
 
-        // Xóa món
-        order.getOrderItems().remove(item);         // tránh orphan trong bộ nhớ
+        order.getOrderItems().remove(item);
         orderItemRepository.delete(item);
 
-        // Nếu hết món -> CANCEL đơn & bàn Trống; nếu còn -> giữ PENDING và tính lại trạng thái
-        List<OrderItem> left = orderItemRepository.findByOrderId(order.getId());
-        if (left.isEmpty()) {
+        if (order.getOrderItems().isEmpty()) {
             order.setStatus("CANCELLED");
             orderRepository.save(order);
 
@@ -108,12 +157,13 @@ public class OrderService {
             tableRepository.save(table);
         } else {
             orderRepository.save(order);
-            recalcTableStatus(order);               // <-- QUAN TRỌNG
+            recalcTableStatus(order);
         }
 
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
     }
 
+    // ===================== UPDATE STATUS =====================
     public Order updateStatus(Long id, String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
@@ -132,55 +182,45 @@ public class OrderService {
             orderItemRepository.save(item);
         }
 
-        Order order = orderRepository.findById(item.getOrder().getId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-
-        recalcTableStatus(order);                   // <-- dùng chung 1 luật
+        Order order = item.getOrder();
+        recalcTableStatus(order);
 
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
     }
 
+    // ===================== GET CURRENT ORDER BY TABLE =====================
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
         return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
     }
 
-    // ===================== UPDATE ORDER ITEM (sửa món) =====================
+    // ===================== UPDATE ORDER ITEM =====================
     @Transactional
     public OrderItem updateOrderItem(Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
-            .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
 
         if (item.isPrepared()) {
             throw new RuntimeException("Món đã làm, không thể sửa");
         }
 
-        Order order = item.getOrder();
-
-        // Trừ đi tiền cũ
-        double oldLine = item.getUnitPrice() * item.getQuantity();
-        order.setTotalAmount(Math.max(0, order.getTotalAmount() - oldLine));
-
-        // Cập nhật
         item.setQuantity(quantity);
         item.setNotes(notes);
 
-        // Cộng lại tiền mới
-        double newLine = item.getUnitPrice() * item.getQuantity();
-        order.setTotalAmount(order.getTotalAmount() + newLine);
+        Order order = item.getOrder();
+        double subtotal = order.getOrderItems().stream()
+                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
+                .sum();
+
+        double discounted = discountService.applyDiscountsFromSubtotal(subtotal, null);
+        order.setTotalAmount(discounted);
 
         orderItemRepository.save(item);
         orderRepository.save(order);
 
-        // cập nhật trạng thái bàn
         recalcTableStatus(order);
-
-        // bắn WS cho UI tự reload
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
-
         return item;
     }
-
-
 
     // ===================== PAY =====================
     @Transactional
@@ -192,15 +232,20 @@ public class OrderService {
             throw new RuntimeException("Đơn đã được thanh toán hoặc đã hủy.");
         }
 
-        // Kiểm tra xem có món nào chưa làm (prepared = 0)
         boolean hasUnprepared = order.getOrderItems().stream()
-            .anyMatch(item -> !item.isPrepared());
+                .anyMatch(item -> !item.isPrepared());
         if (hasUnprepared) {
             throw new IllegalStateException("Đơn hàng còn món chưa hoàn tất, không thể thanh toán.");
         }
 
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
+
+        double subtotal = order.getOrderItems().stream()
+                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
+                .sum();
+        double finalAmount = discountService.applyDiscountsFromSubtotal(subtotal, null);
+        order.setTotalAmount(finalAmount);
 
         order.setStatus("PAID");
         order.setPaidBy(currentUser);
@@ -214,6 +259,59 @@ public class OrderService {
         messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
         return "Thanh toán thành công";
     }
+
+    // ===================== PREVIEW ORDER (tính thử tiền) =====================
+   @Transactional(readOnly = true)
+public OrderPreviewResponse preview(OrderRequest req) {
+    if ((req.getItems() == null || req.getItems().isEmpty())
+            && (req.getComboIds() == null || req.getComboIds().isEmpty())) {
+        throw new IllegalArgumentException("Đơn hàng trống");
+    }
+
+    double subtotalItems = 0d;
+    double subtotalCombos = 0d;
+
+    // ===== 1. Tính tiền món lẻ =====
+    if (req.getItems() != null) {
+            for (OrderRequest.ItemRequest it : req.getItems()) {
+                if (it.getMenuItemId() == null || it.getQuantity() <= 0) continue;
+
+                MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
+
+                Double price = mi.getPrice();  // lấy ra wrapper
+                subtotalItems += (price != null ? price : 0d) * it.getQuantity();
+            }
+        }
+
+    // ===== 2. Tính tiền combos =====
+    if (req.getComboIds() != null) {
+        for (Long comboId : req.getComboIds()) {
+            Combo combo = comboRepository.findById(comboId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + comboId));
+            if (combo.getActive() == null || !combo.getActive()) continue;
+
+            Double comboPrice = combo.getPrice();
+            subtotalCombos += (comboPrice != null ? comboPrice : 0d);
+        }
+    }
+
+    double subtotal = subtotalItems + subtotalCombos;
+
+    // ===== 3. giảm giá / voucher =====
+    double finalTotal = subtotal;  // không áp dụng giảm giá
+
+    return new OrderPreviewResponse(
+            subtotalItems,
+            subtotalCombos,
+            finalTotal,
+            false,       // voucherValid
+            null,        // voucherMessage
+            0d,          // discountVoucher
+            0d           // discountPromotion
+    );
+}
+
 
     // ===================== RULE: TÍNH LẠI TRẠNG THÁI BÀN =====================
     private void recalcTableStatus(Order order) {

@@ -1,7 +1,11 @@
 // /admin/js/table-manager.js
-if (role === "MANAGER") {
-    document.getElementById("adminActions").style.display = "block";
+
+// Hiện nút admin nếu là quản lý
+if (typeof role !== 'undefined' && role === "MANAGER") {
+  const el = document.getElementById("adminActions");
+  if (el) el.style.display = "block";
 }
+
 const BASE_URL = window.APP_BASE_URL || location.origin;
 
 // ===== state =====
@@ -17,9 +21,11 @@ let _payContext = {
   order: null,      // dữ liệu order snapshot
   table: null,      // dữ liệu table (số bàn)
   paidBy: null,     // tên người thu (localStorage.fullname)
-  paidAt: null      // thời điểm thanh toán
+  paidAt: null,     // thời điểm thanh toán
+  orderId: null,
+  tableId: null,
+  voucherCode: null // mã áp dụng tạm thời khi preview thanh toán
 };
-
 
 // ===== helpers =====
 const $id = (s) => document.getElementById(s);
@@ -39,13 +45,15 @@ function highlightCard(cardEl) {
   setTimeout(() => cardEl.classList.remove('highlight'), 5000);
 }
 
-// ===== render =====
+// ===== render danh sách bàn =====
 window.loadTables = async function () {
   const myToken = ++_renderToken;
 
   const filter = $id('tableFilter')?.value || 'ALL';
   const container = $id('tableContainer');
-  container.innerHTML = `<div style="text-align:center;color:#6b7280;padding:16px;">Đang tải...</div>`;
+  if (container) {
+    container.innerHTML = `<div style="text-align:center;color:#6b7280;padding:16px;">Đang tải...</div>`;
+  }
 
   try {
     const res = await $fetch(`${BASE_URL}/api/tables`);
@@ -139,43 +147,75 @@ window.loadTables = async function () {
   }
 };
 
-// Order detail
+// ===== chi tiết đơn của 1 bàn =====
 window.showDetails = async function (tableId) {
   window.currentOpenTableId = tableId;
   const modal = $id('modal');
   const body  = $id('modalBody');
 
+  if (!modal || !body) return;
   body.innerHTML = `<div style="text-align:center;color:#6b7280;padding:12px;">Đang tải...</div>`;
   modal.style.display = 'flex';
 
   try {
     const res = await $fetch(`${BASE_URL}/api/orders/table/${tableId}/current`);
-
-    if (res.status === 404 || res.status === 204) {
-      body.innerHTML = `<div style="text-align:center;color:#6b7280;padding:16px;">Không có đơn hiện tại</div>`;
-      return;
-    }
-
     if (!res.ok) {
-      const m = await $readErr(res);
-      body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">${m || 'Lỗi tải chi tiết đơn'}</div>`;
+      body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">Không tải được đơn</div>`;
       return;
     }
 
     const order = await jsonOrNull(res);
-    const items = Array.isArray(order?.orderItems) ? order.orderItems : [];
-
-    if (items.length === 0) {
+    if (!order || !order.orderItems?.length) {
       body.innerHTML = `<div style="text-align:center;color:#6b7280;padding:16px;">Không có món trong đơn</div>`;
       return;
     }
 
-    body.innerHTML = items.map(it => `
-      <div class="order-item ${it.prepared ? 'prepared' : ''}">
-        <strong>${it.menuItem?.name || ''} x${it.quantity}</strong>
-        ${it.notes ? `<div class="order-note">Ghi chú: ${it.notes}</div>` : ''}
+    // Gom combo theo ID
+    const comboMap = {};   // { comboId: { combo, qty, orderItemId, prepared } }
+    const normalItems = [];
 
-        <div style="display:flex; gap:8px; align-items:center;">
+    order.orderItems.forEach(it => {
+      if (it.combo) {
+        const key = it.combo.id;
+        if (!comboMap[key]) {
+          comboMap[key] = {
+            combo: it.combo,
+            qty: 0,
+            orderItemId: it.id,     // lưu orderItem.id
+            prepared: it.prepared
+          };
+        }
+        comboMap[key].qty += it.quantity || 1;
+        if (!it.prepared) comboMap[key].prepared = false;
+        } else {
+          normalItems.push(it);
+        }
+    });
+
+    let html = "";
+
+    // Render combo block
+    Object.values(comboMap).forEach(c => {
+    html += `
+      <div class="order-item combo-block ${c.prepared ? 'prepared' : ''}">
+        <strong>Combo ${c.combo.name} × ${c.qty}</strong>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+          ${c.prepared
+            ? `<span class="status-prepared">Đã phục vụ</span>`
+            : `
+              <button class="btn-prepared" onclick="markPrepared(${c.orderItemId})">Đã xong</button>
+              <button class="btn-cancel-item" onclick="cancelItem(${c.orderItemId})">Hủy</button>
+            `}
+        </div>
+      </div>`;
+  });
+
+    // Render món lẻ
+    html += normalItems.map(it => `
+      <div class="order-item ${it.prepared ? 'prepared' : ''}">
+        <strong>${it.menuItem?.name || ''} × ${it.quantity}</strong>
+        ${it.notes ? `<div class="order-note">Ghi chú: ${it.notes}</div>` : ''}
+        <div style="display:flex; gap:8px;">
           ${it.prepared
             ? `<span class="status-prepared">Đã phục vụ</span>`
             : `
@@ -186,29 +226,32 @@ window.showDetails = async function (tableId) {
         </div>
       </div>
     `).join('');
+
+    body.innerHTML = html;
+
   } catch (e) {
-    body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">${e.message || 'Lỗi kết nối'}</div>`;
+    body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">${e.message}</div>`;
   }
 };
-window.closeModal = function () { $id('modal').style.display = 'none'; };
+
+
+window.closeModal = function () { const m = $id('modal'); if (m) m.style.display = 'none'; };
 
 // ====== Sửa món ======
 window.openEditItem = function (itemId, qty, notes) {
-  $id('editModal').classList.remove('hidden');
-  $id('editQuantity').value = qty;
-  $id('editNotes').value = notes || '';
+  $id('editModal')?.classList.remove('hidden');
+  const q = $id('editQuantity'); if (q) q.value = qty;
+  const n = $id('editNotes'); if (n) n.value = notes || '';
   window._currentEditItemId = itemId;
 };
-
 window.closeEditModal = function () {
-  $id('editModal').classList.add('hidden');
+  $id('editModal')?.classList.add('hidden');
   window._currentEditItemId = null;
 };
-
 window.saveEdit = async function () {
   const itemId = window._currentEditItemId;
-  const qty = Number($id('editQuantity').value);
-  const notes = $id('editNotes').value;
+  const qty = Number($id('editQuantity')?.value);
+  const notes = $id('editNotes')?.value || '';
 
   if (!qty || qty <= 0) {
     alert("Số lượng phải > 0");
@@ -233,11 +276,7 @@ window.saveEdit = async function () {
   }
 };
 
-
-
-window.closeModal = function () { $id('modal').style.display = 'none'; };
-
-// Hủy món
+// ===== Hủy món =====
 window.cancelItem = async function(itemId){
   if (!confirm('Hủy món này?')) return;
   try{
@@ -255,27 +294,35 @@ window.cancelItem = async function(itemId){
   }
 };
 
-// Mark item as prepared
+// ===== Mark item as prepared =====
 window.markPrepared = async function(itemId){
-    try{
-      await $fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method:'PUT' });
-      // Làm tươi modal nếu đang mở
-      const opened = document.getElementById('modal').style.display === 'flex';
-      if (opened && typeof window.currentOpenTableId === 'number') {
-        showDetails(window.currentOpenTableId); // re-render chi tiết
-      }
-      // Bảng trạng thái/tiền sẽ tự cập nhật do WS "/topic/tables"
-    }catch(e){ /* ignore */ }
+  try{
+    await $fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method:'PUT' });
+    // Làm tươi modal nếu đang mở
+    const opened = $id('modal')?.style.display === 'flex';
+    if (opened && typeof window.currentOpenTableId === 'number') {
+      showDetails(window.currentOpenTableId); // re-render chi tiết
+    }
+    // Bảng trạng thái/tiền sẽ tự cập nhật do WS "/topic/tables"
+  }catch(e){ /* ignore */ }
 };
 
-// Thanh toán đơn hàng
-// ===== Thanh toán: mở modal xác nhận =====
+// ===== Thanh toán =====
 window.pay = async function (orderId, tableId) {
   const uid = localStorage.getItem('userId');
-  if (!uid) { showError?.('Không xác định được người dùng', 'Lỗi'); return; }
+  if (!uid) { window.showError?.('Không xác định được người dùng', 'Lỗi'); return; }
 
   // Reset UI modal
-  _payContext = { order: null, table: null, paidBy: localStorage.getItem('fullname') || '—', paidAt: null };
+  _payContext = {
+    order: null,
+    table: null,
+    paidBy: localStorage.getItem('fullname') || '—',
+    paidAt: null,
+    orderId,
+    tableId,
+    voucherCode: null
+  };
+
   const payModal = $id('payModal');
   const infoEl   = $id('payInfo');
   const itemsEl  = $id('payItems');
@@ -283,114 +330,219 @@ window.pay = async function (orderId, tableId) {
   const errEl    = $id('payError');
   const btnOK    = $id('btnConfirmPay');
   const btnInv   = $id('btnViewInvoice');
+  const msgEl    = $id('payVoucherMsg');
 
-  itemsEl.innerHTML = '';
-  sumEl.textContent = '';
-  errEl.style.display = 'none';
-  btnOK.style.display = 'inline-block';
-  btnInv.style.display = 'none';
+  if (!payModal) return;
 
+  if (itemsEl) itemsEl.innerHTML = '';
+  if (sumEl) sumEl.textContent = '';
+  if (errEl) errEl.style.display = 'none';
+  if (btnOK) { btnOK.style.display = 'inline-block'; btnOK.disabled = false; btnOK.textContent = 'Xác nhận thanh toán'; }
+  if (btnInv) btnInv.style.display = 'none';
+  if (msgEl) { msgEl.textContent = ''; msgEl.style.color = '#6b7280'; }
   payModal.style.display = 'flex';
-  infoEl.innerHTML = `<div style="color:#6b7280;">Đang tải thông tin đơn hàng...</div>`;
+  if (infoEl) infoEl.innerHTML = `<div style="color:#6b7280;">Đang tải thông tin đơn hàng...</div>`;
 
   try {
-    // Lấy thông tin bàn (để hiển thị số bàn)
+    // Lấy thông tin bàn
     const resTable = await $fetch(`${BASE_URL}/api/tables/${tableId}`);
     const table = resTable.ok ? await resTable.json() : { tableNumber: tableId };
     _payContext.table = table;
 
-    // Lấy order hiện tại của bàn
+    // Lấy order hiện tại
     const res = await $fetch(`${BASE_URL}/api/orders/table/${tableId}/current`);
     if (res.status === 404 || res.status === 204) {
-      infoEl.innerHTML = `<span style="color:#ef4444;">Bàn ${table.tableNumber}: không có đơn hiện tại.</span>`;
-      btnOK.style.display = 'none';
+      if (infoEl) infoEl.innerHTML = `<span style="color:#ef4444;">Bàn ${table.tableNumber}: không có đơn hiện tại.</span>`;
+      if (btnOK) btnOK.style.display = 'none';
       return;
     }
     if (!res.ok) {
       const m = await $readErr(res);
-      infoEl.innerHTML = `<span style="color:#ef4444;">${m || 'Không tải được đơn hiện tại'}</span>`;
-      btnOK.style.display = 'none';
+      if (infoEl) infoEl.innerHTML = `<span style="color:#ef4444;">${m || 'Không tải được đơn hiện tại'}</span>`;
+      if (btnOK) btnOK.style.display = 'none';
       return;
     }
 
     const order = await jsonOrNull(res);
-    _payContext.order = order; // lưu snapshot để in
+    _payContext.order = order; // snapshot để in
 
-    // Render phần đầu
-    infoEl.innerHTML = `
-      <div><strong>Bàn:</strong> ${table.tableNumber}</div>
-      <div><strong>Mã đơn:</strong> ${order?.id ?? '—'}</div>
-    `;
-
-    // Render danh sách món
-    const rows = (order?.orderItems || []).map(it => {
-      const name = it?.menuItem?.name ?? '(Món)';
-      const price = it?.menuItem?.price ?? 0;
-      const qty = it?.quantity ?? 0;
-      const notes = it?.notes ? `<div style="font-size:12px;color:#6b7280;">Ghi chú: ${it.notes}</div>` : '';
-      const line = price * qty;
-      return `
-        <tr>
-          <td style="padding:10px;border-bottom:1px solid #eee;">
-            ${name} ${notes}
-          </td>
-          <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${qty}</td>
-          <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(price)}</td>
-          <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(line)}</td>
-        </tr>
+    // Header
+    if (infoEl) {
+      infoEl.innerHTML = `
+        <div><strong>Bàn:</strong> ${table.tableNumber}</div>
+        <div><strong>Mã đơn:</strong> ${order?.id ?? '—'}</div>
       `;
-    }).join('');
+    }
 
+// Gom combo và món lẻ
+const comboMap = {};   // { comboId: { name, qty, price } }
+const normalItems = [];
+
+(order.orderItems || []).forEach(it => {
+  if (it.combo) {
+    const key = it.combo.id;
+    if (!comboMap[key]) {
+      comboMap[key] = { name: it.combo.name, qty: 0, price: it.combo.price || 0 };
+    }
+    comboMap[key].qty += (it.quantity || 1);
+  } else if (it.notes && it.notes.startsWith("[COMBO]")) {
+    const key = it.notes;
+    if (!comboMap[key]) {
+      comboMap[key] = { name: it.notes.replace("[COMBO]","").trim(), qty: 0, price: it.unitPrice || 0 };
+    }
+    comboMap[key].qty += (it.quantity || 1);
+  } else {
+    normalItems.push(it);
+  }
+});
+
+  // Build rows cho combo
+  let rows = Object.values(comboMap).map(c => `
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid #eee;">
+        Combo ${c.name}
+      </td>
+      <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${c.qty}</td>
+      <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price)}</td>
+      <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price * c.qty)}</td>
+    </tr>
+  `).join('');
+
+  // Build rows cho món lẻ
+  rows += normalItems.map(it => {
+    const name  = it.menuItem?.name ?? '(Món)';
+    const price = it.unitPrice ?? it.menuItem?.price ?? 0;
+    const qty   = it.quantity ?? 0;
+    const notes = it.notes ? `<div style="font-size:12px;color:#6b7280;">Ghi chú: ${it.notes}</div>` : '';
+    const line  = price * qty;
+    return `
+      <tr>
+        <td style="padding:10px;border-bottom:1px solid #eee;">
+          ${name} ${notes}
+        </td>
+        <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${qty}</td>
+        <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(price)}</td>
+        <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(line)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Gắn vào bảng
+  if (itemsEl) {
     itemsEl.innerHTML = rows || `
       <tr><td colspan="4" style="padding:12px;text-align:center;color:#6b7280;">Không có món</td></tr>
     `;
+  }
 
-    const total = order?.totalAmount ?? (order?.orderItems || []).reduce((s,it)=>s+(it?.menuItem?.price||0)*(it?.quantity||0),0);
-    sumEl.innerHTML = `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(total)}</span>`;
 
-    // Lưu id để confirm
-    _payContext.orderId = orderId;
-    _payContext.tableId = tableId;
+
+    // Tổng tiền
+    let total;
+    if (typeof order?.totalAmount === 'number') {
+      total = order.totalAmount;
+    } else {
+      const totalCombos = Object.values(comboMap)
+        .reduce((s, c) => s + (c.price || 0) * (c.qty || 0), 0);
+      const totalNormals = normalItems
+        .reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice ?? it.menuItem?.price ?? 0), 0);
+      total = totalCombos + totalNormals;
+    }
+    if (sumEl) sumEl.innerHTML = `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(total)}</span>`;
+
   } catch (e) {
-    infoEl.innerHTML = `<span style="color:#ef4444;">${e.message || 'Lỗi kết nối'}</span>`;
-    $id('btnConfirmPay').style.display = 'none';
+    if (infoEl) infoEl.innerHTML = `<span style="color:#ef4444;">${e.message || 'Lỗi kết nối'}</span>`;
+    if ($id('btnConfirmPay')) $id('btnConfirmPay').style.display = 'none';
   }
 };
 
-window.closePayModal = function () { $id('payModal').style.display = 'none'; };
+window.closePayModal = function () { const m = $id('payModal'); if (m) m.style.display = 'none'; };
 
+// ===== Áp dụng voucher trong modal thanh toán (preview) =====
+window.applyVoucher = async function() {
+  const code = ($id('payVoucher')?.value || '').trim();
+  const msgEl = $id('payVoucherMsg');
+  const sumEl = $id('paySummary');
+
+  if (!code) {
+    if (msgEl) { msgEl.textContent = 'Vui lòng nhập mã'; msgEl.style.color = '#ef4444'; }
+    return;
+  }
+
+  try {
+    const order = _payContext.order;
+    if (!order) return;
+
+    // Gọi preview
+    const res = await $fetch(`${BASE_URL}/api/orders/preview`, {
+      method: 'POST',
+      body: JSON.stringify({
+        tableId: _payContext.tableId,
+        items: (order.orderItems || []).map(it => ({
+          menuItemId: it.menuItem?.id,
+          quantity: it.quantity,
+          notes: it.notes
+        })),
+        comboIds: [], // nếu có cơ chế lưu combos tại server, truyền vào đây
+        voucherCode: code
+      })
+    });
+
+    if (!res.ok) throw new Error(await $readErr(res));
+    const p = await res.json();
+
+    // cập nhật phần summary
+    if (sumEl) {
+      sumEl.innerHTML = `
+        <div>Tạm tính: ${fmtVND((p.subtotalItems||0)+(p.subtotalCombos||0))}</div>
+        ${p.discountVoucher > 0 ? `<div>Voucher: -${fmtVND(p.discountVoucher)}</div>` : ''}
+        ${p.discountPromotion > 0 ? `<div>Khuyến mãi: -${fmtVND(p.discountPromotion)}</div>` : ''}
+        <div style="font-weight:600;">Tổng thanh toán: ${fmtVND(p.finalTotal||0)}</div>
+      `;
+    }
+
+    if (msgEl) {
+      msgEl.textContent = p.voucherMessage || (p.voucherValid ? 'Áp dụng voucher thành công' : 'Voucher không hợp lệ');
+      msgEl.style.color = p.voucherValid ? '#16a34a' : '#ef4444';
+    }
+
+    _payContext.voucherCode = code; // lưu để có thể gửi kèm khi thanh toán (nếu backend hỗ trợ)
+  } catch (e) {
+    if (msgEl) { msgEl.textContent = e.message || 'Không áp dụng được voucher'; msgEl.style.color = '#ef4444'; }
+  }
+};
 
 // ===== Xác nhận thanh toán =====
 window.confirmPay = async function () {
   const uid = localStorage.getItem('userId');
-  if (!uid) { showError?.('Không xác định được người dùng', 'Lỗi'); return; }
+  if (!uid) { window.showError?.('Không xác định được người dùng', 'Lỗi'); return; }
 
   const errEl  = $id('payError');
   const btnOK  = $id('btnConfirmPay');
   const btnInv = $id('btnViewInvoice');
 
-  errEl.style.display = 'none';
-  btnOK.disabled = true; btnOK.textContent = 'Đang xử lý...';
+  if (errEl) errEl.style.display = 'none';
+  if (btnOK) { btnOK.disabled = true; btnOK.textContent = 'Đang xử lý...'; }
 
   try {
-    const res = await $fetch(`${BASE_URL}/api/orders/${_payContext.orderId}/pay?userId=${uid}`, { method:'PUT' });
+    
+    const voucherQuery = _payContext.voucherCode ? `&voucherCode=${encodeURIComponent(_payContext.voucherCode)}` : '';
+    const res = await $fetch(`${BASE_URL}/api/orders/${_payContext.orderId}/pay?userId=${uid}${voucherQuery}`, { method:'PUT' });
     if (!res.ok) throw new Error(await $readErr(res));
 
     _payContext.paidAt = new Date();
 
     // Hiển thị nút xem/in hóa đơn
-    btnOK.style.display = 'none';
-    btnInv.style.display = 'inline-block';
-    showSuccess?.('Thanh toán thành công!', 'Thành công');
+    if (btnOK) btnOK.style.display = 'none';
+    if (btnInv) btnInv.style.display = 'inline-block';
+    window.showSuccess?.('Thanh toán thành công!', 'Thành công');
 
     // Đợi WS cập nhật, hoặc chủ động reload
     await sleep(200);
     loadTables();
   } catch (e) {
-    errEl.textContent = e.message || 'Thanh toán thất bại';
-    errEl.style.display = 'block';
+    if (errEl) { errEl.textContent = e.message || 'Thanh toán thất bại'; errEl.style.display = 'block'; }
   } finally {
-    btnOK.disabled = false; btnOK.textContent = 'Xác nhận thanh toán';
+    if (btnOK) { btnOK.disabled = false; btnOK.textContent = 'Xác nhận thanh toán'; }
   }
 };
 
@@ -414,11 +566,47 @@ window.viewInvoice = function () {
 // Tạo HTML hóa đơn (in đẹp, A5/A4 đều ok)
 function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
   const items = order?.orderItems || [];
-  const rows = items.map(it => {
+
+  // Gom combo
+  const comboMap = {};   // { [comboId]: { name, qty, price } }
+  const normalItems = [];
+
+  items.forEach(it => {
+    if (it.combo) {
+      const key = it.combo.id;
+      if (!comboMap[key]) {
+        comboMap[key] = {
+          name: it.combo.name,
+          qty: 0,
+          price: it.combo.price || it.unitPrice || 0
+        };
+      }
+      comboMap[key].qty += 1;
+    } else {
+      normalItems.push(it);
+    }
+  });
+
+  // Render combo
+  const rowsCombo = Object.values(comboMap).map(c => {
+    const line = (c.price || 0) * (c.qty || 0);
+    return `
+      <tr>
+        <td>${c.name}</td>
+        <td style="text-align:center;">${c.qty}</td>
+        <td style="text-align:right;">${fmtVND(c.price)}</td>
+        <td style="text-align:right;">${fmtVND(line)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Render món lẻ
+  const rowsNormal = normalItems.map(it => {
     const name = it?.menuItem?.name ?? '';
-    const price = it?.menuItem?.price ?? 0;
-    const qty = it?.quantity ?? 0;
-    const notes = it?.notes ? ` <em style="color:#6b7280;font-style:italic;">(${it.notes})</em>` : '';
+    const price = it.unitPrice ?? it.menuItem?.price ?? 0;
+    const qty = it.quantity ?? 0;
+    const notes = it.notes
+      ? ` <em style="color:#6b7280;font-style:italic;">(${it.notes})</em>` : '';
     const line = price * qty;
     return `
       <tr>
@@ -430,7 +618,20 @@ function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
     `;
   }).join('');
 
-  const total = order?.totalAmount ?? items.reduce((s,it)=>s+(it?.menuItem?.price||0)*(it?.quantity||0),0);
+  const rows = rowsCombo + rowsNormal;
+
+  // Tổng tiền
+  let total;
+  if (typeof order?.totalAmount === 'number') {
+    total = order.totalAmount;
+  } else {
+    const totalCombos = Object.values(comboMap)
+      .reduce((s, c) => s + (c.price || 0) * (c.qty || 0), 0);
+    const totalNormals = normalItems
+      .reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice ?? it.menuItem?.price ?? 0), 0);
+    total = totalCombos + totalNormals;
+  }
+
   const timeStr = new Date(paidAt).toLocaleString('vi-VN');
 
   return `
@@ -503,23 +704,17 @@ function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
 }
 
 
-// CRUD BÀN (Add / Edit / Delete)
-
+// ===== CRUD BÀN =====
 // --- Thêm bàn ---
 window.showAddTable = function () {
   if (window.role && window.role !== 'MANAGER') return;
   $id('newTableNumber').value = '';
   $id('newTableCapacity').value = '';
   const err = $id('addTableError');
-  err.textContent = '';
-  err.style.display = 'none';
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
   $id('addTableModal').style.display = 'flex';
 };
-
-window.closeAddTableModal = function () {
-  $id('addTableModal').style.display = 'none';
-};
-
+window.closeAddTableModal = function () { $id('addTableModal').style.display = 'none'; };
 window.submitNewTable = async function () {
   if (window.role && window.role !== 'MANAGER') return;
 
@@ -527,13 +722,11 @@ window.submitNewTable = async function () {
   const capacity = Number($id('newTableCapacity').value || 0);
   const err = $id('addTableError');
 
-  err.textContent = '';
-  err.style.display = 'none';
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
 
   // validate đơn giản
   if (!number || isNaN(Number(number)) || capacity <= 0) {
-    err.textContent = 'Vui lòng nhập số bàn hợp lệ và sức chứa > 0';
-    err.style.display = 'block';
+    if (err) { err.textContent = 'Vui lòng nhập số bàn hợp lệ và sức chứa > 0'; err.style.display = 'block'; }
     return;
   }
 
@@ -556,8 +749,7 @@ window.submitNewTable = async function () {
     closeAddTableModal();
     loadTables();
   } catch (e) {
-    err.textContent = e.message || 'Đã xảy ra lỗi';
-    err.style.display = 'block';
+    if (err) { err.textContent = e.message || 'Đã xảy ra lỗi'; err.style.display = 'block'; }
   }
 };
 
@@ -568,8 +760,7 @@ window.showEditTable = async function (id) {
   if (window.role && window.role !== 'MANAGER') return;
 
   const err = $id('editTableError');
-  err.textContent = '';
-  err.style.display = 'none';
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
 
   try {
     const res = await $fetch(`${BASE_URL}/api/tables/${id}`);
@@ -587,12 +778,10 @@ window.showEditTable = async function (id) {
     alert(e.message || 'Không lấy được thông tin bàn');
   }
 };
-
 window.closeEditTableModal = function () {
   _currentEditTableId = null;
   $id('editTableModal').style.display = 'none';
 };
-
 window.submitEditTable = async function () {
   if (window.role && window.role !== 'MANAGER') return;
   if (!_currentEditTableId) return;
@@ -601,12 +790,10 @@ window.submitEditTable = async function () {
   const capacity = Number($id('editCapacity').value || 0);
   const err = $id('editTableError');
 
-  err.textContent = '';
-  err.style.display = 'none';
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
 
   if (!status || capacity <= 0) {
-    err.textContent = 'Vui lòng nhập trạng thái và sức chứa hợp lệ';
-    err.style.display = 'block';
+    if (err) { err.textContent = 'Vui lòng nhập trạng thái và sức chứa hợp lệ'; err.style.display = 'block'; }
     return;
   }
 
@@ -621,8 +808,7 @@ window.submitEditTable = async function () {
     closeEditTableModal();
     loadTables();
   } catch (e) {
-    err.textContent = e.message || 'Lỗi cập nhật';
-    err.style.display = 'block';
+    if (err) { err.textContent = e.message || 'Lỗi cập nhật'; err.style.display = 'block'; }
   }
 };
 
@@ -640,10 +826,6 @@ window.deleteTable = async function (id) {
   }
 };
 
-
-
-
-
 // ===== WS =====
 function connectWebSocket() {
   try {
@@ -660,6 +842,48 @@ function connectWebSocket() {
     console.warn('WS connect error:', e);
   }
 }
+
+
+window.applyVoucher = async function () {
+  const code = document.getElementById('payVoucher').value.trim();
+  if (!code) {
+    document.getElementById('payVoucherMsg').textContent = "Vui lòng nhập mã voucher";
+    return;
+  }
+
+  try {
+    const req = {
+      tableId: _payContext.tableId,
+      items: _payContext.order.orderItems.map(it => ({
+        menuItemId: it.menuItem.id,
+        quantity: it.quantity,
+        notes: it.notes
+      })),
+      comboIds: [], // nếu có combos thì đưa vào
+      voucherCode: code
+    };
+
+    const res = await $fetch(`${BASE_URL}/api/orders/preview`, {
+      method: 'POST',
+      body: JSON.stringify(req)
+    });
+    if (!res.ok) throw new Error(await $readErr(res));
+    const data = await res.json();
+
+    document.getElementById('paySummary').innerHTML =
+      `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(data.finalTotal)}</span>`;
+
+    const msg = document.getElementById('payVoucherMsg');
+    msg.textContent = data.voucherMessage || (data.voucherValid ? "Voucher hợp lệ" : "Voucher không hợp lệ");
+    msg.style.color = data.voucherValid ? "#16a34a" : "#ef4444";
+
+    _payContext.order.totalAmount = data.finalTotal; // cập nhật vào snapshot
+  } catch (e) {
+    document.getElementById('payVoucherMsg').textContent = e.message || "Lỗi áp dụng voucher";
+    document.getElementById('payVoucherMsg').style.color = "#ef4444";
+  }
+};
+
 
 // ===== boot =====
 window.addEventListener('DOMContentLoaded', () => {

@@ -2,11 +2,11 @@
 const BASE_URL = window.APP_BASE_URL || location.origin;
 
 let tableId = null;
-let cart = {};            // { [id]: { qty, note, name, price } }
-let priceMap = {};       
+let cart = {};                 // { [menuItemId]: { qty, note, name, price } }
+let selectedCombos = {};       // { comboId: qty }
+let combosCache = [];          // [{id, name, price, items:[{menuItemId, quantity, name}]}]
 
 // ===== Helpers =====
-/** Chuẩn hoá đường dẫn ảnh (hỗ trợ /uploads, uploads, http(s)://) */
 function toImgUrl(u = "") {
   try {
     if (!u) return "";
@@ -22,6 +22,7 @@ function safeText(s = "") {
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[m]));
 }
+function money(v){ return Number(v||0).toLocaleString('vi-VN'); }
 
 // ===== Boot =====
 document.addEventListener('DOMContentLoaded', async () => {
@@ -43,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   cart = {};
 
   await loadCategories(categoryId);
+  await loadCombos();            // nạp danh sách combo
   connectWS();
 });
 
@@ -87,7 +89,6 @@ window.reloadWithSort = reloadWithSort;
 async function loadMenu(categoryId) {
   const container = document.getElementById("menuItems");
   container.innerHTML = "Đang tải...";
-  priceMap = {};
 
   const url = categoryId === "all"
     ? `${BASE_URL}/api/menu`
@@ -109,14 +110,13 @@ async function loadMenu(categoryId) {
       return;
     }
 
-    const bust = Date.now(); // cache-busting giống dashboard
+    const bust = Date.now(); // cache-busting
 
     items.forEach(item => {
       const id = String(item.id);
       const name = item.name || '';
       const price = Number(item.price || 0);
 
-      // build ảnh với cache-busting
       const raw = item.img || "";
       const imgFull = toImgUrl(raw);
       const imgSrc = imgFull ? `${imgFull}${imgFull.includes("?") ? "&" : "?"}v=${bust}` : "";
@@ -129,7 +129,6 @@ async function loadMenu(categoryId) {
       }
 
       const { qty, note } = cart[id];
-      const priceText = price.toLocaleString('vi-VN');
 
       const wrap = document.createElement('div');
       wrap.className = 'menu-item';
@@ -137,7 +136,7 @@ async function loadMenu(categoryId) {
         <img src="${imgSrc}" alt="${safeText(name)}" loading="lazy">
         <div class="details">
           <div class="name">${safeText(name)}</div>
-          <div class="price">${priceText} VND</div>
+          <div class="price">${money(price)} VND</div>
         </div>
         <div class="actions">
           <div class="quantity">
@@ -155,7 +154,8 @@ async function loadMenu(categoryId) {
       container.appendChild(wrap);
     });
 
-  } catch {
+  } catch (e) {
+    console.error(e);
     container.innerHTML = `<div style="color:#e11d48;">Không tải được thực đơn.</div>`;
   }
 }
@@ -180,22 +180,106 @@ function updateQuantity(itemId, change) {
   persistCart();
 }
 
-// ===== Modal confirm =====
-function openConfirm(){
-  const items = Object.entries(cart).filter(([_,v]) => (v.qty||0) > 0);
-  if (items.length === 0) { alert("Vui lòng chọn ít nhất 1 món!"); return; }
+// ===== Combos UI =====
+async function loadCombos(){
+  const wrap = document.getElementById('comboItems');
+  if (!wrap) return;
+  wrap.innerHTML = 'Đang tải combo...';
+  combosCache = [];
 
-  let total = 0;
+  try {
+    const res = await fetch(`${BASE_URL}/api/combos`);
+    const combos = res.ok ? await res.json() : [];
+    combosCache = combos;
+
+    if (!Array.isArray(combos) || combos.length === 0) {
+      wrap.innerHTML = '<div style="color:#666;">Chưa có combo.</div>';
+      return;
+    }
+
+    wrap.innerHTML = '';
+    combos.forEach(c => {
+      const qty  = selectedCombos[c.id]?.qty || 0;
+      const note = selectedCombos[c.id]?.note || "";
+
+      const div = document.createElement('div');
+      div.className = 'combo-item';
+
+      div.innerHTML = `
+        
+        <div class="details">
+          <div class="name">Combo ${safeText(c.name)}</div>
+          <div class="price">${money(c.price)} VND</div>
+        </div>
+        <div class="actions">
+          <div class="quantity">
+            <button onclick="updateCombo(${c.id}, -1)">-</button>
+            <span id="combo-qty-${c.id}">${qty}</span>
+            <button onclick="updateCombo(${c.id}, 1)">+</button>
+          </div>
+          <button class="note-toggle-btn" onclick="toggleNote('combo-${c.id}')">Thêm ghi chú</button>
+          <div class="note" id="note-box-combo-${c.id}" style="display:${note ? 'block':'none'};">
+            <input type="text" id="note-combo-${c.id}" placeholder="..." value="${safeText(note)}"
+                  oninput="updateComboNote(${c.id}, this.value)">
+          </div>
+        </div>
+      `;
+      wrap.appendChild(div);
+    });
+  } catch (e){
+    console.error(e);
+    wrap.innerHTML = '<div style="color:#e11d48;">Không tải được combo.</div>';
+  }
+}
+
+function addCombo(id) {
+  if (!selectedCombos[id]) selectedCombos[id] = { qty: 0, note: "" };
+  selectedCombos[id].qty++;
+  loadCombos();
+}
+
+function removeCombo(id) {
+  if (!selectedCombos[id]) return;
+  selectedCombos[id].qty--;
+  if (selectedCombos[id].qty <= 0) delete selectedCombos[id];
+  loadCombos();
+}
+
+function updateCombo(id, change){
+  if (!selectedCombos[id]) selectedCombos[id] = { qty:0, note:"" };
+  let qty = selectedCombos[id].qty + change;
+  if (qty < 0) qty = 0;
+  selectedCombos[id].qty = qty;
+  const el = document.getElementById(`combo-qty-${id}`);
+  if (el) el.textContent = qty;
+}
+
+function updateComboNote(id, value){
+  if (!selectedCombos[id]) selectedCombos[id] = { qty:0, note:"" };
+  selectedCombos[id].note = value;
+}
+
+
+
+// ===== Modal confirm =====
+async function openConfirm(){
+  const items = Object.entries(cart).filter(([_,v]) => (v.qty||0) > 0);
+  const combosSelected = Object.entries(selectedCombos).filter(([_,v]) => (v.qty||0) > 0);
+  if (items.length === 0 && combosSelected.length === 0) {
+    alert("Vui lòng chọn ít nhất 1 món hoặc 1 combo!");
+    return;
+  }
+
   const box = document.getElementById('confirmList');
   box.innerHTML = '';
 
+  // render món lẻ
   items.forEach(([id, v]) => {
     const qty   = v.qty || 0;
     const note  = v.note || '';
     const name  = v.name || `#${id}`;
     const price = Number(v.price || 0);
     const line  = qty * price;
-    total += line;
 
     const div = document.createElement('div');
     div.className = 'confirm-row';
@@ -205,20 +289,77 @@ function openConfirm(){
         ${note ? `<div class="note">Ghi chú: ${safeText(note)}</div>` : ''}
       </div>
       <div class="right">
-        <div>${price.toLocaleString('vi-VN')} VND</div>
-        <div><b>${line.toLocaleString('vi-VN')} VND</b></div>
+        <div>${money(price)} VND</div>
+        <div><b>${money(line)} VND</b></div>
       </div>
     `;
     box.appendChild(div);
   });
 
-  document.getElementById('confirmTotal').textContent = total.toLocaleString('vi-VN');
+  // render combo
+  combosSelected.forEach(([comboId, v]) => {
+    const combo = combosCache.find(c => c.id == comboId);
+    if (!combo) return;
+    const qty = v.qty;
+    const note = v.note || "";
+
+    const div = document.createElement('div');
+    div.className = 'confirm-row';
+    div.innerHTML = `
+      <div class="left">
+        <div class="name">Combo ${safeText(combo.name)} × ${qty}</div>
+        ${note ? `<div class="note">Ghi chú: ${safeText(note)}</div>` : ""}
+      </div>
+      <div class="right">
+        <div>${money(combo.price)} VND</div>
+        <div><b>${money(combo.price * qty)} VND</b></div>
+      </div>
+    `;
+    box.appendChild(div);
+  });
+
+  // gọi preview để lấy breakdown
+  const orderItems = items.map(([id,v]) => ({
+    menuItemId: parseInt(id,10),
+    quantity: v.qty||0,
+    notes: v.note||null
+  }));
+  const comboIds = [];
+  combosSelected.forEach(([id, v]) => {
+  for (let i = 0; i < v.qty; i++) {
+    comboIds.push(Number(id));
+  }
+});
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/orders/preview`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        tableId: Number(tableId),
+        status: "PENDING",
+        items: orderItems,
+        comboIds: comboIds
+      })
+    });
+    const p = await res.json();
+
+    document.getElementById('subtotalItems').textContent  = money(p.subtotalItems||0);
+    document.getElementById('subtotalCombos').textContent = money(p.subtotalCombos||0);
+    document.getElementById('confirmSubtotal').textContent= money((p.subtotalItems||0)+(p.subtotalCombos||0));
+    document.getElementById('confirmTotal').textContent   = money(p.finalTotal||0);
+    
+  } catch(e){
+    console.warn("preview error", e);
+  }
+
   document.getElementById('confirmModal').classList.remove('hidden');
 }
 function closeConfirm(){
   document.getElementById('confirmModal').classList.add('hidden');
 }
 
+// ===== Submit order =====
 async function confirmOrder(){
   const btn = document.getElementById('confirmBtn');
   btn.disabled = true;
@@ -230,13 +371,20 @@ async function confirmOrder(){
       notes: cart[id].note || null
     })).filter(i => i.quantity > 0);
 
+    // Gửi order
+    const comboIds = [];
+    Object.entries(selectedCombos).forEach(([id, v]) => {
+      for (let i = 0; i < (v.qty || 0); i++) comboIds.push(Number(id));
+    });
+
     const res = await fetch(`${BASE_URL}/api/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tableId: Number(tableId),
         status: "PENDING",
-        items: orderItems
+        items: orderItems,
+        comboIds: comboIds
       })
     });
 
@@ -249,7 +397,9 @@ async function confirmOrder(){
     const data = await res.json();
     closeConfirm();
     alert("Đặt món thành công! Mã đơn: " + (data.id ?? ''));
+
     cart = {};
+    selectedCombos = {};
     persistCart();
     window.location.href = `/dashboard.html?tableId=${encodeURIComponent(tableId)}`;
   } catch (err) {
@@ -270,7 +420,7 @@ function restoreCart(){
   } catch {}
 }
 
-// ===== WebSocket (giống dashboard: delay 250ms rồi reload) =====
+// ===== WebSocket =====
 function connectWS() {
   try {
     const socket = new SockJS(`${BASE_URL}/ws`);
@@ -284,17 +434,19 @@ function connectWS() {
     stomp.connect({}, () => {
       retry = 0;
 
-      // categories thay đổi -> refetch categories (giữ lựa chọn hiện tại)
       stomp.subscribe('/topic/categories', () => {
         const sel = document.getElementById('categoryFilter');
         const current = sel?.value || 'all';
         setTimeout(() => loadCategories(current), 250);
       });
 
-      // menu thay đổi -> reload danh sách món theo bộ lọc hiện tại
       stomp.subscribe('/topic/menu', () => {
         const sel = document.getElementById('categoryFilter');
         setTimeout(() => loadMenu(sel?.value || 'all'), 250);
+      });
+
+      stomp.subscribe('/topic/combos', () => {
+        setTimeout(loadCombos, 250);
       });
     }, reconnect);
   } catch (e) {
@@ -311,3 +463,5 @@ window.closeConfirm = closeConfirm;
 window.confirmOrder = confirmOrder;
 window.reloadWithSort = reloadWithSort;
 window.filterByName = filterByName;
+window.addCombo = addCombo;
+window.removeCombo = removeCombo;

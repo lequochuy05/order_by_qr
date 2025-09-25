@@ -1,38 +1,40 @@
 package com.sacmauquan.qrordering.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "order_item")
 @Getter
 @Setter
+@Table(name = "order_item")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrderItem {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    // ========== Liên kết đến Order ==========
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonBackReference
+    @JsonIgnoreProperties({"order"})
     private Order order;
 
-    @ManyToOne
+    // ========== Liên kết món lẻ ==========
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
     private MenuItem menuItem;
 
-    @Column(name = "unit_price")
-    private double unitPrice;
+    // ========== Liên kết combo ==========
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "combo_id")
+    private Combo combo;
 
-    @Column(name = "quantity")
     private int quantity;
-    
-    @Column(name = "notes")
+    private Double unitPrice;     // giá 1 đơn vị (món hoặc combo)
     private String notes;
-    
-    @Column(name = "prepared")
     private boolean prepared = false;
-
 }
