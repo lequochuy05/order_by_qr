@@ -26,9 +26,6 @@ public class Order {
     @JoinColumn(name = "table_id")
     private DiningTable table;
 
-    @Column(name = "total_amount")
-    private double totalAmount;
-
     @Column(name = "status")
     private String status;
 
@@ -38,6 +35,15 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();
+
+    @Column(name = "original_total")
+    private Double originalTotal;
+
+    @Column(name = "discount_voucher")
+    private Double discountVoucher;
+
+     @Column(name = "total_amount")
+    private double totalAmount;
 
     @ManyToOne
     @JoinColumn(name = "paid_by")

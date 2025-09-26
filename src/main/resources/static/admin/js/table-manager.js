@@ -176,17 +176,19 @@ window.showDetails = async function (tableId) {
 
     order.orderItems.forEach(it => {
       if (it.combo) {
-        const key = it.combo.id;
-        if (!comboMap[key]) {
-          comboMap[key] = {
-            combo: it.combo,
-            qty: 0,
-            orderItemId: it.id,     // lưu orderItem.id
-            prepared: it.prepared
-          };
-        }
-        comboMap[key].qty += it.quantity || 1;
-        if (!it.prepared) comboMap[key].prepared = false;
+      const key = it.combo.id + '::' + (it.notes || '');
+      if (!comboMap[key]) {
+        comboMap[key] = {
+          combo: it.combo,
+          qty: 0,
+          notes: it.notes || '',
+          orderItemId: it.id,
+          prepared: it.prepared
+        };
+      }
+      comboMap[key].qty += it.quantity || 1;
+      if (!it.prepared) comboMap[key].prepared = false;
+
         } else {
           normalItems.push(it);
         }
@@ -199,10 +201,11 @@ window.showDetails = async function (tableId) {
     html += `
       <div class="order-item combo-block ${c.prepared ? 'prepared' : ''}">
         <strong>Combo ${c.combo.name} × ${c.qty}</strong>
+        ${c.notes ? `<div class="order-note">Ghi chú: ${c.notes}</div>` : ''}
         <div style="display:flex;gap:8px;margin-top:6px;">
-          ${c.prepared
-            ? `<span class="status-prepared">Đã phục vụ</span>`
-            : `
+          ${c.prepared ? `<span class="status-prepared">Đã phục vụ</span>`
+            : 
+            `
               <button class="btn-prepared" onclick="markPrepared(${c.orderItemId})">Đã xong</button>
               <button class="btn-cancel-item" onclick="cancelItem(${c.orderItemId})">Hủy</button>
             `}
@@ -216,9 +219,9 @@ window.showDetails = async function (tableId) {
         <strong>${it.menuItem?.name || ''} × ${it.quantity}</strong>
         ${it.notes ? `<div class="order-note">Ghi chú: ${it.notes}</div>` : ''}
         <div style="display:flex; gap:8px;">
-          ${it.prepared
-            ? `<span class="status-prepared">Đã phục vụ</span>`
-            : `
+          ${it.prepared ? `<span class="status-prepared">Đã phục vụ</span>`
+            : 
+            `
               <button class="btn-prepared" onclick="markPrepared(${it.id})">Đã xong</button>
               <button class="btn-cancel-item" onclick="cancelItem(${it.id})">Hủy món</button>
               <button class="btn-edit-item" onclick="openEditItem(${it.id}, ${it.quantity}, '${it.notes || ''}')">Sửa đơn</button>
@@ -244,10 +247,12 @@ window.openEditItem = function (itemId, qty, notes) {
   const n = $id('editNotes'); if (n) n.value = notes || '';
   window._currentEditItemId = itemId;
 };
+
 window.closeEditModal = function () {
   $id('editModal')?.classList.add('hidden');
   window._currentEditItemId = null;
 };
+
 window.saveEdit = async function () {
   const itemId = window._currentEditItemId;
   const qty = Number($id('editQuantity')?.value);
@@ -413,12 +418,11 @@ const normalItems = [];
     const name  = it.menuItem?.name ?? '(Món)';
     const price = it.unitPrice ?? it.menuItem?.price ?? 0;
     const qty   = it.quantity ?? 0;
-    const notes = it.notes ? `<div style="font-size:12px;color:#6b7280;">Ghi chú: ${it.notes}</div>` : '';
     const line  = price * qty;
     return `
       <tr>
         <td style="padding:10px;border-bottom:1px solid #eee;">
-          ${name} ${notes}
+          ${name}
         </td>
         <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${qty}</td>
         <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(price)}</td>
@@ -434,20 +438,18 @@ const normalItems = [];
     `;
   }
 
-
-
-    // Tổng tiền
-    let total;
-    if (typeof order?.totalAmount === 'number') {
-      total = order.totalAmount;
-    } else {
+  // Tổng tiền
+  let total;
+  if (typeof order?.totalAmount === 'number') {
+    total = order.totalAmount;
+  } else {
       const totalCombos = Object.values(comboMap)
         .reduce((s, c) => s + (c.price || 0) * (c.qty || 0), 0);
       const totalNormals = normalItems
         .reduce((s, it) => s + (it.quantity || 0) * (it.unitPrice ?? it.menuItem?.price ?? 0), 0);
       total = totalCombos + totalNormals;
     }
-    if (sumEl) sumEl.innerHTML = `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(total)}</span>`;
+    if (sumEl) sumEl.innerHTML = `Tổng thanh toán: <span style="font-size:18px;  color: #de4b4bff">${fmtVND(total)}</span>`;
 
   } catch (e) {
     if (infoEl) infoEl.innerHTML = `<span style="color:#ef4444;">${e.message || 'Lỗi kết nối'}</span>`;
@@ -456,60 +458,6 @@ const normalItems = [];
 };
 
 window.closePayModal = function () { const m = $id('payModal'); if (m) m.style.display = 'none'; };
-
-// ===== Áp dụng voucher trong modal thanh toán (preview) =====
-window.applyVoucher = async function() {
-  const code = ($id('payVoucher')?.value || '').trim();
-  const msgEl = $id('payVoucherMsg');
-  const sumEl = $id('paySummary');
-
-  if (!code) {
-    if (msgEl) { msgEl.textContent = 'Vui lòng nhập mã'; msgEl.style.color = '#ef4444'; }
-    return;
-  }
-
-  try {
-    const order = _payContext.order;
-    if (!order) return;
-
-    // Gọi preview
-    const res = await $fetch(`${BASE_URL}/api/orders/preview`, {
-      method: 'POST',
-      body: JSON.stringify({
-        tableId: _payContext.tableId,
-        items: (order.orderItems || []).map(it => ({
-          menuItemId: it.menuItem?.id,
-          quantity: it.quantity,
-          notes: it.notes
-        })),
-        comboIds: [], // nếu có cơ chế lưu combos tại server, truyền vào đây
-        voucherCode: code
-      })
-    });
-
-    if (!res.ok) throw new Error(await $readErr(res));
-    const p = await res.json();
-
-    // cập nhật phần summary
-    if (sumEl) {
-      sumEl.innerHTML = `
-        <div>Tạm tính: ${fmtVND((p.subtotalItems||0)+(p.subtotalCombos||0))}</div>
-        ${p.discountVoucher > 0 ? `<div>Voucher: -${fmtVND(p.discountVoucher)}</div>` : ''}
-        ${p.discountPromotion > 0 ? `<div>Khuyến mãi: -${fmtVND(p.discountPromotion)}</div>` : ''}
-        <div style="font-weight:600;">Tổng thanh toán: ${fmtVND(p.finalTotal||0)}</div>
-      `;
-    }
-
-    if (msgEl) {
-      msgEl.textContent = p.voucherMessage || (p.voucherValid ? 'Áp dụng voucher thành công' : 'Voucher không hợp lệ');
-      msgEl.style.color = p.voucherValid ? '#16a34a' : '#ef4444';
-    }
-
-    _payContext.voucherCode = code; // lưu để có thể gửi kèm khi thanh toán (nếu backend hỗ trợ)
-  } catch (e) {
-    if (msgEl) { msgEl.textContent = e.message || 'Không áp dụng được voucher'; msgEl.style.color = '#ef4444'; }
-  }
-};
 
 // ===== Xác nhận thanh toán =====
 window.confirmPay = async function () {
@@ -524,9 +472,15 @@ window.confirmPay = async function () {
   if (btnOK) { btnOK.disabled = true; btnOK.textContent = 'Đang xử lý...'; }
 
   try {
-    
-    const voucherQuery = _payContext.voucherCode ? `&voucherCode=${encodeURIComponent(_payContext.voucherCode)}` : '';
-    const res = await $fetch(`${BASE_URL}/api/orders/${_payContext.orderId}/pay?userId=${uid}${voucherQuery}`, { method:'PUT' });
+    // gửi voucherCode nếu có
+    const voucherQuery = _payContext.voucherCode
+      ? `&voucherCode=${encodeURIComponent(_payContext.voucherCode)}`
+      : '';
+
+    const res = await $fetch(
+      `${BASE_URL}/api/orders/${_payContext.orderId}/pay?userId=${uid}${voucherQuery}`,
+      { method:'PUT' }
+    );
     if (!res.ok) throw new Error(await $readErr(res));
 
     _payContext.paidAt = new Date();
@@ -536,7 +490,6 @@ window.confirmPay = async function () {
     if (btnInv) btnInv.style.display = 'inline-block';
     window.showSuccess?.('Thanh toán thành công!', 'Thành công');
 
-    // Đợi WS cập nhật, hoặc chủ động reload
     await sleep(200);
     loadTables();
   } catch (e) {
@@ -562,6 +515,81 @@ window.viewInvoice = function () {
   win.document.close();
   win.focus();
 };
+
+
+// Áp dụng voucher trong modal thanh toán (preview)
+window.applyVoucher = async function () {
+  const code = document.getElementById('payVoucher').value.trim();
+  if (!code) {
+    document.getElementById('payVoucherMsg').textContent = "Vui lòng nhập mã voucher";
+    return;
+  }
+
+  try {
+    const items = [];
+    const combos = [];
+
+    (_payContext.order.orderItems || []).forEach(it => {
+      if (it.menuItem) {
+        items.push({
+          menuItemId: it.menuItem.id,
+          quantity: it.quantity,
+          notes: it.notes || null
+        });
+      } else if (it.combo) {
+        combos.push({
+          comboId: it.combo.id,
+          quantity: it.quantity,
+          notes: it.notes || null
+        });
+      }
+    });
+
+    const req = {
+      tableId: _payContext.tableId,
+      items: items,
+      combos: combos,     // ✅ đúng format backend
+      voucherCode: code
+    };
+
+
+    const res = await $fetch(`${BASE_URL}/api/orders/preview`, {
+      method: 'POST',
+      body: JSON.stringify(req)
+    });
+    if (!res.ok) throw new Error(await $readErr(res));
+    const data = await res.json();
+
+    document.getElementById('paySummary').innerHTML = `
+      <div>Tạm tính: ${fmtVND((data.subtotalItems || 0) + (data.subtotalCombos || 0))}</div>
+      <br>
+      <div>Voucher: - ${fmtVND(data.discountVoucher || 0)}</div>
+      <div style="border-top:1px dashed #ddd;margin:12px 0;"></div>
+      <div style="font-weight:600; color: #de4b4bff;">Tổng thanh toán: ${fmtVND(data.finalTotal || 0)}</div>
+    `;
+    
+    const msg = document.getElementById('payVoucherMsg');
+    msg.textContent = data.voucherMessage || (data.voucherValid ? "Voucher hợp lệ" : "Voucher không hợp lệ");
+    msg.style.color = data.voucherValid ? "#16a34a" : "#ef4444";
+
+    _payContext.order.totalAmount = data.finalTotal;
+    _payContext.voucherCode = code;
+    _payContext.discountVoucher = data.discountVoucher || 0;
+    _payContext.originalTotal = (data.subtotalItems || 0) + (data.subtotalCombos || 0);
+
+    //  đồng bộ vào order snapshot để in hóa đơn chính xác
+    if (_payContext.order) {
+      _payContext.order.originalTotal = _payContext.originalTotal;
+      _payContext.order.discountVoucher = _payContext.discountVoucher;
+      _payContext.order.totalAmount = data.finalTotal;
+    }
+
+  } catch (e) {
+    document.getElementById('payVoucherMsg').textContent = e.message || "Lỗi áp dụng voucher";
+    document.getElementById('payVoucherMsg').style.color = "#ef4444";
+  }
+};
+
 
 // Tạo HTML hóa đơn (in đẹp, A5/A4 đều ok)
 function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
@@ -633,6 +661,9 @@ function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
   }
 
   const timeStr = new Date(paidAt).toLocaleString('vi-VN');
+  const original = order.originalTotal ?? total;
+  const discount = order.discountVoucher ?? 0;
+  const finalPay = order.totalAmount ?? total;
 
   return `
 <!doctype html>
@@ -683,10 +714,20 @@ function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="3" class="right tot">Tổng cộng</td>
-          <td class="tot right">${fmtVND(total)}</td>
+          <td colspan="3" class="right">Tạm tính</td>
+          <td class="right">${fmtVND(original)}</td>
+        </tr>
+        <tr>
+          <td colspan="3" class="right">Voucher</td>
+          <td class="right">-${fmtVND(discount)}</td>
+        </tr>
+        <tr>
+          <td colspan="3" class="right tot">Thanh toán</td>
+          <td class="tot right">${fmtVND(finalPay)}</td>
         </tr>
       </tfoot>
+
+
     </table>
 
     <div style="display:flex;justify-content:space-between;margin-top:18px">
@@ -714,7 +755,9 @@ window.showAddTable = function () {
   if (err) { err.textContent = ''; err.style.display = 'none'; }
   $id('addTableModal').style.display = 'flex';
 };
+
 window.closeAddTableModal = function () { $id('addTableModal').style.display = 'none'; };
+
 window.submitNewTable = async function () {
   if (window.role && window.role !== 'MANAGER') return;
 
@@ -778,10 +821,12 @@ window.showEditTable = async function (id) {
     alert(e.message || 'Không lấy được thông tin bàn');
   }
 };
+
 window.closeEditTableModal = function () {
   _currentEditTableId = null;
   $id('editTableModal').style.display = 'none';
 };
+
 window.submitEditTable = async function () {
   if (window.role && window.role !== 'MANAGER') return;
   if (!_currentEditTableId) return;
@@ -844,45 +889,6 @@ function connectWebSocket() {
 }
 
 
-window.applyVoucher = async function () {
-  const code = document.getElementById('payVoucher').value.trim();
-  if (!code) {
-    document.getElementById('payVoucherMsg').textContent = "Vui lòng nhập mã voucher";
-    return;
-  }
-
-  try {
-    const req = {
-      tableId: _payContext.tableId,
-      items: _payContext.order.orderItems.map(it => ({
-        menuItemId: it.menuItem.id,
-        quantity: it.quantity,
-        notes: it.notes
-      })),
-      comboIds: [], // nếu có combos thì đưa vào
-      voucherCode: code
-    };
-
-    const res = await $fetch(`${BASE_URL}/api/orders/preview`, {
-      method: 'POST',
-      body: JSON.stringify(req)
-    });
-    if (!res.ok) throw new Error(await $readErr(res));
-    const data = await res.json();
-
-    document.getElementById('paySummary').innerHTML =
-      `Tổng thanh toán: <span style="font-size:18px;">${fmtVND(data.finalTotal)}</span>`;
-
-    const msg = document.getElementById('payVoucherMsg');
-    msg.textContent = data.voucherMessage || (data.voucherValid ? "Voucher hợp lệ" : "Voucher không hợp lệ");
-    msg.style.color = data.voucherValid ? "#16a34a" : "#ef4444";
-
-    _payContext.order.totalAmount = data.finalTotal; // cập nhật vào snapshot
-  } catch (e) {
-    document.getElementById('payVoucherMsg').textContent = e.message || "Lỗi áp dụng voucher";
-    document.getElementById('payVoucherMsg').style.color = "#ef4444";
-  }
-};
 
 
 // ===== boot =====
