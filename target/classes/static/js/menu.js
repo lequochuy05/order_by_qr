@@ -259,8 +259,6 @@ function updateComboNote(id, value){
   selectedCombos[id].note = value;
 }
 
-
-
 // ===== Modal confirm =====
 async function openConfirm(){
   const items = Object.entries(cart).filter(([_,v]) => (v.qty||0) > 0);
@@ -318,19 +316,20 @@ async function openConfirm(){
     box.appendChild(div);
   });
 
-  // gọi preview để lấy breakdown
+  // chuẩn bị dữ liệu preview
   const orderItems = items.map(([id,v]) => ({
     menuItemId: parseInt(id,10),
     quantity: v.qty||0,
     notes: v.note||null
   }));
-  const comboIds = [];
-  combosSelected.forEach(([id, v]) => {
-  for (let i = 0; i < v.qty; i++) {
-    comboIds.push(Number(id));
-  }
-});
 
+  const comboRequests = combosSelected.map(([id, v]) => ({
+    comboId: Number(id),
+    quantity: v.qty,
+    notes: v.note || null
+  }));
+
+  let p = null;
   try {
     const res = await fetch(`${BASE_URL}/api/orders/preview`, {
       method: "POST",
@@ -339,22 +338,39 @@ async function openConfirm(){
         tableId: Number(tableId),
         status: "PENDING",
         items: orderItems,
-        comboIds: comboIds
+        combos: comboRequests   // ✅ gửi đúng format mới
       })
     });
-    const p = await res.json();
-
-    document.getElementById('subtotalItems').textContent  = money(p.subtotalItems||0);
-    document.getElementById('subtotalCombos').textContent = money(p.subtotalCombos||0);
-    document.getElementById('confirmSubtotal').textContent= money((p.subtotalItems||0)+(p.subtotalCombos||0));
-    document.getElementById('confirmTotal').textContent   = money(p.finalTotal||0);
-    
+    if (res.ok) {
+      p = await res.json();
+    }
   } catch(e){
     console.warn("preview error", e);
   }
 
+  if (p) {
+    document.getElementById('subtotalItems').textContent  = money(p.subtotalItems || 0);
+    document.getElementById('subtotalCombos').textContent = money(p.subtotalCombos || 0);
+    document.getElementById('confirmSubtotal').textContent= money((p.subtotalItems||0)+(p.subtotalCombos||0));
+    document.getElementById('confirmTotal').textContent   = money(p.finalTotal || 0);
+  } else {
+    // fallback tính tay từ cart
+    let itemsSubtotal = items.reduce((s, [_,v]) => s + (v.qty||0)*(v.price||0), 0);
+    let combosSubtotal = combosSelected.reduce((s, [id,v])=>{
+      const c = combosCache.find(x => x.id == id);
+      return s + (c?.price||0)*(v.qty||0);
+    },0);
+    const total = itemsSubtotal + combosSubtotal;
+
+    document.getElementById('subtotalItems').textContent  = money(itemsSubtotal);
+    document.getElementById('subtotalCombos').textContent = money(combosSubtotal);
+    document.getElementById('confirmSubtotal').textContent= money(total);
+    document.getElementById('confirmTotal').textContent   = money(total);
+  }
+
   document.getElementById('confirmModal').classList.remove('hidden');
 }
+
 function closeConfirm(){
   document.getElementById('confirmModal').classList.add('hidden');
 }
@@ -371,11 +387,12 @@ async function confirmOrder(){
       notes: cart[id].note || null
     })).filter(i => i.quantity > 0);
 
-    // Gửi order
-    const comboIds = [];
-    Object.entries(selectedCombos).forEach(([id, v]) => {
-      for (let i = 0; i < (v.qty || 0); i++) comboIds.push(Number(id));
-    });
+    // Đúng format cho backend
+    const comboRequests = Object.entries(selectedCombos).map(([id, v]) => ({
+      comboId: Number(id),
+      quantity: v.qty,
+      notes: v.note || null
+    }));
 
     const res = await fetch(`${BASE_URL}/api/orders`, {
       method: "POST",
@@ -384,7 +401,7 @@ async function confirmOrder(){
         tableId: Number(tableId),
         status: "PENDING",
         items: orderItems,
-        comboIds: comboIds
+        combos: comboRequests   
       })
     });
 

@@ -13,6 +13,7 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\StatsRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\DiningTable.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\security\CustomUserDetailsService.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\DiscountResult.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\OrderItem.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\User.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\UserResponse.java

@@ -95,10 +95,12 @@ public class OrderController {
 
     // ===================== PAY ORDER =====================
     @PutMapping("/{orderId}/pay")
-    public ResponseEntity<?> payOrder(@PathVariable Long orderId,
-                                      @RequestParam Long userId) {
+    public ResponseEntity<?> payOrder(
+            @PathVariable Long orderId,
+            @RequestParam Long userId,
+            @RequestParam(required = false) String voucherCode) {
         try {
-            String result = orderService.payOrder(orderId, userId);
+            String result = orderService.payOrder(orderId, userId, voucherCode);
             return ResponseEntity.ok(Map.of("message", result));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
@@ -106,6 +108,7 @@ public class OrderController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 
     // ===================== CANCEL ORDER ITEM =====================
     @DeleteMapping("/items/{itemId}")

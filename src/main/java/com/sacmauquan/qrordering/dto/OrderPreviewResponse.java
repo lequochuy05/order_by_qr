@@ -13,4 +13,6 @@ public class OrderPreviewResponse {
     private String voucherMessage;
     private Double discountVoucher;
     private Double discountPromotion;
+
+    private Double originalTotal; // tổng trước khi áp dụng giảm giá
 }
