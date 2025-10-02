@@ -1,13 +1,10 @@
 // js/staff-manager.js
-const BASE_URL = window.APP_BASE_URL || location.origin;
 
 // ===== helpers =====
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const $id = s => document.getElementById(s);
 const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
-
-
 
 // ===== state =====
 let allUsers = [];

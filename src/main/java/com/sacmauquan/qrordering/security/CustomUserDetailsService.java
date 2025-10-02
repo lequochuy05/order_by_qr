@@ -1,4 +1,7 @@
 // src/main/java/com/sacmauquan/qrordering/security/CustomUserDetailsService.java
+/*
+ * Tải user từ database để Spring Security xác thực
+ */
 package com.sacmauquan.qrordering.security;
 
 import com.sacmauquan.qrordering.model.User;

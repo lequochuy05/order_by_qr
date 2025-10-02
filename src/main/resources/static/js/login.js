@@ -1,5 +1,4 @@
 // resource/static/js/login.js
-const BASE_URL = window.APP_BASE_URL || location.origin;
 
 document.querySelector('.login-form').addEventListener('submit', async (e) => {
   e.preventDefault();

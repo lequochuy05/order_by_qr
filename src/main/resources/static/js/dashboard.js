@@ -1,5 +1,4 @@
 // /static/js/dashboard.js
-const BASE_URL = window.APP_BASE_URL || location.origin;
 
 const urlParams = new URLSearchParams(location.search);
 const tableId = urlParams.get("tableId");
@@ -13,18 +12,6 @@ fetch(`${BASE_URL}/api/tables/${tableId}`)
   .catch(() => {
     document.getElementById("tableNumber").textContent = tableId ?? "";
   });
-
-/** Chuẩn hoá đường dẫn ảnh (hỗ trợ /uploads, uploads, http(s)://) */
-function toImgUrl(u = "") {
-  try {
-    if (!u) return "";
-    if (u.startsWith("http://") || u.startsWith("https://")) return u;
-    if (u.startsWith("/")) return new URL(u, BASE_URL).href;
-    return new URL("/" + u, BASE_URL).href;
-  } catch {
-    return "";
-  }
-}
 
 /** Tải & render danh mục */
 async function loadCategories() {
@@ -68,36 +55,8 @@ if (slides.length > 0) {
   }, 5000);
 }
 
-/** WebSocket: nghe thay đổi danh mục và reload */
-function connectWS() {
-  try {
-    const socket = new SockJS(`${BASE_URL}/ws`);
-    const stomp = Stomp.over(socket);
-    stomp.debug = () => {};
-
-    let retry = 0;
-    const reconnect = () =>
-      setTimeout(
-        () => connectWS(),
-        Math.min(30000, 1000 * Math.pow(2, Math.min(6, ++retry)))
-      );
-
-    stomp.connect(
-      {},
-      () => {
-        retry = 0;
-        // Delay nhẹ 250ms để chắc backend commit xong và file đã sẵn sàng
-        stomp.subscribe("/topic/categories", () => setTimeout(loadCategories, 250));
-      },
-      reconnect
-    );
-  } catch {
-    // bỏ qua
-  }
-}
-
 // Boot
 document.addEventListener("DOMContentLoaded", () => {
   loadCategories();
-  connectWS();
+  connectWS({ "/topic/categories": loadCategories });
 });

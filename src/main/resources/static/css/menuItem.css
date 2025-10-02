@@ -233,20 +233,20 @@ body{
 }
 
 /* ===== Modal xác nhận ===== */
-.modal.hidden{ 
+.order-modal.hidden{ 
   display:none; 
 }
-.modal{ 
+.order-modal{ 
   position:fixed; 
   inset:0; 
   z-index:1000; 
 }
-.modal-backdrop{ 
+.order-modal .modal-backdrop{ 
   position:absolute; 
   inset:0; 
   background:rgba(0,0,0,.35); 
 }
-.modal-body{
+.order-modal .modal-body{
   position:relative; 
   margin:60px auto; 
   max-width:520px; 
@@ -255,10 +255,10 @@ body{
   padding:16px; 
   box-shadow:0 10px 30px rgba(0,0,0,.15);
 }
-.modal-body h3{ 
+.order-modal .modal-body h3{ 
   margin:0 0 12px; 
 }
-.confirm-list{
+.order-modal .confirm-list{
   max-height:320px; 
   overflow:auto; 
   border:1px solid #eee; 

@@ -6,15 +6,11 @@ if (typeof role !== 'undefined' && role === "MANAGER") {
   if (el) el.style.display = "block";
 }
 
-const BASE_URL = window.APP_BASE_URL || location.origin;
-
 // ===== state =====
 let _isFirstLoad = true;                 // nháy khi reload lần đầu
 const _prevOrders = {};                  // { [tableId]: { totalAmount, itemCount } }
 let _stomp = null;                       // websocket client
 let _renderToken = 0;                    // chặn render chồng
-
-const fmtVND = n => Number(n || 0).toLocaleString('vi-VN') + ' VND';
 
 // Lưu snapshot đơn trước khi thanh toán để in hóa đơn
 let _payContext = {
@@ -548,7 +544,7 @@ window.applyVoucher = async function () {
     const req = {
       tableId: _payContext.tableId,
       items: items,
-      combos: combos,     // ✅ đúng format backend
+      combos: combos,     // đúng format backend
       voucherCode: code
     };
 

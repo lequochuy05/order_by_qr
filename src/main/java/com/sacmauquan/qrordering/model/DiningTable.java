@@ -22,10 +22,10 @@ public class DiningTable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "table_number")  
+    @Column(name = "table_number", nullable = false, unique = true, length = 20)
     private String tableNumber;
 
-    @Column(name = "qr_code_url")
+    @Column(name = "qr_code_url", length = 255)
     private String qrCodeUrl;
 
     private String status;

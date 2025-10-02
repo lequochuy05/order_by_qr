@@ -1,9 +1,15 @@
 //resource/static/admin/js/common.js
+// Cấu hình BASE_URL dùng chung
+window.BASE_URL = window.APP_BASE_URL;
+
 window.role = localStorage.getItem("role");
 const role = window.role;
 const fullname = localStorage.getItem("fullname");
 
+// Nếu chưa đăng nhập -> chuyển về trang login
 if (!localStorage.getItem('accessToken')) window.location.href = '/login.html';
+
+// Hiển thị tên người dùng
 if (fullname) {
     document.getElementById("userInfo").innerHTML = `
         <p style="color: white;">Xin chào, ${fullname}</p>
@@ -11,12 +17,27 @@ if (fullname) {
     `;
 }
 
+// Các hàm tiện ích dùng chung
+window.byId = id => document.getElementById(id);
+window.showError = (id,msg) => {
+  const el = byId(id); if(!el) return;
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+};
+window.escapeHtml = s => String(s||'').replace(/[&<>"']/g, m => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+window.safeUrl = u => {
+  try { const url = new URL(u, location.origin); return ['http:','https:'].includes(url.protocol)? url.href : u; }
+  catch { return u; }
+};
+
+// Toggle sidebar
 function toggleSidebar() {
     const sidebar = document.getElementById("sidebar");
     sidebar.classList.toggle("active");
 }
 
-// Đọc lỗi an toàn (kể cả body rỗng / JSON lỗi)
+// Đọc lỗi từ response
 async function $readErr(res) {
   try {
     const clone = res.clone();
@@ -35,7 +56,7 @@ async function $readErr(res) {
   }
 }
 
-// Fetch có kèm header mặc định (hoặc authFetch nếu đã có)
+// Fetch có kèm header mặc định 
 async function $fetch(url, options = {}) {
   if (typeof window.authFetch === 'function') return window.authFetch(url, options);
   const headers = new Headers(options.headers || {});
@@ -43,14 +64,20 @@ async function $fetch(url, options = {}) {
   return fetch(url, { ...options, headers });
 }
 
-// Khởi động đồng hồ hiển thị giờ
+// Định dạng ngày dd/MM/yyyy
+window.fmtN = n => (Number(n)||0).toLocaleString('vi-VN');
 
+// Định dạng tiền VND
+window.fmtVND = n => window.fmtN(n) + ' VND';
+
+// Khởi động đồng hồ hiển thị giờ
   (function initHeaderClock(){
   const el = document.getElementById('headerClock');
   if (!el) return;
   const tick = ()=> el.textContent = new Date().toLocaleString('vi-VN');
   tick(); setInterval(tick, 1000);
 })();
+
 // ===== Modal thông báo dùng chung cho ADMIN =====
 (function initAdminMessageModal(){
   // Nếu chưa có modal thông báo -> tự chèn

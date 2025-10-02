@@ -1,7 +1,6 @@
 // /static/admin/js/dashboard.js
-const BASE = window.APP_BASE_URL || location.origin;
+
 const $    = s => document.querySelector(s);
-const fmtN = n => (Number(n)||0).toLocaleString('vi-VN');
 
 function fmtDDMMYYYY(s){
   const d = (s instanceof Date) ? s : new Date(s);
@@ -14,34 +13,17 @@ function ymd(d){
   return local.toISOString().slice(0,10);
 }
 
-async function readErr(res){
-  const ct = res.headers.get('content-type') || '';
-  const raw = await res.text();
-  if (!raw) return `${res.status} ${res.statusText}`;
-  if (ct.includes('application/json')) {
-    try { const j = JSON.parse(raw); return j.message || j.error || raw; } catch { return raw; }
-  }
-  return raw;
-}
-
 // Xuất CSV
 async function exportCsv(){
     alert("Chức năng xuất CSV chưa được triển khai.");
 }
 
-async function $fetch(url){
-  const f = (typeof window.authFetch === 'function') ? window.authFetch : fetch;
-  const res = await f(url, { headers: { 'Accept': 'application/json' } });
-  if (!res.ok) throw new Error(await readErr(res));
-  return res.json();
-}
-
 // CHỈ LẤY THEO NGÀY
 async function fetchStats(fromDate, toDate){
   const q = `from=${encodeURIComponent(ymd(fromDate))}&to=${encodeURIComponent(ymd(toDate))}`;
-  const rev = await $fetch(`${BASE}/api/stats/revenue?${q}`);            // backend trả theo ngày
-  const emp = await $fetch(`${BASE}/api/stats/employees?${q}`);
-  const ods = await $fetch(`${BASE}/api/stats/orders?${q}`);
+  const rev = await $fetch(`${BASE_URL}/api/stats/revenue?${q}`);            // backend trả theo ngày
+  const emp = await $fetch(`${BASE_URL}/api/stats/employees?${q}`);
+  const ods = await $fetch(`${BASE_URL}/api/stats/orders?${q}`);
   // if (!Array.isArray(rev) || !Array.isArray(emp) || !Array.isArray(ods)) {
   //   throw new Error('API stats trả về sai dạng (không phải mảng).');
   // }

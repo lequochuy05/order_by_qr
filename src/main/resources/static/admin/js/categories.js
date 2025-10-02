@@ -3,7 +3,6 @@ if (role === "MANAGER") {
   document.getElementById("adminActions").style.display = "block";
 }
 
-const BASE_URL = window.APP_BASE_URL || location.origin;
 let editingCategoryId = null;
 let q = '';
 let page = 0;
@@ -212,27 +211,10 @@ window.deleteCategory = async function (id) {
 })();
 
 // ===== Utils =====
-function byId(id) { return document.getElementById(id); }
-
-function showError(id, msg) {
-  const el = byId(id);
-  if (!el) return;
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
-}
-
 function debounce(fn, delay = 300) {
   let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
 }
 const onSearchInput = debounce(val => { q = (val || '').trim(); page = 0; loadCategories(); }, 350);
-
-function escapeHtml(s = '') {
-  return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-function safeUrl(u = '') {
-  try { const url = new URL(u, location.origin); return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : u; }
-  catch { return u; }
-}
 
 // ===== Boot =====
 window.addEventListener('DOMContentLoaded', () => {

@@ -1,5 +1,4 @@
 // resources/static/js/register.js
-const BASE_URL = window.APP_BASE_URL || location.origin;
 
 document.querySelector('.register-form').addEventListener('submit', async (e) => {
   e.preventDefault();

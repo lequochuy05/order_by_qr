@@ -1,4 +1,9 @@
 // resource/static/js/common.js
+
+// Cấu hình BASE_URL dùng chung
+window.BASE_URL = window.APP_BASE_URL;
+
+// Các hàm dùng chung cho nhiều trang
 async function readErr(res) {
   const ct = (res.headers.get('content-type') || '').toLowerCase();
   const raw = await res.text();
@@ -18,9 +23,6 @@ async function readErr(res) {
 
 // ===== Modal helpers (reusable) =====
 (function initAppModal() {
-  // 1) TRÁNH TRÙNG MODAL:
-  // Nếu bạn đã fetch('/common.html') và nó đã có #app-modal trong DOM,
-  // KHÔNG auto-inject nữa.
   let modal = document.getElementById('app-modal');
   if (!modal) {
     const wrapper = document.createElement('div');
@@ -93,3 +95,42 @@ async function readErr(res) {
   window.showInfo    = (msg, title='Thông báo')     => window.showModal({ title, message: msg, type: 'info',    okText: 'OK'      });
   window.showSuccess = (msg, title='Thành công')    => window.showModal({ title, message: msg, type: 'success', okText: 'OK'      });
 })();
+
+/** Chuẩn hoá đường dẫn ảnh (hỗ trợ /uploads, uploads, http(s)://) */
+function toImgUrl(u = "") {
+  try {
+    if (!u) return "";
+    if (u.startsWith("http://") || u.startsWith("https://")) return u;
+    if (u.startsWith("/")) return new URL(u, BASE_URL).href;
+    return new URL("/" + u, BASE_URL).href;
+  } catch {
+    return "";
+  }
+}
+
+window.toImgUrl = toImgUrl;
+
+// ===== WebSocket =====
+function connectWS(subscriptions = {}) {
+  try {
+    const socket = new SockJS(`${BASE_URL}/ws`);
+    const stomp = Stomp.over(socket);
+    stomp.debug = () => {};
+
+    let retry = 0;
+    const reconnect = () =>
+      setTimeout(() => connectWS(subscriptions), Math.min(30000, 1000 * Math.pow(2, Math.min(6, ++retry))));
+
+    stomp.connect({}, () => {
+      retry = 0;
+      Object.entries(subscriptions).forEach(([topic, handler]) => {
+        stomp.subscribe(topic, () => setTimeout(handler, 250));
+      });
+    }, reconnect);
+  } catch (e) {
+    console.warn('WS connect error:', e);
+  }
+}
+
+window.connectWS = connectWS;
+

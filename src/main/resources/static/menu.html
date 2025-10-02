@@ -54,7 +54,7 @@
   </div>
 
   <!-- Modal xác nhận -->
-  <div id="confirmModal" class="modal hidden">
+  <div id="confirmModal" class="order-modal hidden">
     <div class="modal-backdrop" onclick="closeConfirm()"></div>
     <div class="modal-body">
       <h3>Xác nhận đặt món</h3>
@@ -69,8 +69,6 @@
         <div style="border-top:1px dashed #ddd;margin:8px 0;"></div>
         <div>Tổng tạm tính: <b id="confirmSubtotal">0</b> VND</div>
         <div style="font-weight:600;">Tổng cộng: <b id="confirmTotal">0</b> VND</div>
-
-      
       </div>
 
       <div class="confirm-actions">
@@ -80,10 +78,21 @@
     </div>
   </div>
 
+  <!-- Reusable Modal -->
+  <div id="modal-container"></div>
+  <script>
+      fetch('/common.html')
+      .then(r => r.text())
+      .then(html => {
+        document.getElementById('modal-container').innerHTML = html;
+      });
+  </script>
+
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
   <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
   <script src="js/menu.js"></script>
 </body>
 </html>

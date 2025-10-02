@@ -35,5 +35,7 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    public enum Role { STAFF, MANAGER }
+    public enum Role { 
+        STAFF, MANAGER 
+    }
 }

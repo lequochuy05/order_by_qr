@@ -26,7 +26,7 @@ public class MenuItem {
     private String img;
 
     @ManyToOne
-    @JoinColumn(name = "cate_id")
+    @JoinColumn(name = "cate_id", nullable = false)
     private Category category;
 
     @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY)
