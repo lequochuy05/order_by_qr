@@ -1,5 +1,4 @@
 // static/js/menu.js
-const BASE_URL = window.APP_BASE_URL || location.origin;
 
 let tableId = null;
 let cart = {};                 // { [menuItemId]: { qty, note, name, price } }
@@ -7,16 +6,6 @@ let selectedCombos = {};       // { comboId: qty }
 let combosCache = [];          // [{id, name, price, items:[{menuItemId, quantity, name}]}]
 
 // ===== Helpers =====
-function toImgUrl(u = "") {
-  try {
-    if (!u) return "";
-    if (u.startsWith("http://") || u.startsWith("https://")) return u;
-    if (u.startsWith("/")) return new URL(u, BASE_URL).href;
-    return new URL("/" + u, BASE_URL).href;
-  } catch {
-    return "";
-  }
-}
 function safeText(s = "") {
   return String(s).replace(/[&<>"']/g, m => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -24,29 +13,6 @@ function safeText(s = "") {
 }
 function money(v){ return Number(v||0).toLocaleString('vi-VN'); }
 
-// ===== Boot =====
-document.addEventListener('DOMContentLoaded', async () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  tableId = urlParams.get('tableId');
-  const categoryId = urlParams.get('categoryId') || 'all';
-  if (!tableId) { alert("Không tìm thấy tableId trong URL!"); return; }
-
-  try {
-    const res = await fetch(`${BASE_URL}/api/tables/${tableId}`);
-    const table = res.ok ? await res.json() : null;
-    document.getElementById('tableNumber').textContent = table?.tableNumber ?? tableId;
-  } catch {
-    document.getElementById('tableNumber').textContent = tableId;
-  }
-
-  // clear giỏ phiên trước mỗi lần vào menu của bàn này
-  sessionStorage.removeItem(`qr-cart:table-${tableId}`);
-  cart = {};
-
-  await loadCategories(categoryId);
-  await loadCombos();            // nạp danh sách combo
-  connectWS();
-});
 
 // ===== Categories =====
 async function loadCategories(selected) {
@@ -369,10 +335,12 @@ async function openConfirm(){
   }
 
   document.getElementById('confirmModal').classList.remove('hidden');
+   document.getElementById('confirmModal').classList.add('show');
 }
 
 function closeConfirm(){
   document.getElementById('confirmModal').classList.add('hidden');
+   document.getElementById('confirmModal').classList.remove('show');
 }
 
 // ===== Submit order =====
@@ -437,39 +405,41 @@ function restoreCart(){
   } catch {}
 }
 
-// ===== WebSocket =====
-function connectWS() {
+// ===== Boot =====
+document.addEventListener('DOMContentLoaded', async () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  tableId = urlParams.get('tableId');
+  const categoryId = urlParams.get('categoryId') || 'all';
+  if (!tableId) { alert("Không tìm thấy tableId trong URL!"); return; }
+
   try {
-    const socket = new SockJS(`${BASE_URL}/ws`);
-    const stomp  = Stomp.over(socket);
-    stomp.debug = () => {};
-
-    let retry = 0;
-    const reconnect = () =>
-      setTimeout(connectWS, Math.min(30000, 1000 * Math.pow(2, Math.min(6, ++retry))));
-
-    stomp.connect({}, () => {
-      retry = 0;
-
-      stomp.subscribe('/topic/categories', () => {
-        const sel = document.getElementById('categoryFilter');
-        const current = sel?.value || 'all';
-        setTimeout(() => loadCategories(current), 250);
-      });
-
-      stomp.subscribe('/topic/menu', () => {
-        const sel = document.getElementById('categoryFilter');
-        setTimeout(() => loadMenu(sel?.value || 'all'), 250);
-      });
-
-      stomp.subscribe('/topic/combos', () => {
-        setTimeout(loadCombos, 250);
-      });
-    }, reconnect);
-  } catch (e) {
-    console.warn('WS connect error:', e);
+    const res = await fetch(`${BASE_URL}/api/tables/${tableId}`);
+    const table = res.ok ? await res.json() : null;
+    document.getElementById('tableNumber').textContent = table?.tableNumber ?? tableId;
+  } catch {
+    document.getElementById('tableNumber').textContent = tableId;
   }
-}
+
+  // clear giỏ phiên trước mỗi lần vào menu của bàn này
+  sessionStorage.removeItem(`qr-cart:table-${tableId}`);
+  cart = {};
+
+  await loadCategories(categoryId);
+  await loadCombos();            // nạp danh sách combo
+  connectWS({
+    "/topic/categories": () => {
+      const sel = document.getElementById('categoryFilter');
+      loadCategories(sel?.value || 'all');
+    },
+    "/topic/menu": () => {
+      const sel = document.getElementById('categoryFilter');
+      loadMenu(sel?.value || 'all');
+    },
+    "/topic/combos": loadCombos
+  });
+});
+
+
 
 // Expose
 window.updateQuantity = updateQuantity;

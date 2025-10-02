@@ -1,4 +1,9 @@
 // src/main/java/com/sacmauquan/qrordering/security/JwtService.java
+/*
+ * Xử lý JWT: tạo token, xác thực token, trích xuất thông tin từ token
+ * set expiration time khi tạo token
+ * đọc subject (email) từ token
+ */
 package com.sacmauquan.qrordering.security;
 
 import io.jsonwebtoken.*;

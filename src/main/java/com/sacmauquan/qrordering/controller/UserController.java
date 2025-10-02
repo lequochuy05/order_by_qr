@@ -27,10 +27,10 @@ public class UserController {
         return ResponseEntity.ok(userService.login(req));
     }
 
-    // ===== CRUD staff (cần AUTH, MANAGER) =====
+    // ===== CRUD staff =====
     @GetMapping
     public ResponseEntity<List<User>> list() {
-        return ResponseEntity.ok(userService.findAll()); // hoặc map sang UserDto nếu muốn
+        return ResponseEntity.ok(userService.findAll()); 
     }
 
     @GetMapping("/{id}")

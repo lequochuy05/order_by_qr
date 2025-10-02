@@ -43,6 +43,13 @@
             <version>8.0.33</version>
         </dependency>
 
+        <!-- Spring Boot Mail for sending emails -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+
         <!-- Spring Boot Test for unit testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -105,6 +112,8 @@
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
+
+
 
 
     </dependencies>

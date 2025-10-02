@@ -1,8 +1,10 @@
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\UserDto.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\PasswordResetService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\config\WebSocketConfig.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\DiscountService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\CategoryService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\DiningTableService.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\OtpService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\DiningTableRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\RevenueDto.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\DiningTableRepository.java
@@ -16,6 +18,7 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\DiscountResult.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\OrderItem.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\User.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\PasswordResetTokenRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\UserResponse.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\ComboItem.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\EmpPerfDto.java
@@ -42,6 +45,7 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\Promotion.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\AuthRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\Combo.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\PasswordResetToken.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\config\SecurityConfig.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\OrderPreviewResponse.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\Main.java
@@ -49,7 +53,9 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\MenuItemRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\VoucherRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\ComboService.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\EmailService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\controller\MenuItemController.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\config\WebConfig.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\MenuItem.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\PromotionRepository.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\controller\PasswordResetController.java

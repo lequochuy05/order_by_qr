@@ -6,33 +6,8 @@ if (role === "MANAGER") {
   if (a) a.style.display = "block";
 }
 
-const BASE_URL = window.APP_BASE_URL || location.origin;
-
 let allCategories = [];
 let editingItemId = null;
-
-// ===== Helpers =====
-function byId(id) { return document.getElementById(id); }
-
-function showError(id, msg) {
-  const el = byId(id);
-  if (!el) return;
-  el.textContent = msg || '';
-  el.style.display = msg ? 'block' : 'none';
-}
-
-function escapeHtml(s='') {
-  return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-// Cho phép URL tuyệt đối http(s) và URL tương đối bắt đầu bằng '/'
-function safeUrl(u='') {
-  try {
-    if (typeof u === 'string' && u.startsWith('/')) return u;
-    const url = new URL(u, location.origin);
-    return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : '';
-  } catch { return ''; }
-}
 
 // ===== Bootstrap =====
 window.addEventListener('DOMContentLoaded', async () => {
@@ -288,17 +263,3 @@ window.deleteItem = async function (id) {
     alert(e.message || 'Có lỗi khi xóa');
   }
 };
-
-// (Không dùng tới, nhưng giữ nếu cần parse lỗi tay)
-async function readErr(res) {
-  try {
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      const j = await res.json();
-      return j.message || j.error || JSON.stringify(j);
-    }
-    return await res.text();
-  } catch {
-    return 'Có lỗi xảy ra';
-  }
-}

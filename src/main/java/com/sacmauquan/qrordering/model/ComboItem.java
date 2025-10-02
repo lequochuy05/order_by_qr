@@ -16,12 +16,11 @@ public class ComboItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
-    @JsonIgnore
+    @JsonIgnore  // Đánh dấu để tránh vòng lặp vô hạn khi serializing
     private Combo combo;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "menu_item_id")  // Foreign key to MenuItem
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JoinColumn(name = "menu_item_id") // Foreign key to MenuItem
     private MenuItem menuItem;
 
     private Integer quantity;
