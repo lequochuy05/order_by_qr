@@ -120,14 +120,14 @@ window.fmtVND = n => window.fmtN(n) + ' VND';
   window.showModal = function({ title='Thông báo', message='', type='info', okText='OK' } = {}){
     titleEl.textContent = title;
     bodyEl.innerHTML = safeHtmlFromText(message) || '—';
-    btnOk.textContent = okText || 'OK';
+    btnOk.textContent = okText || 'OK'; 
     modal.style.display = 'flex';
     btnOk.focus();
   };
 
-  window.showError   = (msg, title='Có lỗi xảy ra') => window.showModal({ title, message: msg, type:'error',   okText:'Đã hiểu' });
-  window.showInfo    = (msg, title='Thông báo')     => window.showModal({ title, message: msg, type:'info',    okText:'OK'      });
-  window.showSuccess = (msg, title='Thành công')    => window.showModal({ title, message: msg, type:'success', okText:'OK'      });
+  window.showAppError   = (msg, title='Có lỗi xảy ra') => window.showModal({ title, message: msg, type:'error',   okText:'Đã hiểu' });
+  window.showAppInfo    = (msg, title='Thông báo')     => window.showModal({ title, message: msg, type:'info',    okText:'OK'      });
+  window.showAppSuccess = (msg, title='Thành công')    => window.showModal({ title, message: msg, type:'success', okText:'OK'      });
 })();
 
 function logout() {

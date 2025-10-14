@@ -19,16 +19,26 @@ async function exportCsv(){
 }
 
 // CHỈ LẤY THEO NGÀY
-async function fetchStats(fromDate, toDate){
+async function fetchStats(fromDate, toDate) {
   const q = `from=${encodeURIComponent(ymd(fromDate))}&to=${encodeURIComponent(ymd(toDate))}`;
-  const rev = await $fetch(`${BASE_URL}/api/stats/revenue?${q}`);            // backend trả theo ngày
-  const emp = await $fetch(`${BASE_URL}/api/stats/employees?${q}`);
-  const ods = await $fetch(`${BASE_URL}/api/stats/orders?${q}`);
-  // if (!Array.isArray(rev) || !Array.isArray(emp) || !Array.isArray(ods)) {
-  //   throw new Error('API stats trả về sai dạng (không phải mảng).');
-  // }
-  return { rev, emp, ods };
+
+  const resRev = await $fetch(`${BASE_URL}/api/stats/revenue?${q}`);
+  const resEmp = await $fetch(`${BASE_URL}/api/stats/employees?${q}`);
+  const resOds = await $fetch(`${BASE_URL}/api/stats/orders?${q}`);
+
+  // Đọc JSON
+  const rev = await resRev.json().catch(()=>[]);
+  const emp = await resEmp.json().catch(()=>[]);
+  const ods = await resOds.json().catch(()=>[]);
+
+  // Nếu backend trả { data: [...] } thì lấy data
+  const _rev = Array.isArray(rev) ? rev : (rev.data || []);
+  const _emp = Array.isArray(emp) ? emp : (emp.data || []);
+  const _ods = Array.isArray(ods) ? ods : (ods.data || []);
+
+  return { rev: _rev, emp: _emp, ods: _ods };
 }
+
 
 function niceMax(v){
   if (v <= 0) return 1;
@@ -112,11 +122,28 @@ async function apply(){
     $('#kpiAvg').textContent     = `Giá trị TB: ${fmtN(avg)} VND`;
     $('#kpiTopEmp').textContent  = emp[0]?.fullName || '—';
     $('#kpiTopEmpRev').textContent = emp[0] ? `${fmtN(emp[0].revenue)} VND` : '—';
-    $('#kpiActive').textContent  = `${emp.length} NV có đơn`;
+    $('#kpiActive').textContent  = `${emp.length} nhân viên`;
 
     // Chart (labels dd/MM/yyyy)
     const values = rev.map(p => p.revenue || 0);
-    const labels = rev.map(p => fmtDDMMYYYY(p.bucket));
+
+    let labels = [];
+    if (rev.length > 31) {
+    const seen = new Set();
+    labels = rev.map(p => {
+      const d = new Date(p.bucket);
+      const label = `${('0' + (d.getMonth() + 1)).slice(-2)}/${d.getFullYear()}`;
+      if (seen.has(label)) return ''; // bỏ trùng
+      seen.add(label);
+      return label;
+    });
+    } else {
+      // Hiển thị theo ngày
+      labels = rev.map(p => {
+        const d = new Date(p.bucket);
+        return `${('0' + d.getDate()).slice(-2)}/${('0' + (d.getMonth() + 1)).slice(-2)}`; // dd/MM
+      });
+    }
     drawLineChart($('#revenueChart'), values, labels);
 
     // Bảng nhân viên

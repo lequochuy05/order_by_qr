@@ -34,7 +34,7 @@ async function jsonOrNull(res) {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-// highlight tiện dụng (đã có CSS .highlight trong style.css)
+// highlight card
 function highlightCard(cardEl) {
   if (!cardEl) return;
   cardEl.classList.add('highlight');
