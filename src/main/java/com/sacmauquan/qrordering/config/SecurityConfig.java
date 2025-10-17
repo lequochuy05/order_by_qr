@@ -95,9 +95,8 @@ public class SecurityConfig {
     c.setAllowedOrigins(List.of(
       "http://localhost:*",
       "http://127.0.0.1:*",
-      "http://192.168.1.*:*",
-      "https://orderbyqr-production.up.railway.app",
-      "https://*.vercel.app"
+      "https://order-by-qr.vercel.app",              //  domain Vercel của bạn
+      "https://orderbyqr-production.up.railway.app"  //  domain backend Railway
     ));
     c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization","Content-Type","Accept"));
