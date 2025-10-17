@@ -3,6 +3,8 @@
 //   ? 'http://10.50.252.193:8080'
 //   : location.origin.replace(/:\d+$/, '') + ':8080');
   
-window.APP_BASE_URL = window.APP_BASE_URL || (location.origin.includes('orderbyqr-production.up.railway.app')
+window.APP_BASE_URL = window.APP_BASE_URL || (
+  location.hostname.includes('vercel.app')
   ? 'https://orderbyqr-production.up.railway.app'
-  : location.origin.replace(/:\d+$/, '') + ':8080');
+  : 'http://localhost:8080'
+);

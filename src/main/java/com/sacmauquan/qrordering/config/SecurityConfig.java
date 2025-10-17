@@ -96,10 +96,8 @@ public class SecurityConfig {
       "http://localhost:*",
       "http://127.0.0.1:*",
       "http://192.168.1.*:*",
-      "http://10.102.190.*:*",
-      "http://10.60.72.60",
-      "http://10.50.252.193",
-      "http://10.118.230.96"
+      "https://orderbyqr-production.up.railway.app",
+      "https://*.vercel.app"
     ));
     c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization","Content-Type","Accept"));
