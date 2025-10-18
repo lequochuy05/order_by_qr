@@ -34,7 +34,7 @@ public class OrderService {
             throw new IllegalArgumentException("Đơn hàng không hợp lệ");
         }
 
-        DiningTable table = tableRepository.findById(req.getTableId())
+        DiningTable table = tableRepository.findByTableCode(req.getTableCode())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableId()));
 
         // lấy / tạo order PENDING
