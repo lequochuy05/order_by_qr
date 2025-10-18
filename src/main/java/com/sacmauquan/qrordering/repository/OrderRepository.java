@@ -12,6 +12,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByStatus(String status);
     Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId, List<String> statuses); // Lấy đơn hàng mới nhất của bàn với trạng thái đã cho
     Order findFirstByTableIdAndStatus(Long tableId, String status);
+    
 }
 
 

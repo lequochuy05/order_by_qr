@@ -7,6 +7,7 @@ import java.util.List;
 @Getter
 @Setter
 public class OrderRequest {
+    private String tableCode;
     private Long tableId;
     private String status;
     private String voucherCode;
