@@ -1,31 +1,25 @@
 package com.sacmauquan.qrordering.controller;
 
 import com.sacmauquan.qrordering.model.MenuItem;
+import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.sacmauquan.qrordering.service.MenuItemService;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import com.sacmauquan.qrordering.service.ImageManagerService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.*;                                  
-
-import java.util.UUID;    
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-
-import com.sacmauquan.qrordering.repository.MenuItemRepository;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/menu")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class MenuItemController {
 
-    @Autowired
-    private MenuItemService menuItemService;
-    @Autowired
-    private MenuItemRepository menuItemRepository;
+    private final MenuItemService menuItemService;
+    private final MenuItemRepository repo;
+    private final ImageManagerService imageManager;
 
     @GetMapping
     public List<MenuItem> getAllMenuItems() {
@@ -49,7 +43,7 @@ public class MenuItemController {
         try {
             return ResponseEntity.ok(menuItemService.createItem(item));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -60,44 +54,38 @@ public class MenuItemController {
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteItem(@PathVariable Long id) {
-        if (menuItemService.deleteItem(id)) return ResponseEntity.ok().build();
-        return ResponseEntity.notFound().build();
+        var itemOpt = repo.findById(id);
+        if (itemOpt.isEmpty()) return ResponseEntity.notFound().build();
+
+        var item = itemOpt.get();
+        // 🧹 Xóa ảnh trên Cloudinary
+        imageManager.delete(item.getImg());
+
+        repo.delete(item);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/image")
-    public ResponseEntity<?> uploadImage(@PathVariable Long id,
-                                         @RequestParam("file") MultipartFile file) {
+    public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
-            var item = menuItemRepository.findById(id)
+            var item = repo.findById(id)
                     .orElseThrow(() -> new NoSuchElementException("Không tìm thấy món"));
-
             if (file.isEmpty()) return ResponseEntity.badRequest().body("File rỗng");
 
-            // Lưu ra thư mục ngoài (đã được map bởi WebConfig -> /uploads/**)
-            Path dir = Paths.get("uploads/menu").toAbsolutePath();
-            Files.createDirectories(dir);
+            // 🧩 Thay ảnh mới, tự xóa cũ
+            String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
+            item.setImg(newUrl);
+            repo.save(item);
 
-            String origin = file.getOriginalFilename();
-            String ext = (origin != null && origin.lastIndexOf('.') >= 0)
-                    ? origin.substring(origin.lastIndexOf('.'))
-                    : ".jpg";
-            String filename = UUID.randomUUID().toString().replace("-", "") + ext;
-
-            Files.copy(file.getInputStream(), dir.resolve(filename),
-                    StandardCopyOption.REPLACE_EXISTING);
-
-            String publicPath = "/uploads/menu/" + filename; 
-            item.setImg(publicPath);
-            menuItemRepository.save(item);
-
-            return ResponseEntity.ok(Map.of("img", publicPath));
+            return ResponseEntity.ok(Map.of("img", newUrl));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
