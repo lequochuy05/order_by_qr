@@ -95,7 +95,7 @@ window.loadMenuItems = async function () {
       card.className = 'table-card';
       card.innerHTML = `
         <div style="text-align:center;">
-          ${it.img ? `<img src="${safeUrl(it.img)}" alt="${escapeHtml(it.name)}" style="width:50%;height:150px;object-fit:cover;border-radius:10px;">` : ''}
+          ${it.img ? `<img src="${safeUrl(it.img)}?v=${Date.now()}" alt="${escapeHtml(it.name)}" style="width:50%;height:150px;object-fit:cover;border-radius:10px;">` : ''}
           <h3>${escapeHtml(it.name ?? '')}</h3>
           <p><strong>Giá:</strong> ${(it.price ?? 0).toLocaleString('vi-VN')}đ</p>
           ${(window.role === 'MANAGER') ? `
@@ -173,7 +173,8 @@ window.submitNewItem = async function () {
     }
 
     window.closeAddItemModal();
-    await loadMenuItems();
+    setTimeout(() => loadMenuItems(), 800);
+
   } catch (e) {
     showError('addError', e.message || 'Có lỗi khi tạo món');
   }

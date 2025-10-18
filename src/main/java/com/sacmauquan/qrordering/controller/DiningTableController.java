@@ -19,6 +19,13 @@ public class DiningTableController {
     @Autowired
     private DiningTableService tableService;
 
+    @GetMapping
+    public ResponseEntity<List<DiningTableResponse>> getAllTables() {
+        List<DiningTableResponse> responses = tableService.getAllTablesSorted()
+                .stream().map(this::convertToResponse).collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<DiningTableResponse> getTableById(@PathVariable Long id) {
         return tableService.getTableById(id)
@@ -27,11 +34,13 @@ public class DiningTableController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping
-    public ResponseEntity<List<DiningTableResponse>> getAllTables() {
-        List<DiningTableResponse> responses = tableService.getAllTablesSorted()
-                .stream().map(this::convertToResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+    // ✅ Truy vấn bàn theo mã QR (dành cho khách khi quét mã)
+    @GetMapping("/code/{tableCode}")
+    public ResponseEntity<DiningTableResponse> getTableByCode(@PathVariable String tableCode) {
+        return tableService.getTableByCode(tableCode)
+                .map(this::convertToResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
@@ -41,7 +50,7 @@ public class DiningTableController {
             DiningTable saved = tableService.createTable(table);
             return ResponseEntity.ok(convertToResponse(saved));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -51,7 +60,7 @@ public class DiningTableController {
             DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
             return ResponseEntity.ok(convertToResponse(updated));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -61,14 +70,13 @@ public class DiningTableController {
             tableService.deleteTable(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage()); // 400 + message
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-     // === Helper methods ===
+    // ===== Helper methods =====
     private DiningTable convertToEntity(DiningTableRequest request) {
         DiningTable table = new DiningTable();
-        
         table.setQrCodeUrl(request.getQrCodeUrl());
         table.setTableNumber(request.getTableNumber());
         table.setStatus(request.getStatus());
@@ -77,13 +85,12 @@ public class DiningTableController {
     }
 
     private DiningTableResponse convertToResponse(DiningTable table) {
-        DiningTableResponse response = new DiningTableResponse();
-        response.setId(table.getId());
-      
-        response.setQrCodeUrl(table.getQrCodeUrl());
-        response.setTableNumber(table.getTableNumber());
-        response.setStatus(table.getStatus());
-        response.setCapacity(table.getCapacity());
-        return response;
+        DiningTableResponse res = new DiningTableResponse();
+        res.setId(table.getId());
+        res.setQrCodeUrl(table.getQrCodeUrl());
+        res.setTableNumber(table.getTableNumber());
+        res.setStatus(table.getStatus());
+        res.setCapacity(table.getCapacity());
+        return res;
     }
 }

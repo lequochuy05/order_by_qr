@@ -30,7 +30,7 @@ async function loadCategories() {
       const card = document.createElement('div');
       card.className = 'table-card';
       card.innerHTML = `
-        ${cat.img ? `<img src="${safeUrl(cat.img)}" alt="${escapeHtml(cat.name)}" style="width:100%; height:150px; object-fit:cover; border-radius:10px;">` : ''}
+        ${cat.img ? `<img src="${safeUrl(cat.img)}?v=${Date.now()}" alt="${escapeHtml(cat.name)}" style="width:100%; height:150px; object-fit:cover; border-radius:10px;">` : ''}
         <h3 style="text-align:center;">${escapeHtml(cat.name)}</h3>
         ${window.role === 'MANAGER' ? `
           <div style="text-align:center;">
@@ -117,7 +117,7 @@ window.submitNewCategory = async function () {
 
     window.closeAddCategoryModal();
     page = 0;
-    loadCategories();
+    setTimeout(() => loadCategories(), 800);
   } catch (e) {
     showError(errId, e.message || 'Có lỗi khi tạo danh mục');
   }

@@ -1,16 +1,16 @@
 // /static/js/dashboard.js
 
 const urlParams = new URLSearchParams(location.search);
-const tableId = urlParams.get("tableId");
+const tableCode = urlParams.get("tableCode");
 
-// Gán số bàn (không crash khi lỗi)
-fetch(`${BASE_URL}/api/tables/${tableId}`)
+// Lấy tableId từ localStorage (nếu có)
+fetch(`${BASE_URL}/api/tables/code/${tableCode}`)
   .then(r => (r.ok ? r.json() : null))
   .then(t => {
-    document.getElementById("tableNumber").textContent = t?.tableNumber ?? tableId ?? "";
+    document.getElementById("tableNumber").textContent = t?.tableNumber ?? "—";
   })
   .catch(() => {
-    document.getElementById("tableNumber").textContent = tableId ?? "";
+    document.getElementById("tableNumber").textContent = "—";
   });
 
 /** Tải & render danh mục */
@@ -26,7 +26,7 @@ async function loadCategories() {
       const div = document.createElement("div");
       div.className = "category";
       div.onclick = () => {
-        location.href = `/menu.html?tableId=${encodeURIComponent(tableId)}&categoryId=${cate.id}`;
+        location.href = `/menu.html?tableCode=${encodeURIComponent(tableCode)}&categoryId=${cate.id}`;
       };
 
       // Cache-busting nhỏ để tránh dính cache 404 ngay sau upload
@@ -44,16 +44,16 @@ async function loadCategories() {
   }
 }
 
-/** Slide đơn giản */
-let currentSlide = 0;
-const slides = document.querySelectorAll(".slide-item");
-if (slides.length > 0) {
-  setInterval(() => {
-    slides[currentSlide].classList.remove("active");
-    currentSlide = (currentSlide + 1) % slides.length;
-    slides[currentSlide].classList.add("active");
-  }, 5000);
-}
+// /** Slide đơn giản */
+// let currentSlide = 0;
+// const slides = document.querySelectorAll(".slide-item");
+// if (slides.length > 0) {
+//   setInterval(() => {
+//     slides[currentSlide].classList.remove("active");
+//     currentSlide = (currentSlide + 1) % slides.length;
+//     slides[currentSlide].classList.add("active");
+//   }, 5000);
+// }
 
 // Boot
 document.addEventListener("DOMContentLoaded", () => {

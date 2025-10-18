@@ -55,4 +55,15 @@ public class ImageManagerService {
         if (publicId.contains(".")) publicId = publicId.substring(0, publicId.lastIndexOf(".")); // bỏ đuôi file
         return publicId;
     }
+
+    /** Upload dữ liệu QR code (byte[]) lên Cloudinary */
+    public Map uploadBytes(byte[] data, String folder, String publicId) throws IOException {
+    return cloudinary.uploader().upload(data, ObjectUtils.asMap(
+        "folder", folder,
+        "public_id", publicId,
+        "resource_type", "image"
+    ));
+}
+
+
 }

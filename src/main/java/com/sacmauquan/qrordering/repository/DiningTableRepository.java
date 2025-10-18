@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface DiningTableRepository extends JpaRepository<DiningTable, Long> {
     boolean existsByTableNumber(String tableNumber);
     Optional<DiningTable> findByTableNumber(String tableNumber);
+    Optional<DiningTable> findByTableCode(String tableCode);
 }

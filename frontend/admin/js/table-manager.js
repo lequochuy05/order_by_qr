@@ -808,15 +808,23 @@ window.showEditTable = async function (id) {
 
     _currentEditTableId = id;
     $id('editTableNumber').value = t.tableNumber ?? '';
-    $id('editQrCodeUrl').value  = t.qrCodeUrl ?? '';
     $id('editStatus').value     = t.status ?? 'Trống';
     $id('editCapacity').value   = t.capacity ?? 1;
+
+    const img = $id('editQrCodeImg');
+    if (t.qrCodeUrl) {
+      img.src = t.qrCodeUrl;
+      img.style.display = 'inline-block';
+    } else {
+      img.style.display = 'none';
+    }
 
     $id('editTableModal').style.display = 'flex';
   } catch (e) {
     alert(e.message || 'Không lấy được thông tin bàn');
   }
 };
+
 
 window.closeEditTableModal = function () {
   _currentEditTableId = null;
@@ -865,6 +873,16 @@ window.deleteTable = async function (id) {
   } catch (e) {
     alert(e.message || 'Không thể xóa bàn');
   }
+};
+
+window.openQrModal = function (url) {
+  if (!url) return;
+  $id('qrPreviewImg').src = url;
+  $id('qrPreviewModal').style.display = 'flex';
+};
+
+window.closeQrModal = function () {
+  $id('qrPreviewModal').style.display = 'none';
 };
 
 // ===== WS =====
