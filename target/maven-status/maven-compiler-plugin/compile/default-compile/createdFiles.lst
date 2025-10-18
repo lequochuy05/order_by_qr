@@ -13,6 +13,7 @@ com\sacmauquan\qrordering\repository\PasswordResetTokenRepository.class
 com\sacmauquan\qrordering\service\ComboService.class
 com\sacmauquan\qrordering\service\DiningTableService.class
 com\sacmauquan\qrordering\service\DiscountService$VoucherResult.class
+com\sacmauquan\qrordering\service\ImageManagerService.class
 com\sacmauquan\qrordering\repository\StatsRepository.class
 com\sacmauquan\qrordering\service\PasswordResetService.class
 com\sacmauquan\qrordering\security\CustomUserDetailsService.class
@@ -20,7 +21,6 @@ com\sacmauquan\qrordering\repository\ComboRepository.class
 com\sacmauquan\qrordering\model\OrderItem.class
 com\sacmauquan\qrordering\dto\UserUpsertRequest.class
 com\sacmauquan\qrordering\controller\StatsController.class
-com\sacmauquan\qrordering\service\CloudinaryService.class
 com\sacmauquan\qrordering\dto\UserDto$UserDtoBuilder.class
 com\sacmauquan\qrordering\controller\MenuItemController.class
 com\sacmauquan\qrordering\dto\OrderRequest$ComboRequest.class
@@ -34,6 +34,7 @@ com\sacmauquan\qrordering\model\Combo.class
 com\sacmauquan\qrordering\service\EmailService.class
 com\sacmauquan\qrordering\service\StatsService.class
 com\sacmauquan\qrordering\model\User$Role.class
+com\sacmauquan\qrordering\service\QRCodeService.class
 com\sacmauquan\qrordering\dto\OrderRequest.class
 com\sacmauquan\qrordering\model\MenuItem.class
 com\sacmauquan\qrordering\model\Promotion.class

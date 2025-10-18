@@ -29,6 +29,7 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\Order.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\OrderRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\UserRepository.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\ImageManagerService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\MenuItemService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\Category.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\UserService.java
@@ -52,11 +53,11 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\ComboRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\MenuItemRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\VoucherRepository.java
-E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\CloudinaryService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\ComboService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\EmailService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\controller\MenuItemController.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\config\WebConfig.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\model\MenuItem.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\QRCodeService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\PromotionRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\controller\PasswordResetController.java
