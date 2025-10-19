@@ -64,7 +64,7 @@ public class MenuItemController {
         if (itemOpt.isEmpty()) return ResponseEntity.notFound().build();
 
         var item = itemOpt.get();
-        // 🧹 Xóa ảnh trên Cloudinary
+        //  Xóa ảnh trên Cloudinary
         imageManager.delete(item.getImg());
 
         repo.delete(item);
@@ -78,7 +78,7 @@ public class MenuItemController {
                     .orElseThrow(() -> new NoSuchElementException("Không tìm thấy món"));
             if (file.isEmpty()) return ResponseEntity.badRequest().body("File rỗng");
 
-            // 🧩 Thay ảnh mới, tự xóa cũ
+            //  Thay ảnh mới, tự xóa cũ
             String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
             item.setImg(newUrl);
             repo.save(item);
