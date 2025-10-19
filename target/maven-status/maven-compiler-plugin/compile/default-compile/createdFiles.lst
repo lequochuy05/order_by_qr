@@ -20,6 +20,7 @@ com\sacmauquan\qrordering\dto\OrderRequest.class
 com\sacmauquan\qrordering\model\Promotion.class
 com\sacmauquan\qrordering\dto\RevenueDto.class
 com\sacmauquan\qrordering\Main.class
+com\sacmauquan\qrordering\dto\VoucherValidateResponse.class
 com\sacmauquan\qrordering\model\ComboItem.class
 com\sacmauquan\qrordering\repository\VoucherRepository.class
 com\sacmauquan\qrordering\dto\DiningTableRequest.class
@@ -39,6 +40,7 @@ com\sacmauquan\qrordering\service\DiningTableService.class
 com\sacmauquan\qrordering\service\PasswordResetService.class
 com\sacmauquan\qrordering\security\CustomUserDetailsService.class
 com\sacmauquan\qrordering\repository\ComboRepository.class
+com\sacmauquan\qrordering\dto\VoucherRequest.class
 com\sacmauquan\qrordering\dto\UserUpsertRequest.class
 com\sacmauquan\qrordering\controller\MenuItemController.class
 com\sacmauquan\qrordering\dto\OrderRequest$ComboRequest.class
@@ -61,6 +63,7 @@ com\sacmauquan\qrordering\repository\DiningTableRepository.class
 com\sacmauquan\qrordering\dto\AuthRequest.class
 com\sacmauquan\qrordering\service\DiscountService.class
 com\sacmauquan\qrordering\controller\UserController.class
+com\sacmauquan\qrordering\controller\DiscountController.class
 com\sacmauquan\qrordering\repository\OrderItemRepository.class
 com\sacmauquan\qrordering\service\MenuItemService.class
 com\sacmauquan\qrordering\controller\OrderController.class

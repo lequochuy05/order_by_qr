@@ -16,6 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service gộp:
@@ -26,6 +28,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DiscountService {
 
+    private static final Logger log = LoggerFactory.getLogger(DiscountService.class);
     private final VoucherRepository voucherRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -119,15 +122,6 @@ public class DiscountService {
         }
         return new VoucherValidateResponse(v.getCode(), status, moneyOff, percent, applicable);
     }
-
-    /** Sau khi thanh toán thành công, tăng used_count */
-    public void increaseUsedCount(Long id) {
-        Voucher v = findById(id);
-        int used = Optional.ofNullable(v.getUsedCount()).orElse(0);
-        v.setUsedCount(used + 1);
-        voucherRepository.save(v);
-    }
-
     // ================== Logic hỗ trợ ==================
 
     private void normalize(VoucherRequest r) {

@@ -56,14 +56,14 @@ public class SecurityConfig {
         .requestMatchers("/api/auth/**").permitAll()
 
         // public GET
-        .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/combos/**", "/api/orders/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/combos/**", "/api/orders/**", "/api/vouchers/**").permitAll()
         // khách tạo đơn
         .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
         // admin
-        .requestMatchers(HttpMethod.POST,   "/api/categories/**", "/api/menu/**", "/api/tables/**").hasRole("MANAGER")
-        .requestMatchers(HttpMethod.PUT,    "/api/categories/**", "/api/menu/**", "/api/tables/**").hasRole("MANAGER")
-        .requestMatchers(HttpMethod.DELETE, "/api/categories/**", "/api/menu/**", "/api/tables/**").hasRole("MANAGER")
+        .requestMatchers(HttpMethod.POST,   "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/vouchers/**").hasRole("MANAGER")
+        .requestMatchers(HttpMethod.PUT,    "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/vouchers/**").hasRole("MANAGER")
+        .requestMatchers(HttpMethod.DELETE, "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/vouchers/**").hasRole("MANAGER")
 
         // revenue
         .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER","STAFF")
