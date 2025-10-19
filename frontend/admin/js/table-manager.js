@@ -41,6 +41,23 @@ function highlightCard(cardEl) {
   setTimeout(() => cardEl.classList.remove('highlight'), 5000);
 }
 
+// Cập nhật thông tin 1 card bàn
+function updateTableCard(tableId, patch = {}) {
+  const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+  if (!card) return;
+
+  if (patch.status) {
+    const statusEl = card.querySelector(".status strong");
+    if (statusEl) statusEl.textContent = patch.status;
+  }
+  if (patch.totalAmount !== undefined) {
+    const totalEl = card.querySelector(".total-amount");
+    if (totalEl) totalEl.textContent = `${Number(patch.totalAmount).toLocaleString('vi-VN')} VND`;
+  }
+  if (patch.highlight) highlightCard(card);
+}
+
+
 // ===== render danh sách bàn =====
 window.loadTables = async function () {
   const myToken = ++_renderToken;
@@ -271,6 +288,7 @@ window.saveEdit = async function () {
     // Reload lại modal chi tiết
     if (typeof window.currentOpenTableId === 'number') {
       showDetails(window.currentOpenTableId);
+      updateTableCard(window.currentOpenTableId);
     }
   } catch (e) {
     alert(e.message || 'Sửa món thất bại');
@@ -284,12 +302,12 @@ window.cancelItem = async function(itemId){
     const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}`, { method:'DELETE' });
     if (!res.ok) throw new Error(await $readErr(res));
 
-    // Reload lại modal & danh sách (WS cũng sẽ bắn)
+    // Tải lại trạng thái bàn
     if (typeof window.currentOpenTableId === 'number') {
-      showDetails(window.currentOpenTableId);
-    } else {
-      loadTables();
+      await showDetails(window.currentOpenTableId);
+      updateTableCard(window.currentOpenTableId, { highlight: true });
     }
+
   }catch(e){
     alert(e.message || 'Hủy món thất bại');
   }
@@ -487,7 +505,8 @@ window.confirmPay = async function () {
     window.showSuccess?.('Thanh toán thành công!', 'Thành công');
 
     await sleep(200);
-    loadTables();
+    updateTableCard(_payContext.tableId, { status: "Trống", totalAmount: 0, highlight: true });
+
   } catch (e) {
     if (errEl) { errEl.textContent = e.message || 'Thanh toán thất bại'; errEl.style.display = 'block'; }
   } finally {
@@ -855,7 +874,8 @@ window.submitEditTable = async function () {
     if (!res.ok) throw new Error(await $readErr(res));
 
     closeEditTableModal();
-    loadTables();
+    updateTableCard(_currentEditTableId, { status, capacity, highlight: true });
+
   } catch (e) {
     if (err) { err.textContent = e.message || 'Lỗi cập nhật'; err.style.display = 'block'; }
   }

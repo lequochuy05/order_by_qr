@@ -43,7 +43,7 @@ public class SecurityConfig {
         // static (css/js/images)
         .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
         // file HTML cụ thể
-        .requestMatchers("/", "/index.html", "/login.html", "/register.html", "/forget-password.html").permitAll()
+        .requestMatchers("/", "/index.html", "/login.html", "/register.html", "/forget-password.html", "/dashboard.html", "/menu.html").permitAll()
     
         .requestMatchers(new AntPathRequestMatcher("/**/*.html")).permitAll()
 

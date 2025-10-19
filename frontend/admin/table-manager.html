@@ -5,8 +5,7 @@
     <meta charset="UTF-8">
     <title>Quản lý bàn ăn</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/item-manager.css">
-    <link rel="stylesheet" href="../css/modal.css">
+    <link rel="stylesheet" href="css/table-manager.css">
 
 </head>
 <body>
@@ -21,14 +20,7 @@
     </div>
 
     <!-- Thanh bên -->
-    <div class="sidebar" id="sidebar">
-        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-        <a href="dashboard.html">Thống kê</a>
-        <a href="categories.html">Quản lý danh mục</a>
-        <a href="item-manager.html">Quản lý món ăn</a>
-        <a href="table-manager.html">Quản lý bàn</a>
-        <a href="staff-manager.html">Quản lý nhân viên</a>
-    </div>
+    <div class="sidebar-container"></div>
 
     <!-- Thêm bàn (dành cho admin) -->
     <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
@@ -59,141 +51,147 @@
     </div>
 
     <!-- Modal thêm bàn mới -->
-<div id="addTableModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <span class="close" onclick="closeAddTableModal()">&times;</span>
-    <h2>Thêm bàn mới</h2>
+    <div id="addTableModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span class="close" onclick="closeAddTableModal()">&times;</span>
+        <h2>Thêm bàn mới</h2>
 
-    <div class="form-group">
-      <label for="newTableNumber">Số bàn</label>
-      <input type="number" id="newTableNumber" placeholder="Nhập số bàn" />
-    </div>
+        <div class="form-group">
+          <label for="newTableNumber">Số bàn</label>
+          <input type="number" id="newTableNumber" placeholder="Nhập số bàn" />
+        </div>
 
-    <div class="form-group">
-      <label for="newTableCapacity">Sức chứa</label>
-      <input type="number" id="newTableCapacity" placeholder="Nhập sức chứa" />
-    </div>
+        <div class="form-group">
+          <label for="newTableCapacity">Sức chứa</label>
+          <input type="number" id="newTableCapacity" placeholder="Nhập sức chứa" />
+        </div>
 
-    <div class="form-error" id="addTableError"></div>
+        <div class="form-error" id="addTableError"></div>
 
-    <div style="text-align:right; margin-top: 12px;">
-      <button class="btn primary" onclick="submitNewTable()">Lưu</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal cập nhật bàn -->
-<div id="editTableModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <span class="close" onclick="closeEditTableModal()">&times;</span>
-    <h2>Cập nhật bàn</h2>
-
-    <div class="form-group">
-      <label for="editTableNumber">Số bàn</label>
-      <input type="text" id="editTableNumber" readonly style="background-color:#f3f4f6;" />
-    </div>
-
-    <div class="form-group">
-      <label>QR Code</label>
-      <div id="editQrCodePreview" style="text-align:center;">
-        <img id="editQrCodeImg" src="" alt="QR Code" 
-             style="width:120px;height:120px;object-fit:contain;border:1px solid #ccc;border-radius:8px;cursor:pointer;display:none;"
-             onclick="openQrModal(this.src)">
+        <div style="text-align:right; margin-top: 12px;">
+          <button class="btn primary" onclick="submitNewTable()">Lưu</button>
+        </div>
       </div>
     </div>
 
-    <div class="form-group">
-      <label for="editStatus">Trạng thái</label>
-      <select id="editStatus">
-        <option value="Trống">Trống</option>
-        <option value="Đang phục vụ">Đang phục vụ</option>
-        <option value="Chờ thanh toán">Chờ thanh toán</option>
-      </select>
+    <!-- Modal cập nhật bàn -->
+    <div id="editTableModal" class="modal" style="display:none;">
+      <div class="modal-content">
+        <span class="close" onclick="closeEditTableModal()">&times;</span>
+        <h2>Cập nhật bàn</h2>
+
+        <div class="form-group">
+          <label for="editTableNumber">Số bàn</label>
+          <input type="text" id="editTableNumber" readonly style="background-color:#f3f4f6;" />
+        </div>
+
+        <div class="form-group">
+          <label>QR Code</label>
+          <div id="editQrCodePreview" style="text-align:center;">
+            <img id="editQrCodeImg" src="" alt="QR Code" 
+                style="width:120px;height:120px;object-fit:contain;border:1px solid #ccc;border-radius:8px;cursor:pointer;display:none;"
+                onclick="openQrModal(this.src)">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editStatus">Trạng thái</label>
+          <select id="editStatus">
+            <option value="Trống">Trống</option>
+            <option value="Đang phục vụ">Đang phục vụ</option>
+            <option value="Chờ thanh toán">Chờ thanh toán</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="editCapacity">Sức chứa</label>
+          <input type="number" id="editCapacity" />
+        </div>
+
+        <div class="form-error" id="editTableError"></div>
+
+        <div style="text-align:right; margin-top: 12px;">
+          <button class="btn primary" onclick="submitEditTable()">Lưu</button>
+        </div>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="editCapacity">Sức chứa</label>
-      <input type="number" id="editCapacity" />
+    <!-- Modal phóng to QR -->
+    <div id="qrPreviewModal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:400px;text-align:center;">
+        <span class="close" onclick="closeQrModal()">&times;</span>
+        <img id="qrPreviewImg" src="" alt="QR" style="width:300px;height:300px;border-radius:10px;">
+      </div>
     </div>
 
-    <div class="form-error" id="editTableError"></div>
 
-    <div style="text-align:right; margin-top: 12px;">
-      <button class="btn primary" onclick="submitEditTable()">Lưu</button>
-    </div>
-  </div>
-</div>
+    <!-- Modal sửa món trong đơn -->
+    <div id="editModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="closeEditModal()"></div>
+      <div class="modal-body">
+        <h3>Sửa món</h3>
+        <label>Số lượng</label>
+        <input type="number" id="editQuantity" min="1">
 
-<!-- Modal phóng to QR -->
-<div id="qrPreviewModal" class="modal" style="display:none;">
-  <div class="modal-content" style="max-width:400px;text-align:center;">
-    <span class="close" onclick="closeQrModal()">&times;</span>
-    <img id="qrPreviewImg" src="" alt="QR" style="width:300px;height:300px;border-radius:10px;">
-  </div>
-</div>
+        <label>Ghi chú</label>
+        <textarea id="editNotes"></textarea>
 
-
-<!-- Modal sửa món trong đơn -->
-<div id="editModal" class="modal hidden">
-  <div class="modal-backdrop" onclick="closeEditModal()"></div>
-  <div class="modal-body">
-    <h3>Sửa món</h3>
-    <label>Số lượng</label>
-    <input type="number" id="editQuantity" min="1">
-
-    <label>Ghi chú</label>
-    <textarea id="editNotes"></textarea>
-
-    <div class="modal-actions">
-      <button onclick="closeEditModal()">Hủy</button>
-      <button onclick="saveEdit()">Lưu</button>
-    </div>
-  </div>
-</div>
-
-
-<!-- Modal xác nhận thanh toán -->
-<div id="payModal" class="modal" style="display:none;">
-  <div class="modal-content" style="max-width:720px;">
-    <span class="close" onclick="closePayModal()">&times;</span>
-    <h2>Xác nhận thanh toán</h2>
-
-    <div id="payInfo" style="margin:8px 0 12px;color:#374151;"></div>
-
-    <div class="table-responsive" style="max-height:320px;overflow:auto;border:1px solid #eee;border-radius:8px;">
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="background:#f8fafc;">
-            <th style="text-align:left;padding:10px;border-bottom:1px solid #eee;">Món</th>
-            <th style="text-align:center;padding:10px;border-bottom:1px solid #eee;">SL</th>
-            <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Đơn giá</th>
-            <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Thành tiền</th>
-          </tr>
-        </thead>
-        <tbody id="payItems"></tbody>
-      </table>
+        <div class="modal-actions">
+          <button onclick="closeEditModal()">Hủy</button>
+          <button onclick="saveEdit()">Lưu</button>
+        </div>
+      </div>
     </div>
 
-    <div id="paySummary" style="text-align:right;margin-top:12px;font-weight:600;"></div>
 
-    <div style="margin:12px 0;">
-      <label for="payVoucher"><strong>Voucher:</strong></label>
-      <input type="text" id="payVoucher" placeholder="Nhập mã giảm giá" style="padding:6px;width:200px;">
-      <button class="btn" onclick="applyVoucher()">Áp dụng</button>
-      <span id="payVoucherMsg" style="margin-left:8px;font-size:13px;color:#6b7280;"></span>
+    <!-- Modal xác nhận thanh toán -->
+    <div id="payModal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:720px;">
+        <span class="close" onclick="closePayModal()">&times;</span>
+        <h2>Xác nhận thanh toán</h2>
+
+        <div id="payInfo" style="margin:8px 0 12px;color:#374151;"></div>
+
+        <div class="table-responsive" style="max-height:320px;overflow:auto;border:1px solid #eee;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="text-align:left;padding:10px;border-bottom:1px solid #eee;">Món</th>
+                <th style="text-align:center;padding:10px;border-bottom:1px solid #eee;">SL</th>
+                <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Đơn giá</th>
+                <th style="text-align:right;padding:10px;border-bottom:1px solid #eee;">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="payItems"></tbody>
+          </table>
+        </div>
+
+        <div id="paySummary" style="text-align:right;margin-top:12px;font-weight:600;"></div>
+
+        <div style="margin:12px 0;">
+          <label for="payVoucher"><strong>Voucher:</strong></label>
+          <input type="text" id="payVoucher" placeholder="Nhập mã giảm giá" style="padding:6px;width:200px;">
+          <button class="btn" onclick="applyVoucher()">Áp dụng</button>
+          <span id="payVoucherMsg" style="margin-left:8px;font-size:13px;color:#6b7280;"></span>
+        </div>
+
+        <div id="payError" class="form-error" style="display:none;margin-top:8px;"></div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+          <button class="btn" onclick="closePayModal()">Hủy</button>
+          <button class="btn primary" id="btnConfirmPay" onclick="confirmPay()">Xác nhận thanh toán</button>
+          <button class="btn" id="btnViewInvoice" style="display:none;" onclick="viewInvoice()">Xem/In hóa đơn</button>
+        </div>
+      </div>
     </div>
 
-    <div id="payError" class="form-error" style="display:none;margin-top:8px;"></div>
-
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
-      <button class="btn" onclick="closePayModal()">Hủy</button>
-      <button class="btn primary" id="btnConfirmPay" onclick="confirmPay()">Xác nhận thanh toán</button>
-      <button class="btn" id="btnViewInvoice" style="display:none;" onclick="viewInvoice()">Xem/In hóa đơn</button>
-    </div>
-  </div>
-</div>
-
-
+<script>
+    fetch('/admin/sidebar.html')
+      .then(r => r.text())
+      .then(html => {
+        document.querySelector('.sidebar-container').innerHTML = html;
+      });
+  </script>
 
 <script src="js/config.js"></script>
 <script src="js/auth-fetch.js"></script>

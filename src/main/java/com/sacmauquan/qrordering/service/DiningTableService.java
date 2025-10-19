@@ -52,7 +52,7 @@ public class DiningTableService {
 
         try {
             // Sinh QR code trỏ đến frontend
-            String qrContent = frontendBaseUrl + "/dashboard.html?tableCode=" + saved.getTableCode();
+            String qrContent = frontendBaseUrl + "/menu.html?tableCode=" + saved.getTableCode();
             byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
 
             // Upload QR lên Cloudinary

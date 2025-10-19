@@ -35,7 +35,7 @@ public class OrderService {
         }
 
         DiningTable table = tableRepository.findByTableCode(req.getTableCode())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableId()));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableCode()));
 
         // lấy / tạo order PENDING
         Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");

@@ -34,7 +34,7 @@ public class DiningTableController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // ✅ Truy vấn bàn theo mã QR (dành cho khách khi quét mã)
+    //  Truy vấn bàn theo mã QR (dành cho khách khi quét mã)
     @GetMapping("/code/{tableCode}")
     public ResponseEntity<DiningTableResponse> getTableByCode(@PathVariable String tableCode) {
         return tableService.getTableByCode(tableCode)
