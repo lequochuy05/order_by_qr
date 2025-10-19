@@ -197,7 +197,7 @@ async function openConfirm(){
     box.appendChild(div);
   });
 
-  // 🧮 Tính tổng
+  //  Tính tổng
   const subItems=items.reduce((s,[_,v])=>s+(v.qty||0)*(v.price||0),0);
   const subCombos=combosSel.reduce((s,[cid,v])=>{
     const c=combosCache.find(x=>x.id==cid);
@@ -238,7 +238,7 @@ async function confirmOrder(){
     const data=await res.json();
     alert("Đặt món thành công! Mã đơn: "+(data.id||""));
     cart={}; selectedCombos={}; persistCart();
-    window.location.href=`/dashboard.html?tableCode=${encodeURIComponent(tableCode)}`;
+    window.location.href=`/menu.html?tableCode=${encodeURIComponent(tableCode)}`;
   }catch(e){alert("Lỗi: "+e.message);}
   finally{btn.disabled=false;}
 }

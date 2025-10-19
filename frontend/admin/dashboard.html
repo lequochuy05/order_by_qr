@@ -11,20 +11,13 @@
 
   <div class="header">
         <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
-        <h1>Bảng điều khiển</h1>
+        <h1>Thống kê</h1>
         <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
         <div class="user-info" id="userInfo"></div>
     </div>
 
     <!-- Sidebar đồng bộ -->
-    <div class="sidebar" id="sidebar">
-        <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-        <a href="dashboard.html">Bảng điều khiển</a>
-        <a href="categories.html">Quản lý danh mục</a>
-        <a href="item-manager.html">Quản lý món ăn</a>
-        <a href="table-manager.html">Quản lý bàn</a>
-        <a href="staff-manager.html">Quản lý nhân viên</a>
-    </div>
+    <div class="sidebar-container"></div>
 
   <div class="container">
     <div class="header-sm">
@@ -87,11 +80,17 @@
     </div>
   </div>
 
-
-    <script src="js/config.js"></script>
-    <script src="js/auth-fetch.js"></script>
-    <script src="js/common.js"></script>
-    <script src="js/dashboard.js"></script>
+  <script>
+    fetch('/admin/sidebar.html')
+      .then(r => r.text())
+      .then(html => {
+        document.querySelector('.sidebar-container').innerHTML = html;
+      });
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/auth-fetch.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/dashboard.js"></script>
 
 
 </body>

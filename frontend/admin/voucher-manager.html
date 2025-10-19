@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quản lý khuyến mãi & voucher</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/voucher.css">
+</head>
+<body>
+  <div class="header">
+    <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+    <h1>Quản lý mã giảm giá</h1>
+    <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+    <div class="user-info" id="userInfo"></div>
+  </div>
+
+  <!-- Sidebar đồng bộ -->
+  <div class="sidebar-container"></div>
+
+  <div class="container">
+    <div class="sm-header">
+      <h2>Danh sách Voucher</h2>
+      <div class="chips" id="vStats">
+        <span class="chip" id="vCount">Tổng: 0</span>
+        <span class="chip" id="vActive">Đang bật: 0</span>
+        <span class="chip" id="vExpired">Hết hạn/đủ lượt: 0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <input id="vSearch" placeholder="Tìm theo mã voucher..." />
+        <select id="vStatus">
+          <option value="">Tất cả trạng thái</option>
+          <option value="ACTIVE">Đang áp dụng</option>
+          <option value="INACTIVE">Ngừng</option>
+          <option value="EXPIRED">Hết hạn/đủ lượt</option>
+        </select>
+        <div class="toolbar-actions">
+          <button class="btn secondary" id="vExport">Xuất CSV</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="vTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="code">MÃ <span class="arrow">⇅</span></th>
+              <th>GIẢM</th>
+              <th>TRẠNG THÁI</th>
+              <th>GIỚI HẠN</th>
+              <th>ĐÃ DÙNG</th>
+              <th>CÒN LẠI</th>
+              <th>THỜI GIAN ÁP DỤNG</th>
+            </tr>
+          </thead>
+          <tbody id="vTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-bar">
+        <div class="pagination">
+          <button id="vPrev">«</button>
+          <span class="page" id="vPage">1 / 1</span>
+          <button id="vNext">»</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- ===== PROMOTIONS ===== -->
+    <div class="sm-header" style="margin-top:26px">
+      <h2>Promotions (khung giờ / theo ngày)</h2>
+      <div class="chips" id="pStats">
+        <span class="chip" id="pCount">Tổng: 0</span>
+        <span class="chip" id="pActive">Đang bật: 0</span>
+        <span class="chip" id="pToday">Áp dụng hôm nay: 0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <input id="pSearch" placeholder="Tìm theo tên khuyến mãi..." />
+        <select id="pStatus">
+          <option value="">Tất cả</option>
+          <option value="ACTIVE">Đang bật</option>
+          <option value="INACTIVE">Ngừng</option>
+          <option value="TODAY">Áp dụng hôm nay</option>
+          <option value="NOW">Đang trong khung giờ</option>
+        </select>
+        <div class="toolbar-actions">
+          <button class="btn secondary" id="pExport">Xuất CSV</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="pTable">
+          <thead>
+            <tr>
+              <th class="sortable" data-key="name">Tên <span class="arrow">⇅</span></th>
+              <th>Giảm (%)</th>
+              <th>Ngày áp dụng</th>
+              <th>Khung giờ</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="pTbody"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-bar">
+        <div class="pagination">
+          <button id="pPrev">«</button>
+          <span class="page" id="pPage">1 / 1</span>
+          <button id="pNext">»</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Minimal Toast -->
+  <div id="toast" class="toast" style="display:none"></div>
+
+  <script>
+    // nạp sidebar
+    fetch('/admin/sidebar.html').then(r=>r.text()).then(html=>{
+      document.querySelector('.sidebar-container').innerHTML = html;
+    });
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/auth-fetch.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/voucher-manager.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</body>
+</html>

@@ -1,115 +1,271 @@
 /* resource/static/admin/css/item-manager.css */
-/* ===== Modal & Form ===== */
-.modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.45);
-    display: none;               /* show bằng JS: style.display = 'flex' */
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}
+/* CSS riêng cho trang Quản lý món ăn */
 
-.modal-content {
-  position: relative;
-  width: 520px;
-  max-width: 92vw;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 12px 30px rgba(0,0,0,.2);
-  padding: 18px 18px 16px;
-}
-
-.modal-content h2 {
-  margin: 0 0 12px;
-  font-size: 20px;
-  color: var(--color-text-primary);
-}
-
-.close {
-  position: absolute;
-  right: 14px;
-  top: 10px;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-}
-.close:hover { color: #e74c3c; }
-
-.form-group {
-  display: grid;
-  gap: 6px;
-  margin-top: 12px;
-}
-.form-group label {
-  font-size: 14px;
-  color: #374151;
-}
-.form-group input,
-.form-group select {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  transition: border-color .15s, box-shadow .15s;
-  outline: none;
-  background: #fff;
-}
-.form-group input:focus,
-.form-group select:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(52,152,219,.15);
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.help-text {
-  margin-top: 6px;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-/* error hiển thị trong modal */
-.form-error {
-  margin-top: 8px;
-  padding: 8px 10px;
+/* ===== Category Filter ===== */
+#categoryFilter {
+  padding: 10px 16px;
+  font-size: 15px;
+  border: 2px solid var(--border);
   border-radius: 8px;
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
-  display: none; /* show khi có lỗi */
-}
-.input-error {
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 0 3px rgba(239,68,68,.15) !important;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 220px;
 }
 
-/* Buttons */
+#categoryFilter:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
 
-.btn:hover { background: #188272; }
+#categoryFilter:hover {
+  border-color: var(--primary);
+}
 
-.btn.primary {
-  background: #111827;
+/* ===== Menu Item Card ===== */
+.menu-item-card {
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  position: relative;
+  text-align: center;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.menu-item-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.menu-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary);
+}
+
+.menu-item-card:hover::before {
+  transform: scaleX(1);
+}
+
+.menu-item-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+  background: #f9fafb;
+  padding: 8px;
+}
+
+.menu-item-card:hover img {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.menu-item-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 8px;
+  line-height: 1.3;
+  min-height: 46px;
+}
+
+.menu-item-price {
+  color: var(--danger);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.menu-item-category {
+  display: inline-block;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 1px solid #93c5fd;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e40af;
+  margin-top: 8px;
+}
+
+/* Available Badge */
+.menu-item-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(34, 197, 94, 0.95);
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 700;
   color: #fff;
-  border-color: #111827;
-}
-.btn.primary:hover { opacity: .92; }
-
-.btn.red {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
-}
-.btn[disabled] {
-  opacity: .6;
-  cursor: not-allowed;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* responsive */
+.menu-item-badge.unavailable {
+  background: rgba(239, 68, 68, 0.95);
+}
+
+/* Action buttons in card */
+.menu-item-card .btn {
+  margin: 4px;
+  padding: 8px 14px;
+  font-size: 18px;
+}
+
+/* ===== Admin Actions - Nút nhỏ gọn ===== */
+#adminActions .btn {
+  background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+  color: #fff;
+  border: none;
+  padding: 10px 20px !important;
+  font-size: 16px !important;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+#adminActions .btn:hover {
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+}
+
+/* ===== Image Preview in Modals ===== */
+#addImgPreview,
+#editImgPreview {
+  max-width: 100%;
+  max-height: 200px;
+  display: none;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-top: 12px;
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+#addImgPreview:hover,
+#editImgPreview:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===== File Input Styling ===== */
+#addImgFile,
+#editImgFile {
+  padding: 12px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--surface-2);
+}
+
+#addImgFile:hover,
+#editImgFile:hover {
+  border-color: var(--primary);
+  background: #dbeafe;
+}
+
+/* ===== Category Select in Modals ===== */
+#addCategory,
+#editCategory {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+/* ===== Price Input ===== */
+#addPrice,
+#editPrice {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* ===== Empty State for Items ===== */
+#menuItemContainer .empty-state::before {
+  content: '🍽️';
+  font-size: 5rem;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  #categoryFilter {
+    width: 90%;
+    min-width: auto;
+  }
+
+  .menu-item-card {
+    min-height: 280px;
+  }
+
+  .menu-item-card img {
+    height: 120px;
+  }
+
+  .menu-item-name {
+    font-size: 16px;
+    min-height: 40px;
+  }
+
+  .menu-item-price {
+    font-size: 18px;
+  }
+
+  #adminActions .btn {
+    font-size: 15px !important;
+    padding: 8px 16px !important;
+  }
+}
+
 @media (max-width: 480px) {
-  .modal-content { width: 94vw; padding: 14px; }
-  .form-row { grid-template-columns: 1fr; }
+  .menu-item-card {
+    min-height: 260px;
+  }
+
+  .menu-item-card img {
+    height: 100px;
+  }
+
+  .menu-item-name {
+    font-size: 15px;
+    min-height: 36px;
+  }
+
+  .menu-item-price {
+    font-size: 17px;
+  }
+
+  .menu-item-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  #adminActions .btn {
+    font-size: 14px !important;
+    padding: 8px 14px !important;
+  }
 }
