@@ -1,9 +1,36 @@
-<div class="sidebar" id="sidebar">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <div class="logo">
+            🏛️ <span></span>
+            </div>
+            <div class="user-box">
+                <img id="sidebarAvatar" class="avatar">
+                <div class="user-greeting">
+                    <p>Xin chào,</p>
+                    <strong id="sidebarName"></strong>
+                </div>
+                </div>
+        </div>
+
         <button class="close-btn" onclick="toggleSidebar()">&#9776;</button>
-        <a href="dashboard.html">Thống kê</a>
-        <a href="categories.html">Quản lý danh mục</a>
-        <a href="item-manager.html">Quản lý món ăn</a>
-        <a href="voucher-manager.html">Quản lý khuyến mãi</a>
-        <a href="table-manager.html">Quản lý bàn</a>
-        <a href="staff-manager.html">Quản lý nhân viên</a>
+
+        <a href="profile.html"><i class="fa-solid fa-circle-user"></i> Cập nhật thông tin</a>
+        <a href="dashboard.html"><i class="fa-solid fa-chart-column"></i> Thống kê</a>
+        <a href="categories.html"><i class="fa-solid fa-list"></i> Quản lý danh mục</a>
+        <a href="item-manager.html"><i class="fa-solid fa-bowl-food"></i> Quản lý món ăn</a>
+        <a href="voucher-manager.html"><i class="fa-solid fa-tags"></i> Quản lý khuyến mãi</a>
+        <a href="table-manager.html"><i class="fa-solid fa-chair"></i> Quản lý bàn</a>
+        <a href="staff-manager.html"><i class="fa-solid fa-user-tie"></i> Quản lý nhân viên</a>
     </div>
+
+</body>
+</html>

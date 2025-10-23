@@ -1,16 +1,13 @@
 package com.sacmauquan.qrordering.controller;
 
 import com.sacmauquan.qrordering.model.MenuItem;
-import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.sacmauquan.qrordering.service.MenuItemService;
-import com.sacmauquan.qrordering.service.ImageManagerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
-
 @RestController
 @RequestMapping("/api/menu")
 @RequiredArgsConstructor
@@ -18,8 +15,6 @@ import java.util.*;
 public class MenuItemController {
 
     private final MenuItemService menuItemService;
-    private final MenuItemRepository repo;
-    private final ImageManagerService imageManager;
 
     @GetMapping
     public List<MenuItem> getAllMenuItems() {
@@ -60,33 +55,27 @@ public class MenuItemController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteItem(@PathVariable Long id) {
-        var itemOpt = repo.findById(id);
-        if (itemOpt.isEmpty()) return ResponseEntity.notFound().build();
-
-        var item = itemOpt.get();
-        //  Xóa ảnh trên Cloudinary
-        imageManager.delete(item.getImg());
-
-        repo.delete(item);
-        return ResponseEntity.ok().build();
+        try {
+            menuItemService.deleteItem(id);
+            return ResponseEntity.noContent().build();
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/image")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
-            var item = repo.findById(id)
-                    .orElseThrow(() -> new NoSuchElementException("Không tìm thấy món"));
-            if (file.isEmpty()) return ResponseEntity.badRequest().body("File rỗng");
-
-            //  Thay ảnh mới, tự xóa cũ
-            String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
-            item.setImg(newUrl);
-            repo.save(item);
-
-            return ResponseEntity.ok(Map.of("img", newUrl));
+            return ResponseEntity.ok(menuItemService.uploadImage(id, file));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 }

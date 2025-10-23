@@ -1,4 +1,4 @@
-// js/staff-manager.js
+// admin/js/staff-manager.js
 
 // ===== helpers =====
 const $ = s => document.querySelector(s);

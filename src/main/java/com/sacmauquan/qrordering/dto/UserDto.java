@@ -13,5 +13,6 @@ public class UserDto {
     private String phone;
     private User.Role role;
     private String status;
-    private Instant createdAt; 
+    private Instant createdAt;
+    private String avatarUrl;
 }

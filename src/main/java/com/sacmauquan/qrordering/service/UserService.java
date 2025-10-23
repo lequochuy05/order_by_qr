@@ -9,7 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import java.io.IOException;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,7 +22,36 @@ import java.util.Map;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ImageManagerService imageManagerService;
     private final JwtService jwtService;
+
+    // ===== Upload Avatar =====
+    public UserDto uploadAvatar(Long id, MultipartFile file) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File không hợp lệ");
+        }
+
+        try {
+            // Upload lên Cloudinary → trả về secure_url dạng String
+            String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
+
+            // Xóa ảnh cũ nếu có
+            if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+                imageManagerService.delete(user.getAvatarUrl());
+            }
+
+            // Lưu URL mới
+            user.setAvatarUrl(newUrl);
+            userRepository.save(user);
+            return toDto(user);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tải ảnh lên Cloudinary");
+        }
+    }
+
 
     // ===== Auth =====
     public AuthResponse register(UserUpsertRequest req) {
@@ -156,6 +187,10 @@ public class UserService {
                 .role(u.getRole())
                 .status(nvl(u.getStatus(), "ACTIVE"))
                 .createdAt(u.getCreatedAt())
+                .avatarUrl(u.getAvatarUrl())
                 .build();
     }
+
+    
+
 }

@@ -249,8 +249,11 @@ public class OrderService {
         DiningTable table = order.getTable();
         table.setStatus("Trống");
         tableRepository.save(table);
-
-        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+        
+        new Thread(() -> {
+            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+            messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+        }).start();
         return "Thanh toán thành công";
     }
 

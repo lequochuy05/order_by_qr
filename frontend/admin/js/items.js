@@ -1,4 +1,4 @@
-// resources/static/admin/js/items.js
+// admin/js/items.js
 
 // Hiển thị nút thêm cho MANAGER
 if (role === "MANAGER") {

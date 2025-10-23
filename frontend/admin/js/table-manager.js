@@ -305,7 +305,7 @@ window.cancelItem = async function(itemId){
     // Tải lại trạng thái bàn
     if (typeof window.currentOpenTableId === 'number') {
       await showDetails(window.currentOpenTableId);
-      updateTableCard(window.currentOpenTableId, { highlight: true });
+      loadTables();
     }
 
   }catch(e){
@@ -505,7 +505,7 @@ window.confirmPay = async function () {
     window.showSuccess?.('Thanh toán thành công!', 'Thành công');
 
     await sleep(200);
-    updateTableCard(_payContext.tableId, { status: "Trống", totalAmount: 0, highlight: true });
+    loadTables();
 
   } catch (e) {
     if (errEl) { errEl.textContent = e.message || 'Thanh toán thất bại'; errEl.style.display = 'block'; }
@@ -912,18 +912,17 @@ function connectWebSocket() {
     _stomp = Stomp.over(socket);
     _stomp.debug = () => {};
     _stomp.connect({}, () => {
-      _stomp.subscribe('/topic/tables', async () => {
-        await sleep(200);  // chờ backend commit
-        loadTables();
+      _stomp.subscribe('/topic/tables', async (msg) => {
+        if(msg.body == "UPDATED"){
+          await sleep(200);  
+          loadTables();
+        }
       });
     });
   } catch (e) {
     console.warn('WS connect error:', e);
   }
 }
-
-
-
 
 // ===== boot =====
 window.addEventListener('DOMContentLoaded', () => {

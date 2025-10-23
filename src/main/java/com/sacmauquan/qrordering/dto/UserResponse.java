@@ -17,4 +17,5 @@ public class UserResponse {
   private User.Role role;
   private String status;
   private Instant createdAt;
+  private String avatarUrl;
 }

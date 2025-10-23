@@ -175,6 +175,48 @@ window.fmtVND = n => window.fmtN(n) + 'đ';
     window.showModal({ title, message: msg, type: 'success', okText: 'OK' });
 })();
 
+  // ===== Hiển thị avatar người dùng đang đăng nhập =====
+    async function loadSidebarUser() {
+      const id = localStorage.getItem("userId");
+      if (!id) return;
+
+      const nameEl = document.getElementById("sidebarName");
+      const avatarEl = document.getElementById("sidebarAvatar");
+
+      if (!avatarEl) return; // chưa render xong sidebar
+
+      try {
+        const res = await $fetch(`${BASE_URL}/api/users/${id}`);
+        if (res.ok) {
+          const user = await res.json();
+          if (nameEl) {
+            nameEl.textContent = user.fullName || localStorage.getItem("fullname") || "Người dùng";
+          }
+
+          if (avatarEl) {
+            //  Ngăn load lặp vô hạn nếu file mặc định không tồn tại
+            avatarEl.onerror = () => {
+              avatarEl.onerror = null; // dừng loop nếu lỗi
+              avatarEl.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.fullName || "User") + "&background=0ea5e9&color=fff&size=128";
+            };
+
+            //  Nếu có ảnh user → hiển thị, không có → dùng mặc định local hoặc online
+            avatarEl.src = user.avatarUrl || "images/default-avatar.png";
+          }
+        } else {
+          console.warn("Không thể tải thông tin avatar:", await $readErr(res));
+        }
+      } catch (err) {
+        console.warn("Lỗi khi tải avatar:", err);
+      }
+    }
+
+    // Gọi tự động sau khi DOM load
+    document.addEventListener("DOMContentLoaded", () => {
+      loadSidebarUser();
+    })
+
+
 function logout() {
     if (confirm('Bạn có chắc muốn đăng xuất?')) {
         localStorage.clear();

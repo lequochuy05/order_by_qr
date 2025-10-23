@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,11 +14,16 @@ public class ImageManagerService {
 
     private final Cloudinary cloudinary;
 
-    public ImageManagerService() {
+    // 🔹 Inject giá trị từ application.properties
+    public ImageManagerService(
+            @Value("${cloudinary.cloud_name}") String cloudName,
+            @Value("${cloudinary.api_key}") String apiKey,
+            @Value("${cloudinary.api_secret}") String apiSecret
+    ) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
-                "cloud_name", "dr0rjwfoc",      
-                "api_key", "967974352521679",
-                "api_secret", "Uw9z6nWLGjwQ5YGnTzfSOKWN-tA",
+                "cloud_name", cloudName,
+                "api_key", apiKey,
+                "api_secret", apiSecret,
                 "secure", true
         ));
     }
@@ -31,7 +37,7 @@ public class ImageManagerService {
         return uploadResult.get("secure_url").toString();
     }
 
-    /** Xóa ảnh khỏi Cloudinary (nếu có) */
+    /** Xóa ảnh khỏi Cloudinary */
     public void delete(String url) {
         try {
             if (url == null || !url.contains("/upload/")) return;
@@ -58,12 +64,10 @@ public class ImageManagerService {
 
     /** Upload dữ liệu QR code (byte[]) lên Cloudinary */
     public Map uploadBytes(byte[] data, String folder, String publicId) throws IOException {
-    return cloudinary.uploader().upload(data, ObjectUtils.asMap(
-        "folder", folder,
-        "public_id", publicId,
-        "resource_type", "image"
-    ));
-}
-
-
+        return cloudinary.uploader().upload(data, ObjectUtils.asMap(
+                "folder", folder,
+                "public_id", publicId,
+                "resource_type", "image"
+        ));
+    }
 }

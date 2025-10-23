@@ -106,6 +106,7 @@
         .then(r => r.text())
         .then(html => {
             document.querySelector('.sidebar-container').innerHTML = html;
+            loadSidebarUser();
         });
     </script>
     

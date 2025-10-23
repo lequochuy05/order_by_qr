@@ -4,3 +4,5 @@ window.APP_BASE_URL = window.APP_BASE_URL || (
   ? 'https://order-by-qr.onrender.com'
   : 'http://localhost:8080'
 );
+
+const BASE_URL = window.APP_BASE_URL;
