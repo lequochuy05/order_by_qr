@@ -56,7 +56,14 @@ public class SecurityConfig {
         .requestMatchers("/api/auth/**").permitAll()
 
         // public GET
-        .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu/**", "/api/tables/**", "/api/combos/**", "/api/orders/**", "/api/vouchers/**").permitAll()
+        .requestMatchers(HttpMethod.GET, 
+              "/api/categories/**", 
+                          "/api/menu/**", 
+                          "/api/tables/**", 
+                          "/api/combos/**", 
+                          "/api/orders/**", 
+                          "/api/vouchers/**"
+                          ).permitAll()
         // khách tạo đơn
         .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
@@ -68,11 +75,11 @@ public class SecurityConfig {
         // revenue
         .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER","STAFF")
 
+        // upload avatar
+        .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
+
         // cho phép /error để không dính vòng lặp lỗi
         .requestMatchers("/error").permitAll()
-
-        // cho phép truy cập thư mục uploads
-         .requestMatchers("/uploads/**").permitAll()
 
         // còn lại cần đăng nhập
         .anyRequest().authenticated()
@@ -92,6 +99,7 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     var c = new CorsConfiguration();
+    c.addAllowedOriginPattern("*");
     c.setAllowedOrigins(List.of(
       "http://localhost:*",
       "http://127.0.0.1:*",
