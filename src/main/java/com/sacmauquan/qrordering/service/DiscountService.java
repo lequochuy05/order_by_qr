@@ -19,11 +19,6 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Service gộp:
- *  - CRUD + validate voucher cho trang quản trị & menu
- *  - Logic apply/preview khi thanh toán (giữ nguyên hàm cũ của bạn)
- */
 @Service
 @RequiredArgsConstructor
 public class DiscountService {
@@ -63,7 +58,7 @@ public class DiscountService {
         applyFields(current, req);
         Voucher saved = voucherRepository.save(current);
 
-        broadcastReload(); // ✅ thêm
+        broadcastReload(); //  thêm
         return saved;
     }
 
@@ -73,7 +68,7 @@ public class DiscountService {
         }
         voucherRepository.deleteById(id);
 
-        broadcastReload(); // ✅ thêm
+        broadcastReload(); //  thêm
     }
 
     public void increaseUsedCount(Long id) {
@@ -82,7 +77,7 @@ public class DiscountService {
         v.setUsedCount(used + 1);
         voucherRepository.save(v);
 
-        broadcastReload(); // ✅ thêm
+        broadcastReload(); //  thêm
     }
 
     private void broadcastReload() {
@@ -99,7 +94,7 @@ public class DiscountService {
         if (code == null || code.isBlank()) {
             return new VoucherValidateResponse(null, "NOT_FOUND", 0.0, null, false);
         }
-        Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim())
+        Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim().toUpperCase())
                 .orElse(null);
         if (v == null) {
             return new VoucherValidateResponse(code.trim(), "NOT_FOUND", 0.0, null, false);
@@ -187,7 +182,7 @@ public class DiscountService {
         Voucher appliedVoucher = null;
 
         if (voucherCode != null && !voucherCode.isBlank()) {
-            Voucher v = voucherRepository.findByCode(voucherCode.trim())
+            Voucher v = voucherRepository.findByCode(voucherCode.trim().toUpperCase())
                     .orElseThrow(() -> new RuntimeException("Voucher không tồn tại"));
 
             LocalDateTime now = LocalDateTime.now();
@@ -224,8 +219,8 @@ public class DiscountService {
         }
 
         Optional<Voucher> opt =
-                voucherRepository.findByCodeIgnoreCaseAndActiveTrue(code.trim())
-                        .or(() -> voucherRepository.findByCodeAndActiveTrue(code.trim()));
+                voucherRepository.findByCodeIgnoreCaseAndActiveTrue(code.trim().toUpperCase())
+                        .or(() -> voucherRepository.findByCodeAndActiveTrue(code.trim().toUpperCase()));
 
         if (opt.isEmpty()) {
             return new VoucherResult(false, "Mã không hợp lệ hoặc đã hết hạn", 0d);

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông tin cá nhân</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <button class="menu-btn" onclick="toggleSidebar()">&#9776;</button>
+        <h1>Thông tin cá nhân</h1>
+        <span id="headerClock" class="header-clock" aria-label="Giờ hiện tại"></span>
+        <div class="user-info" id="userInfo"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-container"></div>
+
+    <div class="profile-container">
+        <!-- Avatar Section -->
+        <div class="profile-card avatar-card">
+            <h2>Ảnh đại diện</h2>
+            <div class="avatar-section">
+                <div class="avatar-preview">
+                    <img id="avatarImg" src="" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=User&size=200&background=0ea5e9&color=fff'">
+                </div>
+                <div class="avatar-actions">
+                    <input type="file" id="avatarFile" accept="image/*" style="display:none;">
+                    <button class="btn primary" onclick="document.getElementById('avatarFile').click()">
+                        📷 Chọn ảnh mới
+                    </button>
+                    <button class="btn secondary" id="btnUploadAvatar" style="display:none;">
+                        ⬆️ Tải lên
+                    </button>
+                    <p class="help-text">JPG, PNG tối đa 5MB</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Info Section -->
+        <div class="profile-card info-card">
+            <h2>Thông tin cơ bản</h2>
+            <form id="profileForm" onsubmit="event.preventDefault(); updateProfile();">
+                <div class="form-group">
+                    <label for="fullName">Họ và tên *</label>
+                    <input type="text" id="fullName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" readonly>
+                    <span class="help-text">Email không thể thay đổi</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Số điện thoại</label>
+                    <input type="tel" id="phone" placeholder="0123456789">
+                </div>
+
+                <div class="form-group">
+                    <label for="role">Vai trò</label>
+                    <input type="text" id="role" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="createdAt">Ngày tạo tài khoản</label>
+                    <input type="text" id="createdAt" readonly>
+                </div>
+
+                <div id="profileError" class="form-error"></div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">💾 Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Password Section -->
+        <div class="profile-card password-card">
+            <h2>Đổi mật khẩu</h2>
+            <form id="passwordForm" onsubmit="event.preventDefault(); changePassword();">
+                <div class="form-group">
+                    <label for="currentPassword">Mật khẩu hiện tại *</label>
+                    <div class="password-input">
+                        <input type="password" id="currentPassword" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword('currentPassword')">👁️</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">Mật khẩu mới *</label>
+                    <div class="password-input">
+                        <input type="password" id="newPassword" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('newPassword')">👁️</button>
+                    </div>
+                    <span class="help-text">Tối thiểu 6 ký tự</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Xác nhận mật khẩu mới *</label>
+                    <div class="password-input">
+                        <input type="password" id="confirmPassword" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('confirmPassword')">👁️</button>
+                    </div>
+                </div>
+
+                <div id="passwordError" class="form-error"></div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">🔐 Đổi mật khẩu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Load sidebar
+        fetch('/admin/sidebar.html').then(r=>r.text()).then(html=>{
+            document.querySelector('.sidebar-container').innerHTML = html;
+            loadSidebarUser();
+        });
+    </script>
+    <script src="js/config.js"></script>
+    <script src="js/auth-fetch.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html

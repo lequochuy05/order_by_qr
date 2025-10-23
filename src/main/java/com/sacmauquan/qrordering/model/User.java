@@ -35,6 +35,9 @@ public class User {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     public enum Role { 
         STAFF, MANAGER 
     }

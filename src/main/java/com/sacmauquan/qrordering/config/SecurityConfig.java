@@ -96,7 +96,7 @@ public class SecurityConfig {
       "http://localhost:*",
       "http://127.0.0.1:*",
       "https://order-by-qr.vercel.app",              //  domain Vercel của bạn
-      "https://orderbyqr-production.up.railway.app"  //  domain backend Railway
+      "https://order-by-qr.onrender.com"  //  domain backend trên Render
     ));
     c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization","Content-Type","Accept"));

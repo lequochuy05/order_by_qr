@@ -1,9 +1,7 @@
 package com.sacmauquan.qrordering.controller;
 
 import com.sacmauquan.qrordering.model.Category;
-import com.sacmauquan.qrordering.repository.CategoryRepository;
 import com.sacmauquan.qrordering.service.CategoryService;
-import com.sacmauquan.qrordering.service.ImageManagerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
@@ -18,8 +16,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CategoryController {
     private final CategoryService service;
-    private final CategoryRepository repo;
-    private final ImageManagerService imageManager;
 
     @GetMapping
     public List<Category> findAll() {
@@ -61,32 +57,27 @@ public class CategoryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Integer id) {
         try {
-            var cat = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
-            // 🧹 Xóa ảnh khỏi Cloudinary
-            imageManager.delete(cat.getImg());
-            repo.delete(cat);
+            service.delete(id);
             return ResponseEntity.noContent().build();
         } catch (NoSuchElementException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
     @PostMapping("/{id}/image")
     public ResponseEntity<?> uploadImage(@PathVariable Integer id, @RequestParam("file") MultipartFile file) {
         try {
-            var cat = repo.findById(id)
-                    .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
-            if (file.isEmpty()) return ResponseEntity.badRequest().body("File rỗng");
-
-            // 🧩 Thay ảnh (tự động xóa ảnh cũ nếu có)
-            String newUrl = imageManager.replace(file, cat.getImg(), "order_by_qr/categories");
-            cat.setImg(newUrl);
-            repo.save(cat);
-
-            return ResponseEntity.ok(Map.of("img", newUrl));
+            return ResponseEntity.ok(service.uploadImage(id, file));
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
+
 }

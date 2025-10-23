@@ -1,0 +1,368 @@
+/* ===== Reset & Layout cơ bản ===== */
+:root{
+  --card:#fff; 
+  --text:#111827; 
+  --muted:#6b7280; 
+  --border:#e5e7eb;
+  --brand:#ec4899; 
+  --pill:#fdf2f8; 
+  --shadow:0 8px 24px rgba(0,0,0,.08);
+  --radius:14px; --primary:#d81b60; 
+  --primary-600:#c2185b;
+}
+
+*{ 
+  box-sizing:border-box; 
+}
+body{ 
+  font-family:Arial, sans-serif; 
+  background:#f9f9f9; 
+  margin:0; 
+}
+.container{
+  max-width:420px; 
+  margin:20px auto; 
+  background:#fff; 
+  border-radius:12px;
+  padding:16px; 
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+}
+.table-title{
+  font-size:22px; 
+  color:var(--primary); 
+  text-align:center; 
+  font-weight:700; 
+  margin:0 0 12px;
+}
+
+/* ===== Toolbar lọc & sắp xếp ===== */
+.menu-toolbar{
+  position:sticky; 
+  top:0; 
+  z-index:20;
+  display:flex; 
+  justify-content:flex-end; 
+  gap:8px; 
+  margin-bottom:12px;
+  padding:10px 12px; 
+  background:rgba(255,255,255,.9); 
+  backdrop-filter:blur(6px);
+  border:1px solid var(--border); 
+  border-radius:var(--radius); 
+  box-shadow:var(--shadow);
+}
+.menu-toolbar .right{ 
+  display:flex; 
+  align-items:center; 
+  gap:8px; 
+  flex-wrap: wrap; 
+}
+
+.grid-toolbar{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "cat sort"
+    "search search";
+  gap: 10px 10px;
+}
+
+.cell{ width:100%; }
+.cell.cat   { grid-area: cat; }
+.cell.sort  { grid-area: sort; }
+.cell.search{ grid-area: search; }
+
+.control{
+  display:flex; 
+  align-items:center; 
+  gap:6px; 
+  background:var(--card);
+  border:1px solid var(--border); 
+  border-radius:10px; 
+  padding:6px 10px;
+}
+
+.control .icon{ 
+  opacity:.7; 
+  font-size:14px; 
+  line-height:1; 
+}
+.control select,.control input{
+  border:0; 
+  outline:0; 
+  background:transparent; 
+  color:var(--text);
+  font:inherit; 
+  padding:0; 
+  min-width:140px; 
+  width:100%;
+}
+.control input[type="search"]{ 
+  min-width:320px; 
+}
+.hide-sm{ 
+  display:flex; 
+}
+
+@media (max-width:560px){
+  .menu-toolbar{ 
+    flex-direction:column; 
+    align-items:stretch; 
+    gap:10px; 
+  }
+  .menu-toolbar .right{ 
+    justify-content:space-between; 
+  }
+  .control input[type="search"]{ 
+    min-width:0; 
+  }
+  .hide-sm{ 
+    display:none; 
+  }
+
+  .grid-toolbar{
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "cat"
+      "sort"
+  }
+}
+
+/* ===== Danh sách món ===== */
+#menuItems{ 
+  display:flex; 
+  flex-direction:column; 
+  gap:12px; 
+}
+
+.menu-item{
+  display:flex; 
+  align-items:flex-start; 
+  gap:12px;
+  padding:12px; 
+  background:#f0f0f0; 
+  border-radius:10px;
+}
+.menu-item img{
+  width:60px; 
+  height:60px; 
+  border-radius:8px; 
+  object-fit:cover; 
+  flex-shrink:0;
+}
+.details{ 
+  flex:1; 
+}
+.details .name{ 
+  font-size:16px; 
+  font-weight:700; 
+  color:#1976d2; 
+}
+.details .price{ 
+  font-size:14px; 
+  color:#555; 
+  margin-top:4px; 
+}
+
+.actions{ 
+  display:flex; 
+  flex-direction:column; 
+  align-items:flex-end; 
+  gap:6px; 
+}
+.quantity{ 
+  display:flex; 
+  align-items:center; 
+}
+.quantity button{
+  width:26px; 
+  height:26px; 
+  font-size:16px; 
+  font-weight:700; 
+  cursor:pointer;
+  background:var(--primary); 
+  color:#fff; 
+  border:0; 
+  border-radius:6px;
+}
+.quantity button:hover{ 
+  background:var(--primary-600); 
+}
+.quantity span{
+  min-width:20px; 
+  text-align:center; 
+  margin:0 8px; 
+  font-size:16px; 
+  font-weight:700;
+}
+
+.note-toggle-btn{
+  background:transparent; 
+  color:var(--primary); 
+  border:0; 
+  font-size:13px;
+  cursor:pointer; 
+  text-decoration:underline; 
+  padding:0;
+}
+.note{ 
+  display:none; 
+  width:100%; 
+}
+.note input{
+  width:95%; 
+  padding:6px 8px; 
+  font-size:14px; 
+  border:1px solid #ccc; 
+  border-radius:6px; 
+  outline:0;
+  margin-left: 20px;
+}
+
+/* ===== Nút đặt món ===== */
+.order-button{
+  width:100%; 
+  padding:12px; 
+  border:0; 
+  border-radius:8px; 
+  cursor:pointer;
+  background:var(--primary); 
+  color:#fff; 
+  font-size:18px; 
+  font-weight:700;
+}
+
+/* ===== Modal xác nhận ===== */
+.order-modal.hidden{ 
+  display:none; 
+}
+.order-modal{ 
+  position:fixed; 
+  inset:0; 
+  z-index:1000; 
+}
+.order-modal .modal-backdrop{ 
+  position:absolute; 
+  inset:0; 
+  background:rgba(0,0,0,.35); 
+}
+.order-modal .modal-body{
+  position:relative; 
+  margin:60px auto; 
+  max-width:520px; 
+  background:#fff;
+  border-radius:12px; 
+  padding:16px; 
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
+.order-modal .modal-body h3{ 
+  margin:0 0 12px; 
+}
+.order-modal .confirm-list{
+  max-height:320px; 
+  overflow:auto; 
+  border:1px solid #eee; 
+  border-radius:8px; 
+  padding:8px;
+}
+.confirm-row{ 
+  display:flex; 
+  justify-content:space-between; 
+  gap:8px; padding:6px 4px; 
+  border-bottom:1px dashed #eee; 
+}
+.confirm-row:last-child{ 
+  border-bottom:0; 
+}
+.confirm-row .left{ 
+  max-width:65%; 
+}
+.confirm-row .name{ 
+  font-weight:600; 
+}
+.confirm-row .note{ 
+  color:var(--muted); 
+  font-size:12px; 
+}
+.confirm-row .right{ 
+  text-align:right; 
+  min-width:30%; 
+}
+.confirm-total{ 
+  display:flex; 
+  justify-content:flex-end; 
+  gap:8px; 
+  padding:10px 0; 
+  font-size:15px; 
+}
+.confirm-actions{ 
+  display:flex; 
+  justify-content:flex-end; 
+  gap:8px; 
+}
+.btn{ 
+  padding:8px 14px; 
+  border-radius:10px; 
+  border:0; background:#0ea5e9; 
+  color:#fff; cursor:pointer; 
+}
+.btn.ghost{ 
+  background:#f3f4f6; 
+  color:#111; 
+}
+
+/* ===== Mục combo ===== */
+.combo-item {
+  display:flex; 
+  align-items:flex-start; 
+  gap:12px;
+  padding:12px; 
+  background:#fff0f6; /* màu nhạt để phân biệt combo */
+  border:1px solid var(--border);
+  border-radius:10px;
+  margin:8px 0;
+}
+.combo-item img {
+  width:60px; 
+  height:60px; 
+  border-radius:8px; 
+  object-fit:cover; 
+  flex-shrink:0;
+}
+.combo-item .details { flex:1; }
+.combo-item .details .name { font-size:16px; font-weight:700; color:#0f31a0; }
+.combo-item .details .price { font-size:14px; color:#444; margin-top:4px; }
+
+.combo-item .actions {
+  display:flex; 
+  flex-direction:column; 
+  align-items:flex-end; 
+  gap:6px;
+}
+.combo-item .quantity {
+  display:flex; 
+  align-items:center;
+}
+.combo-item .quantity button {
+  width:26px; height:26px; font-size:16px; font-weight:700;
+  background:var(--primary); color:#fff; border:0; border-radius:6px;
+  cursor:pointer;
+}
+.combo-item .quantity button:hover { background:var(--primary-600); }
+.combo-item .quantity span { min-width:20px; text-align:center; margin:0 8px; font-weight:700; }
+
+.combo-item .note-toggle-btn {
+  background:transparent; 
+  color:var(--primary); 
+  border:0; 
+  font-size:13px;
+  cursor:pointer; 
+  text-decoration:underline; 
+  padding:0;
+}
+.combo-item .note { display:none; width:100%; }
+.combo-item .note input {
+  width:95%; padding:6px 8px; font-size:14px;
+  border:1px solid #ccc; border-radius:6px; outline:0;
+  margin-left:20px;
+}
