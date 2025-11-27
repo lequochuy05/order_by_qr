@@ -1,3 +1,4 @@
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\ComboRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\UserDto.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\PasswordResetService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\config\WebSocketConfig.java
@@ -7,7 +8,9 @@ E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qr
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\service\OtpService.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\DiningTableRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\RevenueDto.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\ComboItemRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\DiningTableRepository.java
+E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\repository\ComboItemRepository.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\controller\CategoryController.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\UserUpsertRequest.java
 E:\HK1-2526\TTTT\OrderManagementByQr\qr-ordering\src\main\java\com\sacmauquan\qrordering\dto\DiningTableResponse.java

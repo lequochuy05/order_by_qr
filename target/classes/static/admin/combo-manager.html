@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Combo</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/combo-manager.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <h1>Quản lý Combo</h1>
+    <span id="headerClock" class="header-clock"></span>
+    <div class="user-info" id="userInfo"></div>
+  </div>
+
+  <!-- Admin actions -->
+  <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
+        <button id="btnAddCombo" class="btn" onclick="showAddCombo()">➕ Thêm Combo</button>
+  </div>
+ 
+  <!-- Sidebar -->
+  <div class="sidebar-container"></div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input id="comboSearch" placeholder="🔍 Tìm combo..." />
+    
+  </div>
+
+  <!-- Grid -->
+  <div id="comboContainer" class="combo-grid"></div>
+
+  <!-- Modal -->
+  <div id="comboModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:600px;">
+      <span class="close" onclick="closeComboModal()">&times;</span>
+      <h2 id="comboModalTitle">Thêm Combo</h2>
+
+      <form id="comboForm" onsubmit="event.preventDefault(); submitCombo();">
+        <div class="form-group">
+          <label for="comboName">Tên Combo *</label>
+          <input type="text" id="comboName" placeholder="VD: Mì + Nước" required>
+        </div>
+
+        <div class="form-group">
+          <label>Chọn món trong combo:</label>
+          <div id="menuList" class="menu-list">
+            <div style="text-align:center;color:#6b7280;">Đang tải danh sách món...</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="comboPrice">Giá Combo *</label>
+          <input type="number" id="comboPrice" placeholder="Tự tính sau khi chọn món" min="1000" required>
+          <small>Đơn vị: VND</small>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:6px;margin-top:10px;">
+          <input type="checkbox" id="comboActive" checked>
+          <span>Đang bán</span>
+        </label>
+
+        <div id="comboError" class="form-error"></div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:16px;">
+          <span id="comboTotal" style="color:#555;font-size:0.9rem;">Tổng: 0 VND</span>
+          <div style="display:flex;gap:10px;">
+            <button type="button" class="btn secondary" onclick="closeComboModal()">Hủy</button>
+            <button type="submit" class="btn primary">Lưu</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Nạp sidebar
+    fetch("/admin/sidebar.html").then(r => r.text()).then(html => {
+      document.querySelector(".sidebar-container").innerHTML = html;
+      loadSidebarUser?.();
+      initSidebarSubmenu?.();
+    });
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/auth-fetch.js"></script>
+  <script src="js/combo-manager.js"></script>
+</body>
+</html>

@@ -13,30 +13,28 @@ public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true, nullable = false)
+    private String email;
+    
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name="full_name")
     private String fullName;
 
-    private String phone;
-
-    @Column(unique = true, nullable = false)
-    private String email;
-
     private String password;
+
+    private String phone;
 
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    // NEW: ACTIVE/INACTIVE
     @Column(nullable = false)
     private String status = "ACTIVE";
 
-    // NEW: để sort/hiển thị nếu cần
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
-
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
 
     public enum Role { 
         STAFF, MANAGER 

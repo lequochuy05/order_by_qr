@@ -201,7 +201,7 @@ window.fmtVND = n => window.fmtN(n) + 'đ';
             };
 
             //  Nếu có ảnh user → hiển thị, không có → dùng mặc định local hoặc online
-            avatarEl.src = user.avatarUrl || "images/default-avatar.png";
+            avatarEl.src = user.avatarUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.fullName || "User") + "&background=0ea5e9&color=fff";
           }
         } else {
           console.warn("Không thể tải thông tin avatar:", await $readErr(res));
@@ -216,10 +216,27 @@ window.fmtVND = n => window.fmtN(n) + 'đ';
       loadSidebarUser();
     })
 
+    // ===== Khởi tạo submenu toggle =====
+    function initSidebarSubmenu() {
+      const toggles = document.querySelectorAll(".submenu-toggle");
+      toggles.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const parent = btn.parentElement;
+          parent.classList.toggle("active");
+        });
+      });
 
-function logout() {
-    if (confirm('Bạn có chắc muốn đăng xuất?')) {
-        localStorage.clear();
-        window.location.href = "/login.html";
+      // Nếu đang ở trang con -> tự mở sẵn submenu
+      const path = window.location.pathname;
+      if (path.includes("categories") || path.includes("item-manager") || path.includes("combo-manager")) {
+        const submenu = document.querySelector(".submenu");
+        if (submenu) submenu.classList.add("active");
+      }
     }
-}
+
+  function logout() {
+      if (confirm('Bạn có chắc muốn đăng xuất?')) {
+          localStorage.clear();
+          window.location.href = "/login.html";
+      }
+  }

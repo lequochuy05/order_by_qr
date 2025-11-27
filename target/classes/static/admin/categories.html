@@ -18,80 +18,56 @@
         <div class="user-info" id="userInfo"></div>
     </div>
 
-    <div style="text-align:center; margin: 10px 0;">
-        <input id="cateSearch" placeholder="Tìm theo tên danh mục..." style="padding:8px; width: 280px;"/>
+      <!-- Admin actions -->
+    <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
+        <button class="btn" onclick="showAddCategory()">➕ Thêm danh mục</button>
     </div>
 
-    <!-- Sidebar -->
+      <!-- Sidebar -->
     <div class="sidebar-container"></div>
 
-    <!-- Admin actions -->
-    <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
-        <button class="btn" onclick="showAddCategory()" style="font-size: 20px;">➕ Thêm danh mục</button>
+    <div style="text-align:center; margin: 10px 0;">
+        <input id="cateSearch" placeholder="🔍 Tìm theo tên danh mục..." style="padding:8px; width: 280px;"/>
     </div>
 
     <!-- Category list -->
     <div class="table-grid" id="categoryContainer"></div>
 
-    <!-- Modal thêm danh mục -->
-    <div id="addCategoryModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeAddCategoryModal()">&times;</span>
-            <h2>Thêm danh mục</h2>
-
-            <div class="form-group">
-            <label for="newCategoryName">Tên danh mục</label>
-            <input type="text" id="newCategoryName" placeholder="Tên danh mục" />
-            </div>
-
-            <div class="form-group">
-                <label for="newCategoryImgFile">Chọn ảnh</label>
-                <input type="file" id="newCategoryImgFile" accept="image/*" />
-                <div style="margin-top:8px">
-                    <img id="newCategoryPreview" alt="" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
-                </div>
-            </div>
-
-            <div id="addCategoryError" class="form-error"></div>
-
-            <div style="text-align:right; margin-top: 12px;">
-            <button class="btn primary" onclick="submitNewCategory()">Lưu</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal sửa danh mục -->
-    <div id="editCategoryModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeEditCategoryModal()">&times;</span>
-            <h2>Cập nhật danh mục</h2>
-
-            <div class="form-group">
-            <label for="editCategoryName">Tên danh mục</label>
-            <input type="text" id="editCategoryName" required />
-            </div>
+    <!-- Modal -->
+    <div id="categoryModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <span class="close" onclick="closeCategoryModal()">&times;</span>
+        <h2 id="categoryModalTitle">Thêm danh mục</h2>
 
         <div class="form-group">
-            <label for="editCategoryImgFile">Đổi ảnh (tuỳ chọn)</label>
-            <input type="file" id="editCategoryImgFile" accept="image/*" />
-            <div style="margin-top:8px">
-                <img id="editCategoryPreview" alt="" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
-            </div>
+        <label for="categoryName">Tên danh mục</label>
+        <input type="text" id="categoryName" placeholder="Tên danh mục" />
         </div>
 
-            <div id="editCategoryError" class="form-error"></div>
+        <div class="form-group">
+        <label for="categoryImgFile">Chọn ảnh</label>
+        <input type="file" id="categoryImgFile" accept="image/*" />
+        <div style="margin-top:8px">
+            <img id="categoryPreview" alt=""
+                style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
+        </div>
+        </div>
 
-            <div style="text-align:right; margin-top: 12px;">
-            <button class="btn primary" onclick="submitEditCategory()">Lưu</button>
-            </div>
+        <div id="categoryError" class="form-error"></div>
+
+        <div style="text-align:right; margin-top: 12px;">
+        <button class="btn primary" onclick="submitCategory()">Lưu</button>
         </div>
     </div>
+    </div>
+
 
     <script>
         // nạp sidebar
         fetch('/admin/sidebar.html').then(r=>r.text()).then(html=>{
             document.querySelector('.sidebar-container').innerHTML = html;
             loadSidebarUser();
+            initSidebarSubmenu();
     });
     </script>
     <script src="js/config.js"></script>

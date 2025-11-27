@@ -1,20 +1,24 @@
-// resources/static/admin/js/categories.js
-
+// admin/js/categories.js
 if (role === "MANAGER") {
   document.getElementById("adminActions").style.display = "block";
 }
 
+// ================== GLOBAL VARS ==================
 let editingCategoryId = null;
 let q = '';
 let page = 0;
 let size = 12;
 let sort = 'name,asc';
 
-// ===== Load & render =====
+// ================== LOAD & RENDER ==================
 async function loadCategories() {
   const container = document.getElementById('categoryContainer');
   if (!container) return;
-  container.innerHTML = `<div style="text-align:center; color:#6b7280; padding:40px; grid-column: 1/-1;">⏳ Đang tải...</div>`;
+
+  container.innerHTML = `
+    <div style="text-align:center; color:#6b7280; padding:40px; grid-column: 1/-1;">
+      ⏳ Đang tải...
+    </div>`;
 
   const url = q
     ? `${BASE_URL}/api/categories/search?q=${encodeURIComponent(q)}&page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`
@@ -23,16 +27,16 @@ async function loadCategories() {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error('Lỗi tải danh mục');
-
     const data = q ? await res.json() : { content: await res.json(), totalPages: 1 };
 
     container.innerHTML = '';
-    
+
     if (!data.content || data.content.length === 0) {
-      container.innerHTML = `<div style="text-align:center; color:#6b7280; padding:60px; grid-column: 1/-1;">
-        <div style="font-size:4rem; margin-bottom:16px;">📂</div>
-        <p style="font-size:1.1rem; margin:0;">Chưa có danh mục nào</p>
-      </div>`;
+      container.innerHTML = `
+        <div style="text-align:center; color:#6b7280; padding:60px; grid-column: 1/-1;">
+          <div style="font-size:4rem; margin-bottom:16px;">📂</div>
+          <p style="font-size:1.1rem; margin:0;">Chưa có danh mục nào</p>
+        </div>`;
       renderPagination(0);
       return;
     }
@@ -41,24 +45,25 @@ async function loadCategories() {
       const card = document.createElement('div');
       card.className = 'category-card';
       card.innerHTML = `
-        ${cat.img ? `<img src="${safeUrl(cat.img)}?v=${Date.now()}" alt="${escapeHtml(cat.name)}" onerror="this.style.display='none'">` : ''}
+        ${cat.img ? `<img src="${safeUrl(cat.img)}?v=${Date.now()}" alt="${escapeHtml(cat.name)}"
+            onerror="this.style.display='none'">` : ''}
         <h3>${escapeHtml(cat.name)}</h3>
         ${window.role === 'MANAGER' ? `
           <div style="margin-top:auto;">
             <button class="btn" onclick="showEditCategory(${Number(cat.id)}, '${escapeHtml(cat.name).replace(/'/g, "\\'")}', '${escapeHtml(cat.img || '').replace(/'/g, "\\'")}')">✏️</button>
             <button class="btn red" onclick="deleteCategory(${Number(cat.id)})">🗑️</button>
           </div>` : ''
-        }
-      `;
+        }`;
       container.appendChild(card);
     });
 
     renderPagination(data.totalPages || 1);
   } catch (e) {
-    container.innerHTML = `<div style="text-align:center; color:#ef4444; padding:40px; grid-column: 1/-1;">
-      <div style="font-size:3rem; margin-bottom:12px;">⚠️</div>
-      <p style="margin:0;">${e.message || 'Không thể tải danh mục'}</p>
-    </div>`;
+    container.innerHTML = `
+      <div style="text-align:center; color:#ef4444; padding:40px; grid-column: 1/-1;">
+        <div style="font-size:3rem; margin-bottom:12px;">⚠️</div>
+        <p style="margin:0;">${e.message || 'Không thể tải danh mục'}</p>
+      </div>`;
     renderPagination(0);
   }
 }
@@ -76,270 +81,183 @@ function renderPagination(totalPages) {
   bar.innerHTML = '';
 
   if (totalPages <= 1) return;
-  
+
   for (let i = 0; i < totalPages; i++) {
     const b = document.createElement('button');
     b.className = 'btn';
     b.textContent = (i + 1);
-    if (i === page) { 
-      b.style.background = '#3498db'; 
-      b.style.color = '#fff'; 
+    if (i === page) {
+      b.style.background = '#3498db';
+      b.style.color = '#fff';
     }
-    b.onclick = () => { 
-      page = i; 
-      loadCategories(); 
+    b.onclick = () => {
+      page = i;
+      loadCategories();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     bar.appendChild(b);
   }
 }
 
-// ===== Modal =====
+// ================== MODAL ==================
 window.showAddCategory = function () {
-  byId('newCategoryName').value = '';
-  const file = byId('newCategoryImgFile'); 
-  file.value = '';
-  const prev = byId('newCategoryPreview'); 
-  prev.style.display = 'none'; 
+  editingCategoryId = null;
+  byId('categoryModalTitle').textContent = 'Thêm danh mục';
+  byId('categoryName').value = '';
+  byId('categoryImgFile').value = '';
+  const prev = byId('categoryPreview');
   prev.src = '';
-  showError('addCategoryError', '');
-  byId('addCategoryModal').style.display = 'flex';
-  setTimeout(() => byId('newCategoryName').focus(), 100);
+  prev.style.display = 'none';
+  showError('categoryError', '');
+  byId('categoryModal').style.display = 'flex';
+  setTimeout(() => byId('categoryName').focus(), 100);
 };
 
-window.closeAddCategoryModal = function () {
-  byId('addCategoryModal').style.display = 'none';
-};
+window.showEditCategory = function (id, name, img) {
+  editingCategoryId = Number(id);
+  byId('categoryModalTitle').textContent = 'Cập nhật danh mục';
+  byId('categoryName').value = name || '';
+  byId('categoryImgFile').value = '';
 
-window.submitNewCategory = async function () {
-  const name = byId('newCategoryName').value.trim();
-  const file = byId('newCategoryImgFile').files[0] || null;
-  const errId = 'addCategoryError';
-  showError(errId, '');
-
-  if (!name) { 
-    showError(errId, 'Vui lòng nhập tên danh mục'); 
-    byId('newCategoryName').focus();
-    return; 
+  const prev = byId('categoryPreview');
+  if (img) {
+    prev.src = safeUrl(img) + '?v=' + Date.now();
+    prev.style.display = 'block';
+  } else {
+    prev.src = '';
+    prev.style.display = 'none';
   }
 
-  try {
-    // 1) Tạo category trước (chưa có ảnh)
-    const resCreate = await $fetch(`${BASE_URL}/api/categories`, {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
-    if (!resCreate.ok) {
-      const errMsg = await $readErr(resCreate);
-      throw new Error(errMsg || 'Tạo danh mục thất bại');
-    }
-    const created = await resCreate.json();
+  showError('categoryError', '');
+  byId('categoryModal').style.display = 'flex';
+  setTimeout(() => byId('categoryName').focus(), 100);
+};
 
-    // 2) Nếu có file ảnh -> upload
+window.closeCategoryModal = function () {
+  byId('categoryModal').style.display = 'none';
+};
+
+// ================== SUBMIT (THÊM / SỬA) ==================
+window.submitCategory = async function () {
+  const name = byId('categoryName').value.trim();
+  const file = byId('categoryImgFile').files[0] || null;
+  const errId = 'categoryError';
+  showError(errId, '');
+
+  if (!name) {
+    showError(errId, 'Vui lòng nhập tên danh mục');
+    byId('categoryName').focus();
+    return;
+  }
+  if (!file) {
+    showError(errId, 'Vui lòng nhập ảnh danh mục');
+    byId('categoryImgFile').focus();
+    return;
+  }
+  
+
+  try {
+    const url = editingCategoryId
+      ? `${BASE_URL}/api/categories/${editingCategoryId}`
+      : `${BASE_URL}/api/categories`;
+    const method = editingCategoryId ? 'PUT' : 'POST';
+
+    const res = await $fetch(url, { method, body: JSON.stringify({ name }) });
+    if (!res.ok) throw new Error(await $readErr(res));
+    const created = await res.json();
+
+    // Nếu có file ảnh thì upload
     if (file) {
+      if (!file.type.startsWith('image/')) throw new Error('Chỉ chọn file ảnh!');
+      if (file.size > 5 * 1024 * 1024) throw new Error('Ảnh quá lớn! Tối đa 5MB.');
+
       const fd = new FormData();
       fd.append('file', file);
       const resUp = await $fetch(`${BASE_URL}/api/categories/${created.id}/image`, {
         method: 'POST',
         body: fd
       });
-      if (!resUp.ok) {
-        const errMsg = await $readErr(resUp);
-        throw new Error(errMsg || 'Upload ảnh thất bại');
-      }
+      if (!resUp.ok) throw new Error(await $readErr(resUp));
     }
 
-    window.closeAddCategoryModal();
-    showAppSuccess(`Đã thêm danh mục "${name}" thành công!`);
-    page = 0;
-    setTimeout(() => loadCategories(), 500);
+    closeCategoryModal();
+    showAppSuccess(editingCategoryId ? 'Đã cập nhật danh mục!' : 'Đã thêm danh mục mới!');
+    setTimeout(loadCategories, 500);
   } catch (e) {
-    showError(errId, e.message || 'Có lỗi khi tạo danh mục');
+    showError(errId, e.message || 'Có lỗi khi lưu danh mục');
   }
 };
 
-window.showEditCategory = function (id, name, img) {
-  editingCategoryId = Number(id);
-  byId('editCategoryName').value = name || '';
-
-  // reset file & preview
-  const file = byId('editCategoryImgFile'); 
-  file.value = '';
-  const prev = byId('editCategoryPreview');
-  if (img) { 
-    prev.src = safeUrl(img) + '?v=' + Date.now(); 
-    prev.style.display = 'block'; 
-  } else { 
-    prev.src = ''; 
-    prev.style.display = 'none'; 
-  }
-
-  showError('editCategoryError', '');
-  byId('editCategoryModal').style.display = 'flex';
-  setTimeout(() => byId('editCategoryName').focus(), 100);
-};
-
-window.closeEditCategoryModal = function () {
-  byId('editCategoryModal').style.display = 'none';
-};
-
-window.submitEditCategory = async function () {
-  const name = byId('editCategoryName').value.trim();
-  const file = byId('editCategoryImgFile').files[0] || null;
-  const errId = 'editCategoryError';
-  showError(errId, '');
-
-  if (!name) { 
-    showError(errId, 'Tên danh mục không được rỗng'); 
-    byId('editCategoryName').focus();
-    return; 
-  }
-
-  try {
-    // 1) Cập nhật name
-    const resUpdate = await $fetch(`${BASE_URL}/api/categories/${editingCategoryId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ name })
-    });
-    if (!resUpdate.ok) {
-      const errMsg = await $readErr(resUpdate);
-      throw new Error(errMsg || 'Cập nhật thất bại');
-    }
-
-    // 2) Nếu có file -> upload ảnh
-    if (file) {
-      const fd = new FormData();
-      fd.append('file', file);
-      const resUp = await $fetch(`${BASE_URL}/api/categories/${editingCategoryId}/image`, {
-        method: 'POST',
-        body: fd
-      });
-      if (!resUp.ok) {
-        const errMsg = await $readErr(resUp);
-        throw new Error(errMsg || 'Upload ảnh thất bại');
-      }
-    }
-
-    window.closeEditCategoryModal();
-    showAppSuccess(`Đã cập nhật danh mục "${name}" thành công!`);
-    setTimeout(() => loadCategories(), 500);
-  } catch (e) {
-    showError(errId, e.message || 'Có lỗi khi cập nhật danh mục');
-  }
-};
-
+// ================== DELETE ==================
 window.deleteCategory = async function (id) {
-  if (!confirm('Bạn có chắc muốn xóa danh mục này?\n\nLưu ý: Các món ăn thuộc danh mục này có thể bị ảnh hưởng.')) return;
-  
+  if (!confirm('Bạn có chắc muốn xóa danh mục này?\n\nCác món ăn trong danh mục sẽ bị ảnh hưởng.')) return;
   try {
     const res = await $fetch(`${BASE_URL}/api/categories/${Number(id)}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const errMsg = await $readErr(res);
-      throw new Error(errMsg || 'Xóa thất bại');
-    }
+    if (!res.ok) throw new Error(await $readErr(res));
     showAppSuccess('Đã xóa danh mục thành công!');
-    setTimeout(() => loadCategories(), 500);
+    setTimeout(loadCategories, 500);
   } catch (e) {
     showAppError(e.message || 'Có lỗi khi xóa danh mục');
   }
 };
 
-// ===== Preview ảnh khi chọn file =====
-(function bindFilePreviews(){
-  const addFile = document.getElementById('newCategoryImgFile');
-  const addPrev = document.getElementById('newCategoryPreview');
-  if (addFile && addPrev) {
-    addFile.addEventListener('change', e => {
-      const f = e.target.files[0];
-      if (f) {
-        // Validate file type
-        if (!f.type.startsWith('image/')) {
-          alert('Vui lòng chọn file ảnh!');
-          e.target.value = '';
-          addPrev.src = ''; 
-          addPrev.style.display = 'none';
-          return;
-        }
-        // Validate file size (max 5MB)
-        if (f.size > 5 * 1024 * 1024) {
-          alert('Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.');
-          e.target.value = '';
-          addPrev.src = ''; 
-          addPrev.style.display = 'none';
-          return;
-        }
-        const url = URL.createObjectURL(f);
-        addPrev.src = url; 
-        addPrev.style.display = 'block';
-      } else {
-        addPrev.src = ''; 
-        addPrev.style.display = 'none';
-      }
-    });
-  }
+// ================== PREVIEW ẢNH ==================
+(function bindPreview() {
+  const input = byId('categoryImgFile');
+  const preview = byId('categoryPreview');
+  if (!input || !preview) return;
 
-  const editFile = document.getElementById('editCategoryImgFile');
-  const editPrev = document.getElementById('editCategoryPreview');
-  if (editFile && editPrev) {
-    editFile.addEventListener('change', e => {
-      const f = e.target.files[0];
-      if (f) {
-        // Validate file type
-        if (!f.type.startsWith('image/')) {
-          alert('Vui lòng chọn file ảnh!');
-          e.target.value = '';
-          return;
-        }
-        // Validate file size (max 5MB)
-        if (f.size > 5 * 1024 * 1024) {
-          alert('Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.');
-          e.target.value = '';
-          return;
-        }
-        const url = URL.createObjectURL(f);
-        editPrev.src = url; 
-        editPrev.style.display = 'block';
-      }
-    });
-  }
+  input.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) {
+      preview.style.display = 'none';
+      return;
+    }
+    if (!f.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh!');
+      input.value = '';
+      preview.style.display = 'none';
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      alert('Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.');
+      input.value = '';
+      preview.style.display = 'none';
+      return;
+    }
+    const url = URL.createObjectURL(f);
+    preview.src = url;
+    preview.style.display = 'block';
+  });
 })();
 
-// ===== Utils =====
+// ================== SEARCH ==================
 function debounce(fn, delay = 300) {
-  let t; 
-  return (...args) => { 
-    clearTimeout(t); 
-    t = setTimeout(() => fn(...args), delay); 
-  };
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
 }
 
-const onSearchInput = debounce(val => { 
-  q = (val || '').trim(); 
-  page = 0; 
-  loadCategories(); 
+const onSearchInput = debounce(val => {
+  q = (val || '').trim();
+  page = 0;
+  loadCategories();
 }, 400);
 
-// ===== Close modal on Escape =====
+// ================== ESCAPE CLOSE ==================
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    const addModal = byId('addCategoryModal');
-    const editModal = byId('editCategoryModal');
-    if (addModal && addModal.style.display === 'flex') closeAddCategoryModal();
-    if (editModal && editModal.style.display === 'flex') closeEditCategoryModal();
+    const modal = byId('categoryModal');
+    if (modal && modal.style.display === 'flex') closeCategoryModal();
   }
 });
 
-// ===== Boot =====
+// ================== INIT ==================
 window.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('cateSearch');
   if (input) {
     input.addEventListener('input', e => onSearchInput(e.target.value));
-    // Clear search on button (optional)
     input.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        input.value = '';
-        onSearchInput('');
-      }
+      if (e.key === 'Escape') { input.value = ''; onSearchInput(''); }
     });
   }
   loadCategories();

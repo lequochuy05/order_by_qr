@@ -98,6 +98,7 @@ window.loadTables = async function () {
         <p class="total">Tổng tiền: <span class="total-amount">0 VND</span></p>
         <div class="actions">
           <button class="btn btn-detail" onclick="showDetails(${t.id})">Chi tiết</button>
+          <button class="btn" onclick="openAddItemModal(${t.id})">➕ Thêm món</button>
           <span class="pay-slot"></span>
           ${window.role === 'MANAGER' ? `
             <div style="display:inline-flex;gap:8px;flex-wrap:wrap;margin-left:8px;">
@@ -302,10 +303,9 @@ window.cancelItem = async function(itemId){
     const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}`, { method:'DELETE' });
     if (!res.ok) throw new Error(await $readErr(res));
 
-    // Tải lại trạng thái bàn
+    // Reload lại modal chi tiết
     if (typeof window.currentOpenTableId === 'number') {
       await showDetails(window.currentOpenTableId);
-      loadTables();
     }
 
   }catch(e){
@@ -395,7 +395,7 @@ window.pay = async function (orderId, tableId) {
 
 // Gom combo và món lẻ
 const comboMap = {};   // { comboId: { name, qty, price } }
-const normalItems = [];
+const itemMap = {};    // 🔥 gộp món lẻ theo tên + giá + notes
 
 (order.orderItems || []).forEach(it => {
   if (it.combo) {
@@ -404,46 +404,45 @@ const normalItems = [];
       comboMap[key] = { name: it.combo.name, qty: 0, price: it.combo.price || 0 };
     }
     comboMap[key].qty += (it.quantity || 1);
-  } else if (it.notes && it.notes.startsWith("[COMBO]")) {
-    const key = it.notes;
-    if (!comboMap[key]) {
-      comboMap[key] = { name: it.notes.replace("[COMBO]","").trim(), qty: 0, price: it.unitPrice || 0 };
-    }
-    comboMap[key].qty += (it.quantity || 1);
   } else {
-    normalItems.push(it);
+    // key: tên món + notes + giá
+    const key = (it.menuItem?.name || "") + "::" + (it.notes || "") + "::" + (it.unitPrice || it.menuItem?.price || 0);
+    if (!itemMap[key]) {
+      itemMap[key] = {
+        name: it.menuItem?.name || "",
+        notes: it.notes || "",
+        qty: 0,
+        price: it.unitPrice ?? it.menuItem?.price ?? 0
+      };
+    }
+    itemMap[key].qty += it.quantity || 1;
   }
 });
 
-  // Build rows cho combo
-  let rows = Object.values(comboMap).map(c => `
-    <tr>
-      <td style="padding:10px;border-bottom:1px solid #eee;">
-        Combo ${c.name}
-      </td>
-      <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${c.qty}</td>
-      <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price)}</td>
-      <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price * c.qty)}</td>
-    </tr>
-  `).join('');
+// Build rows cho combo
+let rows = Object.values(comboMap).map(c => `
+  <tr>
+    <td style="padding:10px;border-bottom:1px solid #eee;">
+      Combo ${c.name}
+    </td>
+    <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${c.qty}</td>
+    <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price)}</td>
+    <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(c.price * c.qty)}</td>
+  </tr>
+`).join('');
 
-  // Build rows cho món lẻ
-  rows += normalItems.map(it => {
-    const name  = it.menuItem?.name ?? '(Món)';
-    const price = it.unitPrice ?? it.menuItem?.price ?? 0;
-    const qty   = it.quantity ?? 0;
-    const line  = price * qty;
-    return `
-      <tr>
-        <td style="padding:10px;border-bottom:1px solid #eee;">
-          ${name}
-        </td>
-        <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${qty}</td>
-        <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(price)}</td>
-        <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(line)}</td>
-      </tr>
-    `;
-  }).join('');
+// Build rows cho món lẻ (đã gộp)
+rows += Object.values(itemMap).map(it => `
+  <tr>
+    <td style="padding:10px;border-bottom:1px solid #eee;">
+      ${it.name}${it.notes ? `<br><small style="color:#6b7280;">(${it.notes})</small>` : ""}
+    </td>
+    <td style="text-align:center;padding:10px;border-bottom:1px solid #eee;">${it.qty}</td>
+    <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(it.price)}</td>
+    <td style="text-align:right;padding:10px;border-bottom:1px solid #eee;">${fmtVND(it.price * it.qty)}</td>
+  </tr>
+`).join('');
+
 
   // Gắn vào bảng
   if (itemsEl) {
@@ -505,7 +504,6 @@ window.confirmPay = async function () {
     window.showSuccess?.('Thanh toán thành công!', 'Thành công');
 
     await sleep(200);
-    loadTables();
 
   } catch (e) {
     if (errEl) { errEl.textContent = e.message || 'Thanh toán thất bại'; errEl.style.display = 'block'; }
@@ -803,7 +801,6 @@ window.submitNewTable = async function () {
       const m = await $readErr(res);
       throw new Error(m || 'Lỗi khi thêm bàn');
     }
-
     closeAddTableModal();
     loadTables();
   } catch (e) {
@@ -912,17 +909,243 @@ function connectWebSocket() {
     _stomp = Stomp.over(socket);
     _stomp.debug = () => {};
     _stomp.connect({}, () => {
-      _stomp.subscribe('/topic/tables', async (msg) => {
-        if(msg.body == "UPDATED"){
-          await sleep(200);  
-          loadTables();
-        }
+      _stomp.subscribe('/topic/tables', (msg) => {
+          const data = JSON.parse(msg.body);
+          updateSingleTableFast(data);
       });
     });
   } catch (e) {
     console.warn('WS connect error:', e);
   }
 }
+
+function updateSingleTableFast(data) {
+    const { tableId, status, totalAmount, orderId } = data;
+
+    const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+    if (!card) return;
+
+    // update status
+    card.querySelector(".status strong").textContent = status;
+
+    // update tiền
+    card.querySelector(".total-amount").textContent =
+        `${Number(totalAmount).toLocaleString('vi-VN')} VND`;
+
+    const paySlot = card.querySelector('.pay-slot');
+    if (orderId) {
+        paySlot.innerHTML = `<button class="btn btn-pay" onclick="pay(${orderId}, ${tableId})">Thanh toán</button>`;
+    } else {
+        paySlot.innerHTML = "";
+    }
+
+    highlightCard(card);
+}
+
+// ====== THÊM MÓN VÀO BÀN ======
+let _currentAddTableId = null;
+let _menuItems = [];
+let _menuCombos = [];
+let _selectedCart = [];
+let _currentTab = 'items';
+
+// Mở modal
+window.openAddItemModal = async function (tableId) {
+  _currentAddTableId = tableId;
+  $id("openAddItemModal").style.display = "flex";
+  $id("selectedItemsList").innerHTML = `<p style="text-align:center; color:var(--muted); padding:20px;">Đang tải menu...</p>`;
+  $id("cartCount").textContent = "0";
+  $id("tempTotal").textContent = "0 VND";
+
+  try {
+    // Lấy thông tin bàn
+    const res = await $fetch(`${BASE_URL}/api/tables/${tableId}`);
+    if (!res.ok) throw new Error("Không tìm thấy bàn");
+    const table = await res.json();
+    $id("addItemTableNumber").textContent = table.tableNumber || "";
+
+    // Gọi API lấy danh mục + menu + combo
+    const [resMenu, resCombo, resCate] = await Promise.all([
+      $fetch(`${BASE_URL}/api/menu`),
+      $fetch(`${BASE_URL}/api/combos`),
+      $fetch(`${BASE_URL}/api/categories`)
+    ]);
+
+    _menuItems = resMenu.ok ? await resMenu.json() : [];
+    _menuCombos = resCombo.ok ? await resCombo.json() : [];
+    const categories = resCate.ok ? await resCate.json() : [];
+
+    // Render filter category
+    const catEl = $id("categoryFilter");
+    catEl.innerHTML = `<button class="btn small" onclick="renderMenuItems()" data-cat="ALL">Tất cả</button>` +
+      categories.map(c => `<button class="btn small" onclick="renderMenuItems('${c.name}')">${c.name}</button>`).join("");
+
+    renderMenuItems();
+    renderCart();
+
+  } catch (e) {
+    $id("selectedItemsList").innerHTML = `<p style="text-align:center;color:#ef4444;">${e.message}</p>`;
+  }
+};
+
+// Đóng modal
+window.closeAddItemModal = function () {
+  _currentAddTableId = null;
+  _selectedCart = [];
+  _menuItems = [];
+  _menuCombos = [];
+  $id("openAddItemModal").style.display = "none";
+};
+
+// Chuyển tab
+window.switchTab = function (tab) {
+  _currentTab = tab;
+  document.getElementById("tabItems").classList.toggle("active", tab === "items");
+  document.getElementById("tabCombos").classList.toggle("active", tab === "combos");
+  document.getElementById("categoryFilter").style.display = tab === "items" ? "flex" : "none";
+  renderMenuItems();
+};
+
+// Render danh sách món / combo
+window.renderMenuItems = function (category = "ALL") {
+  const grid = $id("menuItemsGrid");
+  const list = _currentTab === "items"
+    ? _menuItems.filter(i => category === "ALL" || i.category?.name === category)
+    : _menuCombos;
+
+  if (!list.length) {
+    grid.innerHTML = `<p style="text-align:center;color:#6b7280;padding:16px;">Không có dữ liệu</p>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(it => `
+    <div class="menu-card" onclick="addToCart('${_currentTab}', ${it.id})">
+      <img src="${it.imageUrl || '/img/noimg.png'}" alt="${it.name}" class="menu-img"/>
+      <div class="menu-info">
+        <strong>${it.name}</strong>
+        <div>${fmtVND(it.price)}</div>
+      </div>
+    </div>
+  `).join("");
+};
+
+// Thêm món vào giỏ hàng
+window.addToCart = function (type, id) {
+  const src = type === "items"
+    ? _menuItems.find(i => i.id === id)
+    : _menuCombos.find(c => c.id === id);
+  if (!src) return;
+
+  const key = `${type}-${id}`;
+  const exist = _selectedCart.find(it => it.key === key);
+  if (exist) {
+    exist.qty++;
+  } else {
+    _selectedCart.push({
+      key,
+      type,
+      id,
+      name: src.name,
+      price: src.price,
+      qty: 1,
+      notes: ""
+    });
+  }
+  renderCart();
+};
+
+// Cập nhật ghi chú
+window.updateCartNote = function (key, val) {
+  const it = _selectedCart.find(i => i.key === key);
+  if (it) it.notes = val;
+};
+
+// Cập nhật số lượng
+window.updateCartQty = function (key, val) {
+  const it = _selectedCart.find(i => i.key === key);
+  if (it) it.qty = Math.max(1, Number(val) || 1);
+  renderCart();
+};
+
+// Xóa khỏi giỏ
+window.removeCartItem = function (key) {
+  _selectedCart = _selectedCart.filter(i => i.key !== key);
+  renderCart();
+};
+
+// Hiển thị giỏ hàng
+function renderCart() {
+  const listEl = $id("selectedItemsList");
+  if (!_selectedCart.length) {
+    listEl.innerHTML = `<p style="text-align:center; color:var(--muted); padding:20px;">Chưa chọn món nào</p>`;
+    $id("cartCount").textContent = "0";
+    $id("tempTotal").textContent = "0 VND";
+    return;
+  }
+
+  let total = 0;
+  listEl.innerHTML = _selectedCart.map(it => {
+    const line = (it.price || 0) * (it.qty || 1);
+    total += line;
+    return `
+      <div class="cart-row">
+        <div><strong>${it.name}</strong> - ${fmtVND(it.price)}</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+          <input type="number" min="1" value="${it.qty}" style="width:60px" onchange="updateCartQty('${it.key}', this.value)">
+          <input type="text" placeholder="Ghi chú..." value="${it.notes}" style="flex:1" onchange="updateCartNote('${it.key}', this.value)">
+          <button class="btn small danger" onclick="removeCartItem('${it.key}')">✖</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+  $id("cartCount").textContent = _selectedCart.length;
+  $id("tempTotal").textContent = fmtVND(total);
+}
+
+// Gửi API thêm món vào bàn
+window.submitAddItemsToTable = async function () {
+  if (!_selectedCart.length) {
+    $id("addItemError").textContent = "Vui lòng chọn ít nhất 1 món.";
+    return;
+  }
+
+  try {
+    const resT = await $fetch(`${BASE_URL}/api/tables/${_currentAddTableId}`);
+    if (!resT.ok) throw new Error("Không tìm thấy bàn");
+    const table = await resT.json();
+
+    const req = {
+      tableId: table.id,
+      tableCode: table.tableCode,
+      items: _selectedCart
+        .filter(i => i.type === "items")
+        .map(i => ({
+          menuItemId: i.id,
+          quantity: i.qty,
+          notes: i.notes || null
+        })),
+      combos: _selectedCart
+        .filter(i => i.type === "combos")
+        .map(i => ({
+          comboId: i.id,
+          quantity: i.qty,
+          notes: i.notes || null
+        }))
+    };
+
+    const res = await $fetch(`${BASE_URL}/api/orders`, {
+      method: "POST",
+      body: JSON.stringify(req)
+    });
+    if (!res.ok) throw new Error(await $readErr(res));
+
+    closeAddItemModal();
+    showSuccess?.("Đã thêm món vào bàn!", "Thành công");
+  } catch (e) {
+    $id("addItemError").textContent = e.message || "Không thể thêm món";
+  }
+};
+
 
 // ===== boot =====
 window.addEventListener('DOMContentLoaded', () => {

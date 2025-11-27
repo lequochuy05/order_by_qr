@@ -29,13 +29,6 @@ public class Order {
     @Column(name = "status")
     private String status;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<OrderItem> orderItems = new ArrayList<>();
-
     @Column(name = "original_total")
     private Double originalTotal;
 
@@ -45,10 +38,19 @@ public class Order {
      @Column(name = "total_amount")
     private double totalAmount;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
     @ManyToOne
     @JoinColumn(name = "paid_by")
     private User paidBy;
 
     @Column(name = "payment_time")
     private LocalDateTime paymentTime;
+
+    
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<OrderItem> orderItems = new ArrayList<>();
+
 }

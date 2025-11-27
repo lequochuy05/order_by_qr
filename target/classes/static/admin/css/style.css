@@ -25,10 +25,7 @@
   --highlight-0: #fff3cd;
   --highlight-50: #ffeeba;
 
-  /* Sidebar / header */
-  --sidebar-bg: #2c3e50;
-  --sidebar-hover: #34495e;
-  --sidebar-text: #ecf0f1;
+
 
   --header-grad-start: #74ebd5;
   --header-grad-end: #acb6e5;
@@ -157,59 +154,6 @@ h1, h2, h3 {
 .user-info a:hover {
   opacity: 0.9;
   background: rgba(48, 15, 79, 0.212);
-}
-
-/* ===== Sidebar ===== */
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: -250px;
-  width: 250px;
-  height: 100%;
-  background-color: var(--sidebar-bg);
-  overflow-x: hidden;
-  transition: left 0.3s ease;
-  padding-top: 60px;
-  z-index: 1000;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-}
-
-.sidebar a {
-  padding: 14px 24px;
-  text-decoration: none;
-  font-size: 16px;
-  color: var(--sidebar-text);
-  display: block;
-  transition: all 0.3s;
-  border-left: 4px solid transparent;
-}
-
-.sidebar a:hover {
-  background-color: var(--sidebar-hover);
-  border-left-color: var(--primary);
-  padding-left: 28px;
-}
-
-.sidebar.active {
-  left: 0;
-}
-
-.close-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 22px;
-  background: none;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 4px;
-  transition: background 0.3s;
-}
-
-.close-btn:hover {
-  background: rgba(255,255,255,0.1);
 }
 
 /* ===== Container ===== */
@@ -380,8 +324,8 @@ h1, h2, h3 {
 }
 
 .btn-edit-item {
-  color: var(--sidebar-bg);
-  border-color: var(--sidebar-bg);
+  color: #2c3e50;
+  border-color: #2c3e50;
 }
 
 .btn-close {

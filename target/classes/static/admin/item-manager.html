@@ -38,68 +38,44 @@
     <!-- Danh sách món ăn -->
     <div class="table-grid" id="menuItemContainer"></div>   
 
-    <!-- Modal thêm món ăn -->
-    <div id="addItemModal" class="modal" style="display:none;">
+    <!-- Modal thêm / sửa món ăn -->
+    <div id="itemModal" class="modal" style="display:none;">
     <div class="modal-content">
-        <span class="close" onclick="closeAddItemModal()">&times;</span>
-        <h2>Thêm món ăn</h2>
+        <span class="close" onclick="closeItemModal()">&times;</span>
+        <h2 id="itemModalTitle">Thêm món ăn</h2>
+
         <div class="form-group">
-            <label for="addName">Tên món</label>
-            <input id="addName" type="text" required />
+        <label for="itemName">Tên món</label>
+        <input id="itemName" type="text" required />
         </div>
+
         <div class="form-group">
-            <label for="addPrice">Giá</label>
-            <input id="addPrice" type="number" min="0" required />
+        <label for="itemPrice">Giá</label>
+        <input id="itemPrice" type="number" min="0" required />
         </div>
+
         <div class="form-group">
-            <label for="addImgFile">Chọn ảnh</label>
-            <input id="addImgFile" type="file" accept="image/*" />
-            <div style="margin-top:8px">
-                <img id="addImgPreview" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
-            </div>
+        <label for="itemImgFile">Ảnh món</label>
+        <input id="itemImgFile" type="file" accept="image/*" />
+        <div style="margin-top:8px">
+            <img id="itemImgPreview" 
+                style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
         </div>
+        </div>
+
         <div class="form-group">
-            <label for="addCategory">Danh mục</label>
-            <select id="addCategory"></select>
+        <label for="itemCategory">Danh mục</label>
+        <select id="itemCategory"></select>
         </div>
-        <div id="addError" class="form-error"></div>
+
+        <div id="itemError" class="form-error"></div>
+
         <div style="text-align:right; margin-top: 12px;">
-            <button class="btn" onclick="submitNewItem()">Lưu</button>
+        <button class="btn primary" onclick="submitItem()">Lưu</button>
         </div>
     </div>
     </div>
 
-    <!-- Modal sửa món ăn -->
-    <div id="editItemModal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeEditItemModal()">&times;</span>
-            <h2>Sửa món ăn</h2>
-            <div class="form-group">
-                <label for="editName">Tên món</label>
-                <input id="editName" type="text" required />
-            </div>
-            <div class="form-group">
-                <label for="editPrice">Giá</label>
-                <input id="editPrice" type="number" min="0"  required/>
-            </div>
-            <div class="form-group">
-                <label for="editImgFile">Đổi ảnh (tuỳ chọn)</label>
-                <input id="editImgFile" type="file" accept="image/*" />
-                <div style="margin-top:8px">
-                    <img id="editImgPreview" style="max-width:100%;max-height:160px;display:none;border-radius:8px;object-fit:cover;">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="editCategory">Danh mục</label>
-                <select id="editCategory"></select>
-            </div>
-            <div id="editError" class="form-error"></div>
-            <div style="text-align:right; margin-top: 12px;">
-                <button class="btn" onclick="submitEditItem()">Cập nhật</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         fetch('/admin/sidebar.html')
@@ -107,6 +83,7 @@
         .then(html => {
             document.querySelector('.sidebar-container').innerHTML = html;
             loadSidebarUser();
+            initSidebarSubmenu();
         });
     </script>
     

@@ -16,25 +16,22 @@ public class OrderItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ========== Liên kết đến Order ==========
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     @JsonBackReference
     @JsonIgnoreProperties({"order"})
     private Order order;
 
-    // ========== Liên kết món lẻ ==========
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
     private MenuItem menuItem;
 
-    // ========== Liên kết combo ==========
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
     private Combo combo;
 
+    private Double unitPrice;    
     private int quantity;
-    private Double unitPrice;     // giá 1 đơn vị (món hoặc combo)
     private String notes;
     private boolean prepared = false;
 }

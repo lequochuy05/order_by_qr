@@ -1,18 +1,21 @@
 package com.sacmauquan.qrordering.model;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "combos")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-@Getter @Setter
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
 public class Combo {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true, length = 120)
@@ -21,9 +24,10 @@ public class Combo {
     @Column(nullable = false)
     private Double price;
 
-    private Boolean active;
+    @Column(nullable = false)
+    private Boolean active = true;
 
-    @OneToMany(mappedBy = "combo", fetch = FetchType.LAZY)
-    @JsonIgnoreProperties({"combo"})
+    @OneToMany(mappedBy = "combo", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("combo")
     private List<ComboItem> items;
 }
