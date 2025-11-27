@@ -20,10 +20,10 @@ public class MenuItem {
     private Long id;
 
     private String name;
+    
+    private String img;
 
     private double price;
-
-    private String img;
 
     @ManyToOne
     @JoinColumn(name = "cate_id", nullable = false)

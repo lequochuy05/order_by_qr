@@ -16,7 +16,6 @@ public class Voucher {
 
     private Double discountPercent;
     private Double discountAmount;
-
     private LocalDateTime validFrom;
     private LocalDateTime validTo;
 

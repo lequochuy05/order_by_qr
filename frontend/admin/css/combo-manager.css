@@ -1,0 +1,231 @@
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 20px auto;
+}
+.toolbar input {
+  padding: 10px;
+  width: 320px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.toolbar input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* ===== Combo Grid ===== */
+.combo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+  padding: 20px;
+  max-width: 1000px;
+  margin: auto;
+}
+
+.combo-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 18px;
+  text-align: center;
+  transition: all 0.25s;
+}
+.combo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.combo-card h3 {
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+  color: #1f2937;
+  font-weight: 600;
+}
+.combo-card .price {
+  font-weight: 600;
+  color: #dc2626;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+.status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.8rem;
+}
+.status.active {
+  background-color: #22c55e;
+}
+.status.inactive {
+  background-color: #9ca3af;
+}
+.combo-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.combo-actions .btn {
+  flex: 1;
+  margin: 0 3px;
+}
+
+/* ===== Modal ===== */
+.modal-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-content h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 10px;
+}
+
+/* ===== Form ===== */
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  width: 20%;
+  padding: 8px 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.form-group input[type="text"],
+#comboPrice{
+    width: 100%;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* ===== Menu List (danh sách món trong combo) ===== */
+.menu-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fafafa;
+  padding: 6px 8px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px dashed #e5e7eb;
+}
+.menu-item:last-child {
+  border-bottom: none;
+}
+.menu-item label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+.menu-item small {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+.menu-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+/* ===== Số lượng ===== */
+.menu-item .menu-qty {
+  width: 52px;
+  padding: 3px;
+  text-align: center;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.menu-item .menu-qty:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* ===== Tổng tiền & lỗi ===== */
+#comboTotal {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.9rem;
+}
+.form-error {
+  color: #ef4444;
+  font-size: 0.9rem;
+  display: none;
+  margin-top: 6px;
+}
+
+/* ===== Nút ===== */
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn.primary {
+  background-color: #3b82f6;
+  color: white;
+}
+.btn.primary:hover {
+  background-color: #2563eb;
+}
+.btn.secondary {
+  background-color: #e5e7eb;
+}
+.btn.secondary:hover {
+  background-color: #d1d5db;
+}
+.btn.red {
+  background-color: #ef4444;
+  color: white;
+}
+.btn.red:hover {
+  background-color: #dc2626;
+}
+
+/* ===== Scrollbar đẹp hơn ===== */
+.menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+.menu-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 4px;
+}
+.menu-list::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}

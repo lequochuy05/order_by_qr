@@ -24,7 +24,7 @@
 
     <!-- Thêm bàn (dành cho admin) -->
     <div id="adminActions" class="admin-actions" style="text-align: end; margin-right: 20px; display: none;">
-            <button class="btn" onclick="showAddTable()" style=" font-size: 20px;">➕ Thêm bàn</button>
+            <button class="btn" onclick="showAddTable()">➕ Thêm bàn</button>
     </div>
 
     <!-- Bộ lọc bàn -->
@@ -124,7 +124,6 @@
       </div>
     </div>
 
-
     <!-- Modal sửa món trong đơn -->
     <div id="editModal" class="modal hidden">
       <div class="modal-backdrop" onclick="closeEditModal()"></div>
@@ -142,7 +141,6 @@
         </div>
       </div>
     </div>
-
 
     <!-- Modal xác nhận thanh toán -->
     <div id="payModal" class="modal" style="display:none;">
@@ -185,12 +183,63 @@
       </div>
     </div>
 
+    <!-- Modal Thêm món vào bàn -->
+    <div id="openAddItemModal" class="modal" style="display:none;">
+      <div class="modal-content modal-content--lg">
+        <span class="close" onclick="closeAddItemModal()">&times;</span>
+        <h2>Thêm món cho Bàn <span id="addItemTableNumber"></span></h2>
+        
+        <!-- Tab: Món ăn / Combo -->
+        <div style="display: flex; gap: 12px; margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 12px;">
+          <button class="tab-btn active" onclick="switchTab('items')" id="tabItems">
+            🍽️ Món ăn
+          </button>
+          <button class="tab-btn" onclick="switchTab('combos')" id="tabCombos">
+            🎁 Combo
+          </button>
+        </div>
+        
+        <!-- Category Filter (chỉ cho món ăn) -->
+        <div class="menu-category-filter" id="categoryFilter" style="display:flex;">
+          <!-- JS render categories -->
+        </div>
+        
+        <!-- Menu Items Grid -->
+        <div class="menu-items-grid" id="menuItemsGrid">
+          <!-- JS render items/combos -->
+        </div>
+        
+        <!-- Selected Items Cart -->
+        <div class="selected-items-section">
+          <h3 style="margin: 0 0 12px; font-size: 16px; color: var(--text);">
+            🛒 Giỏ hàng (<span id="cartCount">0</span> món)
+          </h3>
+          <div id="selectedItemsList" class="selected-items-list">
+            <p style="text-align:center; color:var(--muted); padding:20px;">Chưa chọn món nào</p>
+          </div>
+          <div class="order-summary-box">
+            <div class="total">Tổng tạm tính: <span id="tempTotal">0 VND</span></div>
+          </div>
+        </div>
+        
+        <div id="addItemError" class="form-error"></div>
+        
+        <div style="text-align:right; margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn secondary" onclick="closeAddItemModal()">Hủy</button>
+          <button class="btn primary" onclick="submitAddItemsToTable()">
+            ✅ Xác nhận thêm
+          </button>
+        </div>
+      </div>
+    </div>
+
 <script>
     fetch('/admin/sidebar.html')
       .then(r => r.text())
       .then(html => {
         document.querySelector('.sidebar-container').innerHTML = html;
         loadSidebarUser();
+        initSidebarSubmenu();
       });
   </script>
 

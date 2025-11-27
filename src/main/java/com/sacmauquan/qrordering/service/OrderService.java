@@ -25,6 +25,17 @@ public class OrderService {
     @Autowired private ComboRepository comboRepository;
     @Autowired private DiscountService discountService;
 
+    // ===================== GET ALL ORDERS =====================
+    public List<Order> getAllOrders() { return orderRepository.findAll(); }
+
+    // ===================== UPDATE STATUS =====================
+    public Order updateStatus(Long id, String status) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
+        order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
     // ===================== CREATE ORDER =====================
     @Transactional
     public Order createOrder(OrderRequest req) {
@@ -34,8 +45,17 @@ public class OrderService {
             throw new IllegalArgumentException("Đơn hàng không hợp lệ");
         }
 
-        DiningTable table = tableRepository.findByTableCode(req.getTableCode())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableCode()));
+        DiningTable table = null;
+
+        if (req.getTableCode() != null && !req.getTableCode().isBlank()) {
+            table = tableRepository.findByTableCode(req.getTableCode())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableCode()));
+        } else if (req.getTableId() != null) {
+            table = tableRepository.findById(req.getTableId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn ID: " + req.getTableId()));
+        } else {
+            throw new IllegalArgumentException("Thiếu thông tin bàn (tableCode hoặc tableId)");
+        }
 
         // lấy / tạo order PENDING
         Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");
@@ -61,7 +81,8 @@ public class OrderService {
                         .filter(oi -> oi.getMenuItem() != null
                                 && oi.getMenuItem().getId().equals(mi.getId())
                                 && Objects.equals(oi.getNotes(), it.getNotes())
-                                && oi.getCombo() == null)
+                                && oi.getCombo() == null
+                                && !oi.isPrepared())
                         .findFirst();
 
                 if (exist.isPresent()) {
@@ -93,7 +114,8 @@ public class OrderService {
                 Optional<OrderItem> exist = order.getOrderItems().stream()
                         .filter(oi -> oi.getCombo() != null
                                 && oi.getCombo().getId().equals(combo.getId())
-                                && Objects.equals(oi.getNotes(), cr.getNotes()))
+                                && Objects.equals(oi.getNotes(), cr.getNotes())
+                                && !oi.isPrepared())
                         .findFirst();
 
                 if (exist.isPresent()) {
@@ -127,11 +149,15 @@ public class OrderService {
         table.setStatus("Đang phục vụ");
         tableRepository.save(table);
 
-        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+        Map<String,Object> dto = new HashMap<>();
+        dto.put("tableId", order.getTable().getId());
+        dto.put("status", order.getTable().getStatus());
+        dto.put("totalAmount", order.getTotalAmount());
+        dto.put("orderId", order.getId());
+
+        messagingTemplate.convertAndSend("/topic/tables", dto);
         return saved;
     }
-
-    public List<Order> getAllOrders() { return orderRepository.findAll(); }
 
     // ===================== CANCEL ITEM =====================
     @Transactional
@@ -159,14 +185,13 @@ public class OrderService {
             recalcTableStatus(order);
         }
 
-        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
-    }
+        Map<String,Object> dto = new HashMap<>();
+        dto.put("tableId", order.getTable().getId());
+        dto.put("status", order.getTable().getStatus());
+        dto.put("totalAmount", order.getTotalAmount());
+        dto.put("orderId", order.getId());
 
-    public Order updateStatus(Long id, String status) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-        order.setStatus(status);
-        return orderRepository.save(order);
+        messagingTemplate.convertAndSend("/topic/tables", dto);
     }
 
     @Transactional
@@ -180,7 +205,7 @@ public class OrderService {
         }
 
         recalcTableStatus(item.getOrder());
-        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+        messagingTemplate.convertAndSend("/topic/tables", item.getOrder().getTable().getId());
     }
 
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
@@ -211,7 +236,13 @@ public class OrderService {
         orderRepository.save(order);
 
         recalcTableStatus(order);
-        messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+        Map<String,Object> dto = new HashMap<>();
+        dto.put("tableId", order.getTable().getId());
+        dto.put("status", order.getTable().getStatus());
+        dto.put("totalAmount", order.getTotalAmount());
+        dto.put("orderId", order.getId());
+
+        messagingTemplate.convertAndSend("/topic/tables", dto);
         return item;
     }
 
@@ -252,7 +283,13 @@ public class OrderService {
         
         new Thread(() -> {
             try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+            Map<String,Object> dto = new HashMap<>();
+            dto.put("tableId", order.getTable().getId());
+            dto.put("status", order.getTable().getStatus());
+            dto.put("totalAmount", order.getTotalAmount());
+            dto.put("orderId", order.getId());
+
+            messagingTemplate.convertAndSend("/topic/tables", dto);
         }).start();
         return "Thanh toán thành công";
     }
