@@ -21,6 +21,11 @@ public class ComboController {
         return comboService.getAll();
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<Combo>> getAllActiveCombos() {
+        return ResponseEntity.ok(comboService.getAllActive());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
         try {
