@@ -7,56 +7,188 @@ if (typeof role !== 'undefined' && role === "MANAGER") {
 }
 
 // ===== state =====
-let _isFirstLoad = true;                 // nháy khi reload lần đầu
-const _prevOrders = {};                  // { [tableId]: { totalAmount, itemCount } }
-let _stomp = null;                       // websocket client
-let _renderToken = 0;                    // chặn render chồng
+let _isFirstLoad = true;
+const _prevOrders = {};
+let _stomp = null;
+let _renderToken = 0;
+let _reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 // Lưu snapshot đơn trước khi thanh toán để in hóa đơn
 let _payContext = {
-  order: null,      // dữ liệu order snapshot
-  table: null,      // dữ liệu table (số bàn)
-  paidBy: null,     // tên người thu (localStorage.fullname)
-  paidAt: null,     // thời điểm thanh toán
+  order: null,
+  table: null,
+  paidBy: null,
+  paidAt: null,
   orderId: null,
   tableId: null,
-  voucherCode: null // mã áp dụng tạm thời khi preview thanh toán
+  voucherCode: null
 };
 
 // ===== helpers =====
 const $id = (s) => document.getElementById(s);
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// Parse JSON an toàn (body rỗng => null)
 async function jsonOrNull(res) {
   const raw = await res.text();
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-// highlight card
 function highlightCard(cardEl) {
   if (!cardEl) return;
   cardEl.classList.add('highlight');
   setTimeout(() => cardEl.classList.remove('highlight'), 5000);
 }
 
-// Cập nhật thông tin 1 card bàn
 function updateTableCard(tableId, patch = {}) {
   const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
   if (!card) return;
 
+  // Chặn hiển thị sai: Nếu bàn Trống thì Tiền phải là 0
+  if (patch.status === 'Trống') {
+      patch.totalAmount = 0;
+      patch.orderId = null; // Xóa ID đơn để nút thanh toán biến mất
+  }
+
+  // 1. Cập nhật Trạng thái
   if (patch.status) {
     const statusEl = card.querySelector(".status strong");
     if (statusEl) statusEl.textContent = patch.status;
   }
+
+  // 2. Cập nhật Tổng tiền
   if (patch.totalAmount !== undefined) {
     const totalEl = card.querySelector(".total-amount");
     if (totalEl) totalEl.textContent = `${Number(patch.totalAmount).toLocaleString('vi-VN')} VND`;
   }
+
+  // 3. Cập nhật nút Thanh toán (Quan trọng: Xóa nút nếu bàn trống hoặc tiền = 0)
+  const paySlot = card.querySelector('.pay-slot');
+  if (paySlot) {
+    // Nếu có orderId VÀ tiền > 0 VÀ bàn không phải Trống -> Hiện nút
+    if (patch.orderId && patch.totalAmount > 0 && patch.status !== 'Trống') {
+        paySlot.innerHTML = `<button class="btn btn-pay" onclick="pay(${patch.orderId}, ${tableId})">Thanh toán</button>`;
+    } else {
+        // Ngược lại -> Xóa nút
+        paySlot.innerHTML = "";
+    }
+  }
+
   if (patch.highlight) highlightCard(card);
 }
 
+// ===== WebSocket với Auto-Reconnect =====
+function connectWebSocket() {
+  // Ngắt kết nối cũ nếu có
+  if (_stomp && _stomp.connected) {
+    try {
+      _stomp.disconnect();
+    } catch (e) {
+      console.warn('Error disconnecting old WebSocket:', e);
+    }
+  }
+
+  try {
+    console.log('🔌 Connecting to WebSocket...');
+    const socket = new SockJS(`${BASE_URL}/ws`);
+    _stomp = Stomp.over(socket);
+    
+    // Tắt debug logs
+    _stomp.debug = null;
+    
+    // Kết nối
+    _stomp.connect(
+      {},
+      // Success callback
+      function(frame) {
+        console.log('✅ WebSocket connected successfully');
+        _reconnectAttempts = 0; // Reset reconnect counter
+        
+        // Subscribe to table updates
+        _stomp.subscribe('/topic/tables', function(message) {
+          try {
+            const data = JSON.parse(message.body);
+            console.log('📢 Table update received:', data);
+            updateSingleTableFast(data);
+          } catch (e) {
+            console.error('Error processing table update:', e);
+          }
+        });
+      },
+      // Error callback
+      function(error) {
+        console.error('❌ WebSocket error:', error);
+        attemptReconnect();
+      }
+    );
+    
+    // Handle connection close
+    socket.onclose = function() {
+      console.warn('🔌 WebSocket connection closed');
+      attemptReconnect();
+    };
+    
+  } catch (e) {
+    console.error('❌ WebSocket connect error:', e);
+    attemptReconnect();
+  }
+}
+
+function attemptReconnect() {
+  if (_reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error('❌ Max reconnect attempts reached. Please refresh the page.');
+    return;
+  }
+  
+  _reconnectAttempts++;
+  const delay = Math.min(30000, 1000 * Math.pow(2, _reconnectAttempts));
+  
+  console.log(`🔄 Reconnecting in ${delay/1000}s (attempt ${_reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+  
+  setTimeout(() => {
+    connectWebSocket();
+  }, delay);
+}
+
+function updateSingleTableFast(data) {
+  const { tableId, status, totalAmount, orderId } = data;
+
+  const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+  if (!card) {
+    console.log(`Table card not found for ID: ${tableId}, reloading...`);
+    loadTables(); // Reload nếu không tìm thấy card
+    return;
+  }
+
+  // Update status
+  const statusEl = card.querySelector(".status strong");
+  if (statusEl) statusEl.textContent = status;
+
+  // Update tiền
+  const totalEl = card.querySelector(".total-amount");
+  if (totalEl) {
+    totalEl.textContent = `${Number(totalAmount || 0).toLocaleString('vi-VN')} VND`;
+  }
+
+  // Update nút thanh toán
+  const paySlot = card.querySelector('.pay-slot');
+  if (paySlot) {
+    if (orderId && totalAmount > 0) {
+      paySlot.innerHTML = `<button class="btn btn-pay" onclick="pay(${orderId}, ${tableId})">Thanh toán</button>`;
+    } else {
+      paySlot.innerHTML = "";
+    }
+  }
+
+  highlightCard(card);
+  
+  // Update prev order tracking
+  _prevOrders[tableId] = { 
+    totalAmount: totalAmount || 0, 
+    itemCount: 0 // Will be updated on next full load if needed
+  };
+}
 
 // ===== render danh sách bàn =====
 window.loadTables = async function () {
@@ -134,7 +266,7 @@ window.loadTables = async function () {
             `${Number(total).toLocaleString('vi-VN')} VND`;
 
           const paySlot = card.querySelector('.pay-slot');
-          if (paySlot) {
+          if (paySlot && total > 0) {
             paySlot.innerHTML =
               `<button class="btn btn-pay" onclick="pay(${order.id}, ${t.id})">Thanh toán</button>`;
           }
@@ -184,61 +316,55 @@ window.showDetails = async function (tableId) {
       return;
     }
 
-    // Gom combo theo ID
-    const comboMap = {};   // { comboId: { combo, qty, orderItemId, prepared } }
+    const comboMap = {};
     const normalItems = [];
 
     order.orderItems.forEach(it => {
       if (it.combo) {
-      const key = it.combo.id + '::' + (it.notes || '');
-      if (!comboMap[key]) {
-        comboMap[key] = {
-          combo: it.combo,
-          qty: 0,
-          notes: it.notes || '',
-          orderItemId: it.id,
-          prepared: it.prepared
-        };
-      }
-      comboMap[key].qty += it.quantity || 1;
-      if (!it.prepared) comboMap[key].prepared = false;
-
-        } else {
-          normalItems.push(it);
+        const key = it.combo.id + '::' + (it.notes || '');
+        if (!comboMap[key]) {
+          comboMap[key] = {
+            combo: it.combo,
+            qty: 0,
+            notes: it.notes || '',
+            orderItemId: it.id,
+            prepared: it.prepared
+          };
         }
+        comboMap[key].qty += it.quantity || 1;
+        if (!it.prepared) comboMap[key].prepared = false;
+      } else {
+        normalItems.push(it);
+      }
     });
 
     let html = "";
 
-    // Render combo block
     Object.values(comboMap).forEach(c => {
-    html += `
-      <div class="order-item combo-block ${c.prepared ? 'prepared' : ''}">
-        <strong>Combo ${c.combo.name} × ${c.qty}</strong>
-        ${c.notes ? `<div class="order-note">Ghi chú: ${c.notes}</div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:6px;">
-          ${c.prepared ? `<span class="status-prepared">Đã phục vụ</span>`
-            : 
-            `
-              <button class="btn-prepared" onclick="markPrepared(${c.orderItemId})">Đã xong</button>
-              <button class="btn-cancel-item" onclick="cancelItem(${c.orderItemId})">Hủy</button>
-            `}
-        </div>
-      </div>`;
-  });
+      html += `
+        <div class="order-item combo-block ${c.prepared ? 'prepared' : ''}">
+          <strong>Combo ${c.combo.name} × ${c.qty}</strong>
+          ${c.notes ? `<div class="order-note">Ghi chú: ${c.notes}</div>` : ''}
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            ${c.prepared ? `<span class="status-prepared">Đã phục vụ</span>`
+              : `
+                <button class="btn-prepared" onclick="markPrepared(${c.orderItemId}, this)">Đã xong</button>
+                <button class="btn-cancel-item" onclick="cancelItem(${c.orderItemId}, this)">Hủy món</button>
+              `}
+          </div>
+        </div>`;
+    });
 
-    // Render món lẻ
     html += normalItems.map(it => `
       <div class="order-item ${it.prepared ? 'prepared' : ''}">
         <strong>${it.menuItem?.name || ''} × ${it.quantity}</strong>
         ${it.notes ? `<div class="order-note">Ghi chú: ${it.notes}</div>` : ''}
         <div style="display:flex; gap:8px;">
           ${it.prepared ? `<span class="status-prepared">Đã phục vụ</span>`
-            : 
-            `
-              <button class="btn-prepared" onclick="markPrepared(${it.id})">Đã xong</button>
-              <button class="btn-cancel-item" onclick="cancelItem(${it.id})">Hủy món</button>
-              <button class="btn-edit-item" onclick="openEditItem(${it.id}, ${it.quantity}, '${it.notes || ''}')">Sửa đơn</button>
+            : `
+              <button class="btn-prepared" onclick="markPrepared(${it.id}, this)">Đã xong</button>
+              <button class="btn-cancel-item" onclick="cancelItem(${it.id}, this)">Hủy món</button>
+              <button class="btn-edit-item" onclick="openEditItem(${it.id}, ${it.quantity}, '${(it.notes || '').replace(/'/g, "\\'")}')">Sửa đơn</button>
             `}
         </div>
       </div>
@@ -250,7 +376,6 @@ window.showDetails = async function (tableId) {
     body.innerHTML = `<div style="text-align:center;color:#ef4444;padding:16px;">${e.message}</div>`;
   }
 };
-
 
 window.closeModal = function () { const m = $id('modal'); if (m) m.style.display = 'none'; };
 
@@ -286,7 +411,6 @@ window.saveEdit = async function () {
 
     closeEditModal();
 
-    // Reload lại modal chi tiết
     if (typeof window.currentOpenTableId === 'number') {
       showDetails(window.currentOpenTableId);
       updateTableCard(window.currentOpenTableId);
@@ -296,34 +420,55 @@ window.saveEdit = async function () {
   }
 };
 
-// ===== Hủy món =====
-window.cancelItem = async function(itemId){
-  if (!confirm('Hủy món này?')) return;
-  try{
-    const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}`, { method:'DELETE' });
-    if (!res.ok) throw new Error(await $readErr(res));
+window.cancelItem = async function(itemId, btn) {
+    if (!confirm('Hủy món này?')) return;
+    try {
+        const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(await $readErr(res));
 
-    // Reload lại modal chi tiết
-    if (typeof window.currentOpenTableId === 'number') {
-      await showDetails(window.currentOpenTableId);
+        // Tìm container của món ăn và xóa nó khỏi giao diện
+        const itemEl = btn.closest('.order-item');
+        if (itemEl) {
+            itemEl.style.transition = "all 0.4s ease";
+            itemEl.style.opacity = "0";
+            itemEl.style.transform = "translateX(20px)";
+            
+            setTimeout(() => {
+                itemEl.remove();
+                // Kiểm tra nếu không còn món nào thì hiện thông báo trống
+                const body = document.getElementById('modalBody');
+                if (body && body.querySelectorAll('.order-item').length === 0) {
+                    body.innerHTML = `<div style="text-align:center;color:#6b7280;padding:16px;">Không có món trong đơn</div>`;
+                }
+            }, 400);
+        }
+    } catch (e) {
+        alert(e.message || 'Hủy món thất bại');
     }
-
-  }catch(e){
-    alert(e.message || 'Hủy món thất bại');
-  }
 };
-
-// ===== Mark item as prepared =====
-window.markPrepared = async function(itemId){
-  try{
-    await $fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method:'PUT' });
-    // Làm tươi modal nếu đang mở
-    const opened = $id('modal')?.style.display === 'flex';
-    if (opened && typeof window.currentOpenTableId === 'number') {
-      showDetails(window.currentOpenTableId); // re-render chi tiết
+window.markPrepared = async function(itemId, btn) {
+    try {
+        const res = await $fetch(`${BASE_URL}/api/orders/items/${itemId}/prepared`, { method: 'PUT' });
+        
+        if (res.ok) {
+            // Tìm container của món ăn vừa nhấn
+            const itemEl = btn.closest('.order-item');
+            if (itemEl) {
+                // Thêm class 'prepared' để đổi màu nền (giống như lúc render ban đầu)
+                itemEl.classList.add('prepared');
+                
+                // Tìm div chứa các nút bấm để thay thế nội dung
+                const actionDiv = itemEl.querySelector('div[style*="display:flex"]');
+                if (actionDiv) {
+                    actionDiv.innerHTML = `<span class="status-prepared">Đã phục vụ</span>`;
+                }
+            }
+        } else {
+            alert("Lỗi khi cập nhật trạng thái");
+        }
+    } catch (e) { 
+        console.error(e);
     }
-    // Bảng trạng thái/tiền sẽ tự cập nhật do WS "/topic/tables"
-  }catch(e){ /* ignore */ }
 };
 
 // ===== Thanh toán =====
@@ -395,7 +540,7 @@ window.pay = async function (orderId, tableId) {
 
 // Gom combo và món lẻ
 const comboMap = {};   // { comboId: { name, qty, price } }
-const itemMap = {};    // 🔥 gộp món lẻ theo tên + giá + notes
+const itemMap = {};    //  gộp món lẻ theo tên + giá + notes
 
 (order.orderItems || []).forEach(it => {
   if (it.combo) {
@@ -529,8 +674,7 @@ window.viewInvoice = function () {
   win.focus();
 };
 
-
-// Áp dụng voucher trong modal thanh toán (preview)
+// Áp dụng voucher trong modal thanh toán 
 window.applyVoucher = async function () {
   const code = document.getElementById('payVoucher').value.trim();
   if (!code) {
@@ -603,8 +747,7 @@ window.applyVoucher = async function () {
   }
 };
 
-
-// Tạo HTML hóa đơn (in đẹp, A5/A4 đều ok)
+// Tạo HTML hóa đơn
 function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
   const items = order?.orderItems || [];
 
@@ -756,7 +899,6 @@ function buildInvoiceHTML({ order, table, paidBy, paidAt }) {
 </html>
   `;
 }
-
 
 // ===== CRUD BÀN =====
 // --- Thêm bàn ---
@@ -1020,7 +1162,6 @@ window.renderMenuItems = function (category = "ALL") {
 
   grid.innerHTML = list.map(it => `
     <div class="menu-card" onclick="addToCart('${_currentTab}', ${it.id})">
-      <img src="${it.imageUrl || '/img/noimg.png'}" alt="${it.name}" class="menu-img"/>
       <div class="menu-info">
         <strong>${it.name}</strong>
         <div>${fmtVND(it.price)}</div>
@@ -1149,6 +1290,25 @@ window.submitAddItemsToTable = async function () {
 
 // ===== boot =====
 window.addEventListener('DOMContentLoaded', () => {
+  console.log('🚀 Initializing table manager...');
   loadTables();
   connectWebSocket();
+  
+  // Ping WebSocket every 30s to keep alive
+  setInterval(() => {
+    if (_stomp && _stomp.connected) {
+      console.log('💓 WebSocket heartbeat');
+    } else {
+      console.warn('💔 WebSocket disconnected, attempting reconnect...');
+      connectWebSocket();
+    }
+  }, 30000);
+});
+
+// Reconnect on page visibility change
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && (!_stomp || !_stomp.connected)) {
+    console.log('👁️ Page visible, checking WebSocket connection...');
+    connectWebSocket();
+  }
 });

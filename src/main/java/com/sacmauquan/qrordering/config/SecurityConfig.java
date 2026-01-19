@@ -63,6 +63,7 @@ public class SecurityConfig {
                           "/api/combos/**", 
                           "/api/orders/**", 
                           "/api/vouchers/**",
+                          "/api/combos/active",
                            "/api/combos/*/items"
                           ).permitAll()
         // khách tạo đơn

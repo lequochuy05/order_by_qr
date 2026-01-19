@@ -25,6 +25,23 @@ public class OrderService {
     @Autowired private ComboRepository comboRepository;
     @Autowired private DiscountService discountService;
 
+    // ===================== HELPER: Gửi WebSocket =====================
+    // Hàm này giúp gửi dữ liệu chuẩn format mà Frontend table-manager.js đang chờ
+    private void sendTableUpdate(Order order) {
+        try {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("tableId", order.getTable().getId());
+            dto.put("status", order.getTable().getStatus());
+            dto.put("totalAmount", order.getTotalAmount());
+            dto.put("orderId", order.getId());
+
+            // Gửi xuống topic /topic/tables
+            messagingTemplate.convertAndSend("/topic/tables", dto);
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
+        }
+    }
+
     // ===================== GET ALL ORDERS =====================
     public List<Order> getAllOrders() { return orderRepository.findAll(); }
 
@@ -77,9 +94,12 @@ public class OrderService {
                 MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
 
+                // Tìm xem món này (cùng ghi chú, chưa làm) đã có trong order chưa để cộng dồn
+                MenuItem finalMi = mi;
+                Order finalOrder = order;
                 Optional<OrderItem> exist = order.getOrderItems().stream()
                         .filter(oi -> oi.getMenuItem() != null
-                                && oi.getMenuItem().getId().equals(mi.getId())
+                                && oi.getMenuItem().getId().equals(finalMi.getId())
                                 && Objects.equals(oi.getNotes(), it.getNotes())
                                 && oi.getCombo() == null
                                 && !oi.isPrepared())
@@ -90,7 +110,7 @@ public class OrderService {
                     oi.setQuantity(oi.getQuantity() + it.getQuantity());
                 } else {
                     OrderItem oi = new OrderItem();
-                    oi.setOrder(order);
+                    oi.setOrder(finalOrder);
                     oi.setMenuItem(mi);
                     oi.setCombo(null);
                     oi.setQuantity(it.getQuantity());
@@ -149,13 +169,9 @@ public class OrderService {
         table.setStatus("Đang phục vụ");
         tableRepository.save(table);
 
-        Map<String,Object> dto = new HashMap<>();
-        dto.put("tableId", order.getTable().getId());
-        dto.put("status", order.getTable().getStatus());
-        dto.put("totalAmount", order.getTotalAmount());
-        dto.put("orderId", order.getId());
+        // Gửi WebSocket cập nhật
+        sendTableUpdate(saved);
 
-        messagingTemplate.convertAndSend("/topic/tables", dto);
         return saved;
     }
 
@@ -185,15 +201,11 @@ public class OrderService {
             recalcTableStatus(order);
         }
 
-        Map<String,Object> dto = new HashMap<>();
-        dto.put("tableId", order.getTable().getId());
-        dto.put("status", order.getTable().getStatus());
-        dto.put("totalAmount", order.getTotalAmount());
-        dto.put("orderId", order.getId());
-
-        messagingTemplate.convertAndSend("/topic/tables", dto);
+        // Gửi WebSocket cập nhật
+        sendTableUpdate(order);
     }
 
+    // ===================== MARK PREPARED (ĐÃ SỬA LỖI) =====================
     @Transactional
     public void markItemPrepared(Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
@@ -204,14 +216,18 @@ public class OrderService {
             orderItemRepository.save(item);
         }
 
+        // Tính toán lại trạng thái bàn (Đang phục vụ -> Chờ thanh toán)
         recalcTableStatus(item.getOrder());
-        messagingTemplate.convertAndSend("/topic/tables", item.getOrder().getTable().getId());
+
+        // [QUAN TRỌNG] Gửi toàn bộ thông tin đơn để frontend cập nhật UI
+        sendTableUpdate(item.getOrder());
     }
 
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
         return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
     }
 
+    // ===================== UPDATE ITEM =====================
     @Transactional
     public OrderItem updateOrderItem(Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
@@ -236,13 +252,10 @@ public class OrderService {
         orderRepository.save(order);
 
         recalcTableStatus(order);
-        Map<String,Object> dto = new HashMap<>();
-        dto.put("tableId", order.getTable().getId());
-        dto.put("status", order.getTable().getStatus());
-        dto.put("totalAmount", order.getTotalAmount());
-        dto.put("orderId", order.getId());
 
-        messagingTemplate.convertAndSend("/topic/tables", dto);
+        // Gửi WebSocket cập nhật
+        sendTableUpdate(order);
+
         return item;
     }
 
@@ -280,17 +293,20 @@ public class OrderService {
         DiningTable table = order.getTable();
         table.setStatus("Trống");
         tableRepository.save(table);
-        
+
+        // Gửi socket sau 300ms để đảm bảo transaction commit
         new Thread(() -> {
             try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            Map<String,Object> dto = new HashMap<>();
-            dto.put("tableId", order.getTable().getId());
-            dto.put("status", order.getTable().getStatus());
-            dto.put("totalAmount", order.getTotalAmount());
-            dto.put("orderId", order.getId());
+            
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("tableId", table.getId());
+            dto.put("status", "Trống");
+            dto.put("totalAmount", 0d); // Reset tiền về 0
+            dto.put("orderId", null);   // Xóa ID đơn hàng
 
             messagingTemplate.convertAndSend("/topic/tables", dto);
         }).start();
+
         return "Thanh toán thành công";
     }
 
@@ -355,7 +371,7 @@ public class OrderService {
         );
     }
 
-    // ===================== TABLE STATUS =====================
+    // ===================== TABLE STATUS CALCULATION =====================
     private void recalcTableStatus(Order order) {
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
         DiningTable table = order.getTable();
@@ -363,6 +379,7 @@ public class OrderService {
             table.setStatus("Trống");
         } else {
             boolean allPrepared = items.stream().allMatch(OrderItem::isPrepared);
+            // Nếu tất cả đã xong -> Chờ thanh toán. Ngược lại -> Đang phục vụ
             table.setStatus(allPrepared ? "Chờ thanh toán" : "Đang phục vụ");
         }
         tableRepository.save(table);

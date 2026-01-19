@@ -7,7 +7,7 @@ if (role === "MANAGER") {
 }
 
 const $id = (s) => document.getElementById(s);
-const fmtVND = (n) => Number(n || 0).toLocaleString("vi-VN") + " ₫";
+const fmtVND = (n) => Number(n || 0).toLocaleString("vi-VN") + " VND";
 
 window.addEventListener("DOMContentLoaded", () => {
   loadCombos();
@@ -69,7 +69,7 @@ window.showAddCombo = async function() {
   $id("comboForm").reset();
   $id("comboActive").checked = true;
   $id("comboPrice").value = "";
-  $id("comboTotal").textContent = "Tổng: 0 ₫";
+  $id("comboTotal").textContent = "Tổng: 0 VND";
   showError("comboError", "");
   $id("comboModal").style.display = "flex";
   await loadMenuItems();
