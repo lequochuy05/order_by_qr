@@ -1,4 +1,3 @@
-// service/UserService.java
 package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.*;
@@ -7,6 +6,7 @@ import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate; // 1. Import WebSocket
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +24,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ImageManagerService imageManagerService;
     private final JwtService jwtService;
+    private final SimpMessagingTemplate messagingTemplate; // 2. Inject WebSocket
 
     // ===== Upload Avatar =====
     public UserDto uploadAvatar(Long id, MultipartFile file) {
@@ -35,26 +36,23 @@ public class UserService {
         }
 
         try {
-            // Upload lên Cloudinary → trả về secure_url dạng String
             String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
-
-            // Xóa ảnh cũ nếu có
             if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
                 imageManagerService.delete(user.getAvatarUrl());
             }
-
-            // Lưu URL mới
             user.setAvatarUrl(newUrl);
             userRepository.save(user);
+            
+            notifyChange(); // 3. Báo hiệu thay đổi
             return toDto(user);
         } catch (IOException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tải ảnh lên Cloudinary");
         }
     }
 
-
-    // ===== Auth =====
+    // ===== Auth (Giữ nguyên) =====
     public AuthResponse register(UserUpsertRequest req) {
+        // ... (Code cũ giữ nguyên)
         if (isBlank(req.getEmail()) || isBlank(req.getPassword()) || isBlank(req.getFullName())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu email/password/fullName");
         }
@@ -65,11 +63,11 @@ public class UserService {
         User u = new User();
         applyUpsert(u, req, true);
         u = userRepository.save(u);
-
         return buildAuthResponse(u);
     }
 
     public AuthResponse login(AuthRequest req) {
+         // ... (Code cũ giữ nguyên)
         if (isBlank(req.getEmail()) || isBlank(req.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu email/password");
         }
@@ -86,7 +84,7 @@ public class UserService {
     }
 
     private AuthResponse buildAuthResponse(User u) {
-        var roleName = (u.getRole() != null ? u.getRole().name() : "STAFF"); // fallback
+        var roleName = (u.getRole() != null ? u.getRole().name() : "STAFF");
         String token = jwtService.generateToken(
             u.getEmail(),
             Map.of("uid", u.getId(), "role", roleName)
@@ -106,6 +104,7 @@ public class UserService {
     }
 
     public UserDto create(UserUpsertRequest req) {
+        // ... Check email ...
         if (isBlank(req.getEmail()) || isBlank(req.getPassword()) || isBlank(req.getFullName())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu email/password/fullName");
         }
@@ -116,6 +115,8 @@ public class UserService {
         User u = new User();
         applyUpsert(u, req, true);
         u = userRepository.save(u);
+        
+        notifyChange(); // 3. Báo hiệu thay đổi
         return toDto(u);
     }
 
@@ -123,11 +124,11 @@ public class UserService {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
-        // Không cho đổi email nếu bạn muốn cố định:
-        req.setEmail(null);
-
+        req.setEmail(null); // Không cho đổi email
         applyUpsert(u, req, false);
         u = userRepository.save(u);
+        
+        notifyChange(); // 3. Báo hiệu thay đổi
         return toDto(u);
     }
 
@@ -144,13 +145,14 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng");
         }
         userRepository.deleteById(id);
+        notifyChange(); // 3. Báo hiệu thay đổi
     }
 
     // ===== Helpers =====
     private void applyUpsert(User u, UserUpsertRequest req, boolean creating) {
         if (creating) {
             u.setEmail(req.getEmail());
-            u.setCreatedAt(u.getCreatedAt() == null ? Instant.now() : u.getCreatedAt()); // nếu có cột này
+            u.setCreatedAt(u.getCreatedAt() == null ? Instant.now() : u.getCreatedAt());
         }
         if (req.getFullName() != null) u.setFullName(req.getFullName());
         if (req.getPhone() != null) u.setPhone(req.getPhone());
@@ -168,15 +170,9 @@ public class UserService {
         }
     }
 
-    private static String nvl(String s, String dft){ 
-        return s != null ? s : dft; 
-    }
-    private static boolean isBlank(String s){ 
-        return s == null || s.trim().isEmpty(); 
-    }
-    private static boolean notBlank(String s){ 
-        return !isBlank(s); 
-    }
+    private static String nvl(String s, String dft){ return s != null ? s : dft; }
+    private static boolean isBlank(String s){ return s == null || s.trim().isEmpty(); }
+    private static boolean notBlank(String s){ return !isBlank(s); }
 
     private UserDto toDto(User u) {
         return UserDto.builder()
@@ -191,6 +187,13 @@ public class UserService {
                 .build();
     }
 
-    
-
+    // 4. Hàm gửi WebSocket
+    private void notifyChange() {
+        try {
+            messagingTemplate.convertAndSend("/topic/users", "UPDATED");
+            System.out.println("⚡ [WS] User changed -> Sent UPDATED signal");
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
+        }
+    }
 }
