@@ -1,0 +1,13 @@
+# Java
+target/
+*.class
+*.jar
+*.war
+
+# Frontend (Vite/React)
+node_modules/
+dist/
+.env
+
+# OS
+.DS_Store
