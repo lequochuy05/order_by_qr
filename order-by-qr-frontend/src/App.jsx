@@ -7,6 +7,7 @@ import CategoryManager from './pages/admin/CategoryManager';
 import MenuManager from './pages/admin/MenuManager';
 import ComboManager from './pages/admin/ComboManager';
 import VoucherManager from './pages/admin/VoucherManager.jsx';
+import StaffManager from './pages/admin/StaffManager.jsx';
 
 // Import các trang của bạn
 import MenuPage from './pages/customer/MenuPage';
@@ -34,7 +35,7 @@ function App() {
               <Route path="/admin/combo" element={<ComboManager />} />
               <Route path="/admin/voucher" element={<VoucherManager />} />
               <Route path="/admin/promotions" element={<div>Quản lý khuyến mãi</div>} />
-              <Route path="/admin/staffs" element={<div>Quản lý nhân viên</div>} />
+              <Route path="/admin/staffs" element={<StaffManager />} />
               <Route path="/admin/statistics" element={<div>Thống kê</div>} />
               <Route path="/admin/settings" element={<div>Cài đặt</div>} />
             </Route>

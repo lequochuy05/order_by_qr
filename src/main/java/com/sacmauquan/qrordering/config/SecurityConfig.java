@@ -40,12 +40,6 @@ public class SecurityConfig {
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
-        // static (css/js/images)
-        .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-        // file HTML cụ thể
-        .requestMatchers("/", "/index.html", "/login.html", "/register.html", "/forget-password.html", "/dashboard.html", "/menu.html").permitAll()
-    
-        .requestMatchers(new AntPathRequestMatcher("/**/*.html")).permitAll()
 
         // UI admin tĩnh
         .requestMatchers("/admin/**").permitAll()
@@ -57,26 +51,26 @@ public class SecurityConfig {
 
         // public GET
         .requestMatchers(HttpMethod.GET, 
-              "/api/categories/**", 
-                          "/api/menu/**", 
-                          "/api/tables/**", 
-                          "/api/combos/**", 
-                          "/api/orders/**", 
-                          "/api/vouchers/**",
-                          "/api/combos/active",
-                           "/api/combos/*/items"
-                          ).permitAll()
+                "/api/categories/**", 
+                "/api/menu/**", 
+                "/api/tables/**", 
+                "/api/combos/**", 
+                "/api/orders/**", 
+                "/api/vouchers/**",
+                "/api/combos/active",
+                  "/api/combos/*/items"
+                ).permitAll()
         // khách tạo đơn
         .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
         // admin
         .requestMatchers(HttpMethod.POST,   
-              "/api/categories/**", 
-                          "/api/menu/**", 
-                          "/api/tables/**", 
-                          "/api/vouchers/**", 
-                          "/api/combos/*/items"
-                          ).hasRole("MANAGER")
+                "/api/categories/**", 
+                "/api/menu/**", 
+                "/api/tables/**", 
+                "/api/vouchers/**", 
+                "/api/combos/*/items"
+                ).hasRole("MANAGER")
 
         .requestMatchers(HttpMethod.PUT,    
                 "/api/categories/**", 
