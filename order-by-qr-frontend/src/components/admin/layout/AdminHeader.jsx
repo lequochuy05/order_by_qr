@@ -31,7 +31,14 @@ const AdminHeader = ({ toggleSidebar }) => {
             return 'Quản lý voucher';
         case '/admin/promotions':
             return 'Quản lý khuyến mãi';
-        
+        case '/admin/statistics/revenue':
+            return 'Thống kê doanh thu';
+        case '/admin/statistics/top-dishes':
+            return 'Thống kê món ăn bán chạy';
+        case '/admin/statistics/staff':
+            return 'Thống kê nhân viên';
+
+            
         default:
             return 'Bảng điều khiển';
     }

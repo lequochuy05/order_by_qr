@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pencil, Trash2, Power, PowerOff, Package, ChevronRight } from 'lucide-react';
+import {fmtVND} from '../../../utils/formatters';
 
 const ComboCard = ({ combo, onEdit, onDelete, onToggle }) => (
   <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-xl transition-all flex flex-col h-full relative overflow-hidden">
@@ -18,7 +19,7 @@ const ComboCard = ({ combo, onEdit, onDelete, onToggle }) => (
             <div className="flex-grow relative z-10">
                 <h3 className="font-bold text-gray-900 text-xl mb-2 group-hover:text-orange-600 transition-colors">{combo.name}</h3>
                 <div className="text font-black text-orange-600 mb-4 tracking-tight">
-                    {combo.price.toLocaleString('vi-VN')}₫
+                    {fmtVND(combo.price)}
                 </div>
         </div>
 

@@ -8,6 +8,10 @@ import MenuManager from './pages/admin/MenuManager';
 import ComboManager from './pages/admin/ComboManager';
 import VoucherManager from './pages/admin/VoucherManager.jsx';
 import StaffManager from './pages/admin/StaffManager.jsx';
+import TableManager from './pages/admin/TableManager';
+import RevenueStats from './pages/admin/statistics/RevenueStats.jsx';
+// import TopDishesStats from './pages/admin/statistics/TopDishesStats.jsx';
+import StaffStats from './pages/admin/statistics/StaffStats.jsx';
 
 // Import các trang của bạn
 import MenuPage from './pages/customer/MenuPage';
@@ -18,18 +22,14 @@ function App() {
     <AuthProvider> {/* Quản lý trạng thái đăng nhập cho Admin */}
       <BrowserRouter>
         <Routes>
-          {/* 1. LỐI VÀO CHO KHÁCH: Không cần đăng nhập, quét mã là vào */}
-          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/menu" element={<MenuPage />} /> {/* Trang menu cho khách hàng */}
           
-          {/* 2. LỐI VÀO CHO ADMIN: Phải đăng nhập */}
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* 3. KHU VỰC ADMIN: Được bảo vệ bởi ProtectedRoute */}
+          <Route path="/login" element={<LoginPage />} /> {/* Trang đăng nhập quản lý */}
           <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<div>Bảng điều khiển</div>} />
               <Route path="/admin/orders" element={<div>Quản lý đơn hàng</div>} />
-              <Route path="/admin/tables" element={<div>Quản lý bàn</div>} />
+              <Route path="/admin/tables" element={<TableManager />} />
               <Route path="/admin/categories" element={<CategoryManager />} />
               <Route path="/admin/menu" element={<MenuManager />} />
               <Route path="/admin/combo" element={<ComboManager />} />
@@ -37,6 +37,9 @@ function App() {
               <Route path="/admin/promotions" element={<div>Quản lý khuyến mãi</div>} />
               <Route path="/admin/staffs" element={<StaffManager />} />
               <Route path="/admin/statistics" element={<div>Thống kê</div>} />
+              <Route path="/admin/statistics/revenue" element={<RevenueStats />} />
+              {/* <Route path="/admin/statistics/top-dishes" element={<TopDishesStats />} /> */}
+              <Route path="/admin/statistics/staff" element={<StaffStats />} />
               <Route path="/admin/settings" element={<div>Cài đặt</div>} />
             </Route>
           </Route>

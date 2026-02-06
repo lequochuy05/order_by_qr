@@ -17,9 +17,9 @@
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/UserDto.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/controller/CategoryController.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/DiningTableResponse.java
-/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/UserResponse.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/repository/CategoryRepository.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/DiningTableService.java
+/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/exception/GlobalExceptionHandler.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/config/WebConfig.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/OtpService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/security/JwtAuthFilter.java

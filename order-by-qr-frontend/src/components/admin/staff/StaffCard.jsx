@@ -16,7 +16,9 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
           {isManager ? <Shield size={20} /> : <User size={20} />}
         </div>
         <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-          {isActive ? 'Hoạt động' : 'Ngừng'}
+          {
+            isActive ? 'Hoạt động' : 'Đã khóa'
+          }
         </span>
       </div>
 
@@ -30,7 +32,7 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
           />
         </div>
         <h3 className="text-lg font-bold text-gray-800 text-center line-clamp-1">{staff.fullName}</h3>
-        <span className="text-xs text-gray-500 font-medium">{isManager ? 'Quản lý cửa hàng' : 'Nhân viên phục vụ'}</span>
+        <span className="text-xs text-gray-500 font-medium">{isManager ? 'Quản lý' : 'Nhân viên'}</span>
       </div>
 
       {/* Info Details */}

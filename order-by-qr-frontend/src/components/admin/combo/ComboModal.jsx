@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
+import {fmtVND} from '../../../utils/formatters';
 
 const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData }) => {
   const [formData, setFormData] = useState({ name: '', price: 0, active: true, items: [] });
@@ -62,7 +63,7 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData }) => {
                   <div key={m.id} className="flex items-center justify-between p-2">
                     <label className="flex items-center gap-2 cursor-pointer flex-1">
                       <input type="checkbox" checked={!!selected} onChange={() => handleToggleItem(m.id)} className="w-4 h-4 rounded" />
-                      <span className="text-sm">{m.name} <small className="text-gray-400">({m.price.toLocaleString()}đ)</small></span>
+                      <span className="text-sm">{m.name} <small className="text-gray-400">({fmtVND(m.price)})</small></span>
                     </label>
                     {selected && (
                       <input 
