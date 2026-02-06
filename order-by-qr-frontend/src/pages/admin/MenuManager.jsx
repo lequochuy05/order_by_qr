@@ -127,8 +127,7 @@ const MenuManager = () => {
               item={it} 
               onEdit={(item) => {
                 setFormData({ id: item.id, name: item.name, price: item.price, categoryId: item.category?.id });
-                // Giữ lại fix ảnh (img hoặc image)
-                setPreview(item.img || item.image || ''); 
+                setPreview(item.img || ''); 
                 setIsModalOpen(true);
               }} 
               onDelete={() => handleDelete(it.id)} 

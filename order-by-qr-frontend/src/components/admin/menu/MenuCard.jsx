@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pencil, Trash2, ImageIcon } from 'lucide-react';
+import {fmtVND} from '../../../utils/formatters';
 
 const MenuItemCard = ({ item, onEdit, onDelete }) => (
   <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-md transition-all flex flex-col h-full">
@@ -16,7 +17,7 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => (
     
     <div className="flex-grow">
       <h3 className="font-bold text-gray-800 text-sm line-clamp-1 mb-1">{item.name}</h3>
-      <p className="text-orange-600 font-black text-sm">{item.price.toLocaleString('vi-VN')}đ</p>
+      <p className="text-orange-600 font-black text-sm">{fmtVND(item.price)}</p>
     </div>
     
     <div className="flex gap-2 mt-3 group-hover:opacity-100 transition-opacity">

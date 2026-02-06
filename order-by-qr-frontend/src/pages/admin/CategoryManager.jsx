@@ -43,7 +43,6 @@ const CategoryManager = () => {
     }, []);
 
     // === 3. WebSocket ===
-    // Nhận tín hiệu từ Server (máy khác sửa thì máy mình tự cập nhật)
     useWebSocket('/topic/categories', (message) => {
         const signal = typeof message === 'string' ? message : message.body;
         if (signal === 'UPDATED') fetchCategories();
@@ -93,7 +92,7 @@ const CategoryManager = () => {
         if (cat) { 
             setEditId(cat.id); 
             setCatName(cat.name); 
-            setPreview(cat.img || cat.image || ''); // Fix hiển thị ảnh
+            setPreview(cat.img || ''); // Fix hiển thị ảnh
         } else { 
             setEditId(null); 
             setCatName(''); 

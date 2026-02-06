@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, KeyRound, User, Mail, Phone } from 'lucide-react';
+import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power } from 'lucide-react';
 
-const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
+const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
   const [formData, setFormData] = useState({
     id: null,
     fullName: '',
@@ -14,20 +14,26 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('');
+  
+  // 1. Thêm State để lưu lỗi
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (isOpen) {
-      if (initialData) {
+      // Reset lỗi mỗi khi mở modal
+      setErrors({}); 
+      
+      if (data) {
         setFormData({
-          id: initialData.id,
-          fullName: initialData.fullName || '',
-          email: initialData.email || '',
-          phone: initialData.phone || '',
-          role: initialData.role || 'STAFF',
-          status: initialData.status || 'ACTIVE',
-          password: ''
+          id: data.id,
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          role: data.role || 'STAFF',
+          status: data.status || 'ACTIVE',
+          password: '' 
         });
-        setPreview(initialData.avatarUrl || '');
+        setPreview(data.avatarUrl || '');
       } else {
         setFormData({
           id: null,
@@ -42,19 +48,66 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
       }
       setSelectedFile(null);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, data]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File ảnh quá lớn (Max 5MB)");
+        return;
+      }
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file));
     }
   };
 
+  // 2. Hàm Validate Form
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Validate Họ tên
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Họ tên không được để trống';
+    } else if (formData.fullName.length < 2) {
+      newErrors.fullName = 'Họ tên phải từ 2 ký tự trở lên';
+    }
+
+    // Validate Email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email không được để trống';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Email không đúng định dạng';
+    }
+
+    // Validate Password (chỉ khi tạo mới)
+    if (!formData.id) {
+      if (!formData.password) {
+        newErrors.password = 'Mật khẩu không được để trống';
+      } else if (formData.password.length < 6) {
+        newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+      }
+    }
+
+    // Validate Phone (nếu có nhập)
+    if (formData.phone && !/^(84|0)[0-9]{9}$\b/.test(formData.phone)) {
+      newErrors.phone = 'Số điện thoại không hợp lệ (VN)';
+    }
+
+    setErrors(newErrors);
+    
+    // Trả về true nếu không có lỗi nào
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData, selectedFile);
+    
+    // 3. Gọi hàm validate trước khi submit
+    if (validateForm()) {
+      onSubmit(formData, selectedFile);
+    }
   };
 
   if (!isOpen) return null;
@@ -62,6 +115,7 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
         <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <h2 className="text-xl font-bold text-gray-800">
             {formData.id ? 'Cập nhật hồ sơ' : 'Thêm nhân viên mới'}
@@ -72,8 +126,9 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
         </div>
 
         <div className="p-8 overflow-y-auto custom-scrollbar">
-          <form id="staffForm" onSubmit={handleSubmit} className="space-y-6">
-            {/* Avatar Upload */}
+          {/* 4. Thêm noValidate để tắt bong bóng lỗi mặc định của trình duyệt */}
+          <form id="staffForm" onSubmit={handleSubmit} className="space-y-6" noValidate>
+            
             <div className="flex justify-center mb-6">
               <div className="relative group">
                 <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
@@ -98,12 +153,20 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
                 <div className="relative">
                   <User size={18} className="absolute left-3 top-3.5 text-gray-400" />
                   <input 
-                    type="text" required 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none"
+                    type="text" 
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
+                      ${errors.fullName ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
+                    placeholder="Nguyễn Văn A"
                     value={formData.fullName}
-                    onChange={e => setFormData({...formData, fullName: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, fullName: e.target.value});
+                      // Xóa lỗi khi người dùng bắt đầu nhập lại
+                      if (errors.fullName) setErrors({...errors, fullName: ''});
+                    }}
                   />
                 </div>
+                {/* 5. Hiển thị lỗi ngay bên dưới */}
+                {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.fullName}</p>}
               </div>
 
               <div>
@@ -111,13 +174,18 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
                 <div className="relative">
                   <Mail size={18} className="absolute left-3 top-3.5 text-gray-400" />
                   <input 
-                    type="email" required 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none"
+                    type="email" 
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
+                      ${errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                     value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, email: e.target.value});
+                        if (errors.email) setErrors({...errors, email: ''});
+                    }}
                     disabled={!!formData.id} 
                   />
                 </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
               </div>
 
               <div>
@@ -125,12 +193,17 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
                 <div className="relative">
                   <Phone size={18} className="absolute left-3 top-3.5 text-gray-400" />
                   <input 
-                    type="text" 
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none"
+                    type="tel"
+                    className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
+                      ${errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                     value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    onChange={e => {
+                        setFormData({...formData, phone: e.target.value});
+                        if (errors.phone) setErrors({...errors, phone: ''});
+                    }}
                   />
                 </div>
+                {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
               </div>
 
               {!formData.id && (
@@ -139,38 +212,55 @@ const StaffModal = ({ isOpen, onClose, initialData, onSubmit }) => {
                   <div className="relative">
                     <KeyRound size={18} className="absolute left-3 top-3.5 text-gray-400" />
                     <input 
-                      type="text" required 
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none"
+                      type="password"
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
+                        ${errors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                       value={formData.password}
-                      onChange={e => setFormData({...formData, password: e.target.value})}
+                      onChange={e => {
+                          setFormData({...formData, password: e.target.value});
+                          if (errors.password) setErrors({...errors, password: ''});
+                      }}
+                      placeholder="Tối thiểu 6 ký tự"
                     />
                   </div>
+                  {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Vai trò</label>
-                <select 
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer"
-                  value={formData.role}
-                  onChange={e => setFormData({...formData, role: e.target.value})}
-                >
-                  <option value="STAFF">Nhân viên</option>
-                  <option value="MANAGER">Quản lý</option>
-                </select>
-              </div>
+              {formData.id && (
+                <>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Vai trò</label>
+                    <div className="relative">
+                      <Shield size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                      <select 
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-gray-100 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer appearance-none"
+                        value={formData.role}
+                        onChange={e => setFormData({...formData, role: e.target.value})}
+                      >
+                        <option value="STAFF">Nhân viên</option>
+                        <option value="MANAGER">Quản lý</option>
+                      </select>
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái</label>
-                <select 
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer"
-                  value={formData.status}
-                  onChange={e => setFormData({...formData, status: e.target.value})}
-                >
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Ngừng hoạt động</option>
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Trạng thái</label>
+                    <div className="relative">
+                      <Power size={18} className="absolute left-3 top-3.5 text-gray-400" />
+                      <select 
+                        className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-gray-100 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer appearance-none"
+                        value={formData.status}
+                        onChange={e => setFormData({...formData, status: e.target.value})}
+                      >
+                        <option value="ACTIVE">Hoạt động</option>
+                        <option value="INACTIVE">Ngừng hoạt động</option>
+                        <option value="BANNED">Khóa</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </form>
         </div>

@@ -4,6 +4,7 @@ import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -15,17 +16,24 @@ public class DiningTableService {
     private final DiningTableRepository repo;
     private final QRCodeService qrCodeService;
     private final ImageManagerService imageManagerService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${app.frontend.base-url}")
     private String frontendBaseUrl;
 
     public List<DiningTable> getAllTablesSorted() {
         List<DiningTable> tables = repo.findAll();
-        tables.sort(Comparator.comparingInt(t -> Integer.parseInt(t.getTableNumber())));
+        tables.sort(Comparator.comparingInt(t -> {
+            try {
+                return Integer.parseInt(t.getTableNumber());
+            } catch (NumberFormatException e) {
+                return 0;
+            }
+        }));
         return tables;
     }
 
-    public Optional<DiningTable> getTableById(Long id) {
+   public Optional<DiningTable> getTableById(Long id) {
         return repo.findById(id);
     }
 
@@ -40,29 +48,28 @@ public class DiningTableService {
         if (table.getCapacity() <= 0)
             throw new IllegalArgumentException("Sức chứa phải > 0");
 
-        table.setStatus(
-            (table.getStatus() == null || table.getStatus().isBlank()) ? "Trống" : table.getStatus()
-        );
+        table.setStatus((table.getStatus() == null || table.getStatus().isBlank()) ? "Trống" : table.getStatus());
 
-        // Sinh mã bảo mật (12 ký tự)
         String code = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         table.setTableCode(code);
 
         DiningTable saved = repo.save(table);
 
         try {
-            // Sinh QR code trỏ đến frontend
             String qrContent = frontendBaseUrl + "/menu.html?tableCode=" + saved.getTableCode();
             byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
 
-            // Upload QR lên Cloudinary
             String folder = "order_by_qr/tables";
             String publicId = "qr_" + saved.getTableCode();
             Map result = imageManagerService.uploadBytes(qrBytes, folder, publicId);
 
             saved.setQrCodeUrl(result.get("secure_url").toString());
             saved.setQrCodePublicId(result.get("public_id").toString());
-            return repo.save(saved);
+            
+            repo.save(saved);
+            
+            notifyChange(); // 3. Báo hiệu thay đổi
+            return saved;
         } catch (Exception e) {
             throw new RuntimeException("Không thể tạo mã QR: " + e.getMessage(), e);
         }
@@ -79,17 +86,30 @@ public class DiningTableService {
             t.setStatus(status);
 
         t.setCapacity(capacity);
-        return repo.save(t);
+        DiningTable saved = repo.save(t);
+        
+        notifyChange(); // 3. Báo hiệu thay đổi
+        return saved;
     }
 
     public void deleteTable(Long id) {
         DiningTable t = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bàn không tồn tại"));
 
-        // Xóa ảnh QR trên Cloudinary
         if (t.getQrCodeUrl() != null)
             imageManagerService.delete(t.getQrCodeUrl());
 
         repo.delete(t);
+        notifyChange(); // 3. Báo hiệu thay đổi
+    }
+
+    // 4. Hàm gửi tín hiệu chuẩn
+    private void notifyChange() {
+        try {
+            messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+            System.out.println("⚡ [WS] DiningTable change -> Sent UPDATED signal");
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
+        }
     }
 }

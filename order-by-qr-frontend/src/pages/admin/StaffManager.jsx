@@ -19,15 +19,11 @@ const StaffManager = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
-  
-  // State riêng cho file ảnh trong Modal (để truyền vào handleSubmit)
-  // Lưu ý: State này thường được quản lý bên trong StaffModal và truyền ra qua callback, 
-  // nhưng ở đây mình giả định handleSubmit nhận cả data và file.
 
   // Hook Status Modal
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
 
-  // === 1. Tải dữ liệu ===
+  // === Tải dữ liệu ===
   const fetchStaffs = useCallback(async (showLoading = false) => {
     if (showLoading) setLoading(true);
     try {
@@ -36,52 +32,80 @@ const StaffManager = () => {
     } catch (err) {
       console.error("Lỗi tải nhân viên:", err);
     } finally {
-      setLoading(false);
+      setLoading(false); 
     }
   }, []);
 
   // === 2. WebSocket Realtime ===
   useWebSocket('/topic/users', (message) => {
-    const signal = typeof message === 'string' ? message : message.body;
-    if (signal === 'UPDATED') fetchStaffs();
+    if (message === 'UPDATED' || message.body === 'UPDATED') {
+      fetchStaffs();
+    }
   });
 
   useEffect(() => { fetchStaffs(true); }, [fetchStaffs]);
 
-  // === 3. Xử lý Submit (QUAN TRỌNG: 2 bước) ===
-  // formData chứa thông tin text, selectedFile là file ảnh (nếu có)
+  // === Xử lý Submit ===
   const handleSubmit = async (formData, selectedFile) => {
     try {
-      let result;
-      if (formData.id) {
-        // --- UPDATE ---
-        // Bỏ password nếu rỗng để không bị lỗi hoặc reset nhầm
-        const { password, ...updateData } = formData; 
-        result = await staffService.update(formData.id, updateData);
-        showSuccess(`Cập nhật nhân viên "${result.fullName}" thành công!`);
-      } else {
-        // --- CREATE ---
-        result = await staffService.create(formData);
-        showSuccess(`Thêm nhân viên "${result.fullName}" thành công!`);
+      // === 1. CHUẨN HÓA DỮ LIỆU (QUAN TRỌNG) ===
+      const payload = { ...formData };
+
+      // Nếu phone rỗng -> gửi null (để Backend bỏ qua check Regex)
+      if (!payload.phone || payload.phone.trim() === '') {
+        payload.phone = null;
       }
 
-      // --- UPLOAD AVATAR (Nếu có chọn ảnh) ---
-      // Dùng ID vừa tạo hoặc ID đang sửa
+      // Xóa trường ID nếu là null (Create mode) để tránh lỗi thừa trường
+      if (!payload.id) {
+        delete payload.id;
+      }
+
+      if (!payload.password) {
+        payload.password = null; // Hoặc: delete payload.password;
+      }
+      
+      // Trim email và tên cho sạch
+      payload.email = payload.email?.trim();
+      payload.fullName = payload.fullName?.trim();
+
+      // === 2. GỬI API ===
+      let result;
+      let actionType = '';
+
+      if (formData.id) {
+        // UPDATE
+        result = await staffService.update(formData.id, payload);
+        actionType = 'Cập nhật';
+      } else {
+        // CREATE
+        result = await staffService.create(payload);
+        actionType = 'Thêm';
+      }
+
+      // === 3. UPLOAD ẢNH (Nếu có) ===
       if (selectedFile) {
         await staffService.uploadAvatar(result.id, selectedFile);
       }
 
       setIsModalOpen(false);
-      
-      // Cập nhật ngay lập tức
+      showSuccess(`${actionType} nhân viên "${result.fullName}" thành công!`);
       fetchStaffs();
 
     } catch (err) {
-      showError(err);
+      // Log lỗi ra console để debug nếu cần
+      console.error("Submit Error:", err);
+      
+      const errorMsg = err.response?.data?.error || 
+                       err.response?.data?.message || 
+                       // Nếu lỗi validation trả về Map, lấy lỗi đầu tiên
+                       (typeof err.response?.data === 'object' ? Object.values(err.response.data)[0] : "Có lỗi xảy ra");
+                       
+      showError(errorMsg);
     }
   };
 
-  // === 4. Xử lý Xóa ===
+  // === Xử lý Xóa ===
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa nhân viên này?")) return;
     try {
@@ -94,9 +118,9 @@ const StaffManager = () => {
   };
 
   const filteredStaffs = staffs.filter(s => 
-    s.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.phone?.includes(searchTerm)
+    (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.phone || '').includes(searchTerm)
   );
 
   return (
@@ -130,8 +154,8 @@ const StaffManager = () => {
       <StaffModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        initialData={editingStaff}
-        onSubmit={handleSubmit} // Truyền hàm handle đã sửa
+        data={editingStaff}
+        onSubmit={handleSubmit} 
       />
 
       <StatusModal 

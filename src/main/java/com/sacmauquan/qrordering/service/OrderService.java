@@ -25,25 +25,10 @@ public class OrderService {
     @Autowired private ComboRepository comboRepository;
     @Autowired private DiscountService discountService;
 
-    // ===================== HELPER: Gửi WebSocket =====================
-    // Hàm này giúp gửi dữ liệu chuẩn format mà Frontend table-manager.js đang chờ
-    private void sendTableUpdate(Order order) {
-        try {
-            Map<String, Object> dto = new HashMap<>();
-            dto.put("tableId", order.getTable().getId());
-            dto.put("status", order.getTable().getStatus());
-            dto.put("totalAmount", order.getTotalAmount());
-            dto.put("orderId", order.getId());
-
-            // Gửi xuống topic /topic/tables
-            messagingTemplate.convertAndSend("/topic/tables", dto);
-        } catch (Exception e) {
-            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-        }
-    }
-
     // ===================== GET ALL ORDERS =====================
-    public List<Order> getAllOrders() { return orderRepository.findAll(); }
+    public List<Order> getAllOrders() { 
+        return orderRepository.findAll(); 
+    }
 
     // ===================== UPDATE STATUS =====================
     public Order updateStatus(Long id, String status) {
@@ -170,8 +155,7 @@ public class OrderService {
         tableRepository.save(table);
 
         // Gửi WebSocket cập nhật
-        sendTableUpdate(saved);
-
+        notifyChange();
         return saved;
     }
 
@@ -202,7 +186,7 @@ public class OrderService {
         }
 
         // Gửi WebSocket cập nhật
-        sendTableUpdate(order);
+        notifyChange();
     }
 
     // ===================== MARK PREPARED (ĐÃ SỬA LỖI) =====================
@@ -218,9 +202,7 @@ public class OrderService {
 
         // Tính toán lại trạng thái bàn (Đang phục vụ -> Chờ thanh toán)
         recalcTableStatus(item.getOrder());
-
-        // [QUAN TRỌNG] Gửi toàn bộ thông tin đơn để frontend cập nhật UI
-        sendTableUpdate(item.getOrder());
+        notifyChange(); // Gửi WebSocket cập nhật
     }
 
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
@@ -254,7 +236,7 @@ public class OrderService {
         recalcTableStatus(order);
 
         // Gửi WebSocket cập nhật
-        sendTableUpdate(order);
+        notifyChange();
 
         return item;
     }
@@ -296,15 +278,8 @@ public class OrderService {
 
         // Gửi socket sau 300ms để đảm bảo transaction commit
         new Thread(() -> {
-            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
-            
-            Map<String, Object> dto = new HashMap<>();
-            dto.put("tableId", table.getId());
-            dto.put("status", "Trống");
-            dto.put("totalAmount", 0d); // Reset tiền về 0
-            dto.put("orderId", null);   // Xóa ID đơn hàng
-
-            messagingTemplate.convertAndSend("/topic/tables", dto);
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+            notifyChange();
         }).start();
 
         return "Thanh toán thành công";
@@ -383,5 +358,16 @@ public class OrderService {
             table.setStatus(allPrepared ? "Chờ thanh toán" : "Đang phục vụ");
         }
         tableRepository.save(table);
+    }
+
+
+    private void notifyChange() {
+        try {
+            // Gửi tín hiệu đơn giản "UPDATED" 
+            messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
+            System.out.println("⚡ [WS] Order change -> Sent UPDATED signal");
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
+        }
     }
 }
