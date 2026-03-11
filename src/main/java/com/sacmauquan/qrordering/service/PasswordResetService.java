@@ -13,12 +13,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class PasswordResetService {
-    @Autowired private UserRepository userRepo;
-    @Autowired private PasswordResetTokenRepository tokenRepo;
-    @Autowired private EmailService emailService;
-    @Autowired private OtpService otpService;
+    private final UserRepository userRepo;
+    private final PasswordResetTokenRepository tokenRepo;
+    private final EmailService emailService;
+    private final OtpService otpService;
 
     // API bằng email
     public void createPasswordResetToken(String email) {
@@ -71,7 +74,7 @@ public class PasswordResetService {
         otpToken.setOtpCode(otpCode);
         otpToken.setExpiryDate(expiry);
         otpToken.setVia(PasswordResetToken.Via.PHONE);
-        otpToken.setToken(UUID.randomUUID().toString()); //  thêm dòng này
+        otpToken.setToken(UUID.randomUUID().toString()); 
         tokenRepo.save(otpToken);
 
         String message = "Mã OTP của bạn: " + otpCode + " (hết hạn sau 5 phút)";

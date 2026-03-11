@@ -22,25 +22,21 @@ import com.sacmauquan.qrordering.model.Order;
 import com.sacmauquan.qrordering.model.OrderItem;
 import com.sacmauquan.qrordering.service.OrderService;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/orders")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class OrderController {
 
-    @Autowired
-    private OrderService orderService;
+    private final OrderService orderService;
 
     // ===================== CREATE ORDER (thêm món / cộng dồn) =====================
     @PostMapping
     public ResponseEntity<?> createOrder(@RequestBody OrderRequest orderRequest) {
-        try {
-            Order order = orderService.createOrder(orderRequest);
-            return ResponseEntity.ok(order);
-        } catch (Exception e) {
-            Map<String,Object> err = new HashMap<>();
-            err.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(err);
-        }
+        Order order = orderService.createOrder(orderRequest);
+        return ResponseEntity.ok(order);
     }
 
     // ===================== GET ALL ORDERS =====================
@@ -52,22 +48,14 @@ public class OrderController {
     // ===================== UPDATE STATUS =====================
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        try {
-            return ResponseEntity.ok(orderService.updateStatus(id, body.get("status")));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        return ResponseEntity.ok(orderService.updateStatus(id, body.get("status")));
     }
 
     // ===================== MARK ITEM PREPARED =====================
     @PutMapping("/items/{itemId}/prepared")
     public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
-        try {
-            orderService.markItemPrepared(itemId);
-            return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        orderService.markItemPrepared(itemId);
+        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
     }
 
     // ===================== GET CURRENT ORDER BY TABLE =====================
@@ -83,14 +71,10 @@ public class OrderController {
     public ResponseEntity<?> updateOrderItem(
             @PathVariable Long itemId,
             @RequestBody Map<String, Object> body) {
-        try {
-            int qty = (int) body.getOrDefault("quantity", 1);
-            String notes = (String) body.getOrDefault("notes", "");
-            OrderItem updated = orderService.updateOrderItem(itemId, qty, notes);
-            return ResponseEntity.ok(updated);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        int qty = (int) body.getOrDefault("quantity", 1);
+        String notes = (String) body.getOrDefault("notes", "");
+        OrderItem updated = orderService.updateOrderItem(itemId, qty, notes);
+        return ResponseEntity.ok(updated);
     }
 
     // ===================== PAY ORDER =====================
@@ -99,38 +83,22 @@ public class OrderController {
             @PathVariable Long orderId,
             @RequestParam Long userId,
             @RequestParam(required = false) String voucherCode) {
-        try {
-            String result = orderService.payOrder(orderId, userId, voucherCode);
-            return ResponseEntity.ok(Map.of("message", result));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        String result = orderService.payOrder(orderId, userId, voucherCode);
+        return ResponseEntity.ok(Map.of("message", result));
     }
 
 
     // ===================== CANCEL ORDER ITEM =====================
     @DeleteMapping("/items/{itemId}")
     public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
-        try {
-            orderService.cancelOrderItem(itemId);
-            return ResponseEntity.ok(Map.of("message", "Đã hủy món"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+        orderService.cancelOrderItem(itemId);
+        return ResponseEntity.ok(Map.of("message", "Đã hủy món"));
     }
 
     // ===================== PREVIEW ORDER (tính thử tiền) =====================
     @PostMapping("/preview")
     public ResponseEntity<?> preview(@RequestBody OrderRequest req) {
-        try {
-            return ResponseEntity.ok(orderService.preview(req));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "error", e.getMessage() != null ? e.getMessage() : "Lỗi không xác định"
-            ));
-        }
+        return ResponseEntity.ok(orderService.preview(req));
     }
 
 }

@@ -5,19 +5,24 @@ import com.sacmauquan.qrordering.dto.VoucherValidateResponse;
 import com.sacmauquan.qrordering.dto.DiscountResult;
 import com.sacmauquan.qrordering.model.Voucher;
 import com.sacmauquan.qrordering.repository.VoucherRepository;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.transaction.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +30,7 @@ public class DiscountService {
 
     private static final Logger log = LoggerFactory.getLogger(DiscountService.class);
     private final VoucherRepository voucherRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ================== CRUD & Validate cho API ==================
 
@@ -39,36 +44,38 @@ public class DiscountService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher không tồn tại"));
     }
 
-    public Voucher create(VoucherRequest req) {
-        normalize(req);
-        validateUpsert(req, null);
-        Voucher v = new Voucher();
-        applyFields(v, req);
-        if (v.getUsedCount() == null) v.setUsedCount(0);
-        Voucher saved = voucherRepository.save(v);
+    @Transactional
+        public Voucher create(VoucherRequest req) {
+            normalize(req);
+            validateUpsert(req, null);
+            Voucher v = new Voucher();
+            applyFields(v, req);
+            v.setUsedCount(0);
+            Voucher saved = voucherRepository.save(v);
 
-        broadcastReload(); 
-        return saved;
-    }
+            notifyChange(); // Gọi thông báo
+            return saved;
+        }
 
-     public Voucher update(Long id, VoucherRequest req) {
+    @Transactional
+    public Voucher update(Long id, VoucherRequest req) {
         normalize(req);
         Voucher current = findById(id);
         validateUpsert(req, current);
         applyFields(current, req);
         Voucher saved = voucherRepository.save(current);
 
-        broadcastReload(); //  thêm
+        notifyChange(); // Gọi thông báo
         return saved;
     }
 
+    @Transactional
     public void delete(Long id) {
         if (!voucherRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher không tồn tại");
         }
         voucherRepository.deleteById(id);
-
-        broadcastReload(); //  thêm
+        notifyChange(); // Gọi thông báo
     }
 
     public void increaseUsedCount(Long id) {
@@ -77,17 +84,9 @@ public class DiscountService {
         v.setUsedCount(used + 1);
         voucherRepository.save(v);
 
-        broadcastReload(); //  thêm
+        notifyChange(); // Thay đổi ở đây: Dùng notifyChange() thay vì broadcastReload()
     }
 
-    private void broadcastReload() {
-        try {
-            messagingTemplate.convertAndSend("/topic/vouchers", "reload");
-            log.info("[WS] broadcast /topic/vouchers -> reload");
-        } catch (Exception e) {
-            log.warn("Không thể broadcast /topic/vouchers", e);
-        }
-    }
 
     /** Validate code cho frontend: trả trạng thái + số tiền giảm quy đổi từ % nếu có total */
     public VoucherValidateResponse validateCode(String code, Double orderTotal) {
@@ -254,5 +253,13 @@ public class DiscountService {
         private boolean valid;
         private String message;
         private double discount;
+    }
+
+    private void notifyChange() {
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/vouchers",
+                "UPDATED",
+                "[WS] Đã gửi thông báo cập nhật Voucher qua /topic/vouchers"
+        ));
     }
 }

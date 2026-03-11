@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.*;
 
 import java.util.List;
 
@@ -19,18 +20,18 @@ public class UserController {
 
     // ===== Auth =====
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody UserUpsertRequest req) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserUpsertRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(req));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest req) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest req) {
         return ResponseEntity.ok(userService.login(req));
     }
 
     // ===== CRUD staff =====
     @GetMapping
-    public ResponseEntity<List<User>> list() {
+    public ResponseEntity<List<UserDto>> list() {
         return ResponseEntity.ok(userService.findAll()); 
     }
 
@@ -40,12 +41,12 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<UserDto> create(@RequestBody UserUpsertRequest req) {
+    public ResponseEntity<UserDto> create(@Valid @RequestBody UserUpsertRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(req));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> update(@PathVariable Long id, @RequestBody UserUpsertRequest req) {
+    public ResponseEntity<UserDto> update(@PathVariable Long id, @Valid @RequestBody UserUpsertRequest req) {
         return ResponseEntity.ok(userService.update(id, req));
     }
 
@@ -67,13 +68,8 @@ public class UserController {
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file
     ) {
-        try {
-            UserDto updated = userService.uploadAvatar(id, file);
-            return ResponseEntity.ok(updated);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
-        }
+        UserDto updated = userService.uploadAvatar(id, file);
+        return ResponseEntity.ok(updated);
     }
 
 }

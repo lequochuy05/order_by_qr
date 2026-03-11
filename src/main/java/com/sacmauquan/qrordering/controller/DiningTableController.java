@@ -11,13 +11,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
+
 @RestController
 @RequestMapping("/api/tables")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class DiningTableController {
 
-    @Autowired
-    private DiningTableService tableService;
+    private final DiningTableService tableService;
 
     @GetMapping
     public ResponseEntity<List<DiningTableResponse>> getAllTables() {
@@ -45,33 +47,21 @@ public class DiningTableController {
 
     @PostMapping
     public ResponseEntity<?> createTable(@RequestBody DiningTableRequest request) {
-        try {
-            DiningTable table = convertToEntity(request);
-            DiningTable saved = tableService.createTable(table);
-            return ResponseEntity.ok(convertToResponse(saved));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        DiningTable table = convertToEntity(request);
+        DiningTable saved = tableService.createTable(table);
+        return ResponseEntity.ok(convertToResponse(saved));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTable(@PathVariable Long id, @RequestBody DiningTableRequest request) {
-        try {
-            DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
-            return ResponseEntity.ok(convertToResponse(updated));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
+        return ResponseEntity.ok(convertToResponse(updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTable(@PathVariable Long id) {
-        try {
-            tableService.deleteTable(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        tableService.deleteTable(id);
+        return ResponseEntity.noContent().build();
     }
 
     // ===== Helper methods =====
