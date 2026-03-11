@@ -13,12 +13,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class PasswordResetService {
-    @Autowired private UserRepository userRepo;
-    @Autowired private PasswordResetTokenRepository tokenRepo;
-    @Autowired private EmailService emailService;
-    @Autowired private OtpService otpService;
+    private final UserRepository userRepo;
+    private final PasswordResetTokenRepository tokenRepo;
+    private final EmailService emailService;
+    private final OtpService otpService;
 
     // API bằng email
     public void createPasswordResetToken(String email) {

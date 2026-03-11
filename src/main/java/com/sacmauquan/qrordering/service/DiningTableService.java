@@ -4,7 +4,7 @@ import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -16,7 +16,7 @@ public class DiningTableService {
     private final DiningTableRepository repo;
     private final QRCodeService qrCodeService;
     private final ImageManagerService imageManagerService;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${app.frontend.base-url}")
     private String frontendBaseUrl;
@@ -105,11 +105,10 @@ public class DiningTableService {
 
     // 4. Hàm gửi tín hiệu chuẩn
     private void notifyChange() {
-        try {
-            messagingTemplate.convertAndSend("/topic/tables", "UPDATED");
-            System.out.println("⚡ [WS] DiningTable change -> Sent UPDATED signal");
-        } catch (Exception e) {
-            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/tables", 
+                "UPDATED", 
+                "⚡ [WS] DiningTable change -> Sent UPDATED signal"
+        ));
     }
 }

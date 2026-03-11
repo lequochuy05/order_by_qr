@@ -68,13 +68,8 @@ public class UserController {
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file
     ) {
-        try {
-            UserDto updated = userService.uploadAvatar(id, file);
-            return ResponseEntity.ok(updated);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
-        }
+        UserDto updated = userService.uploadAvatar(id, file);
+        return ResponseEntity.ok(updated);
     }
 
 }
