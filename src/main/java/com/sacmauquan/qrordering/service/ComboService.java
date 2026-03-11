@@ -7,8 +7,7 @@ import com.sacmauquan.qrordering.repository.*;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.messaging.MessagingException;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +20,7 @@ public class ComboService {
     private final ComboRepository comboRepo;
     private final ComboItemRepository comboItemRepo;
     private final MenuItemRepository menuItemRepo;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<Combo> getAll() {
         return comboRepo.findAll();
@@ -122,11 +121,10 @@ public class ComboService {
      * Gửi thông báo Realtime
      */
     private void notifyChange(String event, Object id) {
-        try {
-            messagingTemplate.convertAndSend("/topic/combos", "UPDATED");
-            System.out.println("⚡ [WS] Combo " + event + " -> Sent UPDATED signal");
-        } catch (MessagingException e) {
-            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/combos",
+                "UPDATED",
+                "⚡ [WS] Combo " + event + " -> Sent UPDATED signal"
+        ));
     }
 }

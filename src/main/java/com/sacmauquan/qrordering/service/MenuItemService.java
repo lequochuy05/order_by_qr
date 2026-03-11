@@ -8,8 +8,7 @@ import java.util.NoSuchElementException;
 import com.sacmauquan.qrordering.model.MenuItem;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 
-import org.springframework.messaging.MessagingException;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile; 
@@ -21,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
-    private final SimpMessagingTemplate broker;
+    private final ApplicationEventPublisher eventPublisher;
     private final ImageManagerService imageManager;
 
     public List<MenuItem> getAllMenuItems() {
@@ -101,7 +100,7 @@ public class MenuItemService {
             String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
             item.setImg(newUrl);
             menuItemRepository.save(item);
-
+            notifyChange("upload image", id);
             return Map.of("img", newUrl);
         } catch (Exception e) {
             throw new RuntimeException("Lỗi upload: " + e.getMessage());
@@ -109,14 +108,10 @@ public class MenuItemService {
     }
 
     private void notifyChange(String type, Object id) {
-        try {
-            broker.convertAndSend("/topic/menu", "UPDATED");
-            
-            // Log ra console server để dễ debug
-            System.out.println("⚡ [WS] Menu thay đổi (" + type + " ID: " + id + ")");
-        } catch (MessagingException e) {
-            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-            e.printStackTrace();
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/menu",
+                "UPDATED",
+                "⚡ [WS] Menu thay đổi (" + type + " ID: " + id + ")"
+        ));
     }
 }

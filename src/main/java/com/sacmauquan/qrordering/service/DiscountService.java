@@ -11,7 +11,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -30,7 +30,7 @@ public class DiscountService {
 
     private static final Logger log = LoggerFactory.getLogger(DiscountService.class);
     private final VoucherRepository voucherRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ================== CRUD & Validate cho API ==================
 
@@ -256,12 +256,10 @@ public class DiscountService {
     }
 
     private void notifyChange() {
-        try {
-           
-            messagingTemplate.convertAndSend("/topic/vouchers", "UPDATED");
-            log.info("[WS] Đã gửi thông báo cập nhật Voucher qua /topic/vouchers");
-        } catch (Exception e) {
-            log.warn("Không thể gửi thông báo WebSocket: {}", e.getMessage());
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/vouchers",
+                "UPDATED",
+                "[WS] Đã gửi thông báo cập nhật Voucher qua /topic/vouchers"
+        ));
     }
 }

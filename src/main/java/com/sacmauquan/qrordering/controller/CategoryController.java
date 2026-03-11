@@ -36,48 +36,23 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody Category dto) {
-        try {
-            return ResponseEntity.ok(service.create(dto));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(service.create(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Integer id, @Valid @RequestBody Category dto) {
-        try {
-            return ResponseEntity.ok(service.update(id, dto));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+        return ResponseEntity.ok(service.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Integer id) {
-        try {
-            service.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/image")
     public ResponseEntity<?> uploadImage(@PathVariable Integer id, @RequestParam("file") MultipartFile file) {
-        try {
-            return ResponseEntity.ok(service.uploadImage(id, file));
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
+        return ResponseEntity.ok(service.uploadImage(id, file));
     }
 
 }

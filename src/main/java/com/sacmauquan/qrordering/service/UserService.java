@@ -6,7 +6,7 @@ import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils; 
@@ -26,7 +26,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ImageManagerService imageManagerService;
     private final JwtService jwtService;
-    private final SimpMessagingTemplate messagingTemplate; // 2. Inject WebSocket
+    private final ApplicationEventPublisher eventPublisher; 
 
     // Authentication
     public AuthResponse register(UserUpsertRequest req) {
@@ -198,11 +198,10 @@ public class UserService {
 
 
     private void notifyChange() {
-        try {
-            messagingTemplate.convertAndSend("/topic/users", "UPDATED");
-            System.out.println("[WS] User changed -> Sent UPDATED signal");
-        } catch (Exception e) {
-            // System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/users",
+                "UPDATED",
+                "[WS] User changed -> Sent UPDATED signal"
+        ));
     }
 }

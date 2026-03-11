@@ -11,8 +11,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.MessagingException;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository repo;
-    private final SimpMessagingTemplate broker; 
+    private final ApplicationEventPublisher eventPublisher; 
     private final ImageManagerService imageManager; 
 
     public List<Category> getAll() {
@@ -94,6 +93,7 @@ public class CategoryService {
             String newUrl = imageManager.replace(file, cat.getImg(), "order_by_qr/categories");
             cat.setImg(newUrl);
             repo.save(cat);
+            notifyChange("changed image", id);
             return Map.of("img", newUrl);
         } catch (Exception e) {
             e.printStackTrace();
@@ -105,13 +105,10 @@ public class CategoryService {
      * Gửi thông báo Realtime đồng nhất
      */
     private void notifyChange(String event, Object id) {
-        try {
-            broker.convertAndSend("/topic/categories", "UPDATED");
-            
-            // Log kiểm tra
-            System.out.println("⚡ [WS] Category " + event + " -> Sent UPDATED signal");
-        } catch (MessagingException e) {
-            System.err.println("Lỗi gửi WebSocket: " + e.getMessage());
-        }
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/categories", 
+                "UPDATED", 
+                "⚡ [WS] Category " + event + " -> Sent UPDATED signal"
+        ));
     }
 }
