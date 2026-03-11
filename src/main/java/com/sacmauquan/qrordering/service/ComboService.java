@@ -4,9 +4,13 @@ import com.sacmauquan.qrordering.dto.ComboItemRequest;
 import com.sacmauquan.qrordering.dto.ComboRequest;
 import com.sacmauquan.qrordering.model.*;
 import com.sacmauquan.qrordering.repository.*;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -16,9 +20,14 @@ public class ComboService {
     private final ComboRepository comboRepo;
     private final ComboItemRepository comboItemRepo;
     private final MenuItemRepository menuItemRepo;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<Combo> getAll() {
         return comboRepo.findAll();
+    }
+
+    public List<Combo> getAllActive() {
+        return comboRepo.findByActiveTrue();
     }
 
     public Combo getById(Long id) {
@@ -50,7 +59,8 @@ public class ComboService {
                 comboItemRepo.save(ci);
             }
         }
-
+        
+        notifyChange("create", saved.getId());
         return saved;
     }
 
@@ -62,6 +72,7 @@ public class ComboService {
         combo.setPrice(req.getPrice());
         combo.setActive(req.getActive() != null ? req.getActive() : combo.getActive());
 
+        // Xóa các item cũ để cập nhật lại
         comboItemRepo.deleteByComboId(combo.getId());
 
         if (req.getItems() != null) {
@@ -75,20 +86,45 @@ public class ComboService {
                 comboItemRepo.save(ci);
             }
         }
-
-        return comboRepo.save(combo);
+        
+        Combo saved = comboRepo.save(combo);
+        notifyChange("update", saved.getId());
+        return saved;
     }
 
+    // ================= DELETE =================
     @Transactional
     public void delete(Long id) {
         comboItemRepo.deleteByComboId(id);
         comboRepo.deleteById(id);
+        
+        notifyChange("delete", id);
     }
 
+    // ================= TOGGLE ACTIVE (Đã sửa lỗi 500) =================
     @Transactional
     public Combo toggleActive(Long id) {
         Combo combo = getById(id);
-        combo.setActive(!combo.getActive());
-        return comboRepo.save(combo);
+        
+        // FIX LỖI: Sử dụng Boolean.TRUE.equals để tránh NullPointerException
+        // Logic: Nếu null hoặc false -> chuyển thành true. Nếu true -> chuyển thành false.
+        boolean isActive = Boolean.TRUE.equals(combo.getActive());
+        combo.setActive(!isActive);
+        
+        Combo saved = comboRepo.saveAndFlush(combo);
+        
+        notifyChange("update", saved.getId());
+        return saved;
+    }
+
+    /**
+     * Gửi thông báo Realtime
+     */
+    private void notifyChange(String event, Object id) {
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/combos",
+                "UPDATED",
+                "⚡ [WS] Combo " + event + " -> Sent UPDATED signal"
+        ));
     }
 }

@@ -44,7 +44,7 @@ public class ImageManagerService {
             String publicId = extractPublicId(url);
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
         } catch (Exception e) {
-            System.err.println("❌ Không thể xóa ảnh Cloudinary: " + e.getMessage());
+            System.err.println(" Không thể xóa ảnh Cloudinary: " + e.getMessage());
         }
     }
 

@@ -1,4 +1,4 @@
-// dto/UserDto.java  (trả về cho list/get)
+// dto/UserDto.java  
 package com.sacmauquan.qrordering.dto;
 import com.sacmauquan.qrordering.model.User;
 import lombok.*;

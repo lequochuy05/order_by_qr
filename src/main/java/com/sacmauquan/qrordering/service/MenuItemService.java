@@ -1,26 +1,28 @@
 package com.sacmauquan.qrordering.service;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 import com.sacmauquan.qrordering.model.MenuItem;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile; 
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class MenuItemService {
 
     private final MenuItemRepository menuItemRepository;
-    private final SimpMessagingTemplate broker;
+    private final ApplicationEventPublisher eventPublisher;
     private final ImageManagerService imageManager;
 
-    // ===== Lấy danh sách =====
     public List<MenuItem> getAllMenuItems() {
         return menuItemRepository.findAll();
     }
@@ -33,18 +35,16 @@ public class MenuItemService {
         return menuItemRepository.findById(id);
     }
 
-    // ===== Thêm mới =====
+    @Transactional
     public MenuItem createItem(MenuItem item) {
         if (menuItemRepository.existsByNameIgnoreCase(item.getName())) {
             throw new IllegalArgumentException("Tên món đã tồn tại");
         }
         MenuItem saved = menuItemRepository.save(item);
-        broker.convertAndSend("/topic/menu",
-            Map.of("event", "changed", "type", "create", "id", saved.getId()));
+        notifyChange("create", saved.getId());
         return saved;
     }
 
-    // ===== Cập nhật =====
     @Transactional
     public Optional<MenuItem> updateItem(Long id, MenuItem updated) {
         return menuItemRepository.findById(id).map(item -> {
@@ -54,57 +54,64 @@ public class MenuItemService {
                 }
             }
 
+            // CHỈ LẤY CÁC TRƯỜNG CÓ TRONG MODEL CỦA BẠN
             item.setName(updated.getName());
             item.setPrice(updated.getPrice());
             item.setCategory(updated.getCategory());
+            
             if (updated.getImg() != null && !updated.getImg().isBlank()) {
                 item.setImg(updated.getImg());
             }
 
             MenuItem saved = menuItemRepository.save(item);
-            broker.convertAndSend("/topic/menu",
-                Map.of("event", "changed", "type", "update", "id", saved.getId()));
+            notifyChange("update", saved.getId());
             return saved;
         });
     }
 
-    // ===== Xóa món ăn =====
+    @Transactional
     public void deleteItem(Long id) {
         MenuItem item = menuItemRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy món ăn"));
 
-        // Xóa ảnh khỏi Cloudinary nếu có
         if (item.getImg() != null && !item.getImg().isBlank()) {
-            imageManager.delete(item.getImg());
+            try {
+                imageManager.delete(item.getImg());
+            } catch (Exception e) {
+                System.err.println("Lỗi xóa ảnh: " + e.getMessage());
+            }
         }
 
         menuItemRepository.delete(item);
-        broker.convertAndSend("/topic/menu",
-            Map.of("event", "changed", "type", "delete", "id", id));
+        menuItemRepository.flush();
+        notifyChange("delete", id);
     }
 
-    // ===== Upload ảnh =====
+    @Transactional
     public Map<String, Object> uploadImage(Long id, MultipartFile file) {
         MenuItem item = menuItemRepository.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy món"));
 
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File rỗng hoặc không hợp lệ");
+            throw new IllegalArgumentException("File rỗng");
         }
 
         try {
-            // Upload ảnh mới và xóa ảnh cũ
             String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
             item.setImg(newUrl);
             menuItemRepository.save(item);
-
-            broker.convertAndSend("/topic/menu",
-                Map.of("event", "changed", "type", "update", "id", item.getId()));
-
+            notifyChange("upload image", id);
             return Map.of("img", newUrl);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Không thể tải ảnh lên: " + e.getMessage());
+            throw new RuntimeException("Lỗi upload: " + e.getMessage());
         }
+    }
+
+    private void notifyChange(String type, Object id) {
+        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
+                "/topic/menu",
+                "UPDATED",
+                "⚡ [WS] Menu thay đổi (" + type + " ID: " + id + ")"
+        ));
     }
 }
