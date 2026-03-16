@@ -49,16 +49,16 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
         .requestMatchers("/api/auth/**").permitAll()
 
-        // public GET
+        // public GET (giữ nguyên cho khách)
         .requestMatchers(HttpMethod.GET, 
                 "/api/categories/**", 
                 "/api/menu/**", 
                 "/api/tables/**", 
                 "/api/combos/**", 
-                "/api/orders/**", 
+                "/api/orders/table/*/current", 
                 "/api/vouchers/**",
                 "/api/combos/active",
-                  "/api/combos/*/items"
+                "/api/combos/*/items"
                 ).permitAll()
         // khách tạo đơn
         .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
@@ -89,7 +89,12 @@ public class SecurityConfig {
                 ).hasRole("MANAGER")
         .requestMatchers(HttpMethod.PATCH,  "/api/combos/**").hasRole("MANAGER")
 
-        // revenue
+        // kitchen / KDS
+        .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER","STAFF","CHEF")
+        .requestMatchers(HttpMethod.PUT, "/api/orders/items/*/status").hasAnyRole("MANAGER","STAFF","CHEF")
+        .requestMatchers(HttpMethod.PUT, "/api/orders/items/*/prepared").hasAnyRole("MANAGER","STAFF","CHEF")
+
+        // revenue / stats
         .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER","STAFF")
 
         // upload avatar

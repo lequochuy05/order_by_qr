@@ -8,6 +8,7 @@ target/
 node_modules/
 dist/
 .env
+.agent/
 
 # OS
 .DS_Store

@@ -12,20 +12,20 @@ class WebSocketService {
         if (this.client) return;
 
         const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
-        const socket = new SockJS(wsUrl);
+        
         this.client = new Client({
-            webSocketFactory: () => socket,
+            webSocketFactory: () => new SockJS(wsUrl),
             reconnectDelay: 5000,
             onConnect: () => {
                 this.connected = true;
-                console.log("✅ WebSocket Connected");
+                console.log("WebSocket Connected");
                 // Chạy toàn bộ hàng đợi subscribe
                 this.onConnectCallbacks.forEach(cb => cb());
                 this.onConnectCallbacks = []; 
             },
             onDisconnect: () => {
                 this.connected = false;
-                console.log("❌ WebSocket Disconnected");
+                console.log("WebSocket Disconnected");
             }
         });
         this.client.activate();

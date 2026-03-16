@@ -12,6 +12,7 @@ import TableManager from './pages/admin/TableManager';
 import RevenueStats from './pages/admin/statistics/RevenueStats.jsx';
 // import TopDishesStats from './pages/admin/statistics/TopDishesStats.jsx';
 import StaffStats from './pages/admin/statistics/StaffStats.jsx';
+import KitchenDisplay from './pages/admin/KitchenDisplay';
 
 // Import các trang của bạn
 import MenuPage from './pages/customer/MenuPage';
@@ -25,10 +26,11 @@ function App() {
           <Route path="/menu" element={<MenuPage />} /> {/* Trang menu cho khách hàng */}
           
           <Route path="/login" element={<LoginPage />} /> {/* Trang đăng nhập quản lý */}
-          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<div>Bảng điều khiển</div>} />
               <Route path="/admin/orders" element={<div>Quản lý đơn hàng</div>} />
+              <Route path="/admin/kitchen" element={<KitchenDisplay />} />
               <Route path="/admin/tables" element={<TableManager />} />
               <Route path="/admin/categories" element={<CategoryManager />} />
               <Route path="/admin/menu" element={<MenuManager />} />

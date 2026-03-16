@@ -47,5 +47,17 @@ export const orderService = {
         if (voucherCode) url += `&voucherCode=${encodeURIComponent(voucherCode)}`;
         const res = await api.put(url);
         return res.data;
+    },
+
+    // Lấy danh sách đơn cho nhà bếp
+    getKitchenOrders: async () => {
+        const res = await api.get('/orders/kitchen');
+        return res.data;
+    },
+
+    // Cập nhật trạng thái món (PENDING, COOKING, FINISHED)
+    updateItemStatus: async (itemId, status) => {
+        const res = await api.put(`/orders/items/${itemId}/status`, { status });
+        return res.data;
     }
 };

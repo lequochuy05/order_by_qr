@@ -33,7 +33,7 @@ public class DiningTableService {
         return tables;
     }
 
-   public Optional<DiningTable> getTableById(Long id) {
+    public Optional<DiningTable> getTableById(Long id) {
         return repo.findById(id);
     }
 
@@ -56,7 +56,7 @@ public class DiningTableService {
         DiningTable saved = repo.save(table);
 
         try {
-            String qrContent = frontendBaseUrl + "/menu.html?tableCode=" + saved.getTableCode();
+            String qrContent = frontendBaseUrl + "/menu?tableCode=" + saved.getTableCode();
             byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
 
             String folder = "order_by_qr/tables";
@@ -65,9 +65,9 @@ public class DiningTableService {
 
             saved.setQrCodeUrl(result.get("secure_url").toString());
             saved.setQrCodePublicId(result.get("public_id").toString());
-            
+
             repo.save(saved);
-            
+
             notifyChange(); // 3. Báo hiệu thay đổi
             return saved;
         } catch (Exception e) {
@@ -87,7 +87,7 @@ public class DiningTableService {
 
         t.setCapacity(capacity);
         DiningTable saved = repo.save(t);
-        
+
         notifyChange(); // 3. Báo hiệu thay đổi
         return saved;
     }
@@ -106,9 +106,8 @@ public class DiningTableService {
     // 4. Hàm gửi tín hiệu chuẩn
     private void notifyChange() {
         eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
-                "/topic/tables", 
-                "UPDATED", 
-                "⚡ [WS] DiningTable change -> Sent UPDATED signal"
-        ));
+                "/topic/tables",
+                "UPDATED",
+                "⚡ [WS] DiningTable change -> Sent UPDATED signal"));
     }
 }
