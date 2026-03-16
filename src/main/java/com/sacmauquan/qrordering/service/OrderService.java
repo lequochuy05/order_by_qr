@@ -9,6 +9,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.sacmauquan.qrordering.state.OrderState;
+import com.sacmauquan.qrordering.state.OrderStateFactory;
 import com.sacmauquan.qrordering.event.WebSocketEvent;
 
 import java.time.LocalDateTime;
@@ -30,6 +32,7 @@ public class OrderService {
     private final DiningTableRepository tableRepository;
     private final ComboRepository comboRepository;
     private final DiscountService discountService;
+    private final OrderStateFactory orderStateFactory;
 
     // ===================== GET ALL ORDERS =====================
     public List<Order> getAllOrders() { 
@@ -37,11 +40,27 @@ public class OrderService {
     }
 
     // ===================== UPDATE STATUS =====================
+    @Transactional
     public Order updateStatus(Long id, String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-        order.setStatus(status);
-        return orderRepository.save(order);
+        
+        OrderState state = orderStateFactory.getState(status);
+        state.handleRequest(order);
+        
+        Order saved = orderRepository.save(order);
+        
+        // Cập nhật trạng thái bàn nếu cần
+        if ("CANCELLED".equals(order.getStatus()) && order.getOrderItems().isEmpty()) {
+            DiningTable table = order.getTable();
+            table.setStatus("Trống");
+            tableRepository.save(table);
+        } else {
+             recalcTableStatus(order);
+        }
+        
+        notifyChange();
+        return saved;
     }
 
     // ===================== CREATE ORDER =====================
@@ -60,7 +79,8 @@ public class OrderService {
         if (order == null) {
             order = new Order();
             order.setTable(table);
-            order.setStatus("PENDING");
+            OrderState pendingState = orderStateFactory.getState("PENDING");
+            pendingState.handleRequest(order);
             order.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
             order.setOrderItems(new ArrayList<>());
             order.setTotalAmount(0d);
@@ -182,7 +202,8 @@ public class OrderService {
         orderItemRepository.delete(item);
 
         if (order.getOrderItems().isEmpty()) {
-            order.setStatus("CANCELLED");
+            OrderState cancelledState = orderStateFactory.getState("CANCELLED");
+            cancelledState.handleRequest(order);
             orderRepository.save(order);
             DiningTable table = order.getTable();
             table.setStatus("Trống");
@@ -196,20 +217,41 @@ public class OrderService {
         notifyChange();
     }
 
-    // ===================== MARK PREPARED (ĐÃ SỬA LỖI) =====================
+    // ===================== UPDATE ITEM STATUS (KDS) =====================
     @Transactional
-    public void markItemPrepared(Long itemId) {
+    public void updateItemStatus(Long itemId, String newStatus) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn"));
 
-        if (!item.isPrepared()) {
+        item.setStatus(newStatus);
+        
+        // Đồng bộ với preprare boolean để tương thích ngược nếu cần
+        if ("FINISHED".equals(newStatus)) {
             item.setPrepared(true);
-            orderItemRepository.save(item);
+        } else {
+            item.setPrepared(false);
         }
+        
+        orderItemRepository.save(item);
 
         // Tính toán lại trạng thái bàn (Đang phục vụ -> Chờ thanh toán)
         recalcTableStatus(item.getOrder());
         notifyChange(); // Gửi WebSocket cập nhật
+    }
+
+    // Deprecated: dùng updateItemStatus
+    @Transactional
+    public void markItemPrepared(Long itemId) {
+        updateItemStatus(itemId, "FINISHED");
+    }
+
+    public List<Order> getKitchenOrders() {
+        // Lấy các đơn PENDING (đang phục vụ) có món chưa xong
+        return orderRepository.findAll().stream()
+                .filter(o -> "PENDING".equals(o.getStatus()))
+                .filter(o -> o.getOrderItems().stream().anyMatch(oi -> !"FINISHED".equals(oi.getStatus())))
+                .sorted((o1, o2) -> o1.getCreatedAt().compareTo(o2.getCreatedAt()))
+                .toList();
     }
 
     public Optional<Order> getCurrentOrderByTable(Long tableId) {
@@ -274,7 +316,10 @@ public class OrderService {
         order.setDiscountVoucher(result.getDiscountValue());
         order.setTotalAmount(result.getFinalTotal());
 
-        order.setStatus("PAID");
+        OrderState paidState = orderStateFactory.getState("PAID"); // Adjust if PAID isn't a state, COMPLETED is closest. Assuming PAID is meant to map to COMPLETED or remains as a simple status for now.
+        // If PAID is not a formal state in State Pattern currently, keep it as is or add PaidState class. For now just set status:
+        order.setStatus("PAID"); 
+        
         order.setPaidBy(currentUser);
         order.setPaymentTime(LocalDateTime.now());
         orderRepository.save(order);
@@ -366,10 +411,18 @@ public class OrderService {
 
 
     private void notifyChange() {
+        // Thông báo cho lễ tân / quản lý bàn
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/tables", 
                 "UPDATED", 
-                "⚡ [WS] Order change -> Sent UPDATED signal"
+                "⚡ [WS] Order change -> Sent UPDATED signal to /topic/tables"
+        ));
+
+        // Thông báo cho nhà bếp
+        eventPublisher.publishEvent(new WebSocketEvent(
+                "/topic/kitchen", 
+                "UPDATED", 
+                "⚡ [WS] Order change -> Sent UPDATED signal to /topic/kitchen"
         ));
     }
 }

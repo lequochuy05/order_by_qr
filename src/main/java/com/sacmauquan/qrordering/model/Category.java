@@ -1,5 +1,7 @@
 package com.sacmauquan.qrordering.model;
 
+import java.io.Serializable;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +10,7 @@ import lombok.Setter;
 @Table(name = "category")
 @Getter
 @Setter
-public class Category {
+public class Category implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

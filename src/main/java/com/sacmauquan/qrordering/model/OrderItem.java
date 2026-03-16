@@ -34,4 +34,7 @@ public class OrderItem {
     private int quantity;
     private String notes;
     private boolean prepared = false;
+
+    @Column(name = "status")
+    private String status = "PENDING"; // PENDING, COOKING, FINISHED
 }

@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { 
-  LayoutDashboard, 
-  Layers, 
-  UtensilsCrossed, 
-  ClipboardList, 
-  Table, 
-  Users, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Layers,
+  UtensilsCrossed,
+  ClipboardList,
+  Table,
+  Users,
+  BarChart3,
   Settings,
   Package,
   TicketPercent,
@@ -21,7 +21,7 @@ import {
 const AdminSidebar = ({ isOpen }) => {
   const location = useLocation();
   const { user } = useAuth();
-  
+
   // State để quản lý menu nào đang mở (lưu theo title)
   const [expandedMenu, setExpandedMenu] = useState(null);
 
@@ -47,64 +47,70 @@ const AdminSidebar = ({ isOpen }) => {
   }, [location.pathname]);
 
   const menuItems = [
-    { 
-      title: 'Bảng điều khiển', 
-      path: '/admin/dashboard', 
-      icon: <LayoutDashboard size={22} />, 
-      roles: ['MANAGER', 'STAFF'] 
+    {
+      title: 'Bảng điều khiển',
+      path: '/admin/dashboard',
+      icon: <LayoutDashboard size={22} />,
+      roles: ['MANAGER', 'STAFF']
     },
-    { 
-      title: 'Quản lý bàn', 
-      path: '/admin/tables', 
-      icon: <Table size={22} />, 
-      roles: ['MANAGER', 'STAFF'] 
+    {
+      title: 'Quản lý bàn',
+      path: '/admin/tables',
+      icon: <Table size={22} />,
+      roles: ['MANAGER', 'STAFF']
     },
-    { 
-      title: 'Quản lý danh mục', 
-      path: '/admin/categories', 
-      icon: <Layers size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Nhà bếp',
+      path: '/admin/kitchen',
+      icon: <UtensilsCrossed size={22} />,
+      roles: ['CHEF']
     },
-    { 
-      title: 'Quản lý món ăn', 
-      path: '/admin/menu', 
-      icon: <UtensilsCrossed size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Quản lý danh mục',
+      path: '/admin/categories',
+      icon: <Layers size={22} />,
+      roles: ['MANAGER']
     },
-    { 
-      title: 'Quản lý combo', 
-      path: '/admin/combo', 
-      icon: <Package size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Quản lý món ăn',
+      path: '/admin/menu',
+      icon: <UtensilsCrossed size={22} />,
+      roles: ['MANAGER']
     },
-    { 
-      title: 'Quản lý voucher', 
-      path: '/admin/voucher', 
-      icon: <TicketIcon size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Quản lý combo',
+      path: '/admin/combo',
+      icon: <Package size={22} />,
+      roles: ['MANAGER']
     },
-    { 
-      title: 'Quản lý khuyến mãi', 
-      path: '/admin/promotions', 
-      icon: <TicketPercent size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Quản lý voucher',
+      path: '/admin/voucher',
+      icon: <TicketIcon size={22} />,
+      roles: ['MANAGER']
     },
-    { 
-      title: 'Quản lý nhân viên', 
-      path: '/admin/staffs', 
-      icon: <Users size={22} />, 
-      roles: ['MANAGER'] 
+    {
+      title: 'Quản lý khuyến mãi',
+      path: '/admin/promotions',
+      icon: <TicketPercent size={22} />,
+      roles: ['MANAGER']
     },
-    { 
-      title: 'Lịch sử đơn hàng', 
-      path: '/admin/history', 
-      icon: <ClipboardList size={22} />, 
-      roles: ['MANAGER', 'STAFF'] 
+    {
+      title: 'Quản lý nhân viên',
+      path: '/admin/staffs',
+      icon: <Users size={22} />,
+      roles: ['MANAGER']
     },
-  
-    { 
-      title: 'Thống kê', 
-      icon: <BarChart3 size={22} />, 
+    {
+      title: 'Lịch sử đơn hàng',
+      path: '/admin/history',
+      icon: <ClipboardList size={22} />,
+      roles: ['MANAGER', 'STAFF']
+    },
+
+    {
+      title: 'Thống kê',
+      icon: <BarChart3 size={22} />,
       roles: ['MANAGER'],
       children: [
         { title: 'Doanh thu', path: '/admin/statistics/revenue' },
@@ -114,16 +120,16 @@ const AdminSidebar = ({ isOpen }) => {
     },
     // ------------------------------------------------
 
-    { 
-      title: 'Cài đặt', 
-      path: '/admin/settings', 
-      icon: <Settings size={22} />, 
-      roles: ['MANAGER', 'STAFF'] 
+    {
+      title: 'Cài đặt',
+      path: '/admin/settings',
+      icon: <Settings size={22} />,
+      roles: ['MANAGER', 'STAFF']
     },
   ];
 
   return (
-    <aside 
+    <aside
       className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col
         ${isOpen ? 'w-64' : 'w-0 lg:w-20 overflow-hidden lg:overflow-visible'}`}
     >
@@ -145,13 +151,13 @@ const AdminSidebar = ({ isOpen }) => {
       <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
         {menuItems.map((item, index) => {
           if (user?.role && !item.roles.includes(user.role)) return null;
-          
+
           // Logic kiểm tra Active
           const hasChildren = !!item.children;
           const isParentExpanded = expandedMenu === item.title;
           // Item được coi là active nếu đường dẫn trùng khớp HOẶC là cha của menu con đang active
-          const isActive = !hasChildren 
-            ? location.pathname === item.path 
+          const isActive = !hasChildren
+            ? location.pathname === item.path
             : item.children.some(child => child.path === location.pathname);
 
           return (
@@ -169,7 +175,7 @@ const AdminSidebar = ({ isOpen }) => {
                   <div className={`${isActive ? 'text-orange-500' : 'text-slate-400 group-hover:text-orange-400'}`}>
                     {item.icon}
                   </div>
-                  
+
                   {isOpen && (
                     <>
                       <span className="font-medium whitespace-nowrap flex-1 text-sm">
@@ -194,9 +200,9 @@ const AdminSidebar = ({ isOpen }) => {
                 <Link
                   to={item.path}
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative
-                    ${isActive 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
-                    : 'hover:bg-slate-800 hover:text-white'}`}
+                    ${isActive
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                      : 'hover:bg-slate-800 hover:text-white'}`}
                 >
                   <div className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-400'}`}>
                     {item.icon}
@@ -224,8 +230,8 @@ const AdminSidebar = ({ isOpen }) => {
                         key={childIndex}
                         to={child.path}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
-                          ${isChildActive 
-                            ? 'text-orange-500 bg-slate-800 font-medium' 
+                          ${isChildActive
+                            ? 'text-orange-500 bg-slate-800 font-medium'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
                       >
                         {/* Dấu chấm tròn nhỏ để trang trí */}

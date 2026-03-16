@@ -14,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
@@ -23,6 +25,7 @@ public class CategoryService {
     private final ApplicationEventPublisher eventPublisher; 
     private final ImageManagerService imageManager; 
 
+    @Cacheable(value = "categories")
     public List<Category> getAll() {
         return repo.findAll();
     }
@@ -32,6 +35,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public Category create(Category c) {
         if (repo.existsByNameIgnoreCase(c.getName()))
             throw new IllegalArgumentException("Tên danh mục đã tồn tại");
@@ -42,6 +46,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public Category update(Integer id, Category input) {
         Category exist = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
@@ -62,6 +67,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public void delete(Integer id) {
         Category cat = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
@@ -81,6 +87,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @CacheEvict(value = "categories", allEntries = true)
     public Map<String, Object> uploadImage(Integer id, MultipartFile file) {
         Category cat = repo.findById(id)
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));

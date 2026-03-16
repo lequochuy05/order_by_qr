@@ -1,11 +1,13 @@
 package com.sacmauquan.qrordering.exception;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.net.URI;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -14,31 +16,53 @@ import java.util.NoSuchElementException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Dữ liệu không hợp lệ"));
+    public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Dữ liệu không hợp lệ");
+        problemDetail.setTitle("Bad Request");
+        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/bad-request"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
     }
 
     @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<Map<String, String>> handleNoSuchElementException(NoSuchElementException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Không tìm thấy dữ liệu"));
+    public ProblemDetail handleNoSuchElementException(NoSuchElementException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Không tìm thấy dữ liệu");
+        problemDetail.setTitle("Resource Not Found");
+        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/not-found"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, String>> handleIllegalStateException(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Trạng thái không hợp lệ"));
+    public ProblemDetail handleIllegalStateException(IllegalStateException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage() != null ? ex.getMessage() : "Trạng thái không hợp lệ");
+        problemDetail.setTitle("Conflict / Illegal State");
+        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/conflict"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage()));
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+                
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Lỗi xác thực dữ liệu đầu vào");
+        problemDetail.setTitle("Validation Error");
+        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/validation"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        problemDetail.setProperty("errors", errors);
+        return problemDetail;
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
+    public ProblemDetail handleGeneralException(Exception ex) {
         ex.printStackTrace(); // Keep this for server logs
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Lỗi hệ thống nội bộ"));
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() != null ? ex.getMessage() : "Lỗi hệ thống nội bộ");
+        problemDetail.setTitle("Internal Server Error");
+        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/internal-error"));
+        problemDetail.setProperty("timestamp", Instant.now());
+        return problemDetail;
     }
 }

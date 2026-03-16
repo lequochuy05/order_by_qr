@@ -54,8 +54,24 @@ public class OrderController {
     // ===================== MARK ITEM PREPARED =====================
     @PutMapping("/items/{itemId}/prepared")
     public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
-        orderService.markItemPrepared(itemId);
+        orderService.updateItemStatus(itemId, "FINISHED");
         return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
+    }
+
+    // ===================== UPDATE ITEM STATUS (KDS) =====================
+    @PutMapping("/items/{itemId}/status")
+    public ResponseEntity<?> updateItemStatus(
+            @PathVariable Long itemId,
+            @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        orderService.updateItemStatus(itemId, status);
+        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món: " + status));
+    }
+
+    // ===================== GET KITCHEN ORDERS = :p =====================
+    @GetMapping("/kitchen")
+    public List<Order> getKitchenOrders() {
+        return orderService.getKitchenOrders();
     }
 
     // ===================== GET CURRENT ORDER BY TABLE =====================

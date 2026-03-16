@@ -31,7 +31,7 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(unique = true) 
+    @Column(unique = true)
     private String phone;
 
     @Enumerated(EnumType.STRING)
@@ -41,21 +41,21 @@ public class User {
     // --- NÂNG CẤP: Dùng Enum cho Status ---
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default 
+    @Builder.Default
     private Status status = Status.ACTIVE;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    // ===== ENUMS =====
+    // ===== ENUMS
     public enum Role {
-        STAFF, MANAGER
+        STAFF, MANAGER, CHEF
     }
 
     public enum Status {
-        ACTIVE,   
-        BANNED,   
-        INACTIVE   
+        ACTIVE,
+        BANNED,
+        INACTIVE
     }
 }
