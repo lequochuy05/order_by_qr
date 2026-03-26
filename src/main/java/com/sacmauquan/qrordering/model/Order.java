@@ -11,12 +11,20 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+
 @Entity
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "orders")
 @Getter
 @Setter
-public class Order {
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Order extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,12 +43,23 @@ public class Order {
     @Column(name = "discount_voucher")
     private Double discountVoucher;
 
-     @Column(name = "total_amount")
+    @Column(name = "voucher_code")
+    private String voucherCode;
+
+    @Column(name = "total_amount")
     private double totalAmount;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-    
+    @Builder.Default
+    @Column(name = "order_type")
+    private String orderType = "DINE_IN"; // DINE_IN, TAKEAWAY
+
+    @Builder.Default
+    @Column(name = "payment_status")
+    private String paymentStatus = "PENDING"; // PENDING, COMPLETED, CANCELLED
+
+    @Column(name = "payment_method")
+    private String paymentMethod; // CASH, TRANSFER, VNPAY
+
     @ManyToOne
     @JoinColumn(name = "paid_by")
     private User paidBy;
@@ -49,6 +68,7 @@ public class Order {
     private LocalDateTime paymentTime;
 
     
+    @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<OrderItem> orderItems = new ArrayList<>();

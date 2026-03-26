@@ -2,7 +2,7 @@
 package com.sacmauquan.qrordering.dto;
 import com.sacmauquan.qrordering.model.User;
 import lombok.*;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -13,6 +13,6 @@ public class UserDto {
     private String phone;
     private User.Role role;
     private String status;
-    private Instant createdAt;
+    private LocalDateTime createdAt;
     private String avatarUrl;
 }

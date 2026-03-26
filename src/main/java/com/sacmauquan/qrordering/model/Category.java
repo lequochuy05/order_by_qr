@@ -5,12 +5,19 @@ import java.io.Serializable;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "category")
 @Getter
 @Setter
-public class Category implements Serializable {
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Category extends BaseEntity implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

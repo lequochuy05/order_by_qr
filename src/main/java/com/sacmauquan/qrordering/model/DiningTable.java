@@ -4,13 +4,21 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Builder;
+
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "tables")
 @Getter
 @Setter
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
-public class DiningTable {
+public class DiningTable extends BaseEntity {
     public static final String AVAILABLE = "AVAILABLE";
     public static final String OCCUPIED = "OCCUPIED";
     public static final String WAITING_FOR_PAYMENT = "WAITING_FOR_PAYMENT";
@@ -31,6 +39,7 @@ public class DiningTable {
     @Column(name = "table_code", nullable = false, unique = true, length = 50)
     private String tableCode;
 
-    private String status;
+    @Builder.Default
+    private String status = AVAILABLE;
     private int capacity;
 }

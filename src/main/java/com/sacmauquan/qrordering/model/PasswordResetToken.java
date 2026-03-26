@@ -2,14 +2,17 @@ package com.sacmauquan.qrordering.model;
 
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "password_reset_tokens")
 @Getter
 @Setter
-public class PasswordResetToken {
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PasswordResetToken extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -24,6 +27,7 @@ public class PasswordResetToken {
     @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean used = false;
 

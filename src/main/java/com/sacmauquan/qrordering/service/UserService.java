@@ -40,7 +40,7 @@ public class UserService {
         User u = handleEntityMapping(new User(), req);
 
         u.setRole(User.Role.STAFF);
-        u.setStatus(User.Status.ACTIVE);
+        u.setStatus(User.UserStatus.ACTIVE);
         return buildAuthResponse(userRepository.save(u));
     }
 
@@ -49,10 +49,10 @@ public class UserService {
         User u = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email không tồn tại"));
 
-        if (u.getStatus() == User.Status.BANNED) {
+        if (u.getStatus() == User.UserStatus.BANNED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản đã bị khóa");
         }
-        if (u.getStatus() == User.Status.INACTIVE) {
+        if (u.getStatus() == User.UserStatus.INACTIVE) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản chưa được kích hoạt");
         }
 
@@ -150,7 +150,7 @@ public class UserService {
 
         if (isNew) {
             u = userMapper.toEntity(req);
-            u.setStatus(User.Status.ACTIVE);
+            u.setStatus(User.UserStatus.ACTIVE);
             u.setRole(User.Role.STAFF);
             if (!StringUtils.hasText(req.getPassword())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu không được để trống");
@@ -164,9 +164,9 @@ public class UserService {
 
         if (StringUtils.hasText(req.getStatus())) {
             try {
-                u.setStatus(User.Status.valueOf(req.getStatus().toUpperCase()));
+                u.setStatus(User.UserStatus.valueOf(req.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                u.setStatus(User.Status.ACTIVE);
+                u.setStatus(User.UserStatus.ACTIVE);
             }
         }
 
