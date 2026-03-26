@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-    ResponsiveContainer, Tooltip as RechartsTooltip, Tooltip 
+import {
+    BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    ResponsiveContainer, Tooltip as RechartsTooltip, Tooltip
 } from 'recharts';
 import { Loader2, Receipt } from 'lucide-react'; // Thêm icon Receipt
 import { statisticsService } from '../../../services/admin/statisticsService';
-import StatsToolbar from '../../../components/admin/stats/StatsToolbar';
+import StatsToolbar from '../../../components/admin/common/StatsToolbar';
 import { fmtVND, fmtDate, fmtDateTime } from '../../../utils/formatters';
 
 const RevenueStats = () => {
     // Mặc định 7 ngày  
-    const [dateRange, setDateRange] = useState({ 
-        from: new Date(new Date().setDate(new Date().getDate() - 6)), 
-        to: new Date() 
+    const [dateRange, setDateRange] = useState({
+        from: new Date(new Date().setDate(new Date().getDate() - 6)),
+        to: new Date()
     });
     const [revenueData, setRevenueData] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -30,7 +30,7 @@ const RevenueStats = () => {
                 setRevenueData(rev);
                 // Sắp xếp đơn hàng mới nhất lên đầu để hiển thị trong bảng
                 setOrders(ods.sort((a, b) => new Date(b.paymentTime) - new Date(a.paymentTime)));
-            } catch(e) { console.error(e); } 
+            } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         load();
@@ -40,8 +40,8 @@ const RevenueStats = () => {
     const chartData = useMemo(() => {
         const orderCountMap = {};
         orders.forEach(o => {
-            const d = new Date(o.paymentTime || o.createdAt); 
-            const key = fmtDate(d); 
+            const d = new Date(o.paymentTime || o.createdAt);
+            const key = fmtDate(d);
             orderCountMap[key] = (orderCountMap[key] || 0) + 1;
         });
 
@@ -68,14 +68,14 @@ const RevenueStats = () => {
         <div className="p-6 bg-slate-50 min-h-screen">
             <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} title="Thời gian" />
 
-            {loading ? <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32}/></div> : (
+            {loading ? <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div> : (
                 <div className="space-y-6">
-                    
+
                     {/* 1. KPI Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <KpiItem title="Tổng doanh thu" value={fmtVND(kpi.totalRev)} color="text-orange-600" />
-                        <KpiItem title="Tổng đơn hàng" value={kpi.totalOrd}  color="text-blue-600"/>
-                        <KpiItem title="Giá trị TB/Đơn" value={fmtVND(kpi.avg)} color="text-purple-600"/>
+                        <KpiItem title="Tổng đơn hàng" value={kpi.totalOrd} color="text-blue-600" />
+                        <KpiItem title="Giá trị TB/Đơn" value={fmtVND(kpi.avg)} color="text-purple-600" />
                     </div>
 
                     {/* 2. Biểu đồ */}
@@ -88,19 +88,19 @@ const RevenueStats = () => {
                                     <AreaChart data={chartData}>
                                         <defs>
                                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.2}/>
-                                                <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                                                <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} tickFormatter={(v) => `${v/1000}k`} />
-                                        <RechartsTooltip 
-                                            formatter={(v) => [fmtVND(v), "Doanh thu"]} 
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => `${v / 1000}k`} />
+                                        <RechartsTooltip
+                                            formatter={(v) => [fmtVND(v), "Doanh thu"]}
                                             labelFormatter={(l, p) => p[0]?.payload.fullDate}
-                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                         />
-                                        <Area type="monotone" dataKey="revenue" stroke="#f97316" fill="url(#colorRev)" strokeWidth={3} activeDot={{r: 6}} />
+                                        <Area type="monotone" dataKey="revenue" stroke="#f97316" fill="url(#colorRev)" strokeWidth={3} activeDot={{ r: 6 }} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -113,13 +113,13 @@ const RevenueStats = () => {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={chartData}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} allowDecimals={false} />
-                                        <Tooltip 
-                                            cursor={{fill: '#f3f4f6'}}
+                                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
+                                        <Tooltip
+                                            cursor={{ fill: '#f3f4f6' }}
                                             formatter={(v) => [v, "Đơn hàng"]}
                                             labelFormatter={(l, p) => p[0]?.payload.fullDate}
-                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
+                                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                         />
                                         <Bar dataKey="orderCount" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
                                     </BarChart>
@@ -132,12 +132,12 @@ const RevenueStats = () => {
                     <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <Receipt size={20} className="text-gray-500"/>
+                                <Receipt size={20} className="text-gray-500" />
                                 Chi tiết giao dịch
                             </h3>
                             <span className="text-sm text-gray-500">{orders.length} đơn hàng</span>
                         </div>
-                        
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">

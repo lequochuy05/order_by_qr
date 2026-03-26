@@ -48,4 +48,33 @@ public interface StatsRepository extends Repository<com.sacmauquan.qrordering.mo
       ORDER BY o.payment_time DESC
       """, nativeQuery = true)
   List<Object[]> orderDetails(@Param("from") Instant from, @Param("to") Instant to);
+
+  // ---- Top dishes (aggregation by menu item)
+  @Query(value = """
+      SELECT mi.id, mi.name, c.name AS category, mi.img,
+             SUM(oi.quantity) AS total_qty,
+             SUM(oi.quantity * oi.unit_price) AS total_revenue
+      FROM order_item oi
+      JOIN orders o ON o.id = oi.order_id
+      JOIN menu_item mi ON mi.id = oi.menu_item_id
+      LEFT JOIN category c ON c.id = mi.cate_id
+      WHERE o.status = 'PAID'
+        AND o.payment_time BETWEEN :from AND :to
+      GROUP BY mi.id, mi.name, c.name, mi.img
+      ORDER BY total_qty DESC
+      """, nativeQuery = true)
+  List<Object[]> topDishes(@Param("from") Instant from, @Param("to") Instant to);
+
+  // ---- Dish trend by day (total quantity sold per day)
+  @Query(value = """
+      SELECT DATE(o.payment_time) AS bucket,
+             SUM(oi.quantity) AS total_qty
+      FROM order_item oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o.status = 'PAID'
+        AND o.payment_time BETWEEN :from AND :to
+      GROUP BY DATE(o.payment_time)
+      ORDER BY DATE(o.payment_time)
+      """, nativeQuery = true)
+  List<Object[]> dishTrendByDay(@Param("from") Instant from, @Param("to") Instant to);
 }

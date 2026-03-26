@@ -6,6 +6,7 @@ import java.util.NoSuchElementException;
 
 import com.sacmauquan.qrordering.model.Category;
 import com.sacmauquan.qrordering.repository.CategoryRepository;
+import com.sacmauquan.qrordering.event.WebSocketEvent;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,8 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository repo;
-    private final ApplicationEventPublisher eventPublisher; 
-    private final ImageManagerService imageManager; 
+    private final ApplicationEventPublisher eventPublisher;
+    private final ImageManagerService imageManager;
 
     @Cacheable(value = "categories")
     public List<Category> getAll() {
@@ -31,7 +32,11 @@ public class CategoryService {
     }
 
     public Page<Category> search(String q, Pageable pageable) {
-        return repo.search(q, pageable);
+        if (q == null || q.trim().isEmpty()) {
+            return repo.findAll(pageable);
+        } else {
+            return repo.findByNameContainingIgnoreCase(q, pageable);
+        }
     }
 
     @Transactional
@@ -39,7 +44,7 @@ public class CategoryService {
     public Category create(Category c) {
         if (repo.existsByNameIgnoreCase(c.getName()))
             throw new IllegalArgumentException("Tên danh mục đã tồn tại");
-        
+
         Category saved = repo.save(c);
         notifyChange("changed", saved.getId());
         return saved;
@@ -49,18 +54,18 @@ public class CategoryService {
     @CacheEvict(value = "categories", allEntries = true)
     public Category update(Integer id, Category input) {
         Category exist = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
 
         if (!exist.getName().equalsIgnoreCase(input.getName())
-            && repo.existsByNameIgnoreCase(input.getName())) {
+                && repo.existsByNameIgnoreCase(input.getName())) {
             throw new IllegalArgumentException("Tên danh mục đã tồn tại");
         }
-        
+
         exist.setName(input.getName());
         if (input.getImg() != null && !input.getImg().trim().isEmpty()) {
             exist.setImg(input.getImg());
         }
-        
+
         Category saved = repo.save(exist);
         notifyChange("changed", saved.getId());
         return saved;
@@ -70,7 +75,7 @@ public class CategoryService {
     @CacheEvict(value = "categories", allEntries = true)
     public void delete(Integer id) {
         Category cat = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
 
         // Xóa ảnh khỏi Cloudinary nếu có
         if (cat.getImg() != null && !cat.getImg().isEmpty()) {
@@ -90,8 +95,8 @@ public class CategoryService {
     @CacheEvict(value = "categories", allEntries = true)
     public Map<String, Object> uploadImage(Integer id, MultipartFile file) {
         Category cat = repo.findById(id)
-            .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
-            
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy danh mục"));
+
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File rỗng hoặc không hợp lệ");
         }
@@ -112,10 +117,9 @@ public class CategoryService {
      * Gửi thông báo Realtime đồng nhất
      */
     private void notifyChange(String event, Object id) {
-        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
-                "/topic/categories", 
-                "UPDATED", 
-                "⚡ [WS] Category " + event + " -> Sent UPDATED signal"
-        ));
+        eventPublisher.publishEvent(new WebSocketEvent(
+                "/topic/categories",
+                "UPDATED",
+                "⚡ [WS] Category " + event + " -> Sent UPDATED signal"));
     }
 }

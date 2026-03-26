@@ -10,7 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils; 
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -27,7 +28,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ImageManagerService imageManagerService;
     private final JwtService jwtService;
-    private final ApplicationEventPublisher eventPublisher; 
+    private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
 
     // Authentication
@@ -37,14 +38,14 @@ public class UserService {
         }
 
         User u = handleEntityMapping(new User(), req);
-        
-        u.setRole(User.Role.STAFF); 
+
+        u.setRole(User.Role.STAFF);
         u.setStatus(User.Status.ACTIVE);
         return buildAuthResponse(userRepository.save(u));
     }
 
     public AuthResponse login(AuthRequest req) {
-        
+
         User u = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email không tồn tại"));
 
@@ -67,18 +68,20 @@ public class UserService {
                 .map(userMapper::toDto)
                 .collect(Collectors.toList());
     }
-    
+
     public UserDto getOne(Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
     }
+
     public UserDto create(UserUpsertRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email này đã được sử dụng");
         }
         // if (req.getPhone() != null && userRepository.existsByPhone(req.getPhone())) {
-        //     throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại này đã được sử dụng");
+        // throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại này đã
+        // được sử dụng");
         // }
 
         User u = handleEntityMapping(new User(), req);
@@ -91,8 +94,8 @@ public class UserService {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
-        req.setEmail(null); 
-        
+        req.setEmail(null);
+
         handleEntityMapping(u, req);
         userRepository.save(u);
         notifyChange();
@@ -110,19 +113,22 @@ public class UserService {
     public void resetPassword(Long id, String newPassword) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
-        
-        // Nếu null hoặc rỗng thì lấy mặc định
-        String pwd = StringUtils.hasText(newPassword) ? newPassword : "123456";
-        u.setPassword(passwordEncoder.encode(pwd));
+
+        if (!StringUtils.hasText(newPassword)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được để trống");
+        }
+
+        u.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(u);
     }
-    
-    // Upload Avatar 
+
+    // Upload Avatar
     public UserDto uploadAvatar(Long id, MultipartFile file) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
-        
-        if (file == null || file.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File ảnh trống");
+
+        if (file == null || file.isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File ảnh trống");
 
         try {
             String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
@@ -138,11 +144,10 @@ public class UserService {
         }
     }
 
-    // ===== PRIVATE METHODS =====
-    // ===== PRIVATE METHODS =====
+    //  PRIVATE METHODS 
     private User handleEntityMapping(User u, UserUpsertRequest req) {
         boolean isNew = (u.getId() == null);
-        
+
         if (isNew) {
             u = userMapper.toEntity(req);
             u.setStatus(User.Status.ACTIVE);
@@ -161,7 +166,7 @@ public class UserService {
             try {
                 u.setStatus(User.Status.valueOf(req.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                u.setStatus(User.Status.ACTIVE); 
+                u.setStatus(User.Status.ACTIVE);
             }
         }
 
@@ -175,24 +180,18 @@ public class UserService {
         return u;
     }
 
-
     private AuthResponse buildAuthResponse(User u) {
         var roleName = (u.getRole() != null ? u.getRole().name() : "STAFF");
         String token = jwtService.generateToken(
-            u.getEmail(),
-            Map.of("uid", u.getId(), "role", roleName)
-        );
-        return new AuthResponse(u.getId(), u.getFullName(), u.getRole(), token); 
+                u.getEmail(),
+                Map.of("uid", u.getId(), "role", roleName));
+        return new AuthResponse(u.getId(), u.getFullName(), u.getRole(), token, u.getAvatarUrl());
     }
-
-
-
 
     private void notifyChange() {
         eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
                 "/topic/users",
                 "UPDATED",
-                "[WS] User changed -> Sent UPDATED signal"
-        ));
+                "[WS] User changed -> Sent UPDATED signal"));
     }
 }

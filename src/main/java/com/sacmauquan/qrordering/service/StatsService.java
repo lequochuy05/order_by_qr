@@ -41,4 +41,24 @@ public class StatsService {
             r[3] == null ? 0d : ((Number) r[3]).doubleValue()
         )).toList();
   }
+
+  public List<TopDishDto> topDishes(Instant from, Instant to) {
+    return repo.topDishes(from, to).stream()
+        .map(r -> new TopDishDto(
+            ((Number) r[0]).longValue(),
+            String.valueOf(r[1]),
+            r[2] != null ? String.valueOf(r[2]) : "Khác",
+            r[3] != null ? String.valueOf(r[3]) : null,
+            r[4] == null ? 0L : ((Number) r[4]).longValue(),
+            r[5] == null ? 0d : ((Number) r[5]).doubleValue()
+        )).toList();
+  }
+
+  public List<DishTrendDto> dishTrend(Instant from, Instant to) {
+    return repo.dishTrendByDay(from, to).stream()
+        .map(r -> new DishTrendDto(
+            String.valueOf(r[0]),
+            r[1] == null ? 0L : ((Number) r[1]).longValue()
+        )).toList();
+  }
 }

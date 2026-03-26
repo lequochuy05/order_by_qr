@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-    PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend 
+import {
+    PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend
 } from 'recharts';
 import { Loader2, Award, Users } from 'lucide-react';
 import { statisticsService } from '../../../services/admin/statisticsService';
-import StatsToolbar from '../../../components/admin/stats/StatsToolbar';
+import StatsToolbar from '../../../components/admin/common/StatsToolbar';
 
-import {fmtVND} from '../../../utils/formatters';
+import { fmtVND } from '../../../utils/formatters';
 
 const StaffStats = () => {
     // State thời gian
-    const [dateRange, setDateRange] = useState({ 
-        from: new Date(new Date().setDate(new Date().getDate() - 6)), 
-        to: new Date() 
+    const [dateRange, setDateRange] = useState({
+        from: new Date(new Date().setDate(new Date().getDate() - 6)),
+        to: new Date()
     });
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -24,8 +24,8 @@ const StaffStats = () => {
             try {
                 const data = await statisticsService.getEmployees(dateRange.from, dateRange.to);
                 // Sắp xếp giảm dần theo doanh thu
-                setEmployees(data.sort((a,b) => (b.revenue || 0) - (a.revenue || 0)));
-            } catch(e) { console.error(e); } 
+                setEmployees(data.sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
+            } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         load();
@@ -37,10 +37,10 @@ const StaffStats = () => {
 
         // Lấy Top 5 nhân viên
         const top5 = employees.slice(0, 5);
-        
+
         // Tính tổng phần còn lại
         const othersRevenue = employees.slice(5).reduce((acc, curr) => acc + (curr.revenue || 0), 0);
-        
+
         const data = top5.map(e => ({
             name: e.fullName,
             value: e.revenue || 0
@@ -65,10 +65,10 @@ const StaffStats = () => {
             <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} title="Thời gian" />
 
             {loading ? (
-                <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32}/></div>
+                <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div>
             ) : (
                 <div className="flex flex-col lg:flex-row gap-6 mt-6">
-                    
+
                     {/* === PHẦN TRÁI: BIỂU ĐỒ TRÒN === */}
                     <div className="lg:w-1/3 bg-white p-6 rounded-3xl shadow-sm border h-fit sticky top-6">
 
@@ -87,20 +87,20 @@ const StaffStats = () => {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <RechartsTooltip 
+                                        <RechartsTooltip
                                             formatter={(value) => fmtVND(value)}
-                                            contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}}
+                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                         />
                                         <Legend verticalAlign="bottom" height={36} iconType="circle" />
                                     </PieChart>
                                 </ResponsiveContainer>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                                    <Users size={48} className="opacity-20 mb-2"/>
+                                    <Users size={48} className="opacity-20 mb-2" />
                                     <p>Chưa có dữ liệu</p>
                                 </div>
                             )}
-                            
+
                             {/* Tổng doanh thu ở giữa biểu đồ */}
                             {pieData.length > 0 && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -115,25 +115,25 @@ const StaffStats = () => {
 
                     {/* === PHẦN PHẢI: DANH SÁCH CHI TIẾT === */}
                     <div className="lg:w-2/3">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {employees.map((emp, idx) => (
                                 <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
                                     {/* Huy hiệu Top 1-3 */}
                                     {idx < 3 && (
                                         <div className={`absolute top-0 right-0 text-xs font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1
-                                            ${idx === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                                              idx === 1 ? 'bg-gray-200 text-gray-700' : 
-                                              'bg-orange-100 text-orange-800'}`}>
-                                            <Award size={14}/> Top {idx + 1}
+                                            ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                                                idx === 1 ? 'bg-gray-200 text-gray-700' :
+                                                    'bg-orange-100 text-orange-800'}`}>
+                                            <Award size={14} /> Top {idx + 1}
                                         </div>
                                     )}
-                                    
+
                                     <div className="flex items-center gap-4 mb-4">
                                         {/* Avatar giả lập màu sắc theo thứ hạng */}
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-sm text-white
-                                            ${idx === 0 ? 'bg-yellow-500' : 
-                                              idx === 1 ? 'bg-gray-400' : 
-                                              idx === 2 ? 'bg-orange-400' : 'bg-blue-100 text-blue-600'}`}>
+                                            ${idx === 0 ? 'bg-yellow-500' :
+                                                idx === 1 ? 'bg-gray-400' :
+                                                    idx === 2 ? 'bg-orange-400' : 'bg-blue-100 text-blue-600'}`}>
                                             {emp.fullName ? emp.fullName.charAt(0).toUpperCase() : '?'}
                                         </div>
                                         <div>
@@ -147,10 +147,10 @@ const StaffStats = () => {
                                             <span className="text-gray-500">Doanh thu</span>
                                             <span className="font-bold text-green-600 text-lg">{fmtVND(emp.revenue)}</span>
                                         </div>
-                                        
+
                                         {/* Thanh Progress bar đồng bộ màu */}
                                         <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                            <div 
+                                            <div
                                                 className="h-2.5 rounded-full transition-all duration-1000 ease-out"
                                                 style={{
                                                     width: `${(emp.revenue / maxRev) * 100}%`,
@@ -162,10 +162,10 @@ const StaffStats = () => {
                                 </div>
                             ))}
                         </div>
-                        
+
                         {employees.length === 0 && (
                             <div className="bg-white p-10 rounded-3xl border border-dashed text-center text-gray-400">
-                                <Users className="w-12 h-12 mx-auto mb-2 opacity-30"/>
+                                <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
                                 <p>Không có dữ liệu nhân viên trong khoảng thời gian này</p>
                             </div>
                         )}

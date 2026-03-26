@@ -36,5 +36,5 @@ public class OrderItem {
     private boolean prepared = false;
 
     @Column(name = "status")
-    private String status = "PENDING"; // PENDING, COOKING, FINISHED
+    private String status = "PENDING"; 
 }

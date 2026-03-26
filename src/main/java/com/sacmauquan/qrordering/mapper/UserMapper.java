@@ -20,7 +20,7 @@ public interface UserMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "status", ignore = true) // Handled in Service
-    @Mapping(target = "role", ignore = true)   // Handled in Service
+    @Mapping(target = "role", ignore = true) // Handled in Service
     User toEntity(UserUpsertRequest request);
 
     @Mapping(target = "id", ignore = true)
@@ -29,6 +29,6 @@ public interface UserMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "status", ignore = true) // Handled in Service
-    @Mapping(target = "role", ignore = true)   // Handled in Service
+    @Mapping(target = "role", ignore = true) // Handled in Service
     void updateEntity(@MappingTarget User entity, UserUpsertRequest request);
 }

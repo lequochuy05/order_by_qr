@@ -9,8 +9,11 @@ import lombok.Setter;
 @Table(name = "tables")
 @Getter
 @Setter
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class DiningTable {
+    public static final String AVAILABLE = "AVAILABLE";
+    public static final String OCCUPIED = "OCCUPIED";
+    public static final String WAITING_FOR_PAYMENT = "WAITING_FOR_PAYMENT";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,13 +23,13 @@ public class DiningTable {
     private String tableNumber;
 
     @Column(name = "qr_code_url", length = 255)
-    private String qrCodeUrl; // ảnh QR công khai hiển thị cho khách
+    private String qrCodeUrl;
 
     @Column(name = "qr_code_public_id", length = 255)
-    private String qrCodePublicId; // mã Cloudinary để xóa ảnh khi cần
+    private String qrCodePublicId;
 
     @Column(name = "table_code", nullable = false, unique = true, length = 50)
-    private String tableCode; // mã ngẫu nhiên bảo mật cho QR (vd: weirrierffir)
+    private String tableCode;
 
     private String status;
     private int capacity;

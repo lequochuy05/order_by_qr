@@ -35,83 +35,97 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-      .csrf(csrf -> csrf.disable())
-      .cors(c -> c.configurationSource(corsConfigurationSource()))
-      .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .authorizeHttpRequests(auth -> auth
-        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+        .csrf(csrf -> csrf.disable())
+        .cors(c -> c.configurationSource(corsConfigurationSource()))
+        .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
 
-        // UI admin tĩnh
-        .requestMatchers("/admin/**").permitAll()
+            // UI admin tĩnh
+            .requestMatchers("/admin/**").permitAll()
 
-        // websocket & auth
-        .requestMatchers("/ws/**").permitAll()
-        .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
-        .requestMatchers("/api/auth/**").permitAll()
+            // websocket & auth
+            .requestMatchers("/ws/**").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
+            .requestMatchers("/api/auth/**").permitAll()
 
-        // public GET (giữ nguyên cho khách)
-        .requestMatchers(HttpMethod.GET, 
-                "/api/categories/**", 
-                "/api/menu/**", 
-                "/api/tables/**", 
-                "/api/combos/**", 
-                "/api/orders/table/*/current", 
+            // public GET (giữ nguyên cho khách)
+            .requestMatchers(HttpMethod.GET,
+                "/api/categories/**",
+                "/api/menu/**",
+                "/api/tables/**",
+                "/api/combos/**",
+                "/api/orders/table/*/current",
                 "/api/vouchers/**",
                 "/api/combos/active",
-                "/api/combos/*/items"
-                ).permitAll()
-        // khách tạo đơn
-        .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
+                "/api/combos/*/items",
+                "/api/recommendations/**")
+            .permitAll()
+            // khách tạo đơn
+            .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
-        // admin
-        .requestMatchers(HttpMethod.POST,   
-                "/api/categories/**", 
-                "/api/menu/**", 
-                "/api/tables/**", 
-                "/api/vouchers/**", 
-                "/api/combos/*/items"
-                ).hasRole("MANAGER")
+            // admin
+            .requestMatchers(HttpMethod.POST,
+                "/api/categories/**",
+                "/api/menu/**",
+                "/api/tables/**",
+                "/api/vouchers/**",
+                "/api/combos/*/items",
+                "/api/admin/ai/**")
+            .hasAnyRole("MANAGER", "STAFF")
 
-        .requestMatchers(HttpMethod.PUT,    
-                "/api/categories/**", 
-                "/api/menu/**", "/api/tables/**", 
-                "/api/vouchers/**", 
-                "/api/combos/*/items"
-                ).hasRole("MANAGER")
+            .requestMatchers(HttpMethod.PUT,
+                "/api/categories/**",
+                "/api/menu/**",
+                "/api/vouchers/**")
+            .hasRole("MANAGER")
 
-        .requestMatchers(HttpMethod.DELETE, 
-                "/api/categories/**", 
-                "/api/menu/**", 
-                "/api/tables/**", 
-                "/api/vouchers/**", 
-                "/api/combos/*/items", 
-                "/api/combos/*/items"
-                ).hasRole("MANAGER")
-        .requestMatchers(HttpMethod.PATCH,  "/api/combos/**").hasRole("MANAGER")
+            // kitchen / KDS (Phải đặt trước /api/orders/** để ưu tiên route cụ thể hơn)
+            .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF")
+            .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF")
+            .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER", "STAFF", "CHEF")
+            .requestMatchers(HttpMethod.PATCH, "/api/orders/items/*/status").hasAnyRole("MANAGER", "STAFF", "CHEF")
+            .requestMatchers(HttpMethod.PATCH, "/api/orders/items/*/prepared").hasAnyRole("MANAGER", "STAFF", "CHEF")
 
-        // kitchen / KDS
-        .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER","STAFF","CHEF")
-        .requestMatchers(HttpMethod.PUT, "/api/orders/items/*/status").hasAnyRole("MANAGER","STAFF","CHEF")
-        .requestMatchers(HttpMethod.PUT, "/api/orders/items/*/prepared").hasAnyRole("MANAGER","STAFF","CHEF")
+            .requestMatchers(HttpMethod.PATCH,
+                "/api/categories/**",
+                "/api/menu/**",
+                "/api/tables/**",
+                "/api/vouchers/**",
+                "/api/users/*/reset-password",
+                "/api/users/**",
+                "/api/orders/**")
+            .hasAnyRole("MANAGER")
 
-        // revenue / stats
-        .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER","STAFF")
+            .requestMatchers(HttpMethod.DELETE,
+                "/api/categories/**",
+                "/api/menu/**",
+                "/api/tables/**",
+                "/api/vouchers/**",
+                "/api/combos/*/items")
+            .hasRole("MANAGER")
+            .requestMatchers(HttpMethod.PATCH, "/api/combos/**").hasRole("MANAGER")
 
-        // upload avatar
-        .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
+            // revenue / stats
+            .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER", "STAFF")
 
-        // cho phép /error để không dính vòng lặp lỗi
-        .requestMatchers("/error").permitAll()
+            // upload avatar
+            .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
 
-        // còn lại cần đăng nhập
-        .anyRequest().authenticated()
-      )
-      .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            // cho phép /error để không dính vòng lặp lỗi
+            .requestMatchers("/error").permitAll()
+
+            // còn lại cần đăng nhập
+            .anyRequest().authenticated())
+        .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
 
-  @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+  @Bean
+  PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 
   @Bean
   AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
@@ -123,13 +137,13 @@ public class SecurityConfig {
     var c = new CorsConfiguration();
     c.addAllowedOriginPattern("*");
     c.setAllowedOrigins(List.of(
-      "http://localhost:*",
-      "http://127.0.0.1:*",
-      "https://order-by-qr.vercel.app",              //  domain Vercel của bạn
-      "https://order-by-qr.onrender.com"  //  domain backend trên Render
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "https://order-by-qr.vercel.app", // domain Vercel của bạn
+        "https://order-by-qr.onrender.com" // domain backend trên Render
     ));
-    c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
-    c.setAllowedHeaders(List.of("Authorization","Content-Type","Accept"));
+    c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+    c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
     c.setAllowCredentials(true);
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", c);
