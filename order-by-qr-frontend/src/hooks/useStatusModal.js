@@ -47,7 +47,6 @@ export const useStatusModal = () => {
       msg = err.message;
     }
 
-    // (Tùy chọn) Việt hóa các lỗi phổ biến
     if (msg.includes("already exists")) msg = "Dữ liệu này đã tồn tại trong hệ thống!";
     if (msg === "Network Error") msg = "Không thể kết nối đến máy chủ!";
 

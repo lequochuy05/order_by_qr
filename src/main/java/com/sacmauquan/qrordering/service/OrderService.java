@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.service;
 import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
 import com.sacmauquan.qrordering.model.*;
+import com.sacmauquan.qrordering.model.Order;
 import com.sacmauquan.qrordering.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -16,9 +17,23 @@ import com.sacmauquan.qrordering.event.WebSocketEvent;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 
 @Service
 @RequiredArgsConstructor
@@ -34,9 +49,68 @@ public class OrderService {
     private final DiscountService discountService;
     private final OrderStateFactory orderStateFactory;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     // ===================== GET ALL ORDERS =====================
-    public List<Order> getAllOrders() { 
-        return orderRepository.findAll(); 
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    // ===================== GET ORDER HISTORY (PAGINATED) =====================
+    public Page<Order> getOrderHistory(String status, LocalDateTime startDate,
+            LocalDateTime endDate, String search, Pageable pageable) {
+        Specification<Order> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null && !status.isBlank()) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+            }
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
+            }
+            if (search != null && !search.isBlank()) {
+                Join<Order, DiningTable> tableJoin = root.join("table", JoinType.LEFT);
+                String pattern = "%" + search.toLowerCase() + "%";
+                Predicate idPred = cb.like(cb.lower(root.get("id").as(String.class)), pattern);
+                Predicate tablePred = cb.like(cb.lower(tableJoin.get("tableNumber")), pattern);
+                predicates.add(cb.or(idPred, tablePred));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return orderRepository.findAll(spec, pageable);
+    }
+
+    // ===================== GET ORDER STATS =====================
+    public Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
+        Root<Order> root = cq.from(Order.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+        if (status != null && !status.isBlank()) {
+            predicates.add(cb.equal(root.get("status"), status));
+        }
+        if (startDate != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+        }
+        if (endDate != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
+        }
+
+        cq.multiselect(
+                cb.count(root),
+                cb.coalesce(cb.sum(root.get("totalAmount")), 0.0))
+                .where(cb.and(predicates.toArray(new Predicate[0])));
+
+        Object[] result = entityManager.createQuery(cq).getSingleResult();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalOrders", result[0]);
+        stats.put("totalRevenue", result[1]);
+        return stats;
     }
 
     // ===================== UPDATE STATUS =====================
@@ -44,21 +118,21 @@ public class OrderService {
     public Order updateStatus(Long id, String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-        
+
         OrderState state = orderStateFactory.getState(status);
         state.handleRequest(order);
-        
+
         Order saved = orderRepository.save(order);
-        
+
         // Cập nhật trạng thái bàn nếu cần
         if ("CANCELLED".equals(order.getStatus()) && order.getOrderItems().isEmpty()) {
             DiningTable table = order.getTable();
-            table.setStatus("Trống");
+            table.setStatus(DiningTable.AVAILABLE);
             tableRepository.save(table);
         } else {
-             recalcTableStatus(order);
+            recalcTableStatus(order);
         }
-        
+
         notifyChange();
         return saved;
     }
@@ -66,7 +140,7 @@ public class OrderService {
     // ===================== CREATE ORDER =====================
     @Transactional
     public Order createOrder(OrderRequest req) {
-        boolean emptyItems  = (req.getItems()  == null || req.getItems().isEmpty());
+        boolean emptyItems = (req.getItems() == null || req.getItems().isEmpty());
         boolean emptyCombos = (req.getCombos() == null || req.getCombos().isEmpty());
         if (emptyItems && emptyCombos) {
             throw new IllegalArgumentException("Đơn hàng không hợp lệ");
@@ -99,7 +173,7 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
 
-        table.setStatus("Đang phục vụ");
+        table.setStatus(DiningTable.OCCUPIED);
         tableRepository.save(table);
 
         // Gửi WebSocket cập nhật
@@ -120,7 +194,8 @@ public class OrderService {
     }
 
     private void processItems(OrderRequest req, Order order) {
-        if (req.getItems() == null) return;
+        if (req.getItems() == null)
+            return;
         for (OrderRequest.ItemRequest it : req.getItems()) {
             if (it.getMenuItemId() == null || it.getQuantity() <= 0)
                 throw new IllegalArgumentException("Món ăn không hợp lệ");
@@ -154,13 +229,16 @@ public class OrderService {
     }
 
     private void processCombos(OrderRequest req, Order order) {
-        if (req.getCombos() == null) return;
+        if (req.getCombos() == null)
+            return;
         for (OrderRequest.ComboRequest cr : req.getCombos()) {
-            if (cr.getComboId() == null || cr.getQuantity() <= 0) continue;
+            if (cr.getComboId() == null || cr.getQuantity() <= 0)
+                continue;
 
             Combo combo = comboRepository.findById(cr.getComboId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + cr.getComboId()));
-            if (combo.getActive() == null || !combo.getActive()) continue;
+            if (combo.getActive() == null || !combo.getActive())
+                continue;
 
             Optional<OrderItem> exist = order.getOrderItems().stream()
                     .filter(oi -> oi.getCombo() != null
@@ -192,7 +270,8 @@ public class OrderService {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
 
-        if (item.isPrepared()) throw new RuntimeException("Món đã làm, không thể hủy");
+        if (item.isPrepared())
+            throw new RuntimeException("Món đã làm, không thể hủy");
 
         Order order = item.getOrder();
         double minus = (Optional.ofNullable(item.getUnitPrice()).orElse(0.0)) * item.getQuantity();
@@ -202,11 +281,10 @@ public class OrderService {
         orderItemRepository.delete(item);
 
         if (order.getOrderItems().isEmpty()) {
-            OrderState cancelledState = orderStateFactory.getState("CANCELLED");
-            cancelledState.handleRequest(order);
+            orderStateFactory.getState("CANCELLED").handleRequest(order);
             orderRepository.save(order);
             DiningTable table = order.getTable();
-            table.setStatus("Trống");
+            table.setStatus(DiningTable.AVAILABLE);
             tableRepository.save(table);
         } else {
             orderRepository.save(order);
@@ -224,14 +302,14 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn"));
 
         item.setStatus(newStatus);
-        
+
         // Đồng bộ với preprare boolean để tương thích ngược nếu cần
         if ("FINISHED".equals(newStatus)) {
             item.setPrepared(true);
         } else {
             item.setPrepared(false);
         }
-        
+
         orderItemRepository.save(item);
 
         // Tính toán lại trạng thái bàn (Đang phục vụ -> Chờ thanh toán)
@@ -264,7 +342,8 @@ public class OrderService {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
 
-        if (item.isPrepared()) throw new RuntimeException("Món đã làm, không thể sửa");
+        if (item.isPrepared())
+            throw new RuntimeException("Món đã làm, không thể sửa");
 
         item.setQuantity(quantity);
         item.setNotes(notes);
@@ -301,7 +380,8 @@ public class OrderService {
         }
 
         boolean hasUnprepared = order.getOrderItems().stream().anyMatch(item -> !item.isPrepared());
-        if (hasUnprepared) throw new IllegalStateException("Đơn hàng còn món chưa hoàn tất, không thể thanh toán.");
+        if (hasUnprepared)
+            throw new IllegalStateException("Đơn hàng còn món chưa hoàn tất, không thể thanh toán.");
 
         User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
@@ -316,16 +396,15 @@ public class OrderService {
         order.setDiscountVoucher(result.getDiscountValue());
         order.setTotalAmount(result.getFinalTotal());
 
-        OrderState paidState = orderStateFactory.getState("PAID"); // Adjust if PAID isn't a state, COMPLETED is closest. Assuming PAID is meant to map to COMPLETED or remains as a simple status for now.
-        // If PAID is not a formal state in State Pattern currently, keep it as is or add PaidState class. For now just set status:
-        order.setStatus("PAID"); 
-        
+        OrderState paidState = orderStateFactory.getState("PAID");
+        order.setStatus("PAID");
+
         order.setPaidBy(currentUser);
         order.setPaymentTime(LocalDateTime.now());
         orderRepository.save(order);
 
         DiningTable table = order.getTable();
-        table.setStatus("Trống");
+        table.setStatus(DiningTable.AVAILABLE);
         tableRepository.save(table);
 
         // Phát sự kiện thay vì tự tạo new Thread
@@ -337,7 +416,7 @@ public class OrderService {
     // ===================== PREVIEW =====================
     @Transactional(readOnly = true)
     public OrderPreviewResponse preview(OrderRequest req) {
-        boolean emptyItems  = (req.getItems()  == null || req.getItems().isEmpty());
+        boolean emptyItems = (req.getItems() == null || req.getItems().isEmpty());
         boolean emptyCombos = (req.getCombos() == null || req.getCombos().isEmpty());
         if (emptyItems && emptyCombos) {
             throw new IllegalArgumentException("Đơn hàng trống");
@@ -349,7 +428,8 @@ public class OrderService {
         // món lẻ
         if (req.getItems() != null) {
             for (OrderRequest.ItemRequest it : req.getItems()) {
-                if (it.getMenuItemId() == null || it.getQuantity() <= 0) continue;
+                if (it.getMenuItemId() == null || it.getQuantity() <= 0)
+                    continue;
                 MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
                 Double price = mi.getPrice();
@@ -362,7 +442,8 @@ public class OrderService {
             for (OrderRequest.ComboRequest cr : req.getCombos()) {
                 Combo combo = comboRepository.findById(cr.getComboId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + cr.getComboId()));
-                if (combo.getActive() == null || !combo.getActive()) continue;
+                if (combo.getActive() == null || !combo.getActive())
+                    continue;
                 Double comboPrice = combo.getPrice();
                 subtotalCombos += (comboPrice != null ? comboPrice : 0d) * cr.getQuantity();
             }
@@ -391,8 +472,7 @@ public class OrderService {
                 voucherMessage,
                 discountVoucher,
                 0d,
-                originalTotal
-        );
+                originalTotal);
     }
 
     // ===================== TABLE STATUS CALCULATION =====================
@@ -400,29 +480,23 @@ public class OrderService {
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
         DiningTable table = order.getTable();
         if (items == null || items.isEmpty()) {
-            table.setStatus("Trống");
+            table.setStatus(DiningTable.AVAILABLE);
         } else {
             boolean allPrepared = items.stream().allMatch(OrderItem::isPrepared);
-            // Nếu tất cả đã xong -> Chờ thanh toán. Ngược lại -> Đang phục vụ
-            table.setStatus(allPrepared ? "Chờ thanh toán" : "Đang phục vụ");
+            table.setStatus(allPrepared ? DiningTable.WAITING_FOR_PAYMENT : DiningTable.OCCUPIED);
         }
         tableRepository.save(table);
     }
 
-
     private void notifyChange() {
         // Thông báo cho lễ tân / quản lý bàn
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/tables", 
-                "UPDATED", 
-                "⚡ [WS] Order change -> Sent UPDATED signal to /topic/tables"
-        ));
+        eventPublisher.publishEvent(new WebSocketEvent("/topic/tables", "UPDATED",
+                "[WS] Order change -> Sent UPDATED signal to /topic/tables"));
 
         // Thông báo cho nhà bếp
         eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/kitchen", 
-                "UPDATED", 
-                "⚡ [WS] Order change -> Sent UPDATED signal to /topic/kitchen"
-        ));
+                "/topic/kitchen",
+                "UPDATED",
+                "[WS] Order change -> Sent UPDATED signal to /topic/kitchen"));
     }
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*; // Import all lombok
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.Instant;
 
@@ -29,6 +30,7 @@ public class User {
     private String fullName;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Column(unique = true)

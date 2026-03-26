@@ -9,7 +9,6 @@ import {
   Table,
   Users,
   BarChart3,
-  Settings,
   Package,
   TicketPercent,
   TicketIcon,
@@ -51,7 +50,7 @@ const AdminSidebar = ({ isOpen }) => {
       title: 'Bảng điều khiển',
       path: '/admin/dashboard',
       icon: <LayoutDashboard size={22} />,
-      roles: ['MANAGER', 'STAFF']
+      roles: ['MANAGER', 'STAFF', 'CHEF']
     },
     {
       title: 'Quản lý bàn',
@@ -63,7 +62,7 @@ const AdminSidebar = ({ isOpen }) => {
       title: 'Nhà bếp',
       path: '/admin/kitchen',
       icon: <UtensilsCrossed size={22} />,
-      roles: ['CHEF']
+      roles: ['MANAGER', 'CHEF']
     },
     {
       title: 'Quản lý danh mục',
@@ -89,12 +88,12 @@ const AdminSidebar = ({ isOpen }) => {
       icon: <TicketIcon size={22} />,
       roles: ['MANAGER']
     },
-    {
-      title: 'Quản lý khuyến mãi',
-      path: '/admin/promotions',
-      icon: <TicketPercent size={22} />,
-      roles: ['MANAGER']
-    },
+    // {
+    //   title: 'Quản lý khuyến mãi',
+    //   path: '/admin/promotions',
+    //   icon: <TicketPercent size={22} />,
+    //   roles: ['MANAGER']
+    // },
     {
       title: 'Quản lý nhân viên',
       path: '/admin/staffs',
@@ -118,20 +117,14 @@ const AdminSidebar = ({ isOpen }) => {
         { title: 'Nhân viên', path: '/admin/statistics/staff' }
       ]
     },
-    // ------------------------------------------------
-
-    {
-      title: 'Cài đặt',
-      path: '/admin/settings',
-      icon: <Settings size={22} />,
-      roles: ['MANAGER', 'STAFF']
-    },
   ];
 
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col
-        ${isOpen ? 'w-64' : 'w-0 lg:w-20 overflow-hidden lg:overflow-visible'}`}
+        ${isOpen
+          ? 'translate-x-0 w-64'
+          : '-translate-x-full lg:translate-x-0 w-0 lg:w-20 overflow-hidden lg:overflow-visible'}`}
     >
       {/* Header Sidebar */}
       <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0">

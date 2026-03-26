@@ -7,6 +7,7 @@ import com.sacmauquan.qrordering.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.*;
 
@@ -45,12 +46,12 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(req));
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ResponseEntity<UserDto> update(@PathVariable Long id, @Valid @RequestBody UserUpsertRequest req) {
         return ResponseEntity.ok(userService.update(id, req));
     }
 
-    @PutMapping("/{id}/reset-password")
+    @PatchMapping("/{id}/reset-password")
     public ResponseEntity<Void> resetPassword(@PathVariable Long id, @RequestBody(required = false) AuthRequest body) {
         String newPwd = (body == null ? null : body.getPassword());
         userService.resetPassword(id, newPwd);

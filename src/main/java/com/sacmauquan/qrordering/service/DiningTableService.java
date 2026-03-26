@@ -48,7 +48,7 @@ public class DiningTableService {
         if (table.getCapacity() <= 0)
             throw new IllegalArgumentException("Sức chứa phải > 0");
 
-        table.setStatus((table.getStatus() == null || table.getStatus().isBlank()) ? "Trống" : table.getStatus());
+        table.setStatus((table.getStatus() == null || table.getStatus().isBlank()) ? DiningTable.AVAILABLE : table.getStatus());
 
         String code = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         table.setTableCode(code);
@@ -108,6 +108,6 @@ public class DiningTableService {
         eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
                 "/topic/tables",
                 "UPDATED",
-                "⚡ [WS] DiningTable change -> Sent UPDATED signal"));
+                "[WS] DiningTable change -> Sent UPDATED signal"));
     }
 }
