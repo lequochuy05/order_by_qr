@@ -12,7 +12,7 @@ public class OrderRequest {
     private String status;
     private String voucherCode;
 
-    private List<ComboRequest> combos;   
+    private List<ComboRequest> combos;
     private List<ItemRequest> items;
 
     @Getter
@@ -28,6 +28,7 @@ public class OrderRequest {
     public static class ItemRequest {
         private Long menuItemId;
         private int quantity;
-        private String notes; 
+        private String notes;
+        private List<Long> selectedOptionValueIds;
     }
 }

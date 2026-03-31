@@ -21,7 +21,7 @@ const MenuManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [formData, setFormData] = useState({ id: null, name: '', price: '', categoryId: '' });
+  const [formData, setFormData] = useState({ id: null, name: '', price: '', categoryId: '', itemOptions: [] });
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('');
 
@@ -95,7 +95,8 @@ const MenuManager = () => {
       const payload = {
         name: formData.name,
         price: Number(formData.price),
-        category: { id: Number(formData.categoryId) }
+        category: { id: Number(formData.categoryId) },
+        itemOptions: formData.itemOptions
       };
 
       let res;
@@ -138,7 +139,7 @@ const MenuManager = () => {
         setFilterValue={setFilterCate}
         filterOptions={categories}
         onAddClick={() => {
-          setFormData({ id: null, name: '', price: '', categoryId: categories[0]?.id || '' });
+          setFormData({ id: null, name: '', price: '', categoryId: categories[0]?.id || '', itemOptions: [] });
           setPreview('');
           setSelectedFile(null);
           setIsModalOpen(true);
@@ -157,7 +158,13 @@ const MenuManager = () => {
               key={it.id}
               item={it}
               onEdit={(item) => {
-                setFormData({ id: item.id, name: item.name, price: item.price, categoryId: item.category?.id });
+                setFormData({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  categoryId: item.category?.id,
+                  itemOptions: item.itemOptions || []
+                });
                 setPreview(item.img || '');
                 setIsModalOpen(true);
               }}

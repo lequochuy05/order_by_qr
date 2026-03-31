@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -18,6 +20,8 @@ import java.util.ArrayList;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@SQLDelete(sql = "UPDATE combos SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
 public class Combo extends BaseEntity {
 

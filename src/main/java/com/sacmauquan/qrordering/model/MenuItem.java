@@ -11,6 +11,10 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import java.util.Set;
+import java.util.LinkedHashSet;
 import java.util.ArrayList;
 
 @Entity
@@ -21,6 +25,8 @@ import java.util.ArrayList;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE menu_item SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
 public class MenuItem extends BaseEntity {
 
     @Id
@@ -44,15 +50,11 @@ public class MenuItem extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({"menuItem"})
-    private List<ItemOption> itemOptions = new ArrayList<>();
+    private Set<ItemOption> itemOptions = new LinkedHashSet<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ItemOption> options = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ComboItem> comboItems = new ArrayList<>();
+    private Set<ComboItem> comboItems = new LinkedHashSet<>();
 
 
 }

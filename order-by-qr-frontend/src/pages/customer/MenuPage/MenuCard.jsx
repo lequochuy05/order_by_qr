@@ -33,26 +33,37 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
           </span>
 
           {/* Bộ điều khiển số lượng */}
-          <div className="flex items-center justify-between bg-orange-50 rounded-full p-1">
-            <button
-              onClick={() => onAddToCart(item, quantity - 1)}
-              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold transition-colors ${quantity > 0 ? 'bg-white text-orange-600 shadow-sm' : 'text-transparent'
-                }`}
-              disabled={quantity === 0}
-            >
-              <Minus size={14} />
-            </button>
+          <div className={`flex items-center rounded-full p-1 bg-orange-50 ${item.itemOptions?.length > 0 ? 'justify-center w-[5.5rem] ml-auto' : 'justify-between'}`}>
+            {item.itemOptions && item.itemOptions.length > 0 ? (
+               <button 
+                 onClick={() => onAddToCart(item, quantity + 1, true)}
+                 className="w-full h-7 bg-orange-500 hover:bg-orange-600 rounded-full shadow-sm flex items-center justify-center text-white font-black text-[10px] uppercase tracking-wider px-2 transition-colors"
+               >
+                 Tùy chọn
+               </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => onAddToCart(item, quantity - 1)}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center font-bold transition-colors ${quantity > 0 ? 'bg-white text-orange-600 shadow-sm' : 'text-transparent'
+                    }`}
+                  disabled={quantity === 0}
+                >
+                  <Minus size={14} />
+                </button>
 
-            <span className={`text-xs font-bold text-orange-700 ${quantity === 0 ? 'opacity-0' : ''}`}>
-              {quantity}
-            </span>
+                <span className={`text-xs font-bold text-orange-700 ${quantity === 0 ? 'opacity-0' : ''}`}>
+                  {quantity}
+                </span>
 
-            <button
-              onClick={() => onAddToCart(item, quantity + 1)}
-              className="w-6 h-6 bg-orange-500 rounded-full shadow-sm flex items-center justify-center text-white font-bold"
-            >
-              <Plus size={14} />
-            </button>
+                <button
+                  onClick={() => onAddToCart(item, quantity + 1)}
+                  className="w-6 h-6 bg-orange-500 rounded-full shadow-sm flex items-center justify-center text-white font-bold hover:bg-orange-600 transition-colors"
+                >
+                  <Plus size={14} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
