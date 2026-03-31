@@ -9,7 +9,10 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+@Mapper(componentModel = "spring", 
+        unmappedTargetPolicy = ReportingPolicy.IGNORE, 
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        builder = @org.mapstruct.Builder(disableBuilder = true))
 public interface UserMapper {
 
     @Mapping(target = "status", expression = "java(user.getStatus() != null ? user.getStatus().name() : null)")
@@ -28,7 +31,7 @@ public interface UserMapper {
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "avatarUrl", ignore = true)
-    @Mapping(target = "status", ignore = true) // Handled in Service
+    @Mapping(target = "status", source = "status")
     @Mapping(target = "role", ignore = true) // Handled in Service
     void updateEntity(@MappingTarget User entity, UserUpsertRequest request);
 }

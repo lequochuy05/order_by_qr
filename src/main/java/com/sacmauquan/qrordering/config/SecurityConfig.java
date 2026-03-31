@@ -20,7 +20,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.util.List;
 
@@ -41,15 +40,15 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
 
-            // UI admin tĩnh
+            // Static Admin UI
             .requestMatchers("/admin/**").permitAll()
 
-            // websocket & auth
+            // WebSocket & Auth
             .requestMatchers("/ws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
             .requestMatchers("/api/auth/**").permitAll()
 
-            // public GET (giữ nguyên cho khách)
+            // Public GET (keep as is for guests)
             .requestMatchers(HttpMethod.GET,
                 "/api/categories/**",
                 "/api/menu/**",
@@ -61,7 +60,7 @@ public class SecurityConfig {
                 "/api/combos/*/items",
                 "/api/recommendations/**")
             .permitAll()
-            // khách tạo đơn
+            // Guest order creation
             .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
             // admin
@@ -80,7 +79,7 @@ public class SecurityConfig {
                 "/api/vouchers/**")
             .hasRole("MANAGER")
 
-            // kitchen / KDS (Phải đặt trước /api/orders/** để ưu tiên route cụ thể hơn)
+            // Kitchen / KDS (Must be placed before /api/orders/** to prioritize specific routes)
             .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER", "STAFF", "CHEF")
@@ -112,10 +111,10 @@ public class SecurityConfig {
             // upload avatar
             .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
 
-            // cho phép /error để không dính vòng lặp lỗi
+            // Allow /error to avoid error loops
             .requestMatchers("/error").permitAll()
 
-            // còn lại cần đăng nhập
+            // Others require authentication
             .anyRequest().authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -139,8 +138,8 @@ public class SecurityConfig {
     c.setAllowedOrigins(List.of(
         "http://localhost:*",
         "http://127.0.0.1:*",
-        "https://order-by-qr.vercel.app", // domain Vercel của bạn
-        "https://order-by-qr.onrender.com" // domain backend trên Render
+        "https://order-by-qr.vercel.app", // Your Vercel domain
+        "https://order-by-qr.onrender.com" // Backend domain on Render
     ));
     c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));

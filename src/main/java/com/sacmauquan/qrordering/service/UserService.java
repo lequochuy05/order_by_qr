@@ -15,11 +15,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
+import org.springframework.lang.NonNull;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +31,7 @@ public class UserService {
     private final UserMapper userMapper;
 
     // Authentication
-    public AuthResponse register(UserUpsertRequest req) {
+    public AuthResponse register(@NonNull UserUpsertRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
         }
@@ -44,7 +43,7 @@ public class UserService {
         return buildAuthResponse(userRepository.save(u));
     }
 
-    public AuthResponse login(AuthRequest req) {
+    public AuthResponse login(@NonNull AuthRequest req) {
 
         User u = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email không tồn tại"));
@@ -69,20 +68,16 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
-    public UserDto getOne(Long id) {
+    public UserDto getOne(@NonNull Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
     }
 
-    public UserDto create(UserUpsertRequest req) {
+    public UserDto create(@NonNull UserUpsertRequest req) {
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email này đã được sử dụng");
         }
-        // if (req.getPhone() != null && userRepository.existsByPhone(req.getPhone())) {
-        // throw new ResponseStatusException(HttpStatus.CONFLICT, "Số điện thoại này đã
-        // được sử dụng");
-        // }
 
         User u = handleEntityMapping(new User(), req);
         userRepository.save(u);
@@ -90,7 +85,7 @@ public class UserService {
         return userMapper.toDto(u);
     }
 
-    public UserDto update(Long id, UserUpsertRequest req) {
+    public UserDto update(@NonNull Long id, @NonNull UserUpsertRequest req) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
@@ -102,7 +97,7 @@ public class UserService {
         return userMapper.toDto(u);
     }
 
-    public void delete(Long id) {
+    public void delete(@NonNull Long id) {
         if (!userRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng");
         }
@@ -110,7 +105,7 @@ public class UserService {
         notifyChange();
     }
 
-    public void resetPassword(Long id, String newPassword) {
+    public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
@@ -123,11 +118,11 @@ public class UserService {
     }
 
     // Upload Avatar
-    public UserDto uploadAvatar(Long id, MultipartFile file) {
+    public UserDto uploadAvatar(@NonNull Long id, @NonNull MultipartFile file) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy người dùng"));
 
-        if (file == null || file.isEmpty())
+        if (file.isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File ảnh trống");
 
         try {
@@ -184,7 +179,7 @@ public class UserService {
         var roleName = (u.getRole() != null ? u.getRole().name() : "STAFF");
         String token = jwtService.generateToken(
                 u.getEmail(),
-                Map.of("uid", u.getId(), "role", roleName));
+                Map.of("uid", java.util.Objects.requireNonNull(u.getId()), "role", roleName));
         return new AuthResponse(u.getId(), u.getFullName(), u.getRole(), token, u.getAvatarUrl());
     }
 

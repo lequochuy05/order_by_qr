@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Dữ liệu không hợp lệ");
         problemDetail.setTitle("Bad Request");
-        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/bad-request"));
+        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/bad-request")));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleNoSuchElementException(NoSuchElementException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Không tìm thấy dữ liệu");
         problemDetail.setTitle("Resource Not Found");
-        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/not-found"));
+        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/not-found")));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleIllegalStateException(IllegalStateException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage() != null ? ex.getMessage() : "Trạng thái không hợp lệ");
         problemDetail.setTitle("Conflict / Illegal State");
-        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/conflict"));
+        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/conflict")));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
@@ -50,7 +50,7 @@ public class GlobalExceptionHandler {
                 
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Lỗi xác thực dữ liệu đầu vào");
         problemDetail.setTitle("Validation Error");
-        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/validation"));
+        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/validation")));
         problemDetail.setProperty("timestamp", Instant.now());
         problemDetail.setProperty("errors", errors);
         return problemDetail;
@@ -61,7 +61,7 @@ public class GlobalExceptionHandler {
         ex.printStackTrace(); // Keep this for server logs
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() != null ? ex.getMessage() : "Lỗi hệ thống nội bộ");
         problemDetail.setTitle("Internal Server Error");
-        problemDetail.setType(URI.create("https://api.qr-ordering.com/errors/internal-error"));
+        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/internal-error")));
         problemDetail.setProperty("timestamp", Instant.now());
         return problemDetail;
     }
