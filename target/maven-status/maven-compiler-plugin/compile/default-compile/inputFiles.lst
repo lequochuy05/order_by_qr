@@ -1,15 +1,15 @@
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/controller/DiscountController.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/state/OrderStateFactory.java
-/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/StatsService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/MenuItemService.java
+/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/StatsService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/UserService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/DiningTableRequest.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/QRCodeService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/mapper/UserMapper.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/model/ItemOptionValue.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/model/ComboItem.java
-/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/Main.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/state/CancelledState.java
+/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/Main.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/config/WebSocketConfig.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/AuthResponse.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/DiscountResult.java
@@ -49,6 +49,7 @@
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/repository/DiningTableRepository.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/controller/RecommendationController.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/EmpPerfDto.java
+/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/repository/ItemOptionValueRepository.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/model/Category.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/model/MenuItem.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/controller/OrderController.java
@@ -68,8 +69,8 @@
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/event/WebSocketEventListener.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/AIService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/state/CompletedState.java
-/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/CategoryService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/DiscountService.java
+/home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/service/CategoryService.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/model/Promotion.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/controller/ComboController.java
 /home/qhuy/Documents/order_by_qr/src/main/java/com/sacmauquan/qrordering/dto/OrderDetailDto.java

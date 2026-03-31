@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 public abstract class BaseEntity {
 
     @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
@@ -31,6 +31,6 @@ public abstract class BaseEntity {
     private LocalDateTime updatedAt;
 
     @Builder.Default
-    @Column(name = "is_deleted", nullable = false)
+    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
     private boolean isDeleted = false;
 }

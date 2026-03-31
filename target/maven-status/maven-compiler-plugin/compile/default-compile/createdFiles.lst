@@ -106,6 +106,7 @@ com/sacmauquan/qrordering/security/JwtService.class
 com/sacmauquan/qrordering/service/DiscountService.class
 com/sacmauquan/qrordering/model/Category.class
 com/sacmauquan/qrordering/model/PasswordResetToken$PasswordResetTokenBuilderImpl.class
+com/sacmauquan/qrordering/repository/ItemOptionValueRepository.class
 com/sacmauquan/qrordering/dto/UserDto$UserDtoBuilder.class
 com/sacmauquan/qrordering/controller/OrderController.class
 com/sacmauquan/qrordering/controller/RecommendationController.class

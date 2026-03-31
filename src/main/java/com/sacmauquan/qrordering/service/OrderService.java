@@ -46,6 +46,7 @@ public class OrderService {
     private final MenuItemRepository menuItemRepository;
     private final DiningTableRepository tableRepository;
     private final ComboRepository comboRepository;
+    private final ItemOptionValueRepository itemOptionValueRepository;
     private final DiscountService discountService;
     private final OrderStateFactory orderStateFactory;
 
@@ -203,12 +204,36 @@ public class OrderService {
             MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
 
+            List<ItemOption> requiredOptions = mi.getItemOptions() != null
+                    ? mi.getItemOptions().stream().filter(ItemOption::isRequired).toList()
+                    : new ArrayList<>();
+            List<ItemOptionValue> selectedValues = new ArrayList<>();
+            if (it.getSelectedOptionValueIds() != null && !it.getSelectedOptionValueIds().isEmpty()) {
+                selectedValues = itemOptionValueRepository.findAllById(it.getSelectedOptionValueIds());
+            }
+
+            for (ItemOption required : requiredOptions) {
+                boolean hasSelected = selectedValues.stream().anyMatch(
+                        val -> val.getItemOption() != null && val.getItemOption().getId().equals(required.getId()));
+                if (!hasSelected) {
+                    throw new IllegalArgumentException("Vui lòng chọn đầy đủ: " + required.getName());
+                }
+            }
+
+            double extraPrice = selectedValues.stream()
+                    .mapToDouble(val -> val.getExtraPrice()).sum();
+            double finalUnitPrice = (mi.getPrice() /* original primitive price */) + extraPrice;
+
+            List<Long> reqOptionIds = it.getSelectedOptionValueIds() != null ? it.getSelectedOptionValueIds()
+                    : new ArrayList<>();
+
             Optional<OrderItem> exist = order.getOrderItems().stream()
                     .filter(oi -> oi.getMenuItem() != null
                             && oi.getMenuItem().getId().equals(mi.getId())
                             && Objects.equals(oi.getNotes(), it.getNotes())
                             && oi.getCombo() == null
-                            && !oi.isPrepared())
+                            && !oi.isPrepared()
+                            && checkOptionsMatch(oi.getOrderItemOptions(), reqOptionIds))
                     .findFirst();
 
             if (exist.isPresent()) {
@@ -220,12 +245,43 @@ public class OrderService {
                 oi.setMenuItem(mi);
                 oi.setCombo(null);
                 oi.setQuantity(it.getQuantity());
-                oi.setUnitPrice(mi.getPrice());
+                oi.setUnitPrice(finalUnitPrice);
                 oi.setNotes(it.getNotes());
                 oi.setPrepared(false);
+
+                List<OrderItemOption> orderItemOptions = new ArrayList<>();
+                for (ItemOptionValue val : selectedValues) {
+                    OrderItemOption option = OrderItemOption.builder()
+                            .orderItem(oi)
+                            .optionName(val.getItemOption() != null ? val.getItemOption().getName() : "Khác")
+                            .optionValueName(val.getName())
+                            .extraPrice(val.getExtraPrice())
+                            .itemOptionValue(val)
+                            .build();
+                    orderItemOptions.add(option);
+                }
+                oi.setOrderItemOptions(orderItemOptions);
+
                 order.getOrderItems().add(oi);
             }
         }
+    }
+
+    private boolean checkOptionsMatch(List<OrderItemOption> existingOptions, List<Long> newOptionIds) {
+        if (existingOptions == null)
+            existingOptions = new ArrayList<>();
+        if (newOptionIds == null)
+            newOptionIds = new ArrayList<>();
+        if (existingOptions.size() != newOptionIds.size())
+            return false;
+
+        List<Long> existingIds = existingOptions.stream()
+                .map(OrderItemOption::getItemOptionValue)
+                .filter(Objects::nonNull)
+                .map(ItemOptionValue::getId)
+                .toList();
+
+        return existingIds.containsAll(newOptionIds) && newOptionIds.containsAll(existingIds);
     }
 
     private void processCombos(OrderRequest req, Order order) {
@@ -433,7 +489,15 @@ public class OrderService {
                 MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
                         .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
                 Double price = mi.getPrice();
-                subtotalItems += (price != null ? price : 0d) * it.getQuantity();
+
+                double extraPrice = 0d;
+                if (it.getSelectedOptionValueIds() != null && !it.getSelectedOptionValueIds().isEmpty()) {
+                    List<ItemOptionValue> vals = itemOptionValueRepository.findAllById(it.getSelectedOptionValueIds());
+                    extraPrice = vals.stream()
+                            .mapToDouble(val -> val.getExtraPrice()).sum();
+                }
+
+                subtotalItems += ((price) + extraPrice) * it.getQuantity();
             }
         }
 

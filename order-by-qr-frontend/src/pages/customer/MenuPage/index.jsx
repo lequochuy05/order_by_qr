@@ -7,8 +7,10 @@ import { fmtVND } from '../../../utils/formatters.js';
 import { menuService } from '../../../services/customer/menuService.js';
 import MenuCard from './MenuCard';
 import ComboCard from './ComboCard';
+import CartModal from './CartModal';
 import CategoryFilter from './CategoryFilter';
 import ShoppingCartButton from './ShoppingCart';
+import ItemOptionsModal from './ItemOptionsModal';
 import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles } from 'lucide-react';
 
 const MenuPage = () => {
@@ -29,6 +31,11 @@ const MenuPage = () => {
 
   // Trạng thái giỏ hàng
   const [cart, setCart] = useState({ items: {}, combos: {} });
+  const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
+
+  const getCartItemQty = (item) => {
+    return Object.values(cart.items).filter(i => (i.actualId || i.id) === item.id).reduce((sum, i) => sum + i.qty, 0);
+  };
 
   /**
    * HÀM TẢI DỮ LIỆU
@@ -94,17 +101,27 @@ const MenuPage = () => {
     return () => clearInterval(checkInterval);
   }, [wsMenu]);
 
-  const handleAddToCart = (product, qty, isCombo = false) => {
+  const handleAddToCart = (product, qty, isCombo = false, needsOptions = false) => {
+    if (needsOptions) {
+      setSelectedItemForOptions(product);
+      return;
+    }
+
     setCart(prev => {
-      const newCart = { ...prev };
       const group = isCombo ? 'combos' : 'items';
+      const id = product.id;
+
+      // Copy sâu (deep copy) object group để không đụng vào state cũ
+      const updatedGroup = { ...prev[group] };
+
       if (qty <= 0) {
-        delete newCart[group][product.id];
+        delete updatedGroup[id];
       } else {
-        newCart[group][product.id] = {
+        updatedGroup[id] = {
           ...product,
+          actualId: product.id,
           qty,
-          note: prev[group][product.id]?.note || ""
+          note: prev[group][id]?.note || ""
         };
 
         // Gợi ý món đi kèm (Cross-sell)
@@ -114,7 +131,46 @@ const MenuPage = () => {
             .catch(() => { });
         }
       }
-      return { ...newCart };
+      return { ...prev, [group]: updatedGroup };
+    });
+  };
+
+  const handleAddWithOptions = (product, selectedValueIds, selectedOptionObjs, finalPrice) => {
+    setCart(prev => {
+      const cartId = product.id + '_' + selectedValueIds.join('_');
+      const currentQty = prev.items[cartId]?.qty || 0;
+
+      return {
+        ...prev,
+        items: {
+          ...prev.items, // Trải phẳng dữ liệu cũ của items
+          [cartId]: {    // Ghi đè item mới an toàn
+            ...product,
+            cartId,
+            actualId: product.id,
+            price: finalPrice,
+            selectedOptionValueIds: selectedValueIds,
+            selectedOptionObjs: selectedOptionObjs,
+            qty: currentQty + 1,
+            note: prev.items[cartId]?.note || ""
+          }
+        }
+      };
+    });
+  };
+
+  const handleUpdateCartItemQty = (cartId, qty) => {
+    setCart(prev => {
+      const updatedItems = { ...prev.items };
+      if (qty <= 0) {
+        delete updatedItems[cartId];
+      } else {
+        updatedItems[cartId] = {
+          ...updatedItems[cartId],
+          qty: qty
+        };
+      }
+      return { ...prev, items: updatedItems };
     });
   };
 
@@ -145,7 +201,12 @@ const MenuPage = () => {
 
     const orderData = {
       tableCode,
-      items: Object.entries(cart.items).map(([id, i]) => ({ menuItemId: parseInt(id), quantity: i.qty, notes: i.note })),
+      items: Object.entries(cart.items).map(([id, i]) => ({
+        menuItemId: i.actualId || parseInt(id),
+        quantity: i.qty,
+        notes: i.note,
+        selectedOptionValueIds: i.selectedOptionValueIds || []
+      })),
       combos: Object.entries(cart.combos).map(([id, c]) => ({ comboId: parseInt(id), quantity: c.qty, notes: c.note }))
     };
 
@@ -231,8 +292,8 @@ const MenuPage = () => {
                   <div key={item.id} className="min-w-[140px]">
                     <MenuCard
                       item={item}
-                      quantity={cart.items[item.id]?.qty || 0}
-                      onAddToCart={(i, q) => handleAddToCart(i, q, false)}
+                      quantity={getCartItemQty(item)}
+                      onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
                     />
                   </div>
                 ))}
@@ -247,8 +308,8 @@ const MenuPage = () => {
               <MenuCard
                 key={item.id}
                 item={item}
-                quantity={cart.items[item.id]?.qty || 0}
-                onAddToCart={(i, q) => handleAddToCart(i, q, false)}
+                quantity={getCartItemQty(item)}
+                onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
               />
             ))}
           </div>
@@ -264,104 +325,27 @@ const MenuPage = () => {
         <ShoppingCartButton cart={cart} onOpenCart={() => setShowOrderModal(true)} />
 
         {/* Modal giỏ hàng & Thanh toán */}
-        {showOrderModal && (
-          <div className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-300">
-            <div className="bg-white w-full max-w-md mx-auto rounded-t-[2rem] p-6 max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                  <ShoppingBasket className="text-orange-500" /> Giỏ hàng của bạn
-                </h3>
-                <button onClick={() => setShowOrderModal(false)} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                  <X size={20} />
-                </button>
-              </div>
+        <CartModal
+          isOpen={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          cart={cart}
+          fmtVND={fmtVND}
+          handleUpdateCartItemQty={handleUpdateCartItemQty}
+          handleUpdateNote={handleUpdateNote}
+          crossSellItems={crossSellItems}
+          setCrossSellItems={setCrossSellItems}
+          handleAddToCart={handleAddToCart}
+          calculateTotal={calculateTotal}
+          isSubmitting={isSubmitting}
+          handleSubmitOrder={handleSubmitOrder}
+        />
 
-              <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-                {/* Render món lẻ trong giỏ */}
-                {Object.entries(cart.items).map(([id, item]) => (
-                  <div key={id} className="border-b border-gray-100 pb-4">
-                    <div className="flex justify-between items-center font-bold text-sm text-gray-800">
-                      <span>{item.name} <span className="text-orange-500 ml-1">x{item.qty}</span></span>
-                      <span>{fmtVND(item.qty * item.price)}</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Ghi chú thêm (cay, ít đá...)"
-                      value={item.note || ""}
-                      onChange={(e) => handleUpdateNote(id, e.target.value, false)}
-                      className="mt-2 w-full p-3 bg-gray-50 rounded-xl text-xs outline-none focus:ring-1 ring-orange-400 border-none"
-                    />
-                  </div>
-                ))}
-
-                {/* Render Combo trong giỏ */}
-                {Object.entries(cart.combos).map(([id, combo]) => (
-                  <div key={id} className="mb-2 border-b border-gray-100 pb-4 bg-orange-50/50 p-3 rounded-2xl">
-                    <div className="flex justify-between items-center font-bold text-sm text-orange-800">
-                      <span>Combo {combo.name} <span className="text-orange-600 ml-1">x{combo.qty}</span></span>
-                      <span>{fmtVND(combo.qty * combo.price)}</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Ghi chú cho combo..."
-                      value={combo.note || ""}
-                      onChange={(e) => handleUpdateNote(id, e.target.value, true)}
-                      className="mt-2 w-full p-3 bg-white rounded-xl text-xs outline-none border-none shadow-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Cross-sell trong giỏ hàng */}
-              {crossSellItems.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-[11px] font-bold text-orange-800 uppercase tracking-widest flex items-center gap-2">
-                      <Sparkles size={14} className="fill-orange-500 text-orange-500" /> Thêm vào cho đủ vị?
-                    </h4>
-                    <button onClick={() => setCrossSellItems([])} className="text-gray-400 hover:text-gray-600 transition-colors">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                    {crossSellItems.map(item => (
-                      <div key={item.id} className="min-w-[130px] bg-gray-50 p-3 rounded-2x border border-gray-100 hover:border-orange-200 transition-all flex flex-col justify-between">
-                        <div>
-                          <p className="text-[11px] font-semibold text-gray-700 leading-tight mb-2 line-clamp-2 h-8">{item.name}</p>
-                        </div>
-                        <button
-                          onClick={() => handleAddToCart(item, (cart.items[item.id]?.qty || 0) + 1)}
-                          className="w-full py-2 bg-orange-500 text-white text-[10px] font-extrabold rounded-xl shadow-md shadow-orange-100 active:scale-95 transition-all"
-                        >
-                          + {fmtVND(item.price)}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Phần Tổng tiền và Submit */}
-              <div className="mt-6 pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="font-bold text-gray-500 uppercase text-xs tracking-wider">Tổng cộng</span>
-                  <span className="text-2xl font-black text-orange-600">
-                    {fmtVND(calculateTotal())}
-                  </span>
-                </div>
-                <button
-                  disabled={isSubmitting}
-                  onClick={handleSubmitOrder}
-                  className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all duration-300 flex items-center justify-center gap-2
-                    ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 shadow-orange-200 active:scale-95 text-white'}`}
-                >
-                  {isSubmitting && <Loader2 className="animate-spin" size={20} />}
-                  {isSubmitting ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN ĐẶT MÓN'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ItemOptionsModal
+          item={selectedItemForOptions}
+          isOpen={!!selectedItemForOptions}
+          onClose={() => setSelectedItemForOptions(null)}
+          onConfirm={handleAddWithOptions}
+        />
       </div>
     </div>
   );
