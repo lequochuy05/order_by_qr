@@ -2,12 +2,11 @@ package com.sacmauquan.qrordering.controller;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +28,7 @@ import com.sacmauquan.qrordering.model.Order;
 import com.sacmauquan.qrordering.model.OrderItem;
 import com.sacmauquan.qrordering.service.OrderService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -39,10 +39,11 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    // ===================== CREATE ORDER (thêm món / cộng dồn) =====================
+    // ===================== CREATE ORDER (thêm món / cộng dồn)
+    // =====================
     @PostMapping
-    public ResponseEntity<?> createOrder(@RequestBody OrderRequest orderRequest) {
-        Order order = orderService.createOrder(orderRequest);
+    public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
+        Order order = orderService.createOrder(Objects.requireNonNull(orderRequest));
         return ResponseEntity.ok(order);
     }
 
@@ -106,13 +107,15 @@ public class OrderController {
     // ===================== UPDATE STATUS =====================
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(orderService.updateStatus(id, body.get("status")));
+        return ResponseEntity.ok(orderService.updateStatus(
+                Objects.requireNonNull(id),
+                Objects.requireNonNull(body.get("status"))));
     }
 
     // ===================== MARK ITEM PREPARED =====================
     @PatchMapping("/items/{itemId}/prepared")
     public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
-        orderService.updateItemStatus(itemId, "FINISHED");
+        orderService.updateItemStatus(Objects.requireNonNull(itemId), "FINISHED");
         return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
     }
 
@@ -122,7 +125,7 @@ public class OrderController {
             @PathVariable Long itemId,
             @RequestBody Map<String, String> body) {
         String status = body.get("status");
-        orderService.updateItemStatus(itemId, status);
+        orderService.updateItemStatus(Objects.requireNonNull(itemId), Objects.requireNonNull(status));
         return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món: " + status));
     }
 
@@ -135,7 +138,7 @@ public class OrderController {
     // ===================== GET CURRENT ORDER BY TABLE =====================
     @GetMapping("/table/{tableId}/current")
     public ResponseEntity<?> getCurrentOrderByTable(@PathVariable Long tableId) {
-        return orderService.getCurrentOrderByTable(tableId)
+        return orderService.getCurrentOrderByTable(Objects.requireNonNull(tableId))
                 .<ResponseEntity<?>>map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
@@ -147,7 +150,7 @@ public class OrderController {
             @RequestBody Map<String, Object> body) {
         int qty = (int) body.getOrDefault("quantity", 1);
         String notes = (String) body.getOrDefault("notes", "");
-        OrderItem updated = orderService.updateOrderItem(itemId, qty, notes);
+        OrderItem updated = orderService.updateOrderItem(Objects.requireNonNull(itemId), qty, notes);
         return ResponseEntity.ok(updated);
     }
 
@@ -157,22 +160,22 @@ public class OrderController {
             @PathVariable Long orderId,
             @RequestParam Long userId,
             @RequestParam(required = false) String voucherCode) {
-        String result = orderService.payOrder(orderId, userId, voucherCode);
+        String result = orderService.payOrder(Objects.requireNonNull(orderId), Objects.requireNonNull(userId),
+                voucherCode);
         return ResponseEntity.ok(Map.of("message", result));
     }
-
 
     // ===================== CANCEL ORDER ITEM =====================
     @DeleteMapping("/items/{itemId}")
     public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
-        orderService.cancelOrderItem(itemId);
+        orderService.cancelOrderItem(Objects.requireNonNull(itemId));
         return ResponseEntity.ok(Map.of("message", "Đã hủy món"));
     }
 
     // ===================== PREVIEW ORDER (tính thử tiền) =====================
     @PostMapping("/preview")
-    public ResponseEntity<?> preview(@RequestBody OrderRequest req) {
-        return ResponseEntity.ok(orderService.preview(req));
+    public ResponseEntity<?> preview(@Valid @RequestBody OrderRequest req) {
+        return ResponseEntity.ok(orderService.preview(Objects.requireNonNull(req)));
     }
 
 }

@@ -26,7 +26,9 @@ public class RecommendationService {
      * Recommends items frequently bought with the given item.
      */
     public List<MenuItem> getRecommendations(Long itemId, int limit) {
+        if (itemId == null) return List.of();
         List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, limit);
+        if (associatedIds == null || associatedIds.isEmpty()) return List.of();
         return menuItemRepository.findAllById(associatedIds);
     }
 

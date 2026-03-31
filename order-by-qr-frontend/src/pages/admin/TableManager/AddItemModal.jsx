@@ -3,6 +3,7 @@ import { X, Search } from 'lucide-react';
 import { menuItemService } from '../../../services/admin/menuService';
 import { comboService } from '../../../services/admin/comboService';
 import { categoryService } from '../../../services/admin/categoryService';
+import ItemOptionsModal from '../../customer/MenuPage/ItemOptionsModal';
 
 const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [activeTab, setActiveTab] = useState('ITEMS'); // ITEMS | COMBOS
@@ -10,7 +11,11 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [combos, setCombos] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCate, setSelectedCate] = useState('ALL');
-    const [cart, setCart] = useState([]); // [{id, type, name, price, qty, notes}]
+    const [cart, setCart] = useState([]); // [{cartId, id, type, name, price, qty, notes, options}]
+    
+    // State cho Modal chọn Options
+    const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
+    const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -27,13 +32,40 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         }
     }, [isOpen]);
 
-    const addToCart = (item, type) => {
-        const exist = cart.find(x => x.id === item.id && x.type === type);
+    const addToCart = (item, type, options = [], optionObjs = [], totalPrice = null) => {
+        const priceToUse = totalPrice !== null ? totalPrice : item.price;
+        const optionKey = options.sort().join(',');
+        const cartId = `${item.id}-${type}-${optionKey}`;
+
+        const exist = cart.find(x => x.cartId === cartId);
         if (exist) {
-            setCart(cart.map(x => x.id === item.id && x.type === type ? { ...x, qty: x.qty + 1 } : x));
+            setCart(cart.map(x => x.cartId === cartId ? { ...x, qty: x.qty + 1 } : x));
         } else {
-            setCart([...cart, { id: item.id, type, name: item.name, price: item.price, qty: 1, notes: '' }]);
+            const addedName = item.name + (optionObjs.length > 0 ? ` (${optionObjs.map(o => o.valueName).join(', ')})` : '');
+            setCart([...cart, { 
+                cartId, 
+                id: item.id, 
+                type, 
+                name: addedName, 
+                price: priceToUse, 
+                qty: 1, 
+                notes: '',
+                options: options.map(optId => ({ optionValueId: optId }))
+            }]);
         }
+    };
+
+    const handleItemClick = (item, type) => {
+        if (type === 'ITEM' && item.itemOptions && item.itemOptions.length > 0) {
+            setSelectedItemForOptions(item);
+            setIsOptionsModalOpen(true);
+        } else {
+            addToCart(item, type);
+        }
+    };
+
+    const handleConfirmOptions = (item, selectedValueIds, selectedOptionObjs, totalPrice) => {
+        addToCart(item, 'ITEM', selectedValueIds, selectedOptionObjs, totalPrice);
     };
 
     const removeFromCart = (idx) => {
@@ -44,7 +76,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         if (cart.length === 0) return alert("Chưa chọn món nào");
         const payload = {
             tableId: table.id,
-            items: cart.filter(x => x.type === 'ITEM').map(x => ({ menuItemId: x.id, quantity: x.qty, notes: x.notes })),
+            items: cart.filter(x => x.type === 'ITEM').map(x => ({ menuItemId: x.id, quantity: x.qty, notes: x.notes, options: x.options || [] })),
             combos: cart.filter(x => x.type === 'COMBO').map(x => ({ comboId: x.id, quantity: x.qty, notes: x.notes }))
         };
         onSubmit(payload);
@@ -80,7 +112,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
 
                     <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 content-start">
                         {displayList.map(item => (
-                            <div key={item.id} onClick={() => addToCart(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
+                            <div key={item.id} onClick={() => handleItemClick(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
                                 className="bg-white p-3 rounded-xl border shadow-sm cursor-pointer hover:border-orange-500 hover:shadow-md transition-all active:scale-95">
                                 <div className="font-bold text-gray-800 line-clamp-1">{item.name}</div>
                                 <div className="text-orange-600 font-bold text-sm mt-1">{item.price.toLocaleString()}đ</div>
@@ -138,6 +170,17 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                     </div>
                 </div>
             </div>
+            
+            {/* Modal Chọn Options của món (dùng chung từ khách hàng) */}
+            <ItemOptionsModal
+                item={selectedItemForOptions}
+                isOpen={isOptionsModalOpen}
+                onClose={() => {
+                    setIsOptionsModalOpen(false);
+                    setSelectedItemForOptions(null);
+                }}
+                onConfirm={handleConfirmOptions}
+            />
         </div>
     );
 };

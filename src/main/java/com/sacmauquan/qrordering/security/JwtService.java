@@ -9,7 +9,6 @@ package com.sacmauquan.qrordering.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -23,7 +22,6 @@ public class JwtService {
   private final Key key;
   private final long expirationMs;
 
-  @Autowired
   public JwtService(@Value("${security.jwt.secret}") String secret,
                     @Value("${security.jwt.expiration-ms}") long expirationMs) {
     // secret phải đủ dài, tốt nhất ≥ 32 bytes

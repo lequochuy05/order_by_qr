@@ -4,7 +4,6 @@ import com.sacmauquan.qrordering.dto.DiningTableRequest;
 import com.sacmauquan.qrordering.dto.DiningTableResponse;
 import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.service.DiningTableService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.PatchMapping;

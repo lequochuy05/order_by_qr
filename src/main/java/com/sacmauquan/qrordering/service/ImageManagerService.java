@@ -1,4 +1,6 @@
-package com.sacmauquan.qrordering.service;
+    package com.sacmauquan.qrordering.service;
+import org.springframework.lang.NonNull;
+import java.util.Objects;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
@@ -29,12 +31,13 @@ public class ImageManagerService {
     }
 
     /** Upload file mới */
-    public String upload(MultipartFile file, String folder) throws IOException {
-        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
+    public String upload(@NonNull MultipartFile file, String folder) throws IOException {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                 "folder", folder,
                 "resource_type", "auto"
         ));
-        return uploadResult.get("secure_url").toString();
+        return Objects.requireNonNull(uploadResult.get("secure_url")).toString();
     }
 
     /** Xóa ảnh khỏi Cloudinary */
@@ -49,7 +52,7 @@ public class ImageManagerService {
     }
 
     /** Thay ảnh cũ bằng ảnh mới */
-    public String replace(MultipartFile newFile, String oldUrl, String folder) throws IOException {
+    public String replace(@NonNull MultipartFile newFile, String oldUrl, String folder) throws IOException {
         delete(oldUrl);
         return upload(newFile, folder);
     }
@@ -63,11 +66,13 @@ public class ImageManagerService {
     }
 
     /** Upload dữ liệu QR code (byte[]) lên Cloudinary */
-    public Map uploadBytes(byte[] data, String folder, String publicId) throws IOException {
-        return cloudinary.uploader().upload(data, ObjectUtils.asMap(
+    public Map<String, Object> uploadBytes(byte[] data, String folder, String publicId) throws IOException {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) cloudinary.uploader().upload(data, ObjectUtils.asMap(
                 "folder", folder,
                 "public_id", publicId,
                 "resource_type", "image"
         ));
+        return result;
     }
 }

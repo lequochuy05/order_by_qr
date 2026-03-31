@@ -1,7 +1,5 @@
 package com.sacmauquan.qrordering.model;
 
-import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.*;
@@ -15,7 +13,6 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import java.util.Set;
 import java.util.LinkedHashSet;
-import java.util.ArrayList;
 
 @Entity
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
