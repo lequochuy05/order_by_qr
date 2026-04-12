@@ -107,7 +107,10 @@ export default function OrderHistoryPage() {
   const fetchStats = useCallback(async () => {
     try {
       const params = getFilters();
-      const { page, size, search: _s, ...statsParams } = params;
+      const statsParams = { ...params };
+      delete statsParams.page;
+      delete statsParams.size;
+      delete statsParams.search;
       const data = await orderService.getOrderStats(statsParams);
       setStats(data);
     } catch (error) {

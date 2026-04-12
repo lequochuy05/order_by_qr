@@ -23,6 +23,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(name = "item_option")
 @SQLDelete(sql = "UPDATE item_option SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class ItemOption extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

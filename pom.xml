@@ -8,7 +8,7 @@
     <artifactId>qr-ordering</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>qr-ordering</name>
-    <description>QR Code Ordering System for Milk Tea Shop</description>
+    <description>QR Ordering System (QROS)</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>

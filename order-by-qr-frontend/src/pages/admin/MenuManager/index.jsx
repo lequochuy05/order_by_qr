@@ -59,7 +59,7 @@ const MenuManager = () => {
   useEffect(() => { fetchItems(true); }, [fetchItems]);
 
   // AI Magic Scan
-  const handleAiScan = async () => {
+  const handleAiScan = useCallback(async () => {
     if (!selectedFile) return;
     setLoading(true);
     try {
@@ -78,13 +78,12 @@ const MenuManager = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedFile, showSuccess, showError]);
 
   useEffect(() => {
-    const onAiScan = () => handleAiScan();
-    window.addEventListener('aiScan', onAiScan);
-    return () => window.removeEventListener('aiScan', onAiScan);
-  }, [selectedFile]);
+    window.addEventListener('aiScan', handleAiScan);
+    return () => window.removeEventListener('aiScan', handleAiScan);
+  }, [handleAiScan]);
 
   // SUBMIT 
   const handleSubmit = async (e) => {

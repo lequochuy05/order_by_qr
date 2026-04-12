@@ -1,42 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Wand2, AlertCircle } from 'lucide-react';
 
 const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     // State dữ liệu form
-    const [formData, setFormData] = useState({
-        code: '',
-        discountPercent: '',
-        discountAmount: '',
-        usageLimit: '',
-        validFrom: '',
-        validTo: '',
-        active: true,
+    const [formData, setFormData] = useState(() => {
+        if (initialData) {
+            return {
+                ...initialData,
+                validFrom: initialData.validFrom ? initialData.validFrom.split('T')[0] : '',
+                validTo: initialData.validTo ? initialData.validTo.split('T')[0] : '',
+                discountPercent: initialData.discountPercent || '',
+                discountAmount: initialData.discountAmount || '',
+                usageLimit: initialData.usageLimit || ''
+            };
+        }
+        return {
+            code: '', discountPercent: '', discountAmount: '', usageLimit: '',
+            validFrom: '', validTo: '', active: true,
+        };
     });
 
     // State lưu lỗi validation
     const [errors, setErrors] = useState({});
-
-    // Reset hoặc Load dữ liệu khi mở Modal
-    useEffect(() => {
-        if (isOpen) {
-            setErrors({}); // Xóa lỗi cũ
-            if (initialData) {
-                setFormData({
-                    ...initialData,
-                    validFrom: initialData.validFrom ? initialData.validFrom.split('T')[0] : '',
-                    validTo: initialData.validTo ? initialData.validTo.split('T')[0] : '',
-                    discountPercent: initialData.discountPercent || '',
-                    discountAmount: initialData.discountAmount || '',
-                    usageLimit: initialData.usageLimit || ''
-                });
-            } else {
-                setFormData({
-                    code: '', discountPercent: '', discountAmount: '', usageLimit: '', 
-                    validFrom: '', validTo: '', active: true,
-                });
-            }
-        }
-    }, [initialData, isOpen]);
 
     // Hàm tạo mã ngẫu nhiên
     const generateCode = () => {

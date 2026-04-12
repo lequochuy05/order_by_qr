@@ -1,24 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react'; // 1. Đã thêm UtensilsCrossed
 import { orderService } from '../../../services/admin/orderService';
 import { useAuth } from '../../../context/AuthContext'; // 2. Import Auth
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
-    const [items, setItems] = useState([]);
+    const [items, setItems] = useState(order?.orderItems || []);
     const [editingId, setEditingId] = useState(null);
     const [editVal, setEditVal] = useState({ quantity: 1, notes: '' });
 
     // 3. Lấy role từ Context
     const { user } = useAuth();
     const isManager = user?.role === 'MANAGER';
-
-    useEffect(() => {
-        if (order && order.orderItems) {
-            setItems(order.orderItems);
-        } else {
-            setItems([]);
-        }
-    }, [order]);
 
     if (!isOpen || !table) return null;
 
@@ -27,7 +19,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             await orderService.markItemPrepared(itemId);
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, prepared: true } : i));
             onOrderUpdate(); 
-        } catch (e) { alert("Lỗi cập nhật trạng thái"); }
+        } catch { alert("Lỗi cập nhật trạng thái"); }
     };
 
     const handleDelete = async (itemId) => {
@@ -36,7 +28,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             await orderService.deleteOrderItem(itemId);
             setItems(prev => prev.filter(i => i.id !== itemId));
             onOrderUpdate();
-        } catch (e) { alert("Lỗi hủy món"); }
+        } catch { alert("Lỗi hủy món"); }
     };
 
     const startEdit = (item) => {
@@ -50,7 +42,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...editVal } : i));
             setEditingId(null);
             onOrderUpdate();
-        } catch (e) { alert("Lỗi cập nhật món"); }
+        } catch { alert("Lỗi cập nhật món"); }
     };
 
     return (

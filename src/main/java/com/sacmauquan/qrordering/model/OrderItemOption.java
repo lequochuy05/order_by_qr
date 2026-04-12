@@ -1,5 +1,7 @@
 package com.sacmauquan.qrordering.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -9,12 +11,14 @@ import lombok.experimental.SuperBuilder;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @SuperBuilder
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class OrderItemOption extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id")
+    @JsonIgnore
     private OrderItem orderItem;
 
     @Column(nullable = false)

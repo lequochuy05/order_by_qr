@@ -43,7 +43,7 @@ const KitchenManager = () => {
         try {
             await orderService.updateItemStatus(itemId, newStatus);
             // WebSocket sẽ tự trigger reload
-        } catch (error) {
+        } catch {
             showError("Không thể cập nhật trạng thái món");
         } finally {
             setProcessingItems(prev => {

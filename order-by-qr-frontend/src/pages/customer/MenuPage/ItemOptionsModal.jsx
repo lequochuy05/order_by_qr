@@ -1,29 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { fmtVND } from '../../../utils/formatters.js';
 
 const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
-  const [selectedOptions, setSelectedOptions] = useState({});
-  useEffect(() => {
-    if (isOpen && item && item.itemOptions) {
-      const defaultSelections = {};
-
+  const [selectedOptions, setSelectedOptions] = useState(() => {
+    const defaultSelections = {};
+    if (item?.itemOptions) {
       item.itemOptions.forEach(opt => {
-        // Tự động lấy giá trị đầu tiên của mỗi nhóm để làm mặc định
         if (opt.optionValues && opt.optionValues.length > 0) {
           defaultSelections[opt.id] = opt.optionValues[0].id;
         }
       });
-
-      setSelectedOptions(defaultSelections);
-    } else {
-      setSelectedOptions({}); // Clear state khi đóng
     }
-  }, [isOpen, item]);
+    return defaultSelections;
+  });
 
   if (!isOpen || !item) return null;
 
-  const handleOptionSelect = (optionId, valueId, isRequired) => {
+  const handleOptionSelect = (optionId, valueId) => {
     setSelectedOptions(prev => ({
       ...prev,
       [optionId]: valueId

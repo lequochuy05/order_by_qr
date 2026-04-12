@@ -3,8 +3,17 @@ import React, { createContext, useState, useContext, useEffect, useRef, useCallb
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (!token) return null;
+    const role = localStorage.getItem('role');
+    const fullName = localStorage.getItem('fullname');
+    const avatarUrl = localStorage.getItem('avatarUrl');
+    const userId = localStorage.getItem('userId');
+    return { role, fullName, avatarUrl, userId: userId ? Number(userId) : null };
+  });
+
+  const [loading] = useState(false);
   const timerRef = useRef(null);
 
   const logout = useCallback(() => {
@@ -21,21 +30,8 @@ export const AuthProvider = ({ children }) => {
       if (window.location.pathname.startsWith('/admin')) {
         window.location.href = '/login';
       }
-    }, 1200000);
+    }, 12000000); // 200 minutes or adjusted as needed
   }, [logout]);
-
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    const role = localStorage.getItem('role');
-    const fullName = localStorage.getItem('fullname');
-    const avatarUrl = localStorage.getItem('avatarUrl');
-    const userId = localStorage.getItem('userId');
-
-    if (token) {
-      setUser({ role, fullName, avatarUrl, userId: userId ? Number(userId) : null });
-    }
-    setLoading(false);
-  }, []);
 
   // Khởi tạo bộ đếm theo dõi hoạt động người dùng
   useEffect(() => {
@@ -86,4 +82,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

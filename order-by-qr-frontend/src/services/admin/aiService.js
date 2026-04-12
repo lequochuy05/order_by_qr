@@ -18,7 +18,7 @@ export const aiService = {
     if (typeof data === 'string') {
       try {
         data = JSON.parse(data);
-      } catch (e) {
+      } catch {
         // console.error("Error parsing AI response", e, data);
         return { error: "Không thể đọc được kết quả từ AI. Vui lòng thử lại." };
       }

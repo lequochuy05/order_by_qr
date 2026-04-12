@@ -1,14 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Search } from 'lucide-react';
 import {fmtVND} from '../../../utils/formatters';
 
 const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData }) => {
-  const [formData, setFormData] = useState({ name: '', price: 0, active: true, items: [] });
-
-  useEffect(() => {
-    if (initialData) setFormData(initialData);
-    else setFormData({ name: '', price: 0, active: true, items: [] });
-  }, [initialData, isOpen]);
+  const [formData, setFormData] = useState(initialData || { name: '', price: 0, active: true, items: [] });
 
   // Logic tự động tính giá ưu đãi
   const calculateAutoPrice = (selectedItems) => {

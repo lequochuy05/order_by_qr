@@ -18,18 +18,30 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
+        
+        const loadAllData = async () => {
+            try {
+                const [m, c, cat] = await Promise.all([
+                    menuItemService.getAll(),
+                    comboService.getAll(),
+                    categoryService.getAll()
+                ]);
+                if (isMounted) {
+                    setMenuItems(m);
+                    setCombos(c.filter(combo => combo.active));
+                    setCategories(cat);
+                }
+            } catch {
+                console.error("Lỗi tải menu/combo");
+            }
+        };
+
         if (isOpen) {
-            Promise.all([
-                menuItemService.getAll(),
-                comboService.getAll(),
-                categoryService.getAll()
-            ]).then(([m, c, cat]) => {
-                setMenuItems(m);
-                setCombos(c.filter(combo => combo.active));
-                setCategories(cat);
-            });
-            setCart([]);
+            loadAllData();
         }
+
+        return () => { isMounted = false; };
     }, [isOpen]);
 
     const addToCart = (item, type, options = [], optionObjs = [], totalPrice = null) => {
@@ -173,6 +185,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
             
             {/* Modal Chọn Options của món (dùng chung từ khách hàng) */}
             <ItemOptionsModal
+                key={isOptionsModalOpen ? (selectedItemForOptions?.id || 'new') : 'closed'}
                 item={selectedItemForOptions}
                 isOpen={isOptionsModalOpen}
                 onClose={() => {

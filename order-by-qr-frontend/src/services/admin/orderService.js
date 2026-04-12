@@ -76,5 +76,10 @@ export const orderService = {
     updateItemStatus: async (itemId, status) => {
         const res = await api.patch(`/orders/items/${itemId}/status`, { status });
         return res.data;
+    },
+
+    getActiveOrders: async () => {
+        const res = await api.get('/orders/active');
+        return res.data;
     }
 };

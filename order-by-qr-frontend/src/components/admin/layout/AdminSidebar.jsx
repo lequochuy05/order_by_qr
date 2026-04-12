@@ -17,6 +17,80 @@ import {
   Circle // Dùng làm icon cho menu con
 } from 'lucide-react';
 
+const menuItems = [
+  {
+    title: 'Bảng điều khiển',
+    path: '/admin/dashboard',
+    icon: <LayoutDashboard size={22} />,
+    roles: ['MANAGER', 'STAFF', 'CHEF']
+  },
+  {
+    title: 'Quản lý bàn',
+    path: '/admin/tables',
+    icon: <Table size={22} />,
+    roles: ['MANAGER', 'STAFF']
+  },
+  {
+    title: 'Nhà bếp',
+    path: '/admin/kitchen',
+    icon: <UtensilsCrossed size={22} />,
+    roles: ['MANAGER', 'CHEF']
+  },
+  {
+    title: 'Quản lý danh mục',
+    path: '/admin/categories',
+    icon: <Layers size={22} />,
+    roles: ['MANAGER']
+  },
+  {
+    title: 'Quản lý món ăn',
+    path: '/admin/menu',
+    icon: <UtensilsCrossed size={22} />,
+    roles: ['MANAGER']
+  },
+  {
+    title: 'Quản lý combo',
+    path: '/admin/combo',
+    icon: <Package size={22} />,
+    roles: ['MANAGER']
+  },
+  {
+    title: 'Quản lý voucher',
+    path: '/admin/voucher',
+    icon: <TicketIcon size={22} />,
+    roles: ['MANAGER']
+  },
+  // {
+  //   title: 'Quản lý khuyến mãi',
+  //   path: '/admin/promotions',
+  //   icon: <TicketPercent size={22} />,
+  //   roles: ['MANAGER']
+  // },
+  {
+    title: 'Quản lý nhân viên',
+    path: '/admin/staffs',
+    icon: <Users size={22} />,
+    roles: ['MANAGER']
+  },
+  {
+    title: 'Lịch sử đơn hàng',
+    path: '/admin/history',
+    icon: <ClipboardList size={22} />,
+    roles: ['MANAGER', 'STAFF']
+  },
+
+  {
+    title: 'Thống kê',
+    icon: <BarChart3 size={22} />,
+    roles: ['MANAGER'],
+    children: [
+      { title: 'Doanh thu', path: '/admin/statistics/revenue' },
+      { title: 'Món ăn bán chạy', path: '/admin/statistics/top-dishes' },
+      { title: 'Nhân viên', path: '/admin/statistics/staff' }
+    ]
+  },
+];
+
 const AdminSidebar = ({ isOpen }) => {
   const location = useLocation();
   const { user } = useAuth();
@@ -44,80 +118,6 @@ const AdminSidebar = ({ isOpen }) => {
       }
     });
   }, [location.pathname]);
-
-  const menuItems = [
-    {
-      title: 'Bảng điều khiển',
-      path: '/admin/dashboard',
-      icon: <LayoutDashboard size={22} />,
-      roles: ['MANAGER', 'STAFF', 'CHEF']
-    },
-    {
-      title: 'Quản lý bàn',
-      path: '/admin/tables',
-      icon: <Table size={22} />,
-      roles: ['MANAGER', 'STAFF']
-    },
-    {
-      title: 'Nhà bếp',
-      path: '/admin/kitchen',
-      icon: <UtensilsCrossed size={22} />,
-      roles: ['MANAGER', 'CHEF']
-    },
-    {
-      title: 'Quản lý danh mục',
-      path: '/admin/categories',
-      icon: <Layers size={22} />,
-      roles: ['MANAGER']
-    },
-    {
-      title: 'Quản lý món ăn',
-      path: '/admin/menu',
-      icon: <UtensilsCrossed size={22} />,
-      roles: ['MANAGER']
-    },
-    {
-      title: 'Quản lý combo',
-      path: '/admin/combo',
-      icon: <Package size={22} />,
-      roles: ['MANAGER']
-    },
-    {
-      title: 'Quản lý voucher',
-      path: '/admin/voucher',
-      icon: <TicketIcon size={22} />,
-      roles: ['MANAGER']
-    },
-    // {
-    //   title: 'Quản lý khuyến mãi',
-    //   path: '/admin/promotions',
-    //   icon: <TicketPercent size={22} />,
-    //   roles: ['MANAGER']
-    // },
-    {
-      title: 'Quản lý nhân viên',
-      path: '/admin/staffs',
-      icon: <Users size={22} />,
-      roles: ['MANAGER']
-    },
-    {
-      title: 'Lịch sử đơn hàng',
-      path: '/admin/history',
-      icon: <ClipboardList size={22} />,
-      roles: ['MANAGER', 'STAFF']
-    },
-
-    {
-      title: 'Thống kê',
-      icon: <BarChart3 size={22} />,
-      roles: ['MANAGER'],
-      children: [
-        { title: 'Doanh thu', path: '/admin/statistics/revenue' },
-        { title: 'Món ăn bán chạy', path: '/admin/statistics/top-dishes' },
-        { title: 'Nhân viên', path: '/admin/statistics/staff' }
-      ]
-    },
-  ];
 
   return (
     <aside

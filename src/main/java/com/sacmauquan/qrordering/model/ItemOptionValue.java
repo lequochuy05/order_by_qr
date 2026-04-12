@@ -1,5 +1,6 @@
 package com.sacmauquan.qrordering.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.Builder;
@@ -14,6 +15,7 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @SQLDelete(sql = "UPDATE item_option_values SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class ItemOptionValue extends BaseEntity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -15,19 +15,22 @@ import StaffStats from './pages/admin/statistics/StaffStats.jsx';
 import KitchenManager from './pages/admin/KitchenManager';
 import Dashboard from './pages/admin/Dashboard';
 import OrderHistoryPage from './pages/admin/OrderHistoryPage';
+import { lazy, Suspense } from 'react';
+
 
 // Import các trang của bạn
-import MenuPage from './pages/customer/MenuPage';
-import LoginPage from './pages/auth/LoginPage';
+const MenuPage = lazy(() => import('./pages/customer/MenuPage'));
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 
 function App() {
   return (
     <AuthProvider> {/* Quản lý trạng thái đăng nhập cho Admin */}
       <BrowserRouter>
-        <Routes>
-          <Route path="/menu" element={<MenuPage />} /> {/* Trang menu cho khách hàng */}
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Đang tải...</div>}>
+          <Routes>
+            <Route path="/menu" element={<MenuPage />} /> {/* Trang menu cho khách hàng */}
 
-          <Route path="/login" element={<LoginPage />} /> {/* Trang đăng nhập quản lý */}
+            <Route path="/login" element={<LoginPage />} /> {/* Trang đăng nhập quản lý */}
           <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />}>
             <Route element={<AdminLayout />}>
               <Route path="/admin/dashboard" element={<Dashboard />} />
@@ -53,6 +56,7 @@ function App() {
           {/* Trang lỗi 404 */}
           <Route path="*" element={<div>Trang không tồn tại</div>} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

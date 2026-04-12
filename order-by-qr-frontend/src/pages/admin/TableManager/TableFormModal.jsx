@@ -1,14 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, QrCode } from 'lucide-react';
 
 const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting }) => {
-    const [formData, setFormData] = useState({ id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' });
-
-    useEffect(() => {
-        if (isOpen) {
-            setFormData(initialData || { id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' });
-        }
-    }, [isOpen, initialData]);
+    const [formData, setFormData] = useState(initialData || { id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' });
 
     const handleSave = () => {
         if (!formData.tableNumber || formData.capacity <= 0) {
