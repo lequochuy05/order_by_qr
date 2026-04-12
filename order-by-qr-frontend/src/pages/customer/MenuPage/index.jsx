@@ -90,16 +90,17 @@ const MenuPage = () => {
     }
   }, [loadData]);
 
-  const wsMenu = useWebSocket('/topic/menu', handleRealtimeUpdate);
-  const wsCombo = useWebSocket('/topic/combos', handleRealtimeUpdate);
-  const wsCate = useWebSocket('/topic/categories', handleRealtimeUpdate);
+  useWebSocket('/topic/menu', handleRealtimeUpdate);
+  useWebSocket('/topic/combos', handleRealtimeUpdate);
+  useWebSocket('/topic/categories', handleRealtimeUpdate);
+  const wsStatus = useWebSocket(); // Just to get the service reference for status check
   useEffect(() => {
     const checkInterval = setInterval(() => {
       // Kiểm tra xem socket có đang kết nối không
-      setWsConnected(wsMenu?.connected || false);
+      setWsConnected(wsStatus?.connected || false);
     }, 2000);
     return () => clearInterval(checkInterval);
-  }, [wsMenu]);
+  }, [wsStatus]);
 
   const handleAddToCart = (product, qty, isCombo = false, needsOptions = false) => {
     if (needsOptions) {
@@ -216,7 +217,7 @@ const MenuPage = () => {
       alert('Đơn hàng của bạn đã được gửi thành công!');
       setCart({ items: {}, combos: {} });
       setShowOrderModal(false);
-    } catch (e) {
+    } catch (_e) {
       alert('Có lỗi xảy ra khi gửi đơn hàng. Vui lòng thử lại!');
     } finally {
       setIsSubmitting(false);
@@ -341,6 +342,7 @@ const MenuPage = () => {
         />
 
         <ItemOptionsModal
+          key={selectedItemForOptions ? selectedItemForOptions.id : 'closed'}
           item={selectedItemForOptions}
           isOpen={!!selectedItemForOptions}
           onClose={() => setSelectedItemForOptions(null)}

@@ -1,53 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power } from 'lucide-react';
 
 const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
-  const [formData, setFormData] = useState({
-    id: null,
-    fullName: '',
-    email: '',
-    phone: '',
-    role: 'STAFF',
-    status: 'ACTIVE',
-    password: ''
+  const [formData, setFormData] = useState(() => {
+    if (data) {
+      return {
+        id: data.id,
+        fullName: data.fullName || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        role: data.role || 'STAFF',
+        status: data.status || 'ACTIVE',
+        password: ''
+      };
+    }
+    return {
+      id: null,
+      fullName: '',
+      email: '',
+      phone: '',
+      role: 'STAFF',
+      status: 'ACTIVE',
+      password: ''
+    };
   });
 
   const [selectedFile, setSelectedFile] = useState(null);
-  const [preview, setPreview] = useState('');
+  const [preview, setPreview] = useState(data?.avatarUrl || '');
 
   // Thêm State để lưu lỗi
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (isOpen) {
-      setErrors({});
-
-      if (data) {
-        setFormData({
-          id: data.id,
-          fullName: data.fullName || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          role: data.role || 'STAFF',
-          status: data.status || 'ACTIVE',
-          password: ''
-        });
-        setPreview(data.avatarUrl || '');
-      } else {
-        setFormData({
-          id: null,
-          fullName: '',
-          email: '',
-          phone: '',
-          role: 'STAFF',
-          status: 'ACTIVE',
-          password: ''
-        });
-        setPreview('');
-      }
-      setSelectedFile(null);
-    }
-  }, [isOpen, data]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];

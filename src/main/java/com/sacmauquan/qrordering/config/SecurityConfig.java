@@ -1,8 +1,6 @@
 // src/main/java/com/sacmauquan/qrordering/config/SecurityConfig.java
 package com.sacmauquan.qrordering.config;
 
-import com.sacmauquan.qrordering.security.JwtAuthFilter;
-
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
@@ -20,6 +18,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.sacmauquan.qrordering.security.JwtAuthFilter;
 
 import java.util.List;
 
@@ -79,7 +79,7 @@ public class SecurityConfig {
                 "/api/vouchers/**")
             .hasRole("MANAGER")
 
-            // Kitchen / KDS (Must be placed before /api/orders/** to prioritize specific routes)
+            // Kitchen
             .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER", "STAFF", "CHEF")

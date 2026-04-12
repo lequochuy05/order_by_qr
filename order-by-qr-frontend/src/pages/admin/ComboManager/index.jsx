@@ -163,6 +163,7 @@ const ComboManager = () => {
             />
 
             <ComboModal
+                key={isModalOpen ? (editingCombo?.id || 'new') : 'closed'}
                 isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
                 menuItems={menuItems} initialData={editingCombo} onSubmit={handleSubmit}
             />

@@ -24,7 +24,6 @@ public class JwtService {
 
   public JwtService(@Value("${security.jwt.secret}") String secret,
                     @Value("${security.jwt.expiration-ms}") long expirationMs) {
-    // secret phải đủ dài, tốt nhất ≥ 32 bytes
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     this.expirationMs = expirationMs;
   }

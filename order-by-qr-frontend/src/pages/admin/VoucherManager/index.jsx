@@ -20,7 +20,6 @@ const VoucherManager = () => {
 
   const getStatusInfo = (v) => {
     const now = new Date();
-    const from = v.validFrom ? new Date(v.validFrom) : null;
     const to = v.validTo ? new Date(v.validTo) : null;
     const isExpired = to && now > to;
     const isExhausted = v.usageLimit > 0 && v.usedCount >= v.usageLimit;
@@ -144,6 +143,7 @@ const VoucherManager = () => {
 
       {/* Modal Nhập liệu */}
       <VoucherModal
+        key={isModalOpen ? (editingVoucher?.id || 'new') : 'closed'}
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
         initialData={editingVoucher} onSubmit={handleSubmit}
       />

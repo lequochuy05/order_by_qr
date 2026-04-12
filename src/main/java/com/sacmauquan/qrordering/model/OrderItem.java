@@ -19,6 +19,7 @@ import java.util.ArrayList;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "order_item")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class OrderItem extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

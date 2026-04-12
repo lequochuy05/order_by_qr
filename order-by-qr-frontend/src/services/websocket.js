@@ -36,7 +36,7 @@ class WebSocketService {
             return this.client.subscribe(topic, (message) => {
                 try {
                     callback(JSON.parse(message.body));
-                } catch (e) {
+                } catch {
                     callback(message.body);
                 }
             });

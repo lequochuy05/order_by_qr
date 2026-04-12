@@ -171,6 +171,7 @@ const StaffManager = () => {
 
       {/* Modal Thêm/Sửa */}
       <StaffModal
+        key={isModalOpen ? (editingStaff?.id || 'new') : 'closed'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         data={editingStaff}

@@ -371,11 +371,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> getKitchenOrders() {
-        return orderRepository.findAll().stream()
-                .filter(o -> "PENDING".equals(o.getStatus()))
+        return orderRepository.findByStatusIn(List.of("PENDING")).stream()
                 .filter(o -> o.getOrderItems().stream().anyMatch(oi -> !"FINISHED".equals(oi.getStatus())))
                 .sorted((o1, o2) -> o1.getCreatedAt().compareTo(o2.getCreatedAt()))
                 .toList();
+    }
+
+    @Override
+    public List<Order> getActiveOrders() {
+        return orderRepository.findByStatusIn(List.of("PENDING"));
     }
 
     @Override
@@ -528,13 +532,15 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void recalcTableStatus(com.sacmauquan.qrordering.model.Order order) {
-        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        // Optimizing: Check if any item in the order is NOT finished
+        boolean anyUnfinished = order.getOrderItems().stream()
+                .anyMatch(oi -> !oi.isPrepared());
+        
         DiningTable table = order.getTable();
-        if (items == null || items.isEmpty()) {
+        if (order.getOrderItems().isEmpty()) {
             table.setStatus(DiningTable.AVAILABLE);
         } else {
-            boolean allPrepared = items.stream().allMatch(OrderItem::isPrepared);
-            table.setStatus(allPrepared ? DiningTable.WAITING_FOR_PAYMENT : DiningTable.OCCUPIED);
+            table.setStatus(anyUnfinished ? DiningTable.OCCUPIED : DiningTable.WAITING_FOR_PAYMENT);
         }
         tableRepository.save(table);
     }

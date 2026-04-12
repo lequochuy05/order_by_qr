@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, CreditCard, Tag } from 'lucide-react';
 import { orderService } from '../../../services/admin/orderService';
 import { printInvoice } from '../../../utils/invoiceGenerator';
@@ -9,15 +9,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (isOpen && table && order) {
-            setVoucherCode('');
-            setError('');
-            loadPreview('');
-        }
-    }, [isOpen, table, order]);
-
-    const loadPreview = async (code) => {
+    const loadPreview = useCallback(async (code) => {
         setLoading(true);
         try {
             const items = order.orderItems.filter(i => i.menuItem).map(i => ({ menuItemId: i.menuItem.id, quantity: i.quantity, notes: i.notes }));
@@ -29,17 +21,23 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
                 voucherCode: code || null // Nếu code rỗng thì gửi null
             });
             setPreviewData(res);
-            
+
             // Fix lỗi UI: Nếu có code mà invalid -> báo lỗi. 
             if (code && !res.voucherValid) setError(res.voucherMessage || "Voucher không hợp lệ");
             else setError('');
 
-        } catch (e) {
+        } catch (_e) {
             setError("Lỗi tính toán hóa đơn");
         } finally {
             setLoading(false);
         }
-    };
+    }, [order, table?.id]);
+
+    useEffect(() => {
+        if (isOpen && table && order) {
+            loadPreview('');
+        }
+    }, [isOpen, table, order, loadPreview]);
 
     // FIX LỖI VOUCHER 1: Xử lý khi thay đổi input
     const handleInputChange = (e) => {
@@ -62,9 +60,9 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
             const userId = localStorage.getItem('userId');
             // FIX LỖI VOUCHER 2: Đảm bảo gửi đúng mã đang hiện trong ô input
             const finalVoucher = voucherCode.trim() === '' ? null : voucherCode;
-            
+
             await orderService.payOrder(order.id, userId, finalVoucher);
-            
+
             printInvoice({
                 order: { ...order, ...previewData, totalAmount: previewData.finalTotal },
                 table,
@@ -90,17 +88,17 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
                 <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
                     <h3 className="font-bold text-lg">Thanh toán - Bàn {table.tableNumber}</h3>
-                    <button onClick={onClose}><X size={20} className="text-gray-500 hover:text-red-500"/></button>
+                    <button onClick={onClose}><X size={20} className="text-gray-500 hover:text-red-500" /></button>
                 </div>
 
                 <div className="p-6 space-y-6">
                     {/* Voucher Input */}
                     <div className="flex gap-2">
                         <div className="relative flex-1">
-                            <Tag className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <Tag className="absolute left-3 top-3 text-gray-400" size={18} />
                             <input type="text" className="w-full pl-10 pr-4 py-2.5 border rounded-xl uppercase focus:ring-2 focus:ring-orange-500 outline-none"
                                 placeholder="Mã giảm giá / Voucher"
-                                value={voucherCode} 
+                                value={voucherCode}
                                 onChange={handleInputChange} // Dùng hàm mới
                             />
                         </div>
@@ -134,7 +132,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
                 <div className="px-6 py-4 border-t flex gap-3">
                     <button onClick={onClose} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl">Hủy</button>
                     <button onClick={handleConfirmPay} disabled={loading} className="flex-[2] py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 shadow-lg shadow-green-200 flex items-center justify-center gap-2">
-                        <CreditCard size={20}/> Xác nhận & In hóa đơn
+                        <CreditCard size={20} /> Xác nhận & In hóa đơn
                     </button>
                 </div>
             </div>

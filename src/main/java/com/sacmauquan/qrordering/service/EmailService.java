@@ -52,7 +52,7 @@ public class EmailService {
               Nếu bạn không yêu cầu, hãy bỏ qua email này.
             </p>
           </div>
-          """.formatted(resetLink, resetLink, resetLink);
+          """.formatted(resetLink);
 
       helper.setText(htmlContent, true);
 

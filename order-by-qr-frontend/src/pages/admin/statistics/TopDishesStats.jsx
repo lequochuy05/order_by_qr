@@ -113,7 +113,7 @@ const TopDishesStats = () => {
                                             <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#374151', fontSize: 12 }} width={130} />
                                             <RechartsTooltip
                                                 cursor={{ fill: '#f3f4f6' }}
-                                                formatter={(v, name, props) => [
+                                                formatter={(v, name) => [
                                                     name === 'quantity' ? `${v} phần` : fmtVND(v),
                                                     name === 'quantity' ? 'Số lượng' : 'Doanh thu'
                                                 ]}

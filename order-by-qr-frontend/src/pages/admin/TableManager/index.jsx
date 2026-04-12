@@ -42,34 +42,26 @@ const TableManager = () => {
     // === 1. Fetch Data (ĐÃ TỐI ƯU TỐC ĐỘ & FIX LỖI TIỀN ẢO) ===
     const fetchTables = useCallback(async () => {
         try {
-            // 1. Lấy danh sách bàn
-            const tableData = await tableService.getAll();
+            // 1. Fetch tables and active orders in parallel to reduce sequential blocking
+            const [tableData, activeOrders] = await Promise.all([
+                tableService.getAll(),
+                orderService.getActiveOrders().catch(() => []) // Fallback to empty if fails
+            ]);
+
             const sortedTables = tableData.sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber));
             setTables(sortedTables);
 
-            // 2. Lấy danh sách đơn hàng song song (Promise.all) để tăng tốc độ
-            const activeTables = sortedTables.filter(t => t.status !== 'AVAILABLE' && t.status !== 'Trống');
-
-            const orderPromises = activeTables.map(t =>
-                orderService.getCurrentOrder(t.id)
-                    .then(ord => ({ tableId: t.id, order: ord }))
-                    .catch(() => ({ tableId: t.id, order: null }))
-            );
-
-            const results = await Promise.all(orderPromises);
-
-            // 3. Tạo map orders mới hoàn toàn (Xóa sạch dữ liệu cũ để tránh lỗi hiển thị tiền bàn trống)
+            // 2. Create map orders from batch results (No more loop-fetching)
             const newOrdersMap = {};
-            results.forEach(res => {
-                if (res.order) {
-                    newOrdersMap[res.tableId] = res.order;
+            activeOrders.forEach(ord => {
+                if (ord.table && ord.table.id) {
+                    newOrdersMap[ord.table.id] = ord;
                 }
             });
 
-            // Cập nhật 1 lần duy nhất (giảm số lần render -> mượt hơn)
             setOrders(newOrdersMap);
 
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Error fetching tables/orders:", e); }
     }, []);
 
     useEffect(() => { fetchTables(); }, [fetchTables]);
@@ -168,10 +160,15 @@ const TableManager = () => {
             </div>
 
             {/* Modals */}
-            <TableFormModal isOpen={formModal.open} onClose={() => setFormModal({ open: false, data: null })} initialData={formModal.data} onSubmit={handleSaveTable} isSubmitting={isSubmitting} />
-            <AddItemModal isOpen={addItemModal.open} onClose={() => setAddItemModal({ open: false, table: null })} table={addItemModal.table} onSubmit={handleSubmitItems} isSubmitting={isSubmitting} />
+            <TableFormModal
+                key={formModal.open ? (formModal.data?.id || 'new') : 'form-closed'}
+                isOpen={formModal.open} onClose={() => setFormModal({ open: false, data: null })} initialData={formModal.data} onSubmit={handleSaveTable} isSubmitting={isSubmitting} />
+            <AddItemModal
+                key={addItemModal.open ? (addItemModal.table?.id || 'new') : 'add-item-closed'}
+                isOpen={addItemModal.open} onClose={() => setAddItemModal({ open: false, table: null })} table={addItemModal.table} onSubmit={handleSubmitItems} isSubmitting={isSubmitting} />
 
             <OrderDetailModal
+                key={detailModal.open ? (detailModal.order?.id || detailModal.table?.id || 'new') : 'detail-closed'}
                 isOpen={detailModal.open} onClose={() => setDetailModal({ open: false, table: null, order: null })}
                 table={detailModal.table} order={detailModal.order}
                 onOrderUpdate={async () => {
@@ -182,6 +179,7 @@ const TableManager = () => {
             />
 
             <PaymentModal
+                key={payModal.open ? (payModal.order?.id || payModal.table?.id || 'new') : 'pay-closed'}
                 isOpen={payModal.open} onClose={() => setPayModal({ open: false, table: null, order: null })}
                 table={payModal.table} order={payModal.order}
                 onPaymentSuccess={() => { showSuccess("Thanh toán thành công"); }}

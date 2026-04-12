@@ -23,6 +23,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @EntityGraph(attributePaths = { "table" })
     Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId, List<String> statuses);
     
-    @EntityGraph(attributePaths = { "table", "orderItems" })
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
     Order findFirstByTableIdAndStatus(Long tableId, String status);
+
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
+    List<Order> findByStatusIn(List<String> statuses);
 }

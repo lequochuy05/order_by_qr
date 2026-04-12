@@ -2,7 +2,6 @@ import { Plus, Search } from 'lucide-react';
 
 const ManagementHeader = ({
   // Các Props để tùy chỉnh
-  title,
   searchPlaceholder = "Tìm kiếm...",
   searchTerm,
   setSearchTerm,

@@ -41,4 +41,6 @@ public interface OrderService {
     String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode);
 
     OrderPreviewResponse preview(@NonNull OrderRequest req);
+
+    List<Order> getActiveOrders();
 }

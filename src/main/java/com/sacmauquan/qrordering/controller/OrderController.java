@@ -143,6 +143,12 @@ public class OrderController {
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
+    // ===================== GET ALL ACTIVE ORDERS =====================
+    @GetMapping("/active")
+    public List<Order> getActiveOrders() {
+        return orderService.getActiveOrders();
+    }
+
     // ===================== UPDATE ORDER ITEM =====================
     @PatchMapping("/items/{itemId}")
     public ResponseEntity<?> updateOrderItem(
