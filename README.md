@@ -9,7 +9,7 @@
 ### 1. 📱 Trải nghiệm khách hàng (Customer Side)
 - **Quét mã QR:** Tự động nhận diện số bàn và hiển thị thực đơn tương ứng.
 - **Thực đơn thông minh:** Phân loại món ăn rõ ràng, hỗ trợ tìm kiếm và lọc theo danh mục.
-- **AI Recommendations (Gemini):** 
+- **AI Recommendations:** 
     - Gợi ý món ăn cá nhân hóa dựa trên thời điểm trong ngày và điều kiện thời tiết.
     - Gợi ý bán chéo (Cross-sell) các món đi kèm (đồ uống, topping) khi khách thêm món vào giỏ hàng.
 - **Giỏ hàng & Đặt món:** Quy trình thanh toán và đặt món nhanh chóng, giao diện mượt mà.
@@ -21,7 +21,7 @@
 - **Quản lý mã QR:** Tạo và quản lý mã QR định danh cho từng bàn.
 
 ### 3. 🤖 Tính năng AI đặc sắc
-Hệ thống tích hợp **Google Gemini AI** để:
+Hệ thống tích hợp **AI** để:
 - Phân tích hình ảnh món ăn để tự động điền thông tin (tên, giá ước tính).
 - Cung cấp gợi ý món ăn thông minh theo ngữ cảnh thực tế của người dùng.
 
@@ -32,10 +32,9 @@ Hệ thống tích hợp **Google Gemini AI** để:
 | Thành phần | Công nghệ |
 |------------|-----------|
 | **Backend** | Spring Boot 3, Java 21, Spring Security, Spring Data JPA |
-| **CSDL** | PostgreSQL (Neon.tech), Cloudinary (Lưu trữ ảnh) |
+| **CSDL** | PostgreSQL, Cloudinary |
 | **Frontend** | React 19, Vite, Tailwind CSS 4 |
 | **Realtime** | WebSocket (STOMP & SockJS) |
-| **AI Integration** | Google Gemini API (Flash Lite 2.5) |
 | **State Management** | Zustand |
 | **Deployment** | Docker, Vercel (Frontend) |
 
@@ -45,9 +44,8 @@ Hệ thống tích hợp **Google Gemini AI** để:
 
 ### Yêu cầu hệ thống
 - Java 21+
-- Node.js 18+
+- React 19+
 - Maven 3.9+
-- Docker (Tùy chọn)
 
 ### 1. Cấu hình Backend
 Tạo file `.env` tại thư mục gốc với các thông số sau:
@@ -64,7 +62,7 @@ CLOUDINARY_API_SECRET=your-secret
 
 Chạy ứng dụng:
 ```bash
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 ### 2. Cấu hình Frontend
@@ -78,6 +76,4 @@ npm run dev
 ---
 
 ## 👨‍💻 Tác giả
-**Lê Quốc Huy** – Fullstack Developer
-
-Nếu bạn có bất kỳ thắc mắc hoặc góp ý nào, vui lòng liên hệ qua email hoặc tạo một Issue trên GitHub.
+**WucHuy** – Fullstack Developer
