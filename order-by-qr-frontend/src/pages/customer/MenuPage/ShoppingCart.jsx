@@ -14,7 +14,7 @@ const ShoppingCartButton = ({ cart, onOpenCart }) => {
     <div className="fixed bottom-6 left-0 right-0 px-4 z-50">
       <button
         onClick={onOpenCart}
-        className="max-w-md mx-auto w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between transition-transform active:scale-95"
+        className="max-w-md mx-auto w-full bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between transition-transform active:scale-95"
       >
         <div className="flex items-center gap-3">
           <div className="relative">

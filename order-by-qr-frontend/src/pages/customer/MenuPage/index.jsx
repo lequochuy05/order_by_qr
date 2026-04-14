@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import { useWebSocket } from '../../../hooks/useWebSocket.js';
 import { fmtVND } from '../../../utils/formatters.js';
@@ -11,7 +12,6 @@ import CartModal from './CartModal';
 import CategoryFilter from './CategoryFilter';
 import ShoppingCartButton from './ShoppingCart';
 import ItemOptionsModal from './ItemOptionsModal';
-import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles } from 'lucide-react';
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
@@ -23,11 +23,15 @@ const MenuPage = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [combos, setCombos] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [crossSellItems, setCrossSellItems] = useState([]);
+  const hour = new Date().getHours();
+  const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
+  const [weather, setWeather] = useState("Trời mát");
 
   // Trạng thái giỏ hàng
   const [cart, setCart] = useState({ items: {}, combos: {} });
@@ -66,29 +70,32 @@ const MenuPage = () => {
     }
   }, [tableCode]);
 
+  const loadRecommendations = useCallback(async () => {
+    try {
+      menuService.getPersonalizedRecommendations(timeContext, weather)
+        .then(res => setRecommendations(res.data))
+        .catch(() => {
+          menuService.getPopularItems().then(res => setRecommendations(res.data));
+        });
+    } catch (e) {
+      // suppress
+    }
+  }, [timeContext, weather]);
+
   useEffect(() => {
     loadData(true);
-
-    // Gợi ý thông minh dựa trên ngữ cảnh
-    const hour = new Date().getHours();
-    const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
-    const weatherContext = "Trời mát"; // Mock weather
-
-    menuService.getPersonalizedRecommendations(timeContext, weatherContext)
-      .then(res => setRecommendations(res.data))
-      .catch(() => {
-        menuService.getPopularItems().then(res => setRecommendations(res.data));
-      });
-  }, [loadData]);
+    loadRecommendations();
+  }, [loadData, loadRecommendations]);
 
   const handleRealtimeUpdate = useCallback((message) => {
     // Kiểm tra kỹ định dạng tin nhắn để tránh reload nhầm
     const signal = typeof message === 'string' ? message : message?.body;
 
     if (signal === 'UPDATED') {
-      loadData(false); // Reload ngầm, không hiện loading quay quay gây khó chịu
+      loadData(false);
+      loadRecommendations();
     }
-  }, [loadData]);
+  }, [loadData, loadRecommendations]);
 
   useWebSocket('/topic/menu', handleRealtimeUpdate);
   useWebSocket('/topic/combos', handleRealtimeUpdate);
@@ -238,116 +245,129 @@ const MenuPage = () => {
     : menuItems.filter(i => i.category?.id === parseInt(selectedCategory));
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center">
-      <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative flex flex-col">
+    <div className={isDarkMode ? 'dark' : ''}>
+      <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex justify-center transition-colors duration-500">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen shadow-2xl relative flex flex-col transition-colors duration-500">
 
-        {/* Header Section */}
-        <div className="bg-orange-500 text-white p-5 rounded-b-[2.5rem] shadow-lg">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-xl font-black uppercase tracking-tighter">Sắc Màu Quán</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
-                  Bàn số: {tableInfo?.tableNumber || 'NaN'}
-                </span>
+          {/* Header Section */}
+          <div className="bg-orange-500 text-white p-5 rounded-b-[2.5rem] shadow-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-tighter">Sắc Màu Quán</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
+                    Bàn số: {tableInfo?.tableNumber || 'NaN'}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Status Live Badge */}
-            <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all duration-500 ${wsConnected ? 'bg-green-500/20 border-green-400' : 'bg-red-500/20 border-red-400'}`}>
-              {wsConnected ? <Wifi size={12} className="animate-pulse" /> : <WifiOff size={12} />}
-              {wsConnected ? 'LIVE' : 'OFFLINE'}
+              {/* Trạng thái & Toggle Dark Mode */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white cursor-pointer hover:bg-white/30 transition-all duration-300 shadow-sm"
+                  aria-label="Toggle dark mode"
+                >
+                  {isDarkMode ? <Sun size={14} className="animate-spin-slow" /> : <Moon size={14} />}
+                </button>
+
+                <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all duration-500 ${wsConnected ? 'bg-green-500/20 border-green-400' : 'bg-red-500/20 border-red-400'}`}>
+                  {wsConnected ? <Wifi size={12} className="animate-pulse" /> : <WifiOff size={12} />}
+                  {wsConnected ? 'LIVE' : 'OFFLINE'}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="p-4 flex-1 overflow-y-auto pb-32">
-          {/* Component lọc danh mục */}
-          <CategoryFilter categories={categories} selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+          <div className="p-4 flex-1 overflow-y-auto pb-32">
+            {/* Component lọc danh mục */}
+            <CategoryFilter categories={categories} selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
 
-          {/* Phần Combo */}
-          {combos.length > 0 && (
-            <div className="mt-4">
-              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">Combo Khuyến Mãi</h2>
-              <div className="flex flex-col gap-3">
-                {combos.map(c => (
-                  <ComboCard
-                    key={c.id}
-                    combo={c}
-                    quantity={cart.combos[c.id]?.qty || 0}
-                    onAddToCart={(cb, q) => handleAddToCart(cb, q, true)}
-                  />
-                ))}
+            {/* Phần Combo */}
+            {combos.length > 0 && (
+              <div className="mt-4 mb-2">
+                <h2 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2 transition-colors">Combo Khuyến Mãi</h2>
+                <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar animate-in fade-in duration-500">
+                  {combos.map(c => (
+                    <div key={c.id} className="min-w-[85vw] sm:min-w-[280px]">
+                      <ComboCard
+                        combo={c}
+                        quantity={cart.combos[c.id]?.qty || 0}
+                        onAddToCart={(cb, q) => handleAddToCart(cb, q, true)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Phần Đề xuất thông minh */}
-          {recommendations.length > 0 && selectedCategory === 'all' && (
-            <div className="mt-6 mb-2">
-              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <Sparkles size={16} className="text-orange-500 fill-orange-500" /> Gợi ý cho bạn ({new Date().getHours() < 12 ? 'Bữa sáng' : 'Hôm nay'})
-              </h2>
-              <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar">
-                {recommendations.map(item => (
-                  <div key={item.id} className="min-w-[140px]">
-                    <MenuCard
-                      item={item}
-                      quantity={getCartItemQty(item)}
-                      onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
-                    />
-                  </div>
-                ))}
+            {/* Phần Đề xuất thông minh */}
+            {recommendations.length > 0 && selectedCategory === 'all' && (
+              <div className="mt-8 mb-4 p-4 -mx-4 bg-gradient-to-r from-orange-50/80 to-transparent dark:from-slate-800/80 dark:to-transparent border-t border-b border-orange-100/50 dark:border-slate-800/50 backdrop-blur-sm transition-colors">
+                <h2 className="text-sm font-bold text-orange-900 dark:text-orange-300 mb-3 flex items-center gap-2 px-4 uppercase tracking-wider transition-colors">
+                  <Sparkles size={16} className="text-orange-500 fill-orange-500" /> Gợi ý cho bạn ({timeContext})
+                </h2>
+                <div className="flex overflow-x-auto gap-3 pb-2 px-4 no-scrollbar">
+                  {recommendations.map(item => (
+                    <div key={item.id} className="min-w-[140px]">
+                      <MenuCard
+                        item={item}
+                        quantity={getCartItemQty(item)}
+                        onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Phần Món lẻ */}
-          <h2 className="text-sm font-bold text-gray-800 mt-6 mb-3">Thực đơn chọn món</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {displayItems.map(item => (
-              <MenuCard
-                key={item.id}
-                item={item}
-                quantity={getCartItemQty(item)}
-                onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
-              />
-            ))}
+            {/* Phần Món lẻ */}
+            <h2 className="text-sm font-black text-gray-800 dark:text-white mt-6 mb-4 uppercase tracking-tight transition-colors">Thực đơn</h2>
+            <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-500">
+              {displayItems.map(item => (
+                <MenuCard
+                  key={item.id}
+                  item={item}
+                  quantity={getCartItemQty(item)}
+                  onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
+                />
+              ))}
+            </div>
+
+            {displayItems.length === 0 && (
+              <div className="text-center py-10 text-gray-400 text-xs italic">
+                Danh mục này hiện tại chưa có món.
+              </div>
+            )}
           </div>
 
-          {displayItems.length === 0 && (
-            <div className="text-center py-10 text-gray-400 text-xs italic">
-              Danh mục này hiện tại chưa có món.
-            </div>
-          )}
+          {/* Nút Giỏ hàng nổi */}
+          <ShoppingCartButton cart={cart} onOpenCart={() => setShowOrderModal(true)} />
+
+          {/* Modal giỏ hàng & Thanh toán */}
+          <CartModal
+            isOpen={showOrderModal}
+            onClose={() => setShowOrderModal(false)}
+            cart={cart}
+            fmtVND={fmtVND}
+            handleUpdateCartItemQty={handleUpdateCartItemQty}
+            handleUpdateNote={handleUpdateNote}
+            crossSellItems={crossSellItems}
+            setCrossSellItems={setCrossSellItems}
+            handleAddToCart={handleAddToCart}
+            calculateTotal={calculateTotal}
+            isSubmitting={isSubmitting}
+            handleSubmitOrder={handleSubmitOrder}
+          />
+
+          <ItemOptionsModal
+            key={selectedItemForOptions ? selectedItemForOptions.id : 'closed'}
+            item={selectedItemForOptions}
+            isOpen={!!selectedItemForOptions}
+            onClose={() => setSelectedItemForOptions(null)}
+            onConfirm={handleAddWithOptions}
+          />
         </div>
-
-        {/* Nút Giỏ hàng nổi */}
-        <ShoppingCartButton cart={cart} onOpenCart={() => setShowOrderModal(true)} />
-
-        {/* Modal giỏ hàng & Thanh toán */}
-        <CartModal
-          isOpen={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
-          cart={cart}
-          fmtVND={fmtVND}
-          handleUpdateCartItemQty={handleUpdateCartItemQty}
-          handleUpdateNote={handleUpdateNote}
-          crossSellItems={crossSellItems}
-          setCrossSellItems={setCrossSellItems}
-          handleAddToCart={handleAddToCart}
-          calculateTotal={calculateTotal}
-          isSubmitting={isSubmitting}
-          handleSubmitOrder={handleSubmitOrder}
-        />
-
-        <ItemOptionsModal
-          key={selectedItemForOptions ? selectedItemForOptions.id : 'closed'}
-          item={selectedItemForOptions}
-          isOpen={!!selectedItemForOptions}
-          onClose={() => setSelectedItemForOptions(null)}
-          onConfirm={handleAddWithOptions}
-        />
       </div>
     </div>
   );
