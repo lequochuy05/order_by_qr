@@ -16,13 +16,13 @@ public class NotificationServiceImpl implements NotificationService {
     public void notifyOrderChange() {
         // Thông báo cho lễ tân / quản lý bàn
         eventPublisher.publishEvent(new WebSocketEvent("/topic/tables", "UPDATED",
-                "[WS] Order change -> Sent UPDATED signal to /topic/tables"));
+                "[WS] Order -> Sent UPDATED signal"));
 
         // Thông báo cho nhà bếp
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/kitchen",
                 "UPDATED",
-                "[WS] Order change -> Sent UPDATED signal to /topic/kitchen"));
+                "[WS] Order -> Sent UPDATED signal"));
     }
 
     @Override
@@ -30,7 +30,7 @@ public class NotificationServiceImpl implements NotificationService {
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/menu",
                 "UPDATED",
-                "[WS] Menu thay đổi (" + type + " ID: " + id + ")"));
+                "[WS] Menu (" + type + " ID: " + id + ")"));
     }
 
     @Override
@@ -38,7 +38,7 @@ public class NotificationServiceImpl implements NotificationService {
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/tables",
                 "UPDATED",
-                "[WS] DiningTable change -> Sent UPDATED signal"));
+                "[WS] Table -> Sent UPDATED signal"));
     }
 
     @Override
@@ -46,7 +46,7 @@ public class NotificationServiceImpl implements NotificationService {
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/categories",
                 "UPDATED",
-                "[WS] Category " + event + " -> Sent UPDATED signal"));
+                "[WS] Category -> Sent UPDATED signal"));
     }
 
     @Override
@@ -54,7 +54,6 @@ public class NotificationServiceImpl implements NotificationService {
         eventPublisher.publishEvent(new WebSocketEvent(
                 "/topic/combos",
                 "UPDATED",
-                "[WS] Combo " + event + " -> Sent UPDATED signal"
-        ));
+                "[WS] Combo -> Sent UPDATED signal"));
     }
 }

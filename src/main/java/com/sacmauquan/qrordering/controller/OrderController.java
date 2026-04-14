@@ -39,8 +39,7 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    // ===================== CREATE ORDER (thêm món / cộng dồn)
-    // =====================
+    // ===================== CREATE ORDER =====================
     @PostMapping
     public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
         Order order = orderService.createOrder(Objects.requireNonNull(orderRequest));
