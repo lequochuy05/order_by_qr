@@ -1,14 +1,28 @@
 package com.sacmauquan.qrordering.model;
 
+import java.io.Serializable;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "category")
 @Getter
 @Setter
-public class Category {
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
+@SQLDelete(sql = "UPDATE category SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+public class Category extends BaseEntity implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

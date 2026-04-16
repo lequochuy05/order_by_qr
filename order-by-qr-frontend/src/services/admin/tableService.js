@@ -17,7 +17,7 @@ export const tableService = {
     },
 
     update: async(id, data) => {
-        const res = await api.put(`/tables/${id}`, data);
+        const res = await api.patch(`/tables/${id}`, data);
         return res.data
     },
     delete: async(id) => {

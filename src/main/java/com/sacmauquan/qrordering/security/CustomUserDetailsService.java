@@ -25,7 +25,6 @@ public class CustomUserDetailsService implements UserDetailsService {
     // role "MANAGER"/"STAFF" -> authority "ROLE_MANAGER"/"ROLE_STAFF"
     var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()));
     return new org.springframework.security.core.userdetails.User(
-        u.getEmail(), u.getPassword(), authorities
-    );
+        u.getEmail(), u.getPassword(), authorities);
   }
 }
