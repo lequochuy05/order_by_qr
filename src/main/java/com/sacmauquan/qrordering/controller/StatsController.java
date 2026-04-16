@@ -45,4 +45,18 @@ public class StatsController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return statsService.orderDetails(startOfDay(from), endOfDay(to));
   }
+
+  @GetMapping("/top-dishes")
+  public List<TopDishDto> topDishes(
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return statsService.topDishes(startOfDay(from), endOfDay(to));
+  }
+
+  @GetMapping("/dish-trend")
+  public List<DishTrendDto> dishTrend(
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return statsService.dishTrend(startOfDay(from), endOfDay(to));
+  }
 }

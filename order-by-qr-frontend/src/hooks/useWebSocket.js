@@ -3,6 +3,11 @@ import wsService from '../services/websocket';
 
 export const useWebSocket = (topic, onMessage) => {
     const subscriptionRef = useRef(null);
+    const onMessageRef = useRef(onMessage);
+
+    useEffect(() => {
+        onMessageRef.current = onMessage;
+    }, [onMessage]);
 
     useEffect(() => {
         wsService.connect();
@@ -11,7 +16,11 @@ export const useWebSocket = (topic, onMessage) => {
             if (subscriptionRef.current) {
                 subscriptionRef.current.unsubscribe();
             }
-            subscriptionRef.current = wsService.subscribe(topic, onMessage);
+            subscriptionRef.current = wsService.subscribe(topic, (msg) => {
+                if (onMessageRef.current) {
+                    onMessageRef.current(msg);
+                }
+            });
         };
 
         if (wsService.connected) {
@@ -25,8 +34,9 @@ export const useWebSocket = (topic, onMessage) => {
                 subscriptionRef.current.unsubscribe();
                 subscriptionRef.current = null;
             }
+            wsService.onConnectCallbacks = wsService.onConnectCallbacks.filter(cb => cb !== doSubscribe);
         };
-    }, [topic, onMessage]); // Cập nhật khi topic hoặc callback đổi
+    }, [topic]); // Cập nhật khi topic đổi
 
     return wsService;
 };

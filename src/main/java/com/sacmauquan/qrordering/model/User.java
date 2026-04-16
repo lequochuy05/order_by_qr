@@ -1,22 +1,26 @@
 package com.sacmauquan.qrordering.model;
 
 import jakarta.persistence.*;
-import lombok.*; // Import all lombok
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.*;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.Instant;
+import java.util.Collection;
+import java.util.Collections;
 
 @Entity
 @Table(name = "users")
-@Getter
-@Setter
-@NoArgsConstructor // Bắt buộc cho JPA
-@AllArgsConstructor // Bắt buộc để dùng Builder
-@Builder // Giúp tạo object nhanh gọn trong Service
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
+@SuperBuilder
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+public class User extends BaseEntity implements UserDetails {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true, nullable = false)
@@ -29,33 +33,57 @@ public class User {
     private String fullName;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
-    @Column(unique = true) 
+    @Column(unique = true)
     private String phone;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    // --- NÂNG CẤP: Dùng Enum cho Status ---
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default 
-    private Status status = Status.ACTIVE;
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt;
-
-    // ===== ENUMS =====
-    public enum Role {
-        STAFF, MANAGER
+    // UserDetails implementation
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    public enum Status {
-        ACTIVE,   
-        BANNED,   
-        INACTIVE   
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return status != UserStatus.BANNED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return !isDeleted() && status == UserStatus.ACTIVE;
+    }
+
+    public enum Role {
+        STAFF, MANAGER, CHEF
+    }
+
+    public enum UserStatus {
+        ACTIVE, BANNED, INACTIVE
     }
 }

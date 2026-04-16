@@ -3,13 +3,15 @@ package com.sacmauquan.qrordering.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "combo_items")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
+@SuperBuilder
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class ComboItem {
+public class ComboItem extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,5 +27,6 @@ public class ComboItem {
     @JsonIgnoreProperties({"category", "comboItems"})
     private MenuItem menuItem;
 
+    @Builder.Default
     private Integer quantity = 1;
 }

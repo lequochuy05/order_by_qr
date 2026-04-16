@@ -18,7 +18,10 @@ public class WebSocketEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWebSocketEvent(WebSocketEvent event) {
         try {
-            messagingTemplate.convertAndSend(event.destination(), event.payload());
+            messagingTemplate.convertAndSend(
+                java.util.Objects.requireNonNull(event.destination()), 
+                java.util.Objects.requireNonNull(event.payload())
+            );
             if (StringUtils.hasText(event.logMessage())) {
                 log.info(event.logMessage());
             }

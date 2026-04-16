@@ -15,7 +15,7 @@ export const staffService = {
 
     // Cập nhật thông tin
     update: async (id, data) => {
-        const res = await api.put(`/users/${id}`, data);
+        const res = await api.patch(`/users/${id}`, data);
         return res.data;
     },
 

@@ -1,375 +1,46 @@
 package com.sacmauquan.qrordering.service;
 
+import org.springframework.lang.NonNull;
+
 import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
-import com.sacmauquan.qrordering.model.*;
-import com.sacmauquan.qrordering.repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.sacmauquan.qrordering.event.WebSocketEvent;
+import com.sacmauquan.qrordering.model.Order;
+import com.sacmauquan.qrordering.model.OrderItem;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
 
-@Service
-@RequiredArgsConstructor
-public class OrderService {
+public interface OrderService {
+    List<Order> getAllOrders();
 
-    private final ApplicationEventPublisher eventPublisher;
-    private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
-    private final OrderItemRepository orderItemRepository;
-    private final MenuItemRepository menuItemRepository;
-    private final DiningTableRepository tableRepository;
-    private final ComboRepository comboRepository;
-    private final DiscountService discountService;
+    Page<Order> getOrderHistory(String status, LocalDateTime startDate, LocalDateTime endDate, String search,
+            Pageable pageable);
 
-    // ===================== GET ALL ORDERS =====================
-    public List<Order> getAllOrders() { 
-        return orderRepository.findAll(); 
-    }
+    Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate);
 
-    // ===================== UPDATE STATUS =====================
-    public Order updateStatus(Long id, String status) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-        order.setStatus(status);
-        return orderRepository.save(order);
-    }
+    Order updateStatus(@NonNull Long id, @NonNull String status);
 
-    // ===================== CREATE ORDER =====================
-    @Transactional
-    public Order createOrder(OrderRequest req) {
-        boolean emptyItems  = (req.getItems()  == null || req.getItems().isEmpty());
-        boolean emptyCombos = (req.getCombos() == null || req.getCombos().isEmpty());
-        if (emptyItems && emptyCombos) {
-            throw new IllegalArgumentException("Đơn hàng không hợp lệ");
-        }
+    Order createOrder(@NonNull OrderRequest req);
 
-        DiningTable table = resolveTable(req);
+    void cancelOrderItem(@NonNull Long itemId);
 
-        // lấy / tạo order PENDING
-        Order order = orderRepository.findFirstByTableIdAndStatus(table.getId(), "PENDING");
-        if (order == null) {
-            order = new Order();
-            order.setTable(table);
-            order.setStatus("PENDING");
-            order.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
-            order.setOrderItems(new ArrayList<>());
-            order.setTotalAmount(0d);
-        }
+    void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus);
 
-        processItems(req, order);
-        processCombos(req, order);
+    void markItemPrepared(@NonNull Long itemId);
 
-        double subtotal = order.getOrderItems().stream()
-                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
-                .sum();
+    List<Order> getKitchenOrders();
 
-        order.setOriginalTotal(subtotal);
-        order.setDiscountVoucher(0d);
-        order.setTotalAmount(subtotal);
+    Optional<Order> getCurrentOrderByTable(@NonNull Long tableId);
 
-        Order saved = orderRepository.save(order);
+    OrderItem updateOrderItem(@NonNull Long itemId, int quantity, String notes);
 
-        table.setStatus("Đang phục vụ");
-        tableRepository.save(table);
+    String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode);
 
-        // Gửi WebSocket cập nhật
-        notifyChange();
-        return saved;
-    }
+    OrderPreviewResponse preview(@NonNull OrderRequest req);
 
-    private DiningTable resolveTable(OrderRequest req) {
-        if (req.getTableCode() != null && !req.getTableCode().isBlank()) {
-            return tableRepository.findByTableCode(req.getTableCode())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn: " + req.getTableCode()));
-        } else if (req.getTableId() != null) {
-            return tableRepository.findById(req.getTableId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy bàn ID: " + req.getTableId()));
-        } else {
-            throw new IllegalArgumentException("Thiếu thông tin bàn (tableCode hoặc tableId)");
-        }
-    }
-
-    private void processItems(OrderRequest req, Order order) {
-        if (req.getItems() == null) return;
-        for (OrderRequest.ItemRequest it : req.getItems()) {
-            if (it.getMenuItemId() == null || it.getQuantity() <= 0)
-                throw new IllegalArgumentException("Món ăn không hợp lệ");
-
-            MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
-
-            Optional<OrderItem> exist = order.getOrderItems().stream()
-                    .filter(oi -> oi.getMenuItem() != null
-                            && oi.getMenuItem().getId().equals(mi.getId())
-                            && Objects.equals(oi.getNotes(), it.getNotes())
-                            && oi.getCombo() == null
-                            && !oi.isPrepared())
-                    .findFirst();
-
-            if (exist.isPresent()) {
-                OrderItem oi = exist.get();
-                oi.setQuantity(oi.getQuantity() + it.getQuantity());
-            } else {
-                OrderItem oi = new OrderItem();
-                oi.setOrder(order);
-                oi.setMenuItem(mi);
-                oi.setCombo(null);
-                oi.setQuantity(it.getQuantity());
-                oi.setUnitPrice(mi.getPrice());
-                oi.setNotes(it.getNotes());
-                oi.setPrepared(false);
-                order.getOrderItems().add(oi);
-            }
-        }
-    }
-
-    private void processCombos(OrderRequest req, Order order) {
-        if (req.getCombos() == null) return;
-        for (OrderRequest.ComboRequest cr : req.getCombos()) {
-            if (cr.getComboId() == null || cr.getQuantity() <= 0) continue;
-
-            Combo combo = comboRepository.findById(cr.getComboId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + cr.getComboId()));
-            if (combo.getActive() == null || !combo.getActive()) continue;
-
-            Optional<OrderItem> exist = order.getOrderItems().stream()
-                    .filter(oi -> oi.getCombo() != null
-                            && oi.getCombo().getId().equals(combo.getId())
-                            && Objects.equals(oi.getNotes(), cr.getNotes())
-                            && !oi.isPrepared())
-                    .findFirst();
-
-            if (exist.isPresent()) {
-                OrderItem oi = exist.get();
-                oi.setQuantity(oi.getQuantity() + cr.getQuantity());
-            } else {
-                OrderItem oi = new OrderItem();
-                oi.setOrder(order);
-                oi.setCombo(combo);
-                oi.setMenuItem(null);
-                oi.setQuantity(cr.getQuantity());
-                oi.setUnitPrice(combo.getPrice());
-                oi.setNotes(cr.getNotes());
-                oi.setPrepared(false);
-                order.getOrderItems().add(oi);
-            }
-        }
-    }
-
-    // ===================== CANCEL ITEM =====================
-    @Transactional
-    public void cancelOrderItem(Long itemId) {
-        OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
-
-        if (item.isPrepared()) throw new RuntimeException("Món đã làm, không thể hủy");
-
-        Order order = item.getOrder();
-        double minus = (Optional.ofNullable(item.getUnitPrice()).orElse(0.0)) * item.getQuantity();
-        order.setTotalAmount(Math.max(0, order.getTotalAmount() - minus));
-
-        order.getOrderItems().remove(item);
-        orderItemRepository.delete(item);
-
-        if (order.getOrderItems().isEmpty()) {
-            order.setStatus("CANCELLED");
-            orderRepository.save(order);
-            DiningTable table = order.getTable();
-            table.setStatus("Trống");
-            tableRepository.save(table);
-        } else {
-            orderRepository.save(order);
-            recalcTableStatus(order);
-        }
-
-        // Gửi WebSocket cập nhật
-        notifyChange();
-    }
-
-    // ===================== MARK PREPARED (ĐÃ SỬA LỖI) =====================
-    @Transactional
-    public void markItemPrepared(Long itemId) {
-        OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy món ăn"));
-
-        if (!item.isPrepared()) {
-            item.setPrepared(true);
-            orderItemRepository.save(item);
-        }
-
-        // Tính toán lại trạng thái bàn (Đang phục vụ -> Chờ thanh toán)
-        recalcTableStatus(item.getOrder());
-        notifyChange(); // Gửi WebSocket cập nhật
-    }
-
-    public Optional<Order> getCurrentOrderByTable(Long tableId) {
-        return Optional.ofNullable(orderRepository.findFirstByTableIdAndStatus(tableId, "PENDING"));
-    }
-
-    // ===================== UPDATE ITEM =====================
-    @Transactional
-    public OrderItem updateOrderItem(Long itemId, int quantity, String notes) {
-        OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy món"));
-
-        if (item.isPrepared()) throw new RuntimeException("Món đã làm, không thể sửa");
-
-        item.setQuantity(quantity);
-        item.setNotes(notes);
-
-        Order order = item.getOrder();
-
-        double subtotal = order.getOrderItems().stream()
-                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
-                .sum();
-
-        order.setOriginalTotal(subtotal);
-        order.setDiscountVoucher(0d);
-        order.setTotalAmount(subtotal);
-
-        orderItemRepository.save(item);
-        orderRepository.save(order);
-
-        recalcTableStatus(order);
-
-        // Gửi WebSocket cập nhật
-        notifyChange();
-
-        return item;
-    }
-
-    // ===================== PAY =====================
-    @Transactional
-    public String payOrder(Long id, Long userId, String voucherCode) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn"));
-
-        if (!"PENDING".equals(order.getStatus())) {
-            throw new RuntimeException("Đơn đã được thanh toán hoặc đã hủy.");
-        }
-
-        boolean hasUnprepared = order.getOrderItems().stream().anyMatch(item -> !item.isPrepared());
-        if (hasUnprepared) throw new IllegalStateException("Đơn hàng còn món chưa hoàn tất, không thể thanh toán.");
-
-        User currentUser = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với ID: " + userId));
-
-        double originalTotal = order.getOrderItems().stream()
-                .mapToDouble(oi -> oi.getUnitPrice() * oi.getQuantity())
-                .sum();
-
-        var result = discountService.applyDiscounts(originalTotal, voucherCode, true);
-
-        order.setOriginalTotal(originalTotal);
-        order.setDiscountVoucher(result.getDiscountValue());
-        order.setTotalAmount(result.getFinalTotal());
-
-        order.setStatus("PAID");
-        order.setPaidBy(currentUser);
-        order.setPaymentTime(LocalDateTime.now());
-        orderRepository.save(order);
-
-        DiningTable table = order.getTable();
-        table.setStatus("Trống");
-        tableRepository.save(table);
-
-        // Phát sự kiện thay vì tự tạo new Thread
-        notifyChange();
-
-        return "Thanh toán thành công";
-    }
-
-    // ===================== PREVIEW =====================
-    @Transactional(readOnly = true)
-    public OrderPreviewResponse preview(OrderRequest req) {
-        boolean emptyItems  = (req.getItems()  == null || req.getItems().isEmpty());
-        boolean emptyCombos = (req.getCombos() == null || req.getCombos().isEmpty());
-        if (emptyItems && emptyCombos) {
-            throw new IllegalArgumentException("Đơn hàng trống");
-        }
-
-        double subtotalItems = 0d;
-        double subtotalCombos = 0d;
-
-        // món lẻ
-        if (req.getItems() != null) {
-            for (OrderRequest.ItemRequest it : req.getItems()) {
-                if (it.getMenuItemId() == null || it.getQuantity() <= 0) continue;
-                MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy món: " + it.getMenuItemId()));
-                Double price = mi.getPrice();
-                subtotalItems += (price != null ? price : 0d) * it.getQuantity();
-            }
-        }
-
-        // combos
-        if (req.getCombos() != null) {
-            for (OrderRequest.ComboRequest cr : req.getCombos()) {
-                Combo combo = comboRepository.findById(cr.getComboId())
-                        .orElseThrow(() -> new RuntimeException("Không tìm thấy combo: " + cr.getComboId()));
-                if (combo.getActive() == null || !combo.getActive()) continue;
-                Double comboPrice = combo.getPrice();
-                subtotalCombos += (comboPrice != null ? comboPrice : 0d) * cr.getQuantity();
-            }
-        }
-
-        double subtotal = subtotalItems + subtotalCombos;
-        double finalTotal = subtotal;
-        double originalTotal = subtotal;
-        boolean voucherValid = false;
-        String voucherMessage = null;
-        double discountVoucher = 0d;
-
-        if (req.getVoucherCode() != null && !req.getVoucherCode().isBlank()) {
-            var vr = discountService.validateVoucher(req.getVoucherCode(), subtotal);
-            voucherValid = vr.isValid();
-            voucherMessage = vr.getMessage();
-            discountVoucher = vr.getDiscount();
-            finalTotal = Math.max(0d, subtotal - discountVoucher);
-        }
-
-        return new OrderPreviewResponse(
-                subtotalItems,
-                subtotalCombos,
-                finalTotal,
-                voucherValid,
-                voucherMessage,
-                discountVoucher,
-                0d,
-                originalTotal
-        );
-    }
-
-    // ===================== TABLE STATUS CALCULATION =====================
-    private void recalcTableStatus(Order order) {
-        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
-        DiningTable table = order.getTable();
-        if (items == null || items.isEmpty()) {
-            table.setStatus("Trống");
-        } else {
-            boolean allPrepared = items.stream().allMatch(OrderItem::isPrepared);
-            // Nếu tất cả đã xong -> Chờ thanh toán. Ngược lại -> Đang phục vụ
-            table.setStatus(allPrepared ? "Chờ thanh toán" : "Đang phục vụ");
-        }
-        tableRepository.save(table);
-    }
-
-
-    private void notifyChange() {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/tables", 
-                "UPDATED", 
-                "⚡ [WS] Order change -> Sent UPDATED signal"
-        ));
-    }
+    List<Order> getActiveOrders();
 }

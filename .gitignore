@@ -8,6 +8,10 @@ target/
 node_modules/
 dist/
 .env
+.agent/
+.idea/
+.vscode/
 
 # OS
 .DS_Store
+

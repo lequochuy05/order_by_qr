@@ -4,9 +4,9 @@ import com.sacmauquan.qrordering.dto.DiningTableRequest;
 import com.sacmauquan.qrordering.dto.DiningTableResponse;
 import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.service.DiningTableService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -52,7 +52,7 @@ public class DiningTableController {
         return ResponseEntity.ok(convertToResponse(saved));
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
     public ResponseEntity<?> updateTable(@PathVariable Long id, @RequestBody DiningTableRequest request) {
         DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
         return ResponseEntity.ok(convertToResponse(updated));

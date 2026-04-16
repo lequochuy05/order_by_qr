@@ -18,5 +18,17 @@ export const statisticsService = {
     getOrders: async (from, to) => {
         const res = await api.get(`/stats/orders?from=${fmtDate(from)}&to=${fmtDate(to)}`);
         return res.data || [];
+    },
+
+    // 4. Lấy top món ăn bán chạy
+    getTopDishes: async (from, to) => {
+        const res = await api.get(`/stats/top-dishes?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        return res.data || [];
+    },
+
+    // 5. Lấy xu hướng bán theo ngày
+    getDishTrend: async (from, to) => {
+        const res = await api.get(`/stats/dish-trend?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        return res.data || [];
     }
 };

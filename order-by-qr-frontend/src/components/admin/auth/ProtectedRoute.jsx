@@ -6,7 +6,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
 
     if (!user) return <Navigate to="/login" replace />;
 
-    // Kiểm tra role STAFF/MANAGER
+    // Kiểm tra role
     const hasAccess = allowedRoles.includes(user.role);
 
     return hasAccess ? <Outlet /> : <Navigate to="/unauthorized" replace />;
