@@ -74,6 +74,8 @@ npm run dev
 
 
 ---
+## 📧 Contact & Support
 
-## 👨‍💻 Tác giả
-**WucHuy** – Fullstack Developer
+**Author**: Wuchuy </br>
+**Email**: [wuchuy05.dev@gmail.com](mailto:wuchuy.dev@gmail.com)  
+
