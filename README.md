@@ -67,7 +67,7 @@ mvn spring-boot:run
 
 ### 2. Cấu hình Frontend
 ```bash
-cd order-by-qr-frontend
+cd frontend
 npm install
 npm run dev
 ```

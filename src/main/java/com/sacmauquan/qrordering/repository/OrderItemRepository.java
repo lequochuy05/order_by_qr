@@ -22,4 +22,23 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             LIMIT :limit
             """, nativeQuery = true)
     List<Long> findTopAssociatedItems(@Param("itemId") Long itemId, @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT oi.menu_item_id
+            FROM order_item oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.payment_status = 'COMPLETED'
+            GROUP BY oi.menu_item_id
+            ORDER BY SUM(oi.quantity) DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findTopSellingItemIds(@Param("limit") int limit);
+
+    @Query(value = """
+            SELECT COALESCE(SUM(oi.quantity), 0)
+            FROM order_item oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE oi.menu_item_id = :itemId AND o.payment_status = 'COMPLETED'
+            """, nativeQuery = true)
+    long countTotalSoldByItemId(@Param("itemId") Long itemId);
 }
