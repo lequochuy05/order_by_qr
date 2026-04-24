@@ -14,11 +14,11 @@ Frontend is built on a modern platform, focusing on performance and user experie
 
 ```text
 src/
-├── components/   # Các component dùng chung (Layout, Admin UI, Auth...)
-├── context/      # AuthContext quản lý đăng nhập
-├── hooks/        # Custom hooks (useWebsocket, API hooks...)
-├── pages/        # Các trang (Admin, Customer, Auth)
-├── services/     # Cấu hình API Axios và WebSocket
-├── utils/        # Các hàm tiện ích, định dạng tiền tệ, ngày tháng
-└── App.jsx       # Routing và cấu trúc chính của ứng dụng
+├── components/    # Common components (Layout, Admin UI, Auth...)
+├── context/       # AuthContext manages login
+├── hooks/         # Custom hooks (useWebsocket, API hook...)
+├── pages/         # Pages (Admin, Customer, Auth)
+├── services/      # Configure Axios and WebSocket APIs
+├── utils/         # Utility functions, currency formatting, date and time
+└── App.jsx        # Routing and main application structure
 ```
