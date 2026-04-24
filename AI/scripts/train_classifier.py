@@ -15,15 +15,18 @@ $ python train_classifier.py
 import os
 import shutil
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Tải biến môi trường từ file .env (nếu có)
+load_dotenv()
 
 # CẤU HÌNH
 CONFIG = {
-    # Roboflow
-
-    "roboflow_api_key": "MFMx45U3HoDVjOlimIJU",
-    "roboflow_workspace": "l-quc-huy-s-workspace",
-    "roboflow_project": "qrordering",
-    "roboflow_version": 2,
+    # Roboflow - Lấy từ biến môi trường để bảo mật
+    "roboflow_api_key": os.getenv("ROBOFLOW_API_KEY"),
+    "roboflow_workspace": os.getenv("ROBOFLOW_WORKSPACE"),
+    "roboflow_project": os.getenv("ROBOFLOW_PROJECT"),
+    "roboflow_version": int(os.getenv("ROBOFLOW_VERSION", 2)),
 
     # Training
     "model_size": "yolov8n-cls",    
@@ -36,23 +39,22 @@ CONFIG = {
     "export_dir": "../../frontend/public/models/dish-classifier",
 }
 
-# ============================================================
-# STEP 1: CÀI ĐẶT THƯ VIỆN
-# ============================================================
+# CÀI ĐẶT THƯ VIỆN
 
 def install_dependencies():
     """Cài đặt thư viện cần thiết (dành cho Colab)."""
     os.system("pip install -q ultralytics roboflow")
-    print("✅ Đã cài đặt dependencies")
+    print(" Đã cài đặt dependencies")
 
-# ============================================================
-# STEP 2 & 3: TẢI VÀ CẤU TRÚC LẠI DỮ LIỆU (Giống Colab)
-# ============================================================
+# TẢI VÀ CẤU TRÚC LẠI DỮ LIỆU 
 
 def prepare_dataset():
     from roboflow import Roboflow
     import os
     import shutil
+
+    if not CONFIG["roboflow_api_key"]:
+        raise ValueError("Thiếu ROBOFLOW_API_KEY trong file .env! Hãy kiểm tra lại.")
 
     # Tải từ Roboflow
     rf = Roboflow(api_key=CONFIG["roboflow_api_key"])
@@ -78,12 +80,10 @@ def prepare_dataset():
                     os.makedirs(dest, exist_ok=True)
                     shutil.copy(os.path.join(root, file), os.path.join(dest, file))
 
-    print(f"✅ Dữ liệu đã sẵn sàng!")
+    print(f"Dữ liệu đã sẵn sàng!")
     return new_dir
 
-# ============================================================
-# STEP 4: HUẤN LUYỆN MODEL
-# ============================================================
+# HUẤN LUYỆN MODEL
 
 def train_model(dataset_path):
     from ultralytics import YOLO
@@ -101,13 +101,11 @@ def train_model(dataset_path):
     )
 
     best_model_path = Path(CONFIG["output_dir"]) / "dish_classifier" / "weights" / "best.pt"
-    print(f"✅ Training hoàn tất tại: {best_model_path}")
+    print(f"Training hoàn tất tại: {best_model_path}")
 
     return str(best_model_path)
 
-# ============================================================
-# STEP 5: EXPORT THẲNG SANG TF.JS (QUY TRÌNH MỚI)
-# ============================================================
+# EXPORT THẲNG SANG TF.JS 
 
 def export_to_frontend(model_path):
     from ultralytics import YOLO
@@ -118,7 +116,7 @@ def export_to_frontend(model_path):
     model = YOLO(model_path)
 
     # Export trực tiếp sang TF.js (YOLOv8 hỗ trợ cực tốt)
-    print("📦 Đang export model thẳng sang định dạng TF.js...")
+    print("Đang export model thẳng sang định dạng TF.js...")
     # Quantize=True để model nhẹ nhõm cho browser
     export_folder = model.export(format="tfjs", imgsz=CONFIG["img_size"], int8=True)
     
@@ -127,7 +125,7 @@ def export_to_frontend(model_path):
     dest_dir = Path(CONFIG["export_dir"])
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"🚚 Đang đồng bộ model vào Frontend: {dest_dir}")
+    print(f"Đang đồng bộ model vào Frontend: {dest_dir}")
     
     # Copy các file .json và .bin
     for file in os.listdir(source_dir):
@@ -141,15 +139,13 @@ def export_to_frontend(model_path):
     with open(dest_dir / "labels.json", "w", encoding="utf-8") as f:
         json.dump(labels, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Hoàn tất! Model và labels.json đã nằm gọn tại {dest_dir}")
+    print(f"Hoàn tất! Model và labels.json đã nằm gọn tại {dest_dir}")
 
-# ============================================================
-# MAIN - CHẠY TẤT CẢ
-# ============================================================
+# MAIN 
 
 def main():
     print("=" * 60)
-    print(" 🍜 Order By QR - AI Dish Classifier Training")
+    print("AI Dish Classifier Training")
     print("=" * 60)
 
     # Step 1: Cài đặt (nếu chạy trên Colab)
@@ -166,7 +162,7 @@ def main():
     export_to_frontend(model_path)
 
     print("\n" + "=" * 60)
-    print(" ✅ HOÀN TẤT!")
+    print(" HOÀN TẤT!")
     print(" Website của bạn đã được cập nhật model mới.")
     print("=" * 60)
 
