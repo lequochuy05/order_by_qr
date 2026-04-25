@@ -42,21 +42,14 @@ Integrated **AI** system to:
 
 ## 🛠️ Technologies Used
 
-| Components | Technologies |
-
-|------------|-----------|
-
+| Components | Technology |
+|-----------|-----------|
 | **Backend** | Spring Boot 3, Java 21, Spring Security, Spring Data JPA |
-
 | **Database** | PostgreSQL, Cloudinary |
-
-| **User Interface** | React 19, Vite, Tailwind CSS 4 |
-
-| **Real-time** | WebSocket (STOMP & SockJS) |
-
+| **Frontend** | React 19, Vite, Tailwind CSS 4 |
+| **Realtime** | WebSocket (STOMP & SockJS) |
 | **State Management** | Zustand |
-
-| **Deployment** | Docker, Vercel (User Interface) |
+| **Deployment** | Docker, Vercel (Frontend) |
 
 ---
 
