@@ -45,6 +45,7 @@ The AI-powered automatic dish entry feature in the Admin Dashboard requires load
 2. Place the resulting files (e.g., `model.json` and `.bin`) after training the AI, along with the metadata file `labels.json`, into the exact directory:
 
 `public/models/dish-classifier/`
+
 3. Ensure your `labels.json` is a JSON map format that provides sufficient fields for `name`, `categoryid`, and `price` for the AI ​​module to extract and populate the form. (See example in the `AI/README.md` documentation).
 
 ### 4. Starting the Dev Environment
