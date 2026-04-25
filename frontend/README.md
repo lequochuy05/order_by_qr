@@ -1,5 +1,5 @@
-# 📱 Order By QR
-This is the frontend source code for the **Order By QR** system, providing a modern interface, optimized speed, and a smooth experience for both customers (scanning QR codes to order) and administrators (managing the dashboard).
+# 📱 QROS
+Providing a modern interface, optimized speed, and a smooth experience for both customers (scanning QR codes to order) and administrators (managing the dashboard).
 
 ## ✨ Key Features
 - **Customer QR Menu:** Quickly order via QR code, intuitive shopping cart, professional mobile UI.
