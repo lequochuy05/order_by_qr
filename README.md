@@ -71,13 +71,19 @@ Integrated **AI** system to:
 Create a `.env` file in the root directory with the following parameters:
 ```env
 DB_URL=jdbc:postgresql://your-db-url
-DB_USERNAME=your username
-DB_PASSWORD=your password
-JWT_SECRET=your secret key
-GEMINI_API_KEY=your gemini API key
-CLOUDINARY_CLOUD_NAME=your name
-CLOUDINARY_API_KEY=your key
-CLOUDINARY_API_SECRET=your secret
+DB_USERNAME=your-username
+DB_PASSWORD=your-password
+
+JWT_SECRET=your-secret-key
+
+CLOUDINARY_CLOUD_NAME=your-name
+CLOUDINARY_API_KEY=your-key
+CLOUDINARY_API_SECRET=your-secret
+
+ROBOFLOW_API_KEY=your-secret-key
+ROBOFLOW_WORKSPACE=your-workspace
+ROBOFLOW_PROJECT=your-project
+ROBOFLOW_VERSION=your-version
 ```
 
 Run the application:
