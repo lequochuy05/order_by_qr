@@ -1,4 +1,4 @@
-# 🍜 Order By QR
+# 🍜 QROS
 
 This folder contains instructions and scripts necessary to train and integrate the AI ​​model for classifying food images (YOLOv8) into the Order By QR system. This AI model allows the Admin page to automatically recognize images and intelligently fill in information such as Dish Name, Price, and Category.
 
