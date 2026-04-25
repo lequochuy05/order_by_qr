@@ -9,7 +9,6 @@ const LABELS_PATH = '/models/dish-classifier/labels.json';
 const INPUT_SIZE = 224;
 
 export const aiLocalService = {
-
   isModelLoaded: () => model !== null,
 
   loadModel: async () => {
@@ -22,7 +21,6 @@ export const aiLocalService = {
       const res = await fetch(LABELS_PATH);
       labels = await res.json();
 
-      // Warm up: chạy 1 prediction giả để khởi tạo GPU/WebGL
       const warmup = tf.zeros([1, INPUT_SIZE, INPUT_SIZE, 3]);
       await model.predict(warmup).data();
       warmup.dispose();
@@ -38,7 +36,6 @@ export const aiLocalService = {
   analyzeDish: async (imageSource) => {
     await aiLocalService.loadModel();
 
-    // Tạo Image element nếu nhận URL string
     let imgElement;
     if (typeof imageSource === 'string') {
       imgElement = new Image();
@@ -52,35 +49,42 @@ export const aiLocalService = {
       imgElement = imageSource;
     }
 
-    // Preprocessing: resize 224x224, normalize 0-1
     const tensor = tf.tidy(() => {
       return tf.browser.fromPixels(imgElement)
         .resizeBilinear([INPUT_SIZE, INPUT_SIZE])
         .toFloat()
         .div(255.0)
-        .expandDims(0); // [1, 224, 224, 3]
+        .expandDims(0);
     });
 
-    // Predict
     const predictions = await model.predict(tensor).data();
     tensor.dispose();
 
-    // Tìm class có xác suất cao nhất
     const probs = Array.from(predictions);
     const maxProb = Math.max(...probs);
     const maxIndex = probs.indexOf(maxProb);
 
-    // Top 3 predictions
     const top3 = probs
-      .map((p, i) => ({ index: i, label: labels[String(i)] || `Class ${i}`, confidence: p }))
+      .map((p, i) => {
+        const data = labels[String(i)];
+        return {
+          index: i,
+          label: data?.name || `Class ${i}`,
+          confidence: p
+        };
+      })
       .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 3);
 
+    const dishData = labels[String(maxIndex)];
+
     return {
-      name: labels[String(maxIndex)] || `Unknown`,
+      name: dishData?.name || dishData || "NaN",
+      categoryId: dishData?.categoryid || null,
+      price: dishData?.price || null,
       confidence: maxProb,
       classId: maxIndex,
-      top3,
+      top3 // Bắt buộc phải có cái này
     };
   },
 

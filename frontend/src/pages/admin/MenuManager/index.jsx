@@ -71,22 +71,17 @@ const MenuManager = () => {
         return;
       }
 
-      // Tìm category phù hợp từ danh sách
-      const matchedCat = categories.find(c =>
-        c.name.toLowerCase().includes(result.name.toLowerCase()) ||
-        result.name.toLowerCase().includes(c.name.toLowerCase())
-      );
-
       setFormData(prev => ({
         ...prev,
-        name: result.name || prev.name,
-        categoryId: matchedCat ? matchedCat.id : prev.categoryId,
+        name: result.name,
+        categoryId: result.categoryId,
+        price: result.price
       }));
 
       const top3Text = result.top3
         .map(p => `${p.label} (${(p.confidence * 100).toFixed(0)}%)`)
         .join(', ');
-      showSuccess(`✨ Nhận diện: ${result.name} — ${(result.confidence * 100).toFixed(0)}%\nTop 3: ${top3Text}`);
+      showSuccess(`Nhận diện: ${result.name} — ${(result.confidence * 100).toFixed(0)}%\nTop 3: ${top3Text}`);
     } catch (err) {
       showError("Lỗi AI: " + err.message);
     } finally {
