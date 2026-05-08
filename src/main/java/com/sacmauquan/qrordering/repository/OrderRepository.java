@@ -1,31 +1,27 @@
 package com.sacmauquan.qrordering.repository;
 
 import com.sacmauquan.qrordering.model.Order;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.lang.NonNull;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
-    
-    @EntityGraph(attributePaths = { "table", "paidBy", "orderItems" })
+
+    // Phân trang là bắt buộc cho bảng Order
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions" })
     @NonNull
-    List<Order> findAll();
+    Page<Order> findAll(@NonNull Pageable pageable);
 
-    @EntityGraph(attributePaths = { "table", "paidBy", "orderItems" })
-    List<Order> findByTableId(Long tableId);
+    // Tìm kiếm theo trạng thái
+    @EntityGraph(attributePaths = { "table", "orderItems" })
+    List<Order> findByStatus(Order.OrderStatus status);
 
-    @EntityGraph(attributePaths = { "table", "paidBy", "orderItems" })
-    List<Order> findByStatus(String status);
+    // Tìm đơn hàng đang hoạt động của 1 bàn
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions" })
+    Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId, List<Order.OrderStatus> statuses);
 
-    @EntityGraph(attributePaths = { "table" })
-    Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId, List<String> statuses);
-    
+    // Tìm kiếm nâng cao
     @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
-    Order findFirstByTableIdAndStatus(Long tableId, String status);
-
-    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
-    List<Order> findByStatusIn(List<String> statuses);
+    List<Order> findByStatusIn(List<Order.OrderStatus> statuses);
 }

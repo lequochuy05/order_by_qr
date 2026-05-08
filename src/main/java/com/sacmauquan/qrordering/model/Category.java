@@ -9,6 +9,8 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import jakarta.validation.constraints.NotBlank;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
 @Entity
 @Table(name = "category")
@@ -33,4 +35,12 @@ public class Category extends BaseEntity implements Serializable {
     @NotBlank(message = "Ảnh danh mục không được để trống")
     @Column(length = 150, nullable = false)
     private String img;
+
+    @Builder.Default
+    private Boolean active = true;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+    @JsonIgnoreProperties("category")
+    private Set<MenuItem> menuItems = new LinkedHashSet<>();
 }

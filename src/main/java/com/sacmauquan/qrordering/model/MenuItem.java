@@ -35,7 +35,7 @@ public class MenuItem extends BaseEntity {
     private Long id;
 
     @NotBlank(message = "Tên món ăn không được để trống")
-    @Column(length = 50,     nullable = false)
+    @Column(length = 50, nullable = false)
     private String name;
 
     @NotBlank(message = "Ảnh món ăn không được để trống")
@@ -54,6 +54,7 @@ public class MenuItem extends BaseEntity {
     @NotNull(message = "Danh mục không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cate_id", nullable = false)
+    @JsonIgnoreProperties("menuItems")
     private Category category;
 
     @Builder.Default
