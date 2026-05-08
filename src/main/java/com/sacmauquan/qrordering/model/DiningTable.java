@@ -2,13 +2,13 @@ package com.sacmauquan.qrordering.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.Builder;
-
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "tables")
@@ -17,29 +17,41 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE tables SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class DiningTable extends BaseEntity {
-    public static final String AVAILABLE = "AVAILABLE";
-    public static final String OCCUPIED = "OCCUPIED";
-    public static final String WAITING_FOR_PAYMENT = "WAITING_FOR_PAYMENT";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "table_number", nullable = false, unique = true, length = 20)
+    @NotBlank(message = "Mã bàn không được để trống")
+    @Column(length = 5, nullable = false, unique = true)
     private String tableNumber;
 
-    @Column(name = "qr_code_url", length = 255)
-    private String qrCodeUrl;
-
-    @Column(name = "qr_code_public_id", length = 255)
-    private String qrCodePublicId;
-
-    @Column(name = "table_code", nullable = false, unique = true, length = 50)
+    @NotBlank(message = "Mã QR không được để trống")
+    @Column(length = 50, nullable = false, unique = true)
     private String tableCode;
 
+    @NotBlank(message = "Link QR không được để trống")
+    @Column(length = 150, nullable = false, unique = true)
+    private String qrCodeUrl;
+
+    @Column(length = 50, nullable = false, unique = true)
+    private String qrCodePublicId;
+
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    private String status = AVAILABLE;
-    private int capacity;
+    private TableStatus status = TableStatus.AVAILABLE;
+
+    @Column(nullable = false)
+    @Min(1)
+    private Integer capacity;
+
+    public enum TableStatus {
+        AVAILABLE,
+        OCCUPIED,
+        WAITING_FOR_PAYMENT
+    }
 }

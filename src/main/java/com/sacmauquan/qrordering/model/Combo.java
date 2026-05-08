@@ -1,17 +1,17 @@
 package com.sacmauquan.qrordering.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import java.util.List;
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "combos")
@@ -22,18 +22,24 @@ import java.util.ArrayList;
 @SuperBuilder
 @SQLDelete(sql = "UPDATE combos SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Combo extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 120)
+    @NotBlank(message = "Tên combo không được để trống")
+    @Column(length = 100, nullable = false, unique = true)
     private String name;
 
-    @Column(nullable = false)
-    private Double price;
+    @NotBlank(message = "Ảnh combo không được để trống")
+    @Column(length = 150, nullable = false)
+    private String img;
+
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal price;
 
     @Builder.Default
     @Column(nullable = false)
@@ -42,5 +48,5 @@ public class Combo extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "combo", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("combo")
-    private List<ComboItem> items = new ArrayList<>();
+    private Set<ComboItem> items = new LinkedHashSet<>();
 }

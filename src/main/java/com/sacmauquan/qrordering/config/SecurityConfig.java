@@ -40,15 +40,12 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
 
-            // Static Admin UI
-            .requestMatchers("/admin/**").permitAll()
+            // ws
+            .requestMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
+            // login
+            .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
 
-            // WebSocket & Auth
-            .requestMatchers("/ws/**").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
-            .requestMatchers("/api/auth/**").permitAll()
-
-            // Public GET (keep as is for guests)
+            // Public GET
             .requestMatchers(HttpMethod.GET,
                 "/api/categories/**",
                 "/api/menu/**",

@@ -19,12 +19,7 @@ import java.util.Objects;
 public class UserController {
     private final UserService userService;
 
-    // ===== Auth =====
-    @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody UserUpsertRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userService.register(Objects.requireNonNull(req)));
-    }
-
+    // Login
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest req) {
         return ResponseEntity.ok(userService.login(Objects.requireNonNull(req)));

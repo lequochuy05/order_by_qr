@@ -8,54 +8,69 @@ import lombok.NoArgsConstructor;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+
 @Entity
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Table(name = "payment_transactions")
 @Getter
 @Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE payment_transactions SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class PaymentTransaction extends BaseEntity {
-    public static final String PENDING = "PENDING";
-    public static final String PAID = "PAID";
-    public static final String CANCELLED = "CANCELLED";
-    public static final String FAILED = "FAILED";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonBackReference("order-payments")
+    @JsonIgnoreProperties("payments")
     private Order order;
 
-    @Column(name = "amount", nullable = false, precision = 15, scale = 0)
+    @NotNull(message = "Số tiền không được để trống")
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Min(0)
     private BigDecimal amount;
 
+    @NotNull(message = "Trạng thái giao dịch không được để trống")
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(name = "status", nullable = false, length = 20)
-    private String status = PENDING;
+    @Column(nullable = false, length = 20)
+    private TransactionStatus status = TransactionStatus.PENDING;
 
+    @NotNull(message = "Phương thức thanh toán không được để trống")
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(name = "payment_method", nullable = false, length = 20)
-    private String paymentMethod = "PAYOS";
+    @Column(nullable = false, length = 20)
+    private PaymentMethod paymentMethod = PaymentMethod.PAYOS;
 
-    @Column(name = "checkout_url", length = 500)
+    @Column(length = 500)
     private String checkoutUrl;
 
-    @Column(name = "qr_code", columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String qrCode;
 
-    @Column(name = "payos_reference", length = 100)
+    @Column(length = 100)
     private String payosReference;
 
-    @Column(name = "cancel_reason", length = 255)
+    @Column(length = 255)
     private String cancelReason;
+
+    public enum TransactionStatus {
+        PENDING, PAID, CANCELLED, FAILED
+    }
+
+    public enum PaymentMethod {
+        CASH, PAYOS
+    }
 }

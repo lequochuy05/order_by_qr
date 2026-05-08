@@ -4,13 +4,11 @@ import java.io.Serializable;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 @Table(name = "category")
@@ -28,8 +26,11 @@ public class Category extends BaseEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @Column(nullable = false, unique = true, length = 120)
+    @NotBlank(message = "Tên danh mục không được để trống")
+    @Column(nullable = false, unique = true, length = 50)
     private String name;
 
+    @NotBlank(message = "Ảnh danh mục không được để trống")
+    @Column(length = 150, nullable = false)
     private String img;
 }

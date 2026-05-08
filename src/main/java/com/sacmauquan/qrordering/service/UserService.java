@@ -31,19 +31,6 @@ public class UserService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
 
-    // Authentication
-    public AuthResponse register(@NonNull UserUpsertRequest req) {
-        if (userRepository.existsByEmail(req.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại");
-        }
-
-        User u = handleEntityMapping(new User(), req);
-
-        u.setRole(User.Role.STAFF);
-        u.setStatus(User.UserStatus.ACTIVE);
-        return buildAuthResponse(userRepository.save(u));
-    }
-
     public AuthResponse login(@NonNull AuthRequest req) {
 
         User u = userRepository.findByEmail(req.getEmail())
