@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RotateCw } from 'lucide-react';
+import { Loader2, RotateCw } from 'lucide-react';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { orderService } from '../../../services/admin/orderService';
 import ManagementHeader from '../../../components/admin/common/ManagementHeader';
@@ -83,7 +83,7 @@ const KitchenManager = () => {
 
             {loading ? (
                 <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <Loader2 className="animate-spin text-orange-500" size={40} />
                 </div>
             ) : (
                 <div className="flex gap-6 mt-6 overflow-x-auto pb-4">

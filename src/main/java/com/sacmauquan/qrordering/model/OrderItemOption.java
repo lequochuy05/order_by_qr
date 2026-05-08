@@ -22,14 +22,15 @@ public class OrderItemOption extends BaseEntity {
     private OrderItem orderItem;
 
     @Column(nullable = false)
-    private String optionName; // e.g., "Size"
+    private String optionName; // Size
 
     @Column(nullable = false)
-    private String optionValueName; // e.g., "Large"
+    private String optionValueName; // Large
 
     private Double extraPrice; // Price at the time of order
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_option_value_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private ItemOptionValue itemOptionValue;
 }

@@ -28,5 +28,6 @@ public class ItemOptionValue extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_option_id")
+    @JsonIgnoreProperties({"optionValues", "menuItem"})
     private ItemOption itemOption;
 }

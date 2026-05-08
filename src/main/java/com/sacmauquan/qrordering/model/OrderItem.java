@@ -33,10 +33,12 @@ public class OrderItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
+    @JsonIgnoreProperties({ "itemOptions", "comboItems" })
     private MenuItem menuItem;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
+    @JsonIgnoreProperties({ "items" })
     private Combo combo;
 
     private Double unitPrice;
@@ -53,5 +55,5 @@ public class OrderItem extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties({ "orderItem" })
-    private List<OrderItemOption> orderItemOptions = new ArrayList<>();
+    private java.util.Set<OrderItemOption> orderItemOptions = new java.util.LinkedHashSet<>();
 }

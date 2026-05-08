@@ -56,4 +56,13 @@ public class NotificationServiceImpl implements NotificationService {
                 "UPDATED",
                 "[WS] Combo -> Sent UPDATED signal"));
     }
+
+    @Override
+    public void notifyPaymentSuccess(Long orderId, Long transactionId) {
+        eventPublisher.publishEvent(new WebSocketEvent(
+                "/topic/tables",
+                "PAYMENT_SUCCESS",
+                String.format("{\"orderId\": %d, \"transactionId\": %d}", orderId, transactionId)
+        ));
+    }
 }

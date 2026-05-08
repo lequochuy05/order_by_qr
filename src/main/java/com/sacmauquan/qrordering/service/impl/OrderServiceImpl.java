@@ -1,4 +1,5 @@
 package com.sacmauquan.qrordering.service.impl;
+
 import org.springframework.lang.NonNull;
 import java.util.Objects;
 
@@ -151,7 +152,7 @@ public class OrderServiceImpl implements OrderService {
             OrderState pendingState = orderStateFactory.getState("PENDING");
             pendingState.handleRequest(order);
             order.setCreatedAt(LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh")));
-            order.setOrderItems(new ArrayList<>());
+            order.setOrderItems(new java.util.LinkedHashSet<>());
             order.setTotalAmount(0d);
         }
 
@@ -242,7 +243,7 @@ public class OrderServiceImpl implements OrderService {
                 oi.setNotes(it.getNotes());
                 oi.setPrepared(false);
 
-                List<OrderItemOption> orderItemOptions = new ArrayList<>();
+                java.util.Set<OrderItemOption> orderItemOptions = new java.util.LinkedHashSet<>();
                 for (ItemOptionValue val : selectedValues) {
                     OrderItemOption option = OrderItemOption.builder()
                             .orderItem(oi)
@@ -260,9 +261,9 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private boolean checkOptionsMatch(List<OrderItemOption> existingOptions, List<Long> newOptionIds) {
+    private boolean checkOptionsMatch(java.util.Collection<OrderItemOption> existingOptions, List<Long> newOptionIds) {
         if (existingOptions == null)
-            existingOptions = new ArrayList<>();
+            existingOptions = new java.util.LinkedHashSet<>();
         if (newOptionIds == null)
             newOptionIds = new ArrayList<>();
         if (existingOptions.size() != newOptionIds.size())
@@ -447,7 +448,9 @@ public class OrderServiceImpl implements OrderService {
         order.setDiscountVoucher(result.getDiscountValue());
         order.setTotalAmount(result.getFinalTotal());
 
-        order.setStatus("PAID");
+        order.setStatus("COMPLETED");
+        order.setPaymentStatus("PAID");
+        order.setPaymentMethod("CASH");
 
         order.setPaidBy(currentUser);
         order.setPaymentTime(LocalDateTime.now());
@@ -535,7 +538,7 @@ public class OrderServiceImpl implements OrderService {
         // Optimizing: Check if any item in the order is NOT finished
         boolean anyUnfinished = order.getOrderItems().stream()
                 .anyMatch(oi -> !oi.isPrepared());
-        
+
         DiningTable table = order.getTable();
         if (order.getOrderItems().isEmpty()) {
             table.setStatus(DiningTable.AVAILABLE);

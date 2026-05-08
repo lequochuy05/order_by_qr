@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
 import { useAuth } from '../../../context/AuthContext';
@@ -7,8 +8,8 @@ import { tableService } from '../../../services/admin/tableService';
 import { orderService } from '../../../services/admin/orderService';
 
 import ManagementHeader from '../../../components/admin/common/ManagementHeader';
-import TableGrid from './TableGrid';
 import TableFormModal from './TableFormModal';
+import TableGrid from './TableGrid';
 import OrderDetailModal from './OrderDetailModal';
 import AddItemModal from './AddItemModal';
 import PaymentModal from './PaymentModal';
@@ -18,6 +19,7 @@ const TableManager = () => {
     const [tables, setTables] = useState([]);
     const [orders, setOrders] = useState({});
     const [filter, setFilter] = useState('ALL');
+    const [loading, setLoading] = useState(false);
 
     // Modal States
     const [formModal, setFormModal] = useState({ open: false, data: null });
@@ -149,14 +151,19 @@ const TableManager = () => {
                 }}
                 addButtonText="Thêm bàn"
             />
-
             <div className="mt-6">
-                <TableGrid
-                    tables={tables.filter(t => filter === 'ALL' || t.status === filter)}
-                    orders={orders}
-                    onAction={handleAction}
-                    userRole={userRole}
-                />
+                {loading ? (
+                    <div className="flex justify-center p-20">
+                        <Loader2 className="animate-spin text-orange-500" size={40} />
+                    </div>
+                ) : (
+                    <TableGrid
+                        tables={tables.filter(t => filter === 'ALL' || t.status === filter)}
+                        orders={orders}
+                        onAction={handleAction}
+                        userRole={userRole}
+                    />
+                )}
             </div>
 
             {/* Modals */}

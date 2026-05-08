@@ -6,4 +6,5 @@ public interface NotificationService {
     void notifyTableChange();
     void notifyCategoryChange(String event, Object id);
     void notifyComboChange(String event, Object id);
+    void notifyPaymentSuccess(Long orderId, Long transactionId);
 }

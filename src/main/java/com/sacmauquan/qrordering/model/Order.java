@@ -58,7 +58,7 @@ public class Order extends BaseEntity {
     private String paymentStatus = "PENDING"; // PENDING, COMPLETED, CANCELLED
 
     @Column(name = "payment_method")
-    private String paymentMethod; // CASH, TRANSFER, VNPAY
+    private String paymentMethod; // CASH, PAYOS
 
     @ManyToOne
     @JoinColumn(name = "paid_by")
@@ -71,6 +71,6 @@ public class Order extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<OrderItem> orderItems = new ArrayList<>();
+    private java.util.Set<OrderItem> orderItems = new java.util.LinkedHashSet<>();
 
 }

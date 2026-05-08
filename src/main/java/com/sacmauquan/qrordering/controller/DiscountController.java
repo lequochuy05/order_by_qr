@@ -32,10 +32,12 @@ public class DiscountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req));
     }
 
+    @PutMapping("/{id}")
     public Voucher update(@PathVariable Long id, @RequestBody VoucherRequest req) {
         return service.update(Objects.requireNonNull(id), req);
     }
 
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(Objects.requireNonNull(id));
         return ResponseEntity.noContent().build();

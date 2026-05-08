@@ -63,6 +63,12 @@ public class SecurityConfig {
             // Guest order creation
             .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
+            // PayOS webhook
+            .requestMatchers(HttpMethod.POST, "/api/webhooks/**").permitAll()
+
+            .requestMatchers(HttpMethod.POST, "/api/payments/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/payments/**").permitAll()
+
             // admin
             .requestMatchers(HttpMethod.POST,
                 "/api/categories/**",
