@@ -22,8 +22,8 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     List<Combo> findAll();
 
     // Load Menu khách hàng
-    @Query("SELECT DISTINCT c FROM Combo c LEFT JOIN FETCH c.items ci " +
-            "WHERE c.active = true AND (ci.active = true OR ci.active IS NULL)")
+    @Query("SELECT DISTINCT c FROM Combo c LEFT JOIN FETCH c.items " +
+            "WHERE c.active = true")
     List<Combo> findAllActiveWithItems();
 
 }

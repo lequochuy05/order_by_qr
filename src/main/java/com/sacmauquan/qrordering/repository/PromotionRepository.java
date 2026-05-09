@@ -11,9 +11,8 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
 
     // Lấy tất cả chương trình khuyến mãi đang có hiệu lực
     @Query("SELECT p FROM Promotion p WHERE p.active = true " +
-            "AND p.validFrom <= :now AND p.validTo >= :now")
-    List<Promotion> findAllActive(
-            @Param("now") LocalDateTime now);
+            "AND p.startTime <= :now AND p.endTime >= :now")
+    List<Promotion> findAllActive(@Param("now") LocalTime now);
 
     // Kiểm tra trùng tên
     boolean existsByNameIgnoreCase(String name);

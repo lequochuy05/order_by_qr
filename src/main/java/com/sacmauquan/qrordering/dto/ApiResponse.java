@@ -14,16 +14,18 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ApiResponse<T> {
-    
+
     @Builder.Default
     private Instant timestamp = Instant.now();
-    
+
+    private boolean success;
     private int status;
     private String message;
     private T data;
 
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
+                .success(true)
                 .status(200)
                 .message("Thành công")
                 .data(data)
@@ -32,6 +34,7 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
+                .success(true)
                 .status(200)
                 .message(message)
                 .data(data)
@@ -40,7 +43,25 @@ public class ApiResponse<T> {
 
     public static <T> ApiResponse<T> error(int status, String message) {
         return ApiResponse.<T>builder()
+                .success(false)
                 .status(status)
+                .message(message)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String message, T data) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .status(500)
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return ApiResponse.<T>builder()
+                .success(false)
+                .status(500)
                 .message(message)
                 .build();
     }

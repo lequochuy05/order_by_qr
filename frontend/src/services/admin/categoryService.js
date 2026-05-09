@@ -4,26 +4,26 @@ export const categoryService = {
 
     getAll: async () => {
         const res = await api.get('/categories');
-        return res.data;
+        return res;
     },
     
     // Tìm kiếm và phân trang
     search: async (q, page = 0, size = 12) => {
         const params = { q, page, size, sort: 'name,asc' };
         const res = await api.get('/categories/search', { params });
-        return res.data;
+        return res;
     },
 
     // Tạo mới danh mục
     create: async (name) => {
         const res = await api.post('/categories', { name });
-        return res.data;
+        return res;
     },
 
     // Cập nhật danh mục
     update: async (id, name) => {
         const res = await api.put(`/categories/${id}`, { name });
-        return res.data;
+        return res;
     },
 
     // Upload ảnh
@@ -33,7 +33,7 @@ export const categoryService = {
         const res = await api.post(`/categories/${id}/image`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return res.data;
+        return res;
     },
 
     // Xóa danh mục

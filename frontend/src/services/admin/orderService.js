@@ -3,25 +3,25 @@ import api from '../api';
 export const orderService = {
     getAllOrders: async (params = {}) => {
         const res = await api.get('/orders', { params });
-        return res.data;
+        return res;
     },
 
     // Paginated history with server-side filtering
     getOrderHistory: async (params = {}) => {
         const res = await api.get('/orders/history', { params });
-        return res.data;
+        return res;
     },
 
     // Aggregate stats for filtered period
     getOrderStats: async (params = {}) => {
         const res = await api.get('/orders/stats', { params });
-        return res.data;
+        return res;
     },
 
     getCurrentOrder: async(tableId) => {
         try {
             const res = await api.get(`/orders/table/${tableId}/current`);
-            return res.status === 200 ? res.data : null;
+            return res;
         } catch {
             return null;
         }
@@ -31,14 +31,14 @@ export const orderService = {
     addItemsToOrder: async (data) => {
         // data: { tableId, items: [...], combos: [...] }
         const res = await api.post('/orders', data);
-        return res.data;
+        return res;
     },
 
     // Cập nhật số lượng/ghi chú món
     updateOrderItem: async (itemId, data) => {
         // data: { quantity, notes }
         const res = await api.patch(`/orders/items/${itemId}`, data);
-        return res.data;
+        return res;
     },
 
     // Hủy món
@@ -55,7 +55,7 @@ export const orderService = {
     previewOrder: async (data) => {
         // data: { tableId, items, combos, voucherCode }
         const res = await api.post('/orders/preview', data);
-        return res.data;
+        return res;
     },
 
     // Thanh toán
@@ -63,23 +63,23 @@ export const orderService = {
         let url = `/orders/${orderId}/pay?userId=${userId}`;
         if (voucherCode) url += `&voucherCode=${encodeURIComponent(voucherCode)}`;
         const res = await api.patch(url);
-        return res.data;
+        return res;
     },
 
     // Lấy danh sách đơn cho nhà bếp
     getKitchenOrders: async () => {
         const res = await api.get('/orders/kitchen');
-        return res.data;
+        return res;
     },
 
     // Cập nhật trạng thái món (PENDING, COOKING, FINISHED)
     updateItemStatus: async (itemId, status) => {
         const res = await api.patch(`/orders/items/${itemId}/status`, { status });
-        return res.data;
+        return res;
     },
 
     getActiveOrders: async () => {
         const res = await api.get('/orders/active');
-        return res.data;
+        return res;
     }
 };

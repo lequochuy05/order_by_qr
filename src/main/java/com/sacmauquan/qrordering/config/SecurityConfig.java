@@ -56,7 +56,7 @@ public class SecurityConfig {
                 "/api/combos/*/items",
                 "/api/recommendations/**")
             .permitAll()
-            
+
             // Public Voucher Validation only
             .requestMatchers(HttpMethod.GET, "/api/vouchers/validate").permitAll()
             // Guest order creation
@@ -130,23 +130,18 @@ public class SecurityConfig {
   }
 
   @Bean
-  PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
-
-  @Bean
   AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
     return cfg.getAuthenticationManager();
   }
 
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
+    var c = new CorsConfiguration();
     c.setAllowedOrigins(List.of(
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://order-by-qr.vercel.app"
-    ));
+        "https://order-by-qr.vercel.app"));
     c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
     c.setAllowCredentials(true);

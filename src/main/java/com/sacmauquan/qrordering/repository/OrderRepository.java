@@ -33,6 +33,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findByStatusIn(List<Order.OrderStatus> statuses);
     
     Order findFirstByTableIdAndStatus(Long tableId, OrderStatus status);
+    @Query("SELECT o FROM Order o")
     @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo",
             "orderItems.orderItemOptions" })
     List<Order> findAllWithDetails();

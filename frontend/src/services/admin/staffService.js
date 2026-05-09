@@ -4,19 +4,19 @@ export const staffService = {
     // Lấy danh sách
     getAll: async () => {
         const res = await api.get('/users');
-        return res.data;
+        return res;
     },
 
     // Tạo mới (trả về UserDto có id)
     create: async (data) => {
         const res = await api.post('/users', data); 
-        return res.data;
+        return res;
     },
 
     // Cập nhật thông tin
     update: async (id, data) => {
         const res = await api.patch(`/users/${id}`, data);
-        return res.data;
+        return res;
     },
 
     // Upload Avatar (API riêng biệt)
@@ -27,7 +27,7 @@ export const staffService = {
         const res = await api.post(`/users/${id}/avatar`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-        return res.data;
+        return res;
     },
 
     // Xóa

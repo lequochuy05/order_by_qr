@@ -6,23 +6,23 @@ export const menuItemService = {
     // Nếu categoryId tồn tại và khác 'ALL' -> Gọi API lọc
     if (categoryId && categoryId !== 'ALL') {
         const res = await api.get(`/menu/category/${categoryId}`);
-        return res.data;
+        return res;
     }
     // Ngược lại -> Gọi API lấy tất cả
     const res = await api.get('/menu');
-    return res.data;
+    return res;
   },
 
   // Tạo mới món ăn
   create: async (itemData) => {
     const res = await api.post('/menu', itemData);
-    return res.data;
+    return res;
   },
 
   // Cập nhật món ăn
   update: async (id, itemData) => {
     const res = await api.put(`/menu/${id}`, itemData);
-    return res.data;
+    return res;
   },
 
   // Upload ảnh món ăn
@@ -32,7 +32,7 @@ export const menuItemService = {
     const res = await api.post(`/menu/${id}/image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return res.data;
+    return res;
   },
 
   // Xóa món ăn
