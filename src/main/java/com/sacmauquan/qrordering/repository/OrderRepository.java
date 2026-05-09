@@ -1,27 +1,39 @@
 package com.sacmauquan.qrordering.repository;
 
 import com.sacmauquan.qrordering.model.Order;
+import com.sacmauquan.qrordering.model.Order.OrderStatus;
 import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
+import jakarta.persistence.LockModeType;
 import java.util.*;
 
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
 
-    // Phân trang là bắt buộc cho bảng Order
-    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions" })
+    // tìm kiếm phân trang và lọc nâng cao
+    @Override
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions", "orderItems.combo" })
     @NonNull
-    Page<Order> findAll(@NonNull Pageable pageable);
+    Page<Order> findAll(Specification<Order> spec, @NonNull Pageable pageable);
 
-    // Tìm kiếm theo trạng thái
+    // chống tạo đơn trùng lặp khi đặt món đồng thời tại 1 bàn
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.table.id = :tableId AND o.status = :status")
+    Optional<Order> findFirstByTableIdAndStatusForUpdate(@Param("tableId") Long tableId, @Param("status") OrderStatus status);
+
     @EntityGraph(attributePaths = { "table", "orderItems" })
     List<Order> findByStatus(Order.OrderStatus status);
 
-    // Tìm đơn hàng đang hoạt động của 1 bàn
     @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions" })
     Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId, List<Order.OrderStatus> statuses);
 
-    // Tìm kiếm nâng cao
     @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
     List<Order> findByStatusIn(List<Order.OrderStatus> statuses);
+    
+    Order findFirstByTableIdAndStatus(Long tableId, OrderStatus status);
+    @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo",
+            "orderItems.orderItemOptions" })
+    List<Order> findAllWithDetails();
 }

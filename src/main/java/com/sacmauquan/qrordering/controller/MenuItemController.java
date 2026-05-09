@@ -1,63 +1,84 @@
 package com.sacmauquan.qrordering.controller;
 
-import com.sacmauquan.qrordering.model.MenuItem;
+import com.sacmauquan.qrordering.dto.ApiResponse;
+import com.sacmauquan.qrordering.dto.MenuItemRequest;
+import com.sacmauquan.qrordering.dto.MenuItemResponse;
 import com.sacmauquan.qrordering.service.MenuItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import java.util.Objects;
-import org.springframework.http.*;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * MenuItemController - Quản lý thực đơn món ăn.
+ */
 @RestController
-
 @RequestMapping("/api/menu")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class MenuItemController {
 
     private final MenuItemService menuItemService;
 
+    /**
+     * Lấy toàn bộ thực đơn
+     */
     @GetMapping
-    public List<MenuItem> getAllMenuItems() {
-        return menuItemService.getAllMenuItems();
+    public ApiResponse<List<MenuItemResponse>> getAllMenuItems() {
+        return ApiResponse.success(menuItemService.getAllMenuItems());
     }
 
+    /**
+     * Lấy danh sách món ăn theo từng danh mục cụ thể
+     */
     @GetMapping("/category/{categoryId}")
-    public List<MenuItem> getItemsByCategory(@PathVariable Integer categoryId) {
-        return menuItemService.getItemsByCategory(Objects.requireNonNull(categoryId));
+    public ApiResponse<List<MenuItemResponse>> getItemsByCategory(@PathVariable @NonNull Integer categoryId) {
+        return ApiResponse.success(menuItemService.getItemsByCategory(categoryId));
     }
 
+    /**
+     * Lấy thông tin chi tiết một món ăn kèm theo các Options/Toppings
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<MenuItem> getItemById(@PathVariable Long id) {
-        return menuItemService.getItemById(Objects.requireNonNull(id))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<MenuItemResponse> getItemById(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(menuItemService.getItemById(id));
     }
 
+    /**
+     * Thêm món ăn mới vào thực đơn
+     */
     @PostMapping
-    public ResponseEntity<?> createItem(@Valid @RequestBody MenuItem item) {
-        return ResponseEntity.ok(menuItemService.createItem(Objects.requireNonNull(item)));
+    public ApiResponse<MenuItemResponse> createItem(@Valid @RequestBody @NonNull MenuItemRequest req) {
+        return ApiResponse.success("Thêm món mới thành công", menuItemService.createItem(req));
     }
 
+    /**
+     * Cập nhật thông tin món ăn và đồng bộ danh sách tùy chọn (Options)
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateItem(@PathVariable Long id, @Valid @RequestBody MenuItem updated) {
-        return menuItemService.updateItem(Objects.requireNonNull(id), Objects.requireNonNull(updated))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<MenuItemResponse> updateItem(@PathVariable @NonNull Long id,
+            @Valid @RequestBody @NonNull MenuItemRequest req) {
+        return ApiResponse.success("Cập nhật món ăn thành công", menuItemService.updateItem(id, req));
     }
 
+    /**
+     * Xóa món ăn khỏi thực đơn
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteItem(@PathVariable Long id) {
-        menuItemService.deleteItem(Objects.requireNonNull(id));
-        return ResponseEntity.noContent().build();
+    public ApiResponse<Void> deleteItem(@PathVariable @NonNull Long id) {
+        menuItemService.deleteItem(id);
+        return ApiResponse.success("Xóa món ăn thành công", null);
     }
 
+    /**
+     * Tải lên hoặc cập nhật ảnh đại diện cho món ăn
+     */
     @PostMapping("/{id}/image")
-    public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
-        return ResponseEntity.ok(menuItemService.uploadImage(Objects.requireNonNull(id), Objects.requireNonNull(file)));
+    public ApiResponse<Map<String, Object>> uploadImage(@PathVariable @NonNull Long id,
+            @RequestParam("file") @NonNull MultipartFile file) {
+        return ApiResponse.success("Cập nhật ảnh thành công", menuItemService.uploadImage(id, file));
     }
-
 }

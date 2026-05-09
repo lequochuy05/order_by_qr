@@ -9,14 +9,16 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import java.util.Set;
-import java.util.LinkedHashSet;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 
 @Entity
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
@@ -54,6 +56,7 @@ public class MenuItem extends BaseEntity {
     @NotNull(message = "Danh mục không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cate_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnoreProperties("menuItems")
     private Category category;
 

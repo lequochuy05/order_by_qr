@@ -1,68 +1,76 @@
 package com.sacmauquan.qrordering.exception;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URI;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * GlobalExceptionHandler - Quản lý tập trung mọi ngoại lệ của hệ thống.
+ */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Dữ liệu không hợp lệ");
-        problemDetail.setTitle("Bad Request");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/bad-request")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
-    @ExceptionHandler(NoSuchElementException.class)
-    public ProblemDetail handleNoSuchElementException(NoSuchElementException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Không tìm thấy dữ liệu");
-        problemDetail.setTitle("Resource Not Found");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/not-found")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ProblemDetail handleIllegalStateException(IllegalStateException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage() != null ? ex.getMessage() : "Trạng thái không hợp lệ");
-        problemDetail.setTitle("Conflict / Illegal State");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/conflict")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
+    /**
+     * Xử lý lỗi xác thực dữ liệu đầu vào (@Valid)
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ApiResponse<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage()));
-                
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Lỗi xác thực dữ liệu đầu vào");
-        problemDetail.setTitle("Validation Error");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/validation")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        problemDetail.setProperty("errors", errors);
-        return problemDetail;
+        
+        log.warn("Lỗi xác thực dữ liệu: {}", errors);
+        return ApiResponse.error("Dữ liệu đầu vào không hợp lệ", errors);
     }
 
+    /**
+     * Xử lý ResponseStatusException (Các lỗi ném ra từ tầng Service)
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ApiResponse<Void> handleResponseStatusException(ResponseStatusException ex) {
+        return ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Yêu cầu không được thực hiện", null);
+    }
+
+    /**
+     * Xử lý lỗi không tìm thấy tài nguyên
+     */
+    @ExceptionHandler(NoSuchElementException.class)
+    public ApiResponse<Void> handleNoSuchElementException(NoSuchElementException ex) {
+        return ApiResponse.error("Không tìm thấy thông tin yêu cầu", null);
+    }
+
+    /**
+     * Xử lý lỗi phân quyền (Access Denied)
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ApiResponse<Void> handleAccessDeniedException(AccessDeniedException ex) {
+        return ApiResponse.error("Bạn không có quyền thực hiện hành động này", null);
+    }
+
+    /**
+     * Xử lý lỗi logic nghiệp vụ hoặc trạng thái không hợp lệ
+     */
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ApiResponse<Void> handleBusinessLogicException(RuntimeException ex) {
+        return ApiResponse.error(ex.getMessage(), null);
+    }
+
+    /**
+     * Xử lý các lỗi hệ thống không xác định
+     */
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneralException(Exception ex) {
-        ex.printStackTrace(); // Keep this for server logs
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() != null ? ex.getMessage() : "Lỗi hệ thống nội bộ");
-        problemDetail.setTitle("Internal Server Error");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/internal-error")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
+    public ApiResponse<Void> handleGeneralException(Exception ex) {
+        log.error("LỖI HỆ THỐNG: ", ex);
+        return ApiResponse.error("Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.", null);
     }
 }

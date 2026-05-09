@@ -33,10 +33,6 @@ public class Combo extends BaseEntity {
     @Column(length = 100, nullable = false, unique = true)
     private String name;
 
-    @NotBlank(message = "Ảnh combo không được để trống")
-    @Column(length = 150, nullable = false)
-    private String img;
-
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
     private BigDecimal price;

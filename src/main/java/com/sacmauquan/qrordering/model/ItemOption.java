@@ -8,11 +8,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Set;
 import java.util.LinkedHashSet;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Getter
@@ -46,6 +50,7 @@ public class ItemOption extends BaseEntity {
     @NotNull(message = "Món ăn không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private MenuItem menuItem;
 
     @Builder.Default

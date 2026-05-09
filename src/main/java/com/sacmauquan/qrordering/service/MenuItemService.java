@@ -1,24 +1,23 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.MenuItemRequest;
+import com.sacmauquan.qrordering.dto.MenuItemResponse;
 import org.springframework.lang.NonNull;
-
-import com.sacmauquan.qrordering.model.MenuItem;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public interface MenuItemService {
-    List<MenuItem> getAllMenuItems();
+    List<MenuItemResponse> getAllMenuItems();
 
-    List<MenuItem> getItemsByCategory(@NonNull Integer categoryId);
+    List<MenuItemResponse> getItemsByCategory(@NonNull Integer categoryId);
 
-    Optional<MenuItem> getItemById(@NonNull Long id);
+    MenuItemResponse getItemById(@NonNull Long id);
 
-    MenuItem createItem(@NonNull MenuItem item);
+    MenuItemResponse createItem(@NonNull MenuItemRequest req);
 
-    Optional<MenuItem> updateItem(@NonNull Long id, @NonNull MenuItem updated);
+    MenuItemResponse updateItem(@NonNull Long id, @NonNull MenuItemRequest req);
 
     void deleteItem(@NonNull Long id);
 

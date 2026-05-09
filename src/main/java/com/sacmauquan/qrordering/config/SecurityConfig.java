@@ -52,11 +52,13 @@ public class SecurityConfig {
                 "/api/tables/**",
                 "/api/combos/**",
                 "/api/orders/table/*/current",
-                "/api/vouchers/**",
                 "/api/combos/active",
                 "/api/combos/*/items",
                 "/api/recommendations/**")
             .permitAll()
+            
+            // Public Voucher Validation only
+            .requestMatchers(HttpMethod.GET, "/api/vouchers/validate").permitAll()
             // Guest order creation
             .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
 
@@ -111,8 +113,11 @@ public class SecurityConfig {
             // revenue / stats
             .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER", "STAFF")
 
-            // upload avatar
-            .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
+            // voucher management
+            .requestMatchers(HttpMethod.GET, "/api/vouchers/**").hasAnyRole("MANAGER", "STAFF")
+
+            // upload avatar (Authenticated users only)
+            .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").authenticated()
 
             // Allow /error to avoid error loops
             .requestMatchers("/error").permitAll()
@@ -136,13 +141,11 @@ public class SecurityConfig {
 
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
-    var c = new CorsConfiguration();
-    c.addAllowedOriginPattern("*");
     c.setAllowedOrigins(List.of(
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://order-by-qr.vercel.app", // Your Vercel domain
-        "https://order-by-qr.onrender.com" // Backend domain on Render
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://order-by-qr.vercel.app"
     ));
     c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));

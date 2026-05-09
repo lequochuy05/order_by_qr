@@ -1,18 +1,14 @@
 package com.sacmauquan.qrordering.controller;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,164 +19,164 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
-import com.sacmauquan.qrordering.model.Order;
-import com.sacmauquan.qrordering.model.OrderItem;
+import com.sacmauquan.qrordering.dto.OrderResponse;
+import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.service.OrderService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * OrderController - Quản lý quy trình gọi món, xử lý hóa đơn và KDS.
+ */
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final OrderService orderService;
 
-    // ===================== CREATE ORDER =====================
+    /**
+     * Tạo đơn hàng mới
+     */
     @PostMapping
-    public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
-        Order order = orderService.createOrder(Objects.requireNonNull(orderRequest));
-        return ResponseEntity.ok(order);
+    public ApiResponse<OrderResponse> createOrder(@Valid @RequestBody @NonNull OrderRequest orderRequest) {
+        return ApiResponse.success("Đặt món thành công", orderService.createOrder(orderRequest));
     }
 
-    // ===================== GET ALL ORDERS =====================
+    /**
+     * Lấy toàn bộ danh sách đơn hàng
+     */
     @GetMapping
-    public List<Order> getAllOrders() {
-        return orderService.getAllOrders();
+    public ApiResponse<List<OrderResponse>> getAllOrders() {
+        return ApiResponse.success(orderService.getAllOrders());
     }
 
-    // ===================== GET ORDER HISTORY (PAGINATED) =====================
+    /**
+     * Tra cứu lịch sử đơn hàng với bộ lọc nâng cao và phân trang
+     */
     @GetMapping("/history")
-    public ResponseEntity<?> getOrderHistory(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "15") int size,
+    public ApiResponse<Page<OrderResponse>> getOrderHistory(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 15, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
 
-        LocalDateTime start = null;
-        LocalDateTime end = null;
-        if (startDate != null && !startDate.isBlank()) {
-            start = LocalDate.parse(startDate).atStartOfDay();
-        }
-        if (endDate != null && !endDate.isBlank()) {
-            end = LocalDate.parse(endDate).atTime(23, 59, 59);
-        }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Order> result = orderService.getOrderHistory(status, start, end, search, pageable);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", result.getContent());
-        response.put("totalElements", result.getTotalElements());
-        response.put("totalPages", result.getTotalPages());
-        response.put("currentPage", result.getNumber());
-        response.put("size", result.getSize());
-
-        return ResponseEntity.ok(response);
+        return ApiResponse.success(orderService.getOrderHistory(status, startDate, endDate, search, pageable));
     }
 
-    // ===================== GET ORDER STATS =====================
+    /**
+     * Lấy báo cáo thống kê đơn hàng theo bộ lọc thời gian
+     */
     @GetMapping("/stats")
-    public ResponseEntity<?> getOrderStats(
+    public ApiResponse<Map<String, Object>> getOrderStats(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        LocalDateTime start = null;
-        LocalDateTime end = null;
-        if (startDate != null && !startDate.isBlank()) {
-            start = LocalDate.parse(startDate).atStartOfDay();
-        }
-        if (endDate != null && !endDate.isBlank()) {
-            end = LocalDate.parse(endDate).atTime(23, 59, 59);
-        }
-
-        return ResponseEntity.ok(orderService.getOrderStats(status, start, end));
+        return ApiResponse.success(orderService.getOrderStats(status, startDate, endDate));
     }
 
-    // ===================== UPDATE STATUS =====================
+    /**
+     * Cập nhật trạng thái tổng quát của đơn hàng
+     */
     @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(orderService.updateStatus(
-                Objects.requireNonNull(id),
-                Objects.requireNonNull(body.get("status"))));
-    }
-
-    // ===================== MARK ITEM PREPARED =====================
-    @PatchMapping("/items/{itemId}/prepared")
-    public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
-        orderService.updateItemStatus(Objects.requireNonNull(itemId), "FINISHED");
-        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
-    }
-
-    // ===================== UPDATE ITEM STATUS (KDS) =====================
-    @PatchMapping("/items/{itemId}/status")
-    public ResponseEntity<?> updateItemStatus(
-            @PathVariable Long itemId,
-            @RequestBody Map<String, String> body) {
+    public ApiResponse<OrderResponse> updateStatus(
+            @PathVariable @NonNull Long id,
+            @RequestBody @NonNull Map<String, String> body) {
         String status = body.get("status");
-        orderService.updateItemStatus(Objects.requireNonNull(itemId), Objects.requireNonNull(status));
-        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món: " + status));
+        return ApiResponse.success("Cập nhật trạng thái thành công", orderService.updateStatus(id, status));
     }
 
-    // ===================== GET KITCHEN ORDERS = :p =====================
+    /**
+     * Đánh dấu món ăn trong đơn hàng đã hoàn thành chế biến (KDS)
+     */
+    @PatchMapping("/items/{itemId}/prepared")
+    public ApiResponse<Void> markItemPrepared(@PathVariable @NonNull Long itemId) {
+        orderService.updateItemStatus(itemId, "FINISHED");
+        return ApiResponse.success("Đã xác nhận hoàn thành món", null);
+    }
+
+    /**
+     * Cập nhật trạng thái chi tiết của từng món ăn
+     */
+    @PatchMapping("/items/{itemId}/status")
+    public ApiResponse<Void> updateItemStatus(
+            @PathVariable @NonNull Long itemId,
+            @RequestBody @NonNull Map<String, String> body) {
+        String status = body.get("status");
+        orderService.updateItemStatus(itemId, status);
+        return ApiResponse.success("Đã cập nhật trạng thái món: " + status, null);
+    }
+
+    /**
+     * Lấy danh sách các đơn hàng đang chờ chế biến (KDS)
+     */
     @GetMapping("/kitchen")
-    public List<Order> getKitchenOrders() {
-        return orderService.getKitchenOrders();
+    public ApiResponse<List<OrderResponse>> getKitchenOrders() {
+        return ApiResponse.success(orderService.getKitchenOrders());
     }
 
-    // ===================== GET CURRENT ORDER BY TABLE =====================
+    /**
+     * Lấy đơn hàng hiện tại của một bàn
+     */
     @GetMapping("/table/{tableId}/current")
-    public ResponseEntity<?> getCurrentOrderByTable(@PathVariable Long tableId) {
-        return orderService.getCurrentOrderByTable(Objects.requireNonNull(tableId))
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
+    public ApiResponse<OrderResponse> getCurrentOrderByTable(@PathVariable @NonNull Long tableId) {
+        return orderService.getCurrentOrderByTable(tableId)
+                .map(ApiResponse::success)
+                .orElseGet(() -> ApiResponse.success(null));
     }
 
-    // ===================== GET ALL ACTIVE ORDERS =====================
+    /**
+     * Lấy danh sách đơn hàng đang hoạt động
+     */
     @GetMapping("/active")
-    public List<Order> getActiveOrders() {
-        return orderService.getActiveOrders();
+    public ApiResponse<List<OrderResponse>> getActiveOrders() {
+        return ApiResponse.success(orderService.getActiveOrders());
     }
 
-    // ===================== UPDATE ORDER ITEM =====================
+    /**
+     * Cập nhật số lượng hoặc ghi chú của một món ăn trong đơn
+     */
     @PatchMapping("/items/{itemId}")
-    public ResponseEntity<?> updateOrderItem(
-            @PathVariable Long itemId,
-            @RequestBody Map<String, Object> body) {
+    public ApiResponse<OrderResponse> updateOrderItem(
+            @PathVariable @NonNull Long itemId,
+            @RequestBody @NonNull Map<String, Object> body) {
         int qty = (int) body.getOrDefault("quantity", 1);
         String notes = (String) body.getOrDefault("notes", "");
-        OrderItem updated = orderService.updateOrderItem(Objects.requireNonNull(itemId), qty, notes);
-        return ResponseEntity.ok(updated);
+        return ApiResponse.success("Cập nhật món ăn thành công",
+                orderService.updateOrderItem(itemId, qty, notes));
     }
 
-    // ===================== PAY ORDER =====================
+    /**
+     * Thực hiện thanh toán và áp dụng Voucher giảm giá
+     */
     @PatchMapping("/{orderId}/pay")
-    public ResponseEntity<?> payOrder(
-            @PathVariable Long orderId,
-            @RequestParam Long userId,
+    public ApiResponse<String> payOrder(
+            @PathVariable @NonNull Long orderId,
+            @RequestParam @NonNull Long userId,
             @RequestParam(required = false) String voucherCode) {
-        String result = orderService.payOrder(Objects.requireNonNull(orderId), Objects.requireNonNull(userId),
-                voucherCode);
-        return ResponseEntity.ok(Map.of("message", result));
+        String result = orderService.payOrder(orderId, userId, voucherCode);
+        return ApiResponse.success("Thanh toán thành công", result);
     }
 
-    // ===================== CANCEL ORDER ITEM =====================
+    /**
+     * Hủy một món ăn khỏi đơn hàng
+     */
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
-        orderService.cancelOrderItem(Objects.requireNonNull(itemId));
-        return ResponseEntity.ok(Map.of("message", "Đã hủy món"));
+    public ApiResponse<Void> cancelOrderItem(@PathVariable @NonNull Long itemId) {
+        orderService.cancelOrderItem(itemId);
+        return ApiResponse.success("Đã hủy món ăn thành công", null);
     }
 
-    // ===================== PREVIEW ORDER (tính thử tiền) =====================
+    /**
+     * Tính toán thử tổng tiền đơn hàng trước khi xác nhận
+     */
     @PostMapping("/preview")
-    public ResponseEntity<?> preview(@Valid @RequestBody OrderRequest req) {
-        return ResponseEntity.ok(orderService.preview(Objects.requireNonNull(req)));
+    public ApiResponse<OrderPreviewResponse> preview(@Valid @RequestBody @NonNull OrderRequest req) {
+        return ApiResponse.success(orderService.preview(req));
     }
-
 }

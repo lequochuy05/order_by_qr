@@ -25,7 +25,7 @@ public class PayOSConfig {
                 .clientId(clientId)
                 .apiKey(apiKey)
                 .checksumKey(checksumKey)
-                .logLevel(ClientOptions.LogLevel.DEBUG)
+                .logLevel(ClientOptions.LogLevel.INFO)
                 .build();
 
         return new PayOS(options);

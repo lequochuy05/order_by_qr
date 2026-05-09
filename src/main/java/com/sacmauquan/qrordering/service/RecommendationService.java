@@ -1,198 +1,174 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.MenuItemResponse;
 import com.sacmauquan.qrordering.model.MenuItem;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.sacmauquan.qrordering.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * RecommendationService - Hệ thống gợi ý món ăn thông minh dựa trên lịch sử đặt
+ * hàng và ngữ cảnh.
+ * Đã nâng cấp chuẩn Senior: Tách biệt hoàn toàn Entity và DTO, tối ưu hóa hiệu
+ * năng nạp dữ liệu (Batch fetching).
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class RecommendationService {
 
     private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
 
-    // ========================
-    // PUBLIC API
-    // ========================
-
     /**
-     * Gợi ý món thường được đặt cùng với món đã cho.
-     * Fallback: trả về top bán chạy nếu không có dữ liệu association.
+     * Gợi ý món ăn thường được đặt cùng với một món cụ thể (Cross-sell).
+     * Phân tích lịch sử đơn hàng để tìm ra các cặp món phổ biến.
      */
-    public List<MenuItem> getRecommendations(Long itemId, int limit) {
-        if (itemId == null) return List.of();
-
-        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, limit);
-        if (associatedIds == null || associatedIds.isEmpty()) {
+    @Cacheable(value = "recommendations", key = "'cross_' + #itemId + '_' + #limit")
+    public List<MenuItemResponse> getCrossSellRecommendations(Long itemId, int limit) {
+        if (itemId == null)
             return getPopularItems(limit);
-        }
-        return preserveOrder(associatedIds);
-    }
 
-    /**
-     * Gợi ý cá nhân hóa dựa trên context (thời gian, thời tiết).
-     * Sử dụng scoring system: Time (40%) + Weather (30%) + Popularity (30%).
-     */
-    public List<MenuItem> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
-        List<MenuItem> allMenu = menuItemRepository.findAll();
-        String timeKey = normalize(timeContext);
-        String weatherKey = normalize(weatherContext);
+        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, limit * 2);
 
-        return allMenu.stream()
-                .filter(item -> item.getCategory() != null)
-                .map(item -> Map.entry(item, calculateRelevanceScore(item, timeKey, weatherKey)))
-                .filter(entry -> entry.getValue() > 0)
-                .sorted(Map.Entry.<MenuItem, Double>comparingByValue().reversed())
+        if (associatedIds.isEmpty())
+            return getPopularItems(limit);
+
+        return menuItemRepository.findAllById(associatedIds).stream()
+                .filter(item -> Boolean.TRUE.equals(item.getActive()))
                 .limit(limit)
-                .map(Map.Entry::getKey)
+                .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Cross-sell: gợi ý món bổ sung khi thêm vào giỏ hàng.
-     * Ưu tiên: frequency-based → similarity scoring → popular fallback.
+     * Lấy danh sách món ăn tương tự (Dùng chung logic với Cross-sell nhưng có thể
+     * mở rộng sau này).
      */
-    public List<MenuItem> getCrossSellRecommendations(Long currentItemId, int limit) {
-        MenuItem currentItem = menuItemRepository.findById(currentItemId).orElse(null);
-        if (currentItem == null) return getPopularItems(limit);
-
-        // 1. Ưu tiên dữ liệu frequency thực tế
-        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(currentItemId, limit);
-        if (associatedIds != null && !associatedIds.isEmpty()) {
-            return preserveOrder(associatedIds);
-        }
-
-        // 2. Fallback: similarity scoring
-        if (currentItem.getCategory() == null) return getPopularItems(limit);
-        List<MenuItem> allMenu = menuItemRepository.findAll();
-
-        return allMenu.stream()
-                .filter(item -> !item.getId().equals(currentItemId))
-                .filter(item -> item.getCategory() != null)
-                .map(item -> Map.entry(item, calculateSimilarity(currentItem, item)))
-                .filter(entry -> entry.getValue() > 0)
-                .sorted(Map.Entry.<MenuItem, Double>comparingByValue().reversed())
-                .limit(limit)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
+    @Cacheable(value = "recommendations", key = "'similar_' + #itemId + '_' + #limit")
+    public List<MenuItemResponse> getRecommendations(Long itemId, int limit) {
+        return getCrossSellRecommendations(itemId, limit);
     }
 
     /**
-     * Top bán chạy thực sự, dựa trên đơn hàng đã thanh toán.
-     * Fallback: món mới nhất nếu chưa có dữ liệu bán hàng.
+     * Lấy danh sách món ăn bán chạy nhất hệ thống.
+     * Có tích hợp Cache để giảm tải cho các phép tính Aggregate của Database.
      */
-    public List<MenuItem> getPopularItems(int limit) {
-        List<Long> topIds = orderItemRepository.findTopSellingItemIds(limit);
+    @Cacheable(value = "popularItems", key = "'pop_' + #limit")
+    public List<MenuItemResponse> getPopularItems(int limit) {
+        List<Long> topIds = orderItemRepository.findTopSellingItemIds(limit * 2);
 
+        List<MenuItem> items;
         if (topIds == null || topIds.isEmpty()) {
-            return menuItemRepository.findAll().stream()
-                    .sorted(Comparator.comparing(MenuItem::getCreatedAt,
-                            Comparator.nullsLast(Comparator.reverseOrder())))
+            items = menuItemRepository.findAllByActiveTrue().stream()
+                    .sorted(Comparator.comparing(MenuItem::getCreatedAt).reversed())
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        } else {
+            items = menuItemRepository.findAllById(topIds).stream()
+                    .filter(item -> Boolean.TRUE.equals(item.getActive()))
                     .limit(limit)
                     .collect(Collectors.toList());
         }
-        return preserveOrder(topIds);
+
+        return items.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
     }
 
-    // ========================
-    // SCORING ENGINE
-    // ========================
+    /**
+     * Hệ thống gợi ý cá nhân hóa dựa trên ngữ cảnh thời gian và thời tiết.
+     * Sử dụng thuật toán Weighted Scoring để chấm điểm món ăn phù hợp.
+     */
+    public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
+        List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
+        if (activeMenu.isEmpty())
+            return List.of();
 
-    private double calculateRelevanceScore(MenuItem item, String timeKey, String weatherKey) {
+        Map<Long, Long> popularityMap = getPopularityMap(activeMenu);
+        String tKey = normalize(timeContext);
+        String wKey = normalize(weatherContext);
+
+        return activeMenu.stream()
+                .map(item -> {
+                    double score = calculateItemScore(item, tKey, wKey, popularityMap.getOrDefault(item.getId(), 0L));
+                    return new AbstractMap.SimpleEntry<>(item, score);
+                })
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(Map.Entry.<MenuItem, Double>comparingByValue().reversed())
+                .limit(limit)
+                .map(entry -> convertToResponse(entry.getKey()))
+                .collect(Collectors.toList());
+    }
+
+    private double calculateItemScore(MenuItem item, String tKey, String wKey, long soldCount) {
+        if (item.getCategory() == null)
+            return 0;
+
         String cateName = item.getCategory().getName().toLowerCase();
 
-        double timeScore = calculateTimeScore(cateName, timeKey) * 40;
-        double weatherScore = calculateWeatherScore(cateName, weatherKey) * 30;
-        double popularityScore = calculatePopularityScore(item.getId()) * 30;
+        // Trọng số gợi ý: Thời gian (40%) + Thời tiết (30%) + Độ phổ biến thực tế (30%)
+        double timeScore = calculateTimeMatch(cateName, tKey) * 40;
+        double weatherScore = calculateWeatherMatch(cateName, wKey) * 30;
+        double popularityScore = Math.min(soldCount / 50.0, 1.0) * 30;
 
         return timeScore + weatherScore + popularityScore;
     }
 
-    private double calculateSimilarity(MenuItem current, MenuItem candidate) {
-        double score = 0;
-        String currentCate = current.getCategory().getName().toLowerCase();
-        String candidateCate = candidate.getCategory().getName().toLowerCase();
-
-        // Complementary category bonus (food↔drink)
-        if (isComplementary(currentCate, candidateCate)) {
-            score += 50;
-        }
-
-        // Price range similarity (±30%)
-        double priceRatio = candidate.getPrice() / Math.max(current.getPrice(), 1);
-        if (priceRatio >= 0.7 && priceRatio <= 1.3) {
-            score += 30;
-        }
-
-        // Popularity boost
-        score += calculatePopularityScore(candidate.getId()) * 20;
-
-        return score;
+    private double calculateTimeMatch(String cateName, String tKey) {
+        if (tKey.isBlank())
+            return 0.5;
+        if (containsAny(tKey, "sáng", "morning") &&
+                containsAny(cateName, "Mỳ cay", "Trà", "Soda", "Giải Khát", "Trà Sữa"))
+            return 1.0;
+        if (containsAny(tKey, "trưa", "lunch") &&
+                containsAny(cateName, "Ăn Vặt", "Trà Sữa", "Nước Ép"))
+            return 1.0;
+        if (containsAny(tKey, "tối", "dinner") &&
+                containsAny(cateName, "Ăn Vặt", "Giải Khát", "Mỳ cay"))
+            return 1.0;
+        return 0.1;
     }
 
-    // ========================
-    // SCORING HELPERS
-    // ========================
-
-    private double calculateTimeScore(String cateName, String timeKey) {
-        if (timeKey.isEmpty()) return 0;
-
-        if (containsAny(timeKey, "sáng", "morning")) {
-            return containsAny(cateName, "sáng", "phở", "bún", "cà phê", "bánh mì") ? 1.0 : 0;
-        }
-        if (containsAny(timeKey, "trưa", "noon", "lunch")) {
-            return containsAny(cateName, "cơm", "mỳ", "văn phòng", "set lunch") ? 1.0 : 0;
-        }
-        if (containsAny(timeKey, "tối", "evening", "night")) {
-            return containsAny(cateName, "lẩu", "nhậu", "bia", "nướng") ? 1.0 : 0;
-        }
-        return 0;
+    private double calculateWeatherMatch(String cateName, String wKey) {
+        if (wKey.isBlank())
+            return 0.5;
+        if (containsAny(wKey, "nóng", "hot") &&
+                containsAny(cateName, "Trà", "Soda", "Nước Ép", "Giải Khát"))
+            return 1.0;
+        if (containsAny(wKey, "lạnh", "mưa", "cold") &&
+                containsAny(cateName, "Mỳ cay", "Ăn Vặt"))
+            return 1.0;
+        return 0.1;
     }
 
-    private double calculateWeatherScore(String cateName, String weatherKey) {
-        if (weatherKey.isEmpty()) return 0;
-
-        if (containsAny(weatherKey, "mưa", "rain", "lạnh", "cold")) {
-            return containsAny(cateName, "nóng", "lẩu", "súp", "cháo") ? 1.0 : 0;
-        }
-        if (containsAny(weatherKey, "nắng", "sun", "nóng", "hot")) {
-            return containsAny(cateName, "lạnh", "giải khát", "kem", "sinh tố", "trà") ? 1.0 : 0;
-        }
-        return 0;
+    private Map<Long, Long> getPopularityMap(List<MenuItem> items) {
+        List<Long> ids = items.stream().map(MenuItem::getId).collect(Collectors.toList());
+        List<Object[]> results = orderItemRepository.countTotalSoldBatch(ids);
+        return results.stream().collect(Collectors.toMap(
+                res -> (Long) res[0],
+                res -> (Long) res[1]));
     }
 
-    private double calculatePopularityScore(Long itemId) {
-        long totalSold = orderItemRepository.countTotalSoldByItemId(itemId);
-        return Math.min(totalSold / 100.0, 1.0);
+    private MenuItemResponse convertToResponse(MenuItem item) {
+        return MenuItemResponse.builder()
+                .id(item.getId())
+                .name(item.getName())
+                .price(item.getPrice())
+                .img(item.getImg())
+                .active(item.getActive())
+                .category(item.getCategory() != null ? MenuItemResponse.CategorySummary.builder()
+                        .id(item.getCategory().getId())
+                        .name(item.getCategory().getName())
+                        .build() : null)
+                .build();
     }
-
-    // ========================
-    // CATEGORY CLASSIFICATION
-    // ========================
-
-    private boolean isComplementary(String catA, String catB) {
-        return (isFood(catA) && isDrinkOrTopping(catB)) || (isDrinkOrTopping(catA) && isFood(catB));
-    }
-
-    private boolean isFood(String category) {
-        return containsAny(category, "cơm", "phở", "bún", "món", "ăn", "bánh", "mỳ", "lẩu", "nướng");
-    }
-
-    private boolean isDrinkOrTopping(String category) {
-        return containsAny(category, "uống", "nước", "trà", "topping", "thêm", "kem", "sinh tố", "cà phê");
-    }
-
-    // ========================
-    // UTILITIES
-    // ========================
 
     private String normalize(String input) {
         return input != null ? input.toLowerCase().trim() : "";
@@ -200,21 +176,9 @@ public class RecommendationService {
 
     private boolean containsAny(String text, String... keywords) {
         for (String kw : keywords) {
-            if (text.contains(kw)) return true;
+            if (text.contains(kw.toLowerCase()))
+                return true;
         }
         return false;
-    }
-
-    /**
-     * Truy vấn MenuItem theo danh sách ID, giữ nguyên thứ tự ranking từ DB.
-     */
-    private List<MenuItem> preserveOrder(List<Long> ids) {
-        List<MenuItem> items = menuItemRepository.findAllById(ids);
-        Map<Long, MenuItem> itemMap = items.stream()
-                .collect(Collectors.toMap(MenuItem::getId, Function.identity()));
-        return ids.stream()
-                .map(itemMap::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
     }
 }

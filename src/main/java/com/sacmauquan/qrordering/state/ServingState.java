@@ -4,18 +4,18 @@ import com.sacmauquan.qrordering.model.Order;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CompletedState implements OrderState {
+public class ServingState implements OrderState {
 
     @Override
     public void handleRequest(Order order) {
-        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
-            throw new IllegalStateException("Đơn hàng đã hủy không thể hoàn thành.");
+        if (order.getStatus() != Order.OrderStatus.PENDING) {
+            throw new IllegalStateException("Chỉ đơn hàng PENDING mới có thể chuyển sang trạng thái đang phục vụ.");
         }
         order.setStatus(getStatus());
     }
 
     @Override
     public Order.OrderStatus getStatus() {
-        return Order.OrderStatus.COMPLETED;
+        return Order.OrderStatus.SERVING;
     }
 }

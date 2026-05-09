@@ -1,12 +1,13 @@
 package com.sacmauquan.qrordering.dto;
 
 import com.sacmauquan.qrordering.model.Voucher;
-import lombok.*;
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-public class DiscountResult {
-    private double finalTotal;
-    private double discountValue;
-    private Voucher voucher;   // null nếu không có voucher
-}
+import java.math.BigDecimal;
+
+/**
+ * DiscountResult - Kết quả tính toán giảm giá cho đơn hàng.
+ */
+public record DiscountResult(
+    BigDecimal finalTotal,
+    BigDecimal discountValue,
+    Voucher voucher
+) {}

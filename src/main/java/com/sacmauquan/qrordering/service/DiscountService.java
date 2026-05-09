@@ -1,271 +1,199 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.DiscountResult;
 import com.sacmauquan.qrordering.dto.VoucherRequest;
 import com.sacmauquan.qrordering.dto.VoucherValidateResponse;
-import com.sacmauquan.qrordering.dto.DiscountResult;
 import com.sacmauquan.qrordering.model.Voucher;
 import com.sacmauquan.qrordering.repository.VoucherRepository;
-
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.domain.Sort;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
-import jakarta.transaction.Transactional;
-
+/**
+ * Voucher - Quản lý mã giảm giá.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DiscountService {
 
-    private final VoucherRepository voucherRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final VoucherRepository voucherRepo;
+    private final NotificationService notificationService;
 
-    // ================== CRUD & Validate cho API ==================
-
+    @Cacheable(value = "vouchers", key = "'all_desc'")
     public List<Voucher> findAll() {
-        List<Voucher> list = voucherRepository.findAllByOrderByIdDesc();
-        return (list == null || list.isEmpty()) ? voucherRepository.findAll() : list;
+        return voucherRepo.findAll(Sort.by(Sort.Direction.DESC, "id"));
     }
 
     public Voucher findById(@NonNull Long id) {
-        return voucherRepository.findById(id)
+        return voucherRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher không tồn tại"));
     }
 
     @Transactional
+    @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher create(VoucherRequest req) {
-        normalize(req);
-        validateUpsert(req, null);
-        Voucher v = new Voucher();
-        applyFields(v, req);
-        v.setUsedCount(0);
-        Voucher saved = voucherRepository.save(v);
-
-        notifyChange(); // Gọi thông báo
-        return saved;
-    }
-
-    @Transactional
-    public Voucher update(@NonNull Long id, VoucherRequest req) {
-        normalize(req);
-        Voucher current = findById(id);
-        validateUpsert(req, current);
-        applyFields(current, req);
-        Voucher saved = voucherRepository.save(current);
-
-        notifyChange(); // Gọi thông báo
-        return saved;
-    }
-
-    @Transactional
-    public void delete(@NonNull Long id) {
-        if (!voucherRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher không tồn tại");
-        }
-        voucherRepository.deleteById(id);
-        notifyChange(); // Gọi thông báo
-    }
-
-    public void increaseUsedCount(@NonNull Long id) {
-        Voucher v = findById(id);
-        int used = Optional.ofNullable(v.getUsedCount()).orElse(0);
-        v.setUsedCount(used + 1);
-        voucherRepository.save(v);
-
-        notifyChange(); // Thay đổi ở đây: Dùng notifyChange() thay vì broadcastReload()
-    }
-
-    /**
-     * Validate code cho frontend: trả trạng thái + số tiền giảm quy đổi từ % nếu có
-     * total
-     */
-    public VoucherValidateResponse validateCode(String code, Double orderTotal) {
-        if (code == null || code.isBlank()) {
-            return new VoucherValidateResponse(null, "NOT_FOUND", 0.0, null, false);
-        }
-        Voucher v = voucherRepository.findByCodeIgnoreCase(code.trim().toUpperCase())
-                .orElse(null);
-        if (v == null) {
-            return new VoucherValidateResponse(code.trim(), "NOT_FOUND", 0.0, null, false);
-        }
-
-        String status = statusOf(v);
-        boolean applicable = "ACTIVE".equals(status);
-
-        double moneyOff = 0.0;
-        Double percent = null;
-        if (applicable) {
-            if (v.getDiscountAmount() != null && v.getDiscountAmount() > 0) {
-                moneyOff = v.getDiscountAmount();
-            } else if (v.getDiscountPercent() != null && v.getDiscountPercent() > 0) {
-                percent = v.getDiscountPercent();
-                if (orderTotal != null && orderTotal > 0) {
-                    moneyOff = Math.floor(orderTotal * (percent / 100.0));
-                }
-            }
-        }
-        return new VoucherValidateResponse(v.getCode(), status, moneyOff, percent, applicable);
-    }
-    // ================== Logic hỗ trợ ==================
-
-    private void normalize(VoucherRequest r) {
-        if (r.getCode() != null)
-            r.setCode(r.getCode().trim());
-        if (r.getActive() == null)
-            r.setActive(Boolean.TRUE);
-        if (r.getUsageLimit() != null && r.getUsageLimit() < 0)
-            r.setUsageLimit(0);
-    }
-
-    private void validateUpsert(VoucherRequest r, Voucher current) {
-        if (r.getCode() == null || r.getCode().isBlank())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã voucher không được rỗng");
-
-        boolean codeTaken = voucherRepository.existsByCodeIgnoreCase(r.getCode());
-        if (codeTaken && (current == null || !r.getCode().equalsIgnoreCase(current.getCode())))
+        if (voucherRepo.existsByCodeIgnoreCase(req.getCode())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
+        }
 
-        boolean hasAmt = r.getDiscountAmount() != null && r.getDiscountAmount() > 0;
-        boolean hasPct = r.getDiscountPercent() != null && r.getDiscountPercent() > 0;
-        if (!hasAmt && !hasPct)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phải có giảm theo tiền hoặc theo %");
+        Voucher v = Voucher.builder()
+                .code(req.getCode().trim().toUpperCase())
+                .type(req.getType())
+                .discountAmount(req.getDiscountAmount())
+                .discountPercent(req.getDiscountPercent())
+                .usageLimit(req.getUsageLimit())
+                .validFrom(req.getValidFrom())
+                .validTo(req.getValidTo())
+                .active(req.getActive() != null ? req.getActive() : true)
+                .usedCount(0)
+                .build();
 
-        if (hasPct && (r.getDiscountPercent() < 0 || r.getDiscountPercent() > 100))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "discountPercent phải trong [0..100]");
+        Voucher saved = voucherRepo.save(Objects.requireNonNull(v));
+        notificationService.notifyVoucherChange();
 
-        if (r.getValidFrom() != null && r.getValidTo() != null && r.getValidFrom().isAfter(r.getValidTo()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "`validFrom` phải <= `validTo`");
+        return saved;
     }
 
-    private void applyFields(Voucher v, VoucherRequest r) {
-        v.setCode(r.getCode());
-        v.setDiscountAmount(r.getDiscountAmount());
-        v.setDiscountPercent(r.getDiscountPercent());
-        v.setActive(r.getActive());
-        v.setUsageLimit(r.getUsageLimit());
-        if (v.getUsedCount() == null)
-            v.setUsedCount(0);
-        v.setValidFrom(r.getValidFrom());
-        v.setValidTo(r.getValidTo());
+    @Transactional
+    @CacheEvict(value = "vouchers", allEntries = true)
+    public Voucher update(@NonNull Long id, VoucherRequest req) {
+        Voucher v = findById(id);
+
+        if (voucherRepo.existsByCodeIgnoreCaseAndIdNot(req.getCode(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
+        }
+
+        v.setCode(req.getCode().trim().toUpperCase());
+        v.setType(req.getType());
+        v.setDiscountAmount(req.getDiscountAmount());
+        v.setDiscountPercent(req.getDiscountPercent());
+        v.setUsageLimit(req.getUsageLimit());
+        v.setValidFrom(req.getValidFrom());
+        v.setValidTo(req.getValidTo());
+        v.setActive(req.getActive() != null ? req.getActive() : v.getActive());
+
+        Voucher saved = voucherRepo.save(Objects.requireNonNull(v));
+        notificationService.notifyVoucherChange();
+
+        return saved;
     }
 
-    /** ACTIVE | INACTIVE | EXPIRED | EXHAUSTED */
-    public String statusOf(Voucher v) {
-        LocalDateTime now = LocalDateTime.now();
-        boolean inDate = (v.getValidFrom() == null || !now.isBefore(v.getValidFrom()))
-                && (v.getValidTo() == null || !now.isAfter(v.getValidTo()));
-        boolean underLimit = (v.getUsageLimit() == null || v.getUsageLimit() == 0)
-                || (Optional.ofNullable(v.getUsedCount()).orElse(0) < v.getUsageLimit());
-        boolean on = Boolean.TRUE.equals(v.getActive());
-
-        if (on && inDate && underLimit)
-            return "ACTIVE";
-        if (!on)
-            return "INACTIVE";
-        if (!inDate)
-            return "EXPIRED";
-        return "EXHAUSTED";
+    @Transactional
+    @CacheEvict(value = "vouchers", allEntries = true)
+    public void delete(@NonNull Long id) {
+        Voucher v = findById(id);
+        voucherRepo.delete(Objects.requireNonNull(v));
+        notificationService.notifyVoucherChange();
     }
-
-    // ================== Các hàm bạn đã có (giữ nguyên) ==================
 
     /**
-     * Tính tổng sau giảm. Nếu increaseUsage=true thì tăng used_count (dùng khi
-     * PAY).
+     * Kiểm tra và tính toán giảm giá
      */
-    public DiscountResult applyDiscounts(double subtotal, String voucherCode, boolean increaseUsage) {
-        double finalTotal = subtotal;
-        double discountValue = 0d;
-        Voucher appliedVoucher = null;
-
-        if (voucherCode != null && !voucherCode.isBlank()) {
-            Voucher v = voucherRepository.findByCode(voucherCode.trim().toUpperCase())
-                    .orElseThrow(() -> new RuntimeException("Voucher không tồn tại"));
-
-            LocalDateTime now = LocalDateTime.now();
-            Integer used = Optional.ofNullable(v.getUsedCount()).orElse(0);
-            Integer limit = Optional.ofNullable(v.getUsageLimit()).orElse(Integer.MAX_VALUE);
-
-            boolean timeOk = (v.getValidFrom() == null || !now.isBefore(v.getValidFrom()))
-                    && (v.getValidTo() == null || !now.isAfter(v.getValidTo()));
-            boolean canUse = Boolean.TRUE.equals(v.getActive()) && used < limit && timeOk;
-
-            if (canUse) {
-                if (v.getDiscountPercent() != null) {
-                    discountValue = subtotal * v.getDiscountPercent() / 100.0;
-                } else if (v.getDiscountAmount() != null) {
-                    discountValue = v.getDiscountAmount();
-                }
-                finalTotal = Math.max(0d, subtotal - discountValue);
-                appliedVoucher = v;
-
-                if (increaseUsage) {
-                    v.setUsedCount(used + 1);
-                    voucherRepository.save(v);
-                }
-            }
-        }
-
-        return new DiscountResult(finalTotal, discountValue, appliedVoucher);
-    }
-
-    /** Dùng để kiểm tra hiển thị ở màn preview (giữ nguyên). */
-    public VoucherResult validateVoucher(String code, double subtotal) {
+    public VoucherValidateResponse validateCode(String code, BigDecimal orderTotal) {
         if (code == null || code.isBlank()) {
-            return new VoucherResult(false, "Không có mã giảm giá", 0d);
+            return new VoucherValidateResponse(null, "NOT_FOUND", BigDecimal.ZERO, null, false);
         }
 
-        Optional<Voucher> opt = voucherRepository.findByCodeIgnoreCaseAndActiveTrue(code.trim().toUpperCase())
-                .or(() -> voucherRepository.findByCodeAndActiveTrue(code.trim().toUpperCase()));
+        String cleanCode = code.trim().toUpperCase();
+        Voucher v = voucherRepo.findByCodeIgnoreCase(cleanCode).orElse(null);
 
-        if (opt.isEmpty()) {
-            return new VoucherResult(false, "Mã không hợp lệ hoặc đã hết hạn", 0d);
+        if (v == null) {
+            return new VoucherValidateResponse(cleanCode, "NOT_FOUND", BigDecimal.ZERO, null, false);
         }
 
-        Voucher v = opt.get();
+        String status = getVoucherStatus(v);
+        boolean applicable = "ACTIVE".equals(status);
+        BigDecimal discountValue = BigDecimal.ZERO;
+
+        if (applicable) {
+            discountValue = calculateDiscount(v, orderTotal);
+        }
+
+        return new VoucherValidateResponse(v.getCode(), status, discountValue, v.getDiscountPercent(), applicable);
+    }
+
+    /**
+     * Áp dụng voucher vào đơn hàng
+     */
+    @Transactional
+    @CacheEvict(value = "vouchers", allEntries = true)
+    public DiscountResult applyVoucher(String code, BigDecimal subtotal) {
+        if (code == null || code.isBlank()) {
+            return new DiscountResult(subtotal, BigDecimal.ZERO, null);
+        }
+
+        // Lấy dữ liệu trước
+        Voucher v = voucherRepo.findByCodeIgnoreCase(code.trim().toUpperCase())
+                .orElse(null);
+
+        // Nếu không thấy Voucher, trả về kết quả không giảm giá
+        if (v == null) {
+            return new DiscountResult(subtotal, BigDecimal.ZERO, null);
+        }
+
+        // Sử dụng các hàm helper đã có để kiểm tra trạng thái
+        String status = getVoucherStatus(v);
+        if (!"ACTIVE".equals(status)) {
+            return new DiscountResult(subtotal, BigDecimal.ZERO, null);
+        }
+
+        // Tính toán số tiền giảm
+        BigDecimal discountValue = calculateDiscount(v, subtotal);
+
+        // Cập nhật lượt dùng
+        int updatedRows = voucherRepo.incrementUsedCountAtomically(v.getId());
+        if (updatedRows == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã giảm giá đã hết lượt sử dụng ngay lúc này.");
+        }
+
+        // Tính tổng tiền cuối cùng
+        BigDecimal finalTotal = subtotal.subtract(discountValue).setScale(2, RoundingMode.HALF_UP);
+        if (finalTotal.compareTo(BigDecimal.ZERO) < 0)
+            finalTotal = BigDecimal.ZERO;
+
+        return new DiscountResult(finalTotal, discountValue, v);
+    }
+
+    private String getVoucherStatus(Voucher v) {
+        if (!Boolean.TRUE.equals(v.getActive()))
+            return "INACTIVE";
+
         LocalDateTime now = LocalDateTime.now();
-        Integer used = Optional.ofNullable(v.getUsedCount()).orElse(0);
-        Integer limit = Optional.ofNullable(v.getUsageLimit()).orElse(Integer.MAX_VALUE);
+        if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
+            return "UPCOMING";
+        if (v.getValidTo() != null && now.isAfter(v.getValidTo()))
+            return "EXPIRED";
 
-        boolean timeOk = (v.getValidFrom() == null || !now.isBefore(v.getValidFrom()))
-                && (v.getValidTo() == null || !now.isAfter(v.getValidTo()));
-        boolean canUse = Boolean.TRUE.equals(v.getActive()) && used < limit && timeOk;
+        if (v.getUsageLimit() != null && v.getUsedCount() >= v.getUsageLimit())
+            return "EXHAUSTED";
 
-        if (!canUse) {
-            return new VoucherResult(false, "Mã không hợp lệ hoặc đã hết hạn", 0d);
-        }
-
-        double discount = 0d;
-        if (v.getDiscountPercent() != null) {
-            discount = subtotal * (v.getDiscountPercent() / 100.0);
-        } else if (v.getDiscountAmount() != null) {
-            discount = v.getDiscountAmount();
-        }
-
-        return new VoucherResult(true, "Áp dụng thành công", discount);
+        return "ACTIVE";
     }
 
-    @Getter
-    @AllArgsConstructor
-    public static class VoucherResult {
-        private boolean valid;
-        private String message;
-        private double discount;
-    }
-
-    private void notifyChange() {
-        eventPublisher.publishEvent(new com.sacmauquan.qrordering.event.WebSocketEvent(
-                "/topic/vouchers",
-                "UPDATED",
-                "[WS] Đã gửi thông báo cập nhật Voucher qua /topic/vouchers"));
+    private BigDecimal calculateDiscount(Voucher v, BigDecimal orderTotal) {
+        if (v.getType() == Voucher.VoucherType.FIXED_AMOUNT) {
+            return v.getDiscountAmount() != null ? v.getDiscountAmount() : BigDecimal.ZERO;
+        } else if (v.getType() == Voucher.VoucherType.PERCENTAGE) {
+            if (v.getDiscountPercent() == null || orderTotal == null)
+                return BigDecimal.ZERO;
+            return orderTotal.multiply(BigDecimal.valueOf(v.getDiscountPercent()))
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO;
     }
 }

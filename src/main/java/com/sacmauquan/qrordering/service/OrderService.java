@@ -1,13 +1,11 @@
 package com.sacmauquan.qrordering.service;
 
-import org.springframework.lang.NonNull;
-
 import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
-import com.sacmauquan.qrordering.model.Order;
-import com.sacmauquan.qrordering.model.OrderItem;
+import com.sacmauquan.qrordering.dto.OrderResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.lang.NonNull;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,16 +13,16 @@ import java.util.Map;
 import java.util.Optional;
 
 public interface OrderService {
-    List<Order> getAllOrders();
+    List<OrderResponse> getAllOrders();
 
-    Page<Order> getOrderHistory(String status, LocalDateTime startDate, LocalDateTime endDate, String search,
-            Pageable pageable);
+    Page<OrderResponse> getOrderHistory(String status, LocalDateTime startDate, LocalDateTime endDate, String search,
+            @NonNull Pageable pageable);
 
     Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate);
 
-    Order updateStatus(@NonNull Long id, @NonNull String status);
+    OrderResponse updateStatus(@NonNull Long id, @NonNull String status);
 
-    Order createOrder(@NonNull OrderRequest req);
+    OrderResponse createOrder(@NonNull OrderRequest req);
 
     void cancelOrderItem(@NonNull Long itemId);
 
@@ -32,15 +30,15 @@ public interface OrderService {
 
     void markItemPrepared(@NonNull Long itemId);
 
-    List<Order> getKitchenOrders();
+    List<OrderResponse> getKitchenOrders();
 
-    Optional<Order> getCurrentOrderByTable(@NonNull Long tableId);
+    Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId);
 
-    OrderItem updateOrderItem(@NonNull Long itemId, int quantity, String notes);
+    OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes);
 
     String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode);
 
     OrderPreviewResponse preview(@NonNull OrderRequest req);
 
-    List<Order> getActiveOrders();
+    List<OrderResponse> getActiveOrders();
 }

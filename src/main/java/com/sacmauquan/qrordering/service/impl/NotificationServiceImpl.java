@@ -3,66 +3,80 @@ package com.sacmauquan.qrordering.service.impl;
 import com.sacmauquan.qrordering.event.WebSocketEvent;
 import com.sacmauquan.qrordering.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
+/**
+ * NotificationServiceImpl - Quản lý thông báo thời gian thực qua WebSocket.
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
+
+    private static final String TOPIC_TABLES = "/topic/tables";
+    private static final String TOPIC_KITCHEN = "/topic/kitchen";
+    private static final String TOPIC_MENU = "/topic/menu";
+    private static final String TOPIC_CATEGORIES = "/topic/categories";
+    private static final String TOPIC_COMBOS = "/topic/combos";
+    private static final String TOPIC_VOUCHERS = "/topic/vouchers";
+    private static final String TOPIC_USERS = "/topic/users";
+
+    private static final String EVENT_UPDATED = "UPDATED";
 
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public void notifyOrderChange() {
-        // Thông báo cho lễ tân / quản lý bàn
-        eventPublisher.publishEvent(new WebSocketEvent("/topic/tables", "UPDATED",
-                "[WS] Order -> Sent UPDATED signal"));
-
-        // Thông báo cho nhà bếp
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/kitchen",
-                "UPDATED",
-                "[WS] Order -> Sent UPDATED signal"));
+        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Order change for tables");
+        publishInternalEvent(TOPIC_KITCHEN, EVENT_UPDATED, "Order change for kitchen");
     }
 
     @Override
     public void notifyMenuChange(String type, Object id) {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/menu",
-                "UPDATED",
-                "[WS] Menu (" + type + " ID: " + id + ")"));
+        publishInternalEvent(TOPIC_MENU, Map.of("type", type, "id", id), "Menu changed");
     }
 
     @Override
     public void notifyTableChange() {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/tables",
-                "UPDATED",
-                "[WS] Table -> Sent UPDATED signal"));
+        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Tables status updated");
     }
 
     @Override
     public void notifyCategoryChange(String event, Object id) {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/categories",
-                "UPDATED",
-                "[WS] Category -> Sent UPDATED signal"));
+        publishInternalEvent(TOPIC_CATEGORIES, Map.of("event", event, "id", id), "Categories changed");
     }
 
     @Override
     public void notifyComboChange(String event, Object id) {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/combos",
-                "UPDATED",
-                "[WS] Combo -> Sent UPDATED signal"));
+        publishInternalEvent(TOPIC_COMBOS, Map.of("event", event, "id", id), "Combos changed");
     }
 
     @Override
     public void notifyPaymentSuccess(Long orderId, Long transactionId) {
-        eventPublisher.publishEvent(new WebSocketEvent(
-                "/topic/tables",
-                "PAYMENT_SUCCESS",
-                String.format("{\"orderId\": %d, \"transactionId\": %d}", orderId, transactionId)
-        ));
+        Map<String, Object> payload = Map.of(
+            "event", "PAYMENT_SUCCESS",
+            "orderId", orderId,
+            "transactionId", transactionId
+        );
+        publishInternalEvent(TOPIC_TABLES, payload, "Payment success");
+    }
+
+    @Override
+    public void notifyVoucherChange() {
+        publishInternalEvent(TOPIC_VOUCHERS, EVENT_UPDATED, "Vouchers updated");
+    }
+
+    @Override
+    public void notifyUserChange() {
+        publishInternalEvent(TOPIC_USERS, EVENT_UPDATED, "User list updated");
+    }
+
+    private void publishInternalEvent(String topic, Object payload, String logMsg) {
+        log.debug("[Internal Event] Preparing WS notify for {}: {}", topic, logMsg);
+        eventPublisher.publishEvent(new WebSocketEvent(topic, payload, logMsg));
     }
 }

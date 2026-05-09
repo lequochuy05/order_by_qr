@@ -1,62 +1,73 @@
-// src/main/java/com/sacmauquan/qrordering/controller/StatsController.java
 package com.sacmauquan.qrordering.controller;
 
-import java.time.*;
-import java.util.List;
-
+import com.sacmauquan.qrordering.dto.ApiResponse;
+import com.sacmauquan.qrordering.dto.StatsResponse;
+import com.sacmauquan.qrordering.service.StatsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
-import com.sacmauquan.qrordering.dto.*;
-import com.sacmauquan.qrordering.service.StatsService;
+import java.time.LocalDate;
+import java.util.List;
 
-import lombok.RequiredArgsConstructor;
-
+/**
+ * StatsController - Cung cấp dữ liệu báo cáo và thống kê Dashboard.
+ */
 @RestController
 @RequestMapping("/api/stats")
 @RequiredArgsConstructor
 public class StatsController {
+
   private final StatsService statsService;
 
-  private Instant startOfDay(LocalDate d){
-    return d.atStartOfDay(ZoneId.systemDefault()).toInstant();
-  }
-  private Instant endOfDay(LocalDate d){
-    return d.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
-  }
-
+  /**
+   * Lấy báo cáo doanh thu theo khoảng thời gian.
+   */
   @GetMapping("/revenue")
-  public List<RevenueDto> revenue(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return statsService.revenue(startOfDay(from), endOfDay(to));
+  public ApiResponse<List<StatsResponse.Revenue>> getRevenue(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getRevenue(from, to));
   }
 
+  /**
+   * Thống kê hiệu suất làm việc của nhân viên.
+   */
   @GetMapping("/employees")
-  public List<EmpPerfDto> employeePerf(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return statsService.empPerformance(startOfDay(from), endOfDay(to));
+  public ApiResponse<List<StatsResponse.EmpPerformance>> getEmployeePerformance(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getEmployeePerformance(from, to));
   }
 
+  /**
+   * Lấy danh sách chi tiết các đơn hàng phục vụ báo cáo.
+   */
   @GetMapping("/orders")
-  public List<OrderDetailDto> orders(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return statsService.orderDetails(startOfDay(from), endOfDay(to));
+  public ApiResponse<List<StatsResponse.OrderDetail>> getOrderDetails(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getOrderDetails(from, to));
   }
 
+  /**
+   * Danh sách các món ăn bán chạy nhất.
+   */
   @GetMapping("/top-dishes")
-  public List<TopDishDto> topDishes(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return statsService.topDishes(startOfDay(from), endOfDay(to));
+  public ApiResponse<List<StatsResponse.TopDish>> getTopDishes(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getTopDishes(from, to));
   }
 
+  /**
+   * Biểu đồ xu hướng món ăn theo thời gian.
+   */
   @GetMapping("/dish-trend")
-  public List<DishTrendDto> dishTrend(
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-    return statsService.dishTrend(startOfDay(from), endOfDay(to));
+  public ApiResponse<List<StatsResponse.DishTrend>> getDishTrend(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getDishTrend(from, to));
   }
 }

@@ -11,6 +11,8 @@ import org.hibernate.annotations.SQLRestriction;
 import lombok.experimental.SuperBuilder;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 
 @Entity
 @Table(name = "order_item")
@@ -35,11 +37,13 @@ public class OrderItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnoreProperties({ "itemOptions", "comboItems" })
     private MenuItem menuItem;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnoreProperties({ "items" })
     private Combo combo;
 

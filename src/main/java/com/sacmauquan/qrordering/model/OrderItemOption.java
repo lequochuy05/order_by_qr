@@ -9,6 +9,8 @@ import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -29,6 +31,7 @@ public class OrderItemOption extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_item_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnore
     private OrderItem orderItem;
 
@@ -42,10 +45,11 @@ public class OrderItemOption extends BaseEntity {
 
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
-    private BigDecimal extraPrice; 
+    private BigDecimal extraPrice;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_option_value_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnore
     private ItemOptionValue itemOptionValue;
 }

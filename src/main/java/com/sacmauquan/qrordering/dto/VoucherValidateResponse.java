@@ -1,12 +1,15 @@
 package com.sacmauquan.qrordering.dto;
 
-import lombok.*;
+import java.math.BigDecimal;
 
-@Getter @Setter @AllArgsConstructor
-public class VoucherValidateResponse {
-    private String code;
-    private String status;          // ACTIVE | INACTIVE | EXPIRED | EXHAUSTED | NOT_FOUND
-    private Double discountAmount;  // số tiền giảm quy đổi theo total (nếu là % thì tính ra tiền)
-    private Double discountPercent; // nếu là %
-    private boolean applicable;  
-}
+/**
+ * VoucherValidateResponse - Dữ liệu trả về khi khách hàng kiểm tra mã giảm giá.
+ * Sử dụng Record để đảm bảo tính bất biến.
+ */
+public record VoucherValidateResponse(
+    String code,
+    String status,          // ACTIVE | INACTIVE | EXPIRED | EXHAUSTED | NOT_FOUND
+    BigDecimal discountValue, // Số tiền được giảm thực tế
+    Double discountPercent,   // Phần trăm giảm (nếu có)
+    boolean applicable
+) {}

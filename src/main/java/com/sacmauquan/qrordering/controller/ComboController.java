@@ -1,55 +1,79 @@
 package com.sacmauquan.qrordering.controller;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.ComboRequest;
 import com.sacmauquan.qrordering.model.Combo;
 import com.sacmauquan.qrordering.service.ComboService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
-import java.util.*;
+import java.util.List;
 
+/**
+ * ComboController - Quản lý các gói combo món ăn.
+ */
 @RestController
 @RequestMapping("/api/combos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ComboController {
 
     private final ComboService comboService;
 
+    /**
+     * Lấy toàn bộ danh sách combo (Admin)
+     */
     @GetMapping
-    public List<Combo> getAll() {
-        return comboService.getAll();
+    public ApiResponse<List<Combo>> getAll() {
+        return ApiResponse.success(comboService.getAll());
     }
 
+    /**
+     * Lấy danh sách combo đang kinh doanh (Sử dụng Cache)
+     */
     @GetMapping("/active")
-    public ResponseEntity<List<Combo>> getAllActiveCombos() {
-        return ResponseEntity.ok(comboService.getAllActive());
+    public ApiResponse<List<Combo>> getAllActiveCombos() {
+        return ApiResponse.success(comboService.getAllActive());
     }
 
+    /**
+     * Lấy chi tiết combo theo ID
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(comboService.getById(id));
+    public ApiResponse<Combo> getById(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(comboService.getById(id));
     }
 
+    /**
+     * Tạo mới combo kèm danh sách món
+     */
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody ComboRequest req) {
-        Combo combo = comboService.create(req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(combo);
+    public ApiResponse<Combo> create(@Valid @RequestBody @NonNull ComboRequest req) {
+        return ApiResponse.success("Tạo combo thành công", comboService.create(req));
     }
 
+    /**
+     * Cập nhật thông tin combo
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ComboRequest req) {
-        return ResponseEntity.ok(comboService.update(id, req));
+    public ApiResponse<Combo> update(@PathVariable @NonNull Long id, @Valid @RequestBody @NonNull ComboRequest req) {
+        return ApiResponse.success("Cập nhật combo thành công", comboService.update(id, req));
     }
 
+    /**
+     * Xóa combo
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
         comboService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success("Xóa combo thành công", null);
     }
 
+    /**
+     * Bật/Tắt trạng thái kinh doanh của combo
+     */
     @PatchMapping("/{id}/toggle-active")
-    public ResponseEntity<?> toggleActive(@PathVariable Long id) {
-        return ResponseEntity.ok(comboService.toggleActive(id));
+    public ApiResponse<Combo> toggleActive(@PathVariable @NonNull Long id) {
+        return ApiResponse.success("Cập nhật trạng thái thành công", comboService.toggleActive(id));
     }
 }

@@ -14,8 +14,6 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
   // Kiểm tra trùng tên khi cập nhật
   boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
 
-  List<Category> findByActiveTrue();
-
   @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.menuItems m " +
       "WHERE c.active = true AND (m.active = true OR m.active IS NULL)")
   List<Category> findAllActiveWithItems();

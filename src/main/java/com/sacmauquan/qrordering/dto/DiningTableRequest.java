@@ -1,13 +1,19 @@
 package com.sacmauquan.qrordering.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import jakarta.validation.constraints.NotBlank;
 
-@Getter
-@Setter
+import com.sacmauquan.qrordering.model.DiningTable;
+
+import jakarta.validation.constraints.Min;
+
+@Data
 public class DiningTableRequest {
-    private String qrCodeUrl;
+    @NotBlank(message = "Số bàn không được để trống")
     private String tableNumber;
-    private String status;
+
+    private DiningTable.TableStatus status; // Mặc định là AVAILABLE
+
+    @Min(value = 1, message = "Sức chứa phải ít nhất là 1 người")
     private int capacity;
 }

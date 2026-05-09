@@ -1,14 +1,18 @@
 package com.sacmauquan.qrordering.dto;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
-public class DiningTableResponse {
-     private Long id;
-   
-    private String qrCodeUrl;
-     private String tableNumber;
-    private String status;
-    private int capacity;
-}
+import java.time.LocalDateTime;
+
+/**
+ * DiningTableResponse - Dữ liệu trả về cho danh sách bàn ăn.
+ * Sử dụng Record để đảm bảo tính bất biến (Immutable).
+ */
+public record DiningTableResponse(
+    Long id,
+    String tableNumber,
+    String tableCode,
+    String status,
+    int capacity,
+    String qrCodeUrl,
+    LocalDateTime createdAt,
+    LocalDateTime updatedAt
+) {}

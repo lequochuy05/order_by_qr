@@ -1,6 +1,7 @@
 package com.sacmauquan.qrordering.repository;
 
-import java.util.List;
+import java.util.*;
+
 import org.springframework.data.domain.*;
 
 import com.sacmauquan.qrordering.model.Combo;
@@ -15,16 +16,14 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     // Kiểm tra trùng tên khi cập nhật
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    // Load Menu khách hàng
-    @EntityGraph(attributePaths = { "items.menuItem.category" })
-    List<Combo> findByActiveTrue();
-
-    // Tìm kiếm phân trang
-    @EntityGraph(attributePaths = { "items.menuItem.category" })
-    Page<Combo> findByNameContainingIgnoreCase(String name, Pageable pageable);
-
     @Override
     @EntityGraph(attributePaths = { "items.menuItem.category" })
     @NonNull
     List<Combo> findAll();
+
+    // Load Menu khách hàng
+    @Query("SELECT DISTINCT c FROM Combo c LEFT JOIN FETCH c.items ci " +
+            "WHERE c.active = true AND (ci.active = true OR ci.active IS NULL)")
+    List<Combo> findAllActiveWithItems();
+
 }

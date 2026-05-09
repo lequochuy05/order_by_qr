@@ -12,10 +12,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
 
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "payment_transactions")
@@ -34,6 +37,7 @@ public class PaymentTransaction extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
+    @NotFound(action = NotFoundAction.IGNORE)
     @JsonIgnoreProperties("payments")
     private Order order;
 

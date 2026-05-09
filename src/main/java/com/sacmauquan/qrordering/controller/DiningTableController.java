@@ -1,86 +1,74 @@
 package com.sacmauquan.qrordering.controller;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.DiningTableRequest;
 import com.sacmauquan.qrordering.dto.DiningTableResponse;
-import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.service.DiningTableService;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import lombok.RequiredArgsConstructor;
-
+/**
+ * DiningTableController - Quản lý bàn ăn và QR Code.
+ */
 @RestController
 @RequestMapping("/api/tables")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class DiningTableController {
 
     private final DiningTableService tableService;
 
+    /**
+     * Lấy danh sách bàn 
+     */
     @GetMapping
-    public ResponseEntity<List<DiningTableResponse>> getAllTables() {
-        List<DiningTableResponse> responses = tableService.getAllTablesSorted()
-                .stream().map(this::convertToResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+    public ApiResponse<List<DiningTableResponse>> getAllTables() {
+        return ApiResponse.success(tableService.getAllTablesSorted());
     }
 
+    /**
+     * Lấy thông tin chi tiết bàn theo ID
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<DiningTableResponse> getTableById(@PathVariable Long id) {
-        return tableService.getTableById(id)
-                .map(this::convertToResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<DiningTableResponse> getTableById(@PathVariable @NonNull Long id) {
+        // Sử dụng service để lấy dữ liệu đã map sẵn sang Response
+        return ApiResponse.success(tableService.getByIdResponse(id));
     }
 
-    //  Truy vấn bàn theo mã QR (dành cho khách khi quét mã)
+    /**
+     * Khách quét mã QR: Truy vấn thông tin bàn từ tableCode
+     */
     @GetMapping("/code/{tableCode}")
-    public ResponseEntity<DiningTableResponse> getTableByCode(@PathVariable String tableCode) {
-        return tableService.getTableByCode(tableCode)
-                .map(this::convertToResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<DiningTableResponse> getTableByCode(@PathVariable @NonNull String tableCode) {
+        return ApiResponse.success(tableService.getByTableCode(tableCode));
     }
 
+    /**
+     * Tạo bàn mới: Tự động tạo mã QR và lưu trữ Cloudinary trong Service
+     */
     @PostMapping
-    public ResponseEntity<?> createTable(@RequestBody DiningTableRequest request) {
-        DiningTable table = convertToEntity(request);
-        DiningTable saved = tableService.createTable(table);
-        return ResponseEntity.ok(convertToResponse(saved));
+    public ApiResponse<DiningTableResponse> createTable(@Valid @RequestBody @NonNull DiningTableRequest request) {
+        return ApiResponse.success("Tạo bàn mới thành công", tableService.create(request));
     }
 
+    /**
+     * Cập nhật trạng thái hoặc thông tin bàn
+     */
     @PatchMapping("/{id}")
-    public ResponseEntity<?> updateTable(@PathVariable Long id, @RequestBody DiningTableRequest request) {
-        DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
-        return ResponseEntity.ok(convertToResponse(updated));
+    public ApiResponse<DiningTableResponse> updateTable(@PathVariable @NonNull Long id,
+            @Valid @RequestBody @NonNull DiningTableRequest request) {
+        return ApiResponse.success("Cập nhật bàn thành công", tableService.update(id, request));
     }
 
+    /**
+     * Xóa bàn và dọn dẹp ảnh QR liên quan
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTable(@PathVariable Long id) {
-        tableService.deleteTable(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    // ===== Helper methods =====
-    private DiningTable convertToEntity(DiningTableRequest request) {
-        DiningTable table = new DiningTable();
-        table.setQrCodeUrl(request.getQrCodeUrl());
-        table.setTableNumber(request.getTableNumber());
-        table.setStatus(request.getStatus());
-        table.setCapacity(request.getCapacity());
-        return table;
-    }
-
-    private DiningTableResponse convertToResponse(DiningTable table) {
-        DiningTableResponse res = new DiningTableResponse();
-        res.setId(table.getId());
-        res.setQrCodeUrl(table.getQrCodeUrl());
-        res.setTableNumber(table.getTableNumber());
-        res.setStatus(table.getStatus());
-        res.setCapacity(table.getCapacity());
-        return res;
+    public ApiResponse<Void> deleteTable(@PathVariable @NonNull Long id) {
+        tableService.delete(id);
+        return ApiResponse.success("Xóa bàn thành công", null);
     }
 }

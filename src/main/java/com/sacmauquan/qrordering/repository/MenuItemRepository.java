@@ -33,4 +33,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     @EntityGraph(attributePaths = { "category", "itemOptions", "itemOptions.optionValues" })
     @NonNull
     Optional<MenuItem> findById(@NonNull Long id);
+
+    @EntityGraph(attributePaths = { "category", "itemOptions", "itemOptions.optionValues" })
+    List<MenuItem> findAllByActiveTrue();
 }

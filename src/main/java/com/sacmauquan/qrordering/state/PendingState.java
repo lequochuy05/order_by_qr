@@ -8,11 +8,11 @@ public class PendingState implements OrderState {
 
     @Override
     public void handleRequest(Order order) {
-        order.setStatus(getStatusString());
+        order.setStatus(getStatus());
     }
 
     @Override
-    public String getStatusString() {
-        return "PENDING";
+    public Order.OrderStatus getStatus() {
+        return Order.OrderStatus.PENDING;
     }
 }
