@@ -12,8 +12,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
 
 @Entity
 @Table(name = "orders")
@@ -71,14 +69,12 @@ public class Order extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paid_by")
-    @NotFound(action = NotFoundAction.IGNORE)
     private User paidBy;
 
     private LocalDateTime paymentTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
-    @NotFound(action = NotFoundAction.IGNORE)
     private DiningTable table;
 
     @Builder.Default

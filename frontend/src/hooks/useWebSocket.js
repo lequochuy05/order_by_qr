@@ -13,6 +13,7 @@ export const useWebSocket = (topic, onMessage) => {
         wsService.connect();
 
         const doSubscribe = () => {
+            if (!topic) return; // Không subscribe nếu không có topic
             if (subscriptionRef.current) {
                 subscriptionRef.current.unsubscribe();
             }

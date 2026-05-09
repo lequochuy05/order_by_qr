@@ -70,8 +70,8 @@ const TableManager = () => {
 
     // === 2. Realtime Updates ===
     useWebSocket('/topic/tables', (message) => {
-        const signal = typeof message === 'string' ? message : message.body;
-        if (signal === 'UPDATED') {
+        // message đã được JSON.parse bởi wsService.
+        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             // console.log("[Realtime] Data changed -> Reloading...");
             fetchTables();
         }

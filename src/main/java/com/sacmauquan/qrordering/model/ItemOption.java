@@ -13,8 +13,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -50,7 +48,8 @@ public class ItemOption extends BaseEntity {
     @NotNull(message = "Món ăn không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
-    @NotFound(action = NotFoundAction.IGNORE)
+
+    @JsonIgnoreProperties("itemOptions")
     private MenuItem menuItem;
 
     @Builder.Default

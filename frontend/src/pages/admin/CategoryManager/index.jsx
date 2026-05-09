@@ -45,8 +45,10 @@ const CategoryManager = () => {
 
     // === WebSocket ===
     useWebSocket('/topic/categories', (message) => {
-        const signal = typeof message === 'string' ? message : message.body;
-        if (signal === 'UPDATED') fetchCategories();
+        // message đã được JSON.parse bởi wsService. Nếu là object thì vẫn coi là có cập nhật.
+        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+            fetchCategories();
+        }
     });
 
     useEffect(() => { fetchCategories(true); }, [fetchCategories]);

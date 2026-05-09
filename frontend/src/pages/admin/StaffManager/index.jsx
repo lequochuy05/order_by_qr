@@ -40,7 +40,8 @@ const StaffManager = () => {
 
   // WebSocket Realtime 
   useWebSocket('/topic/users', (message) => {
-    if (message === 'UPDATED' || message.body === 'UPDATED') {
+    // message đã được JSON.parse bởi wsService.
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       fetchStaffs();
     }
   });

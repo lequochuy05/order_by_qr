@@ -39,8 +39,10 @@ const VoucherManager = () => {
   }, []);
 
   useWebSocket('/topic/vouchers', (message) => {
-    const signal = typeof message === 'string' ? message : message.body;
-    if (signal === 'UPDATED') fetchData();
+    // message đã được JSON.parse bởi wsService.
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      fetchData();
+    }
   });
 
   useEffect(() => { fetchData(true); }, [fetchData]);

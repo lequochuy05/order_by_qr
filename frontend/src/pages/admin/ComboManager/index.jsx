@@ -44,8 +44,10 @@ const ComboManager = () => {
     // === WebSocket ===
     // Backend bắn "UPDATED" -> Frontend tải lại
     useWebSocket('/topic/combos', (message) => {
-        const signal = typeof message === 'string' ? message : message.body;
-        if (signal === 'UPDATED') fetchData();
+        // message đã được JSON.parse bởi wsService. Nếu là object thì vẫn coi là có cập nhật.
+        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+            fetchData();
+        }
     });
 
     useEffect(() => { fetchData(true); }, [fetchData]);

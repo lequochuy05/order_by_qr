@@ -6,8 +6,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.annotations.NotFoundAction;
-import org.hibernate.annotations.NotFound;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -36,7 +35,7 @@ public class ComboItem extends BaseEntity {
     @NotNull(message = "Món ăn không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id", nullable = false)
-    @NotFound(action = NotFoundAction.IGNORE)
+
     @JsonIgnoreProperties({ "category", "comboItems" })
     private MenuItem menuItem;
 

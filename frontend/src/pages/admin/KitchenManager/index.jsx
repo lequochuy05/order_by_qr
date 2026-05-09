@@ -31,8 +31,8 @@ const KitchenManager = () => {
 
     // Lắng nghe WebSocket từ topic nhà bếp
     useWebSocket('/topic/kitchen', (message) => {
-        const signal = typeof message === 'string' ? message : message.body;
-        if (signal === 'UPDATED') {
+        // message đã được JSON.parse bởi wsService.
+        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             fetchKitchenOrders();
         }
     });

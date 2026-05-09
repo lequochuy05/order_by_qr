@@ -54,14 +54,14 @@ const MenuPage = () => {
         tableCode ? menuService.getTableByCode(tableCode) : Promise.resolve(null)
       ]);
 
-      setCategories([...(categoriesRes.data || [])]);
-      setMenuItems([...(menuRes.data || [])]);
+      setCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
+      setMenuItems(Array.isArray(menuRes) ? menuRes : []);
 
       // Chỉ hiện Combo đang Active
-      const activeCombos = (combosRes.data || []).filter(c => c.active !== false);
-      setCombos([...activeCombos]);
+      const activeCombos = (Array.isArray(combosRes) ? combosRes : []).filter(c => c.active !== false);
+      setCombos(activeCombos);
 
-      setTableInfo(tableRes?.data);
+      setTableInfo(tableRes);
       // console.log(" Menu khách hàng đã được làm mới");
     } catch (error) {
       console.error('Lỗi tải dữ liệu API:', error);
@@ -73,9 +73,9 @@ const MenuPage = () => {
   const loadRecommendations = useCallback(async () => {
     try {
       menuService.getPersonalizedRecommendations(timeContext, weather)
-        .then(res => setRecommendations(res.data))
+        .then(res => setRecommendations(Array.isArray(res) ? res : []))
         .catch(() => {
-          menuService.getPopularItems().then(res => setRecommendations(res.data));
+          menuService.getPopularItems().then(res => setRecommendations(Array.isArray(res) ? res : []));
         });
     } catch (e) {
       // suppress
@@ -88,10 +88,9 @@ const MenuPage = () => {
   }, [loadData, loadRecommendations]);
 
   const handleRealtimeUpdate = useCallback((message) => {
-    // Kiểm tra kỹ định dạng tin nhắn để tránh reload nhầm
-    const signal = typeof message === 'string' ? message : message?.body;
-
-    if (signal === 'UPDATED') {
+    // message đã được JSON.parse bởi wsService.
+    // Nếu là chuỗi 'UPDATED' hoặc là một object (thông báo thay đổi cụ thể), ta tiến hành tải lại data.
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       loadData(false);
       loadRecommendations();
     }
@@ -135,7 +134,7 @@ const MenuPage = () => {
         // Gợi ý món đi kèm (Cross-sell)
         if (!isCombo && qty === 1) {
           menuService.getCrossSellRecommendations(product.id)
-            .then(res => setCrossSellItems(res.data))
+            .then(res => setCrossSellItems(Array.isArray(res) ? res : []))
             .catch(() => { });
         }
       }

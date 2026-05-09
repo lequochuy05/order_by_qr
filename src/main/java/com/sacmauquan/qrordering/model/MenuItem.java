@@ -1,6 +1,7 @@
 package com.sacmauquan.qrordering.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -12,8 +13,7 @@ import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
+
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import jakarta.validation.constraints.Min;
@@ -42,7 +42,8 @@ public class MenuItem extends BaseEntity {
 
     @NotBlank(message = "Ảnh món ăn không được để trống")
     @Column(length = 150)
-    private String img;
+    @Builder.Default
+    private String img = "default_menu_item.png";
 
     @NotNull(message = "Giá món ăn không được để trống")
     @Column(nullable = false)
@@ -56,7 +57,7 @@ public class MenuItem extends BaseEntity {
     @NotNull(message = "Danh mục không được để trống")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cate_id", nullable = false)
-    @NotFound(action = NotFoundAction.IGNORE)
+
     @JsonIgnoreProperties("menuItems")
     private Category category;
 
@@ -66,7 +67,7 @@ public class MenuItem extends BaseEntity {
     private Set<ItemOption> itemOptions = new LinkedHashSet<>();
 
     @Builder.Default
-    @JsonIgnoreProperties("menuItem")
+    @JsonIgnore
     @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<ComboItem> comboItems = new LinkedHashSet<>();
 

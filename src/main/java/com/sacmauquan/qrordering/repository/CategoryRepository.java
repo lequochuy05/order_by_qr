@@ -15,6 +15,8 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
   boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
 
   @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.menuItems m " +
+      "LEFT JOIN FETCH m.itemOptions io " +
+      "LEFT JOIN FETCH io.optionValues " +
       "WHERE c.active = true AND (m.active = true OR m.active IS NULL)")
   List<Category> findAllActiveWithItems();
 

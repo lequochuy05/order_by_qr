@@ -53,8 +53,10 @@ const MenuManager = () => {
 
   // WebSocket
   useWebSocket('/topic/menu', (message) => {
-    const signal = typeof message === 'string' ? message : message.body;
-    if (signal === 'UPDATED') fetchItems();
+    // message đã được JSON.parse bởi wsService.
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      fetchItems();
+    }
   });
 
   useEffect(() => { fetchItems(true); }, [fetchItems]);

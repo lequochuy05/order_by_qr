@@ -34,7 +34,8 @@ public class Category extends BaseEntity implements Serializable {
 
     @NotBlank(message = "Ảnh danh mục không được để trống")
     @Column(length = 150, nullable = false)
-    private String img;
+    @Builder.Default
+    private String img = "default_category.png";
 
     @Builder.Default
     private Boolean active = true;
