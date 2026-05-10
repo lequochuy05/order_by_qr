@@ -10,10 +10,8 @@ import java.util.List;
 @Repository
 public interface ItemOptionValueRepository extends JpaRepository<ItemOptionValue, Long> {
 
-    // Lấy danh sách các giá trị thuộc về một Option nào đó
     List<ItemOptionValue> findByItemOptionId(Long optionId);
 
-    // Xóa mềm toàn bộ các giá trị khi Option cha bị xóa
     @Modifying
     @Transactional
     @Query("UPDATE ItemOptionValue iov SET iov.isDeleted = true WHERE iov.itemOption.id = :optionId")

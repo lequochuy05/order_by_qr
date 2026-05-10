@@ -10,23 +10,27 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.server.handler.NoResourceFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * GlobalExceptionHandler - Centralized management of system exceptions.
+ * Provides consistent error responses across the entire API.
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Handle validation errors (@Valid)
+     * Handles validation errors triggered by @Valid annotations on DTOs.
+     * 
+     * @param ex MethodArgumentNotValidException containing validation results
+     * @return ApiResponse containing field-specific error messages
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ApiResponse<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
@@ -34,11 +38,15 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         log.warn("Validation error: {}", errors);
-        return ApiResponse.error("Invalid input data", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid input data", errors));
     }
 
     /**
-     * Handle ResponseStatusException (Errors thrown from Service layer)
+     * Handles ResponseStatusException typically thrown from the service layer for business logic errors.
+     * 
+     * @param ex ResponseStatusException containing the status code and reason
+     * @return ResponseEntity with the specific error message and status
      */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
@@ -48,35 +56,51 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handle resource not found errors
+     * Handles 404 errors when a requested URL or static resource is not found.
+     * 
+     * @param ex NoResourceFoundException
+     * @return ResponseEntity with 404 Not Found status
      */
     @ExceptionHandler(NoResourceFoundException.class)
-    public ApiResponse<Object> handleNoResourceFound(NoResourceFoundException ex) {
-        return ApiResponse.error("Requested resource not found", null);
+    public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Requested resource not found", null));
     }
 
     /**
-     * Handle access denied errors
+     * Handles authorization errors when a user lacks the required role or permission.
+     * 
+     * @param ex AccessDeniedException
+     * @return ResponseEntity with 403 Forbidden status
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ApiResponse<Object> handleAccessDenied(AccessDeniedException ex) {
-        return ApiResponse.error("You do not have permission to perform this action", null);
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("You do not have permission to perform this action", null));
     }
 
     /**
-     * Handle business logic errors or invalid states
+     * Handles IllegalStateException for invalid business logic transitions or states.
+     * 
+     * @param ex IllegalStateException
+     * @return ResponseEntity with 400 Bad Request status
      */
     @ExceptionHandler(IllegalStateException.class)
-    public ApiResponse<Object> handleIllegalState(IllegalStateException ex) {
-        return ApiResponse.error(ex.getMessage(), null);
+    public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), null));
     }
 
     /**
-     * Handle unknown system errors
+     * Catch-all handler for any unhandled exceptions to prevent leaking internal details.
+     * 
+     * @param ex The unhandled exception
+     * @return ResponseEntity with 500 Internal Server Error status
      */
     @ExceptionHandler(Exception.class)
-    public ApiResponse<Object> handleGlobalException(Exception ex) {
+    public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex) {
         log.error("System error: ", ex);
-        return ApiResponse.error("Internal server error. Please try again later.", null);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Internal server error. Please try again later.", null));
     }
 }

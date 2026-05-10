@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * StatsController - Cung cấp dữ liệu báo cáo và thống kê Dashboard.
+ * StatsController - Provides reporting and statistical data for the administrative dashboard.
  */
 @RestController
 @RequestMapping("/api/stats")
@@ -22,7 +22,11 @@ public class StatsController {
   private final StatsService statsService;
 
   /**
-   * Lấy báo cáo doanh thu theo khoảng thời gian.
+   * Retrieves revenue reports within a specific date range.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return List of Revenue statistical objects
    */
   @GetMapping("/revenue")
   public ApiResponse<List<StatsResponse.Revenue>> getRevenue(
@@ -32,7 +36,11 @@ public class StatsController {
   }
 
   /**
-   * Thống kê hiệu suất làm việc của nhân viên.
+   * Retrieves employee performance statistics.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return List of employee performance objects
    */
   @GetMapping("/employees")
   public ApiResponse<List<StatsResponse.EmpPerformance>> getEmployeePerformance(
@@ -42,7 +50,11 @@ public class StatsController {
   }
 
   /**
-   * Lấy danh sách chi tiết các đơn hàng phục vụ báo cáo.
+   * Retrieves detailed order list for reporting purposes.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return List of detailed order objects
    */
   @GetMapping("/orders")
   public ApiResponse<List<StatsResponse.OrderDetail>> getOrderDetails(
@@ -52,7 +64,11 @@ public class StatsController {
   }
 
   /**
-   * Danh sách các món ăn bán chạy nhất.
+   * Retrieves the top-selling dishes in the given time range.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return List of TopDish objects
    */
   @GetMapping("/top-dishes")
   public ApiResponse<List<StatsResponse.TopDish>> getTopDishes(
@@ -62,7 +78,11 @@ public class StatsController {
   }
 
   /**
-   * Biểu đồ xu hướng món ăn theo thời gian.
+   * Retrieves dish trends and popularity evolution over time.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return List of DishTrend objects
    */
   @GetMapping("/dish-trend")
   public ApiResponse<List<StatsResponse.DishTrend>> getDishTrend(

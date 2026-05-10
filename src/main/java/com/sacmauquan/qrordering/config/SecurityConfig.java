@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -23,14 +22,22 @@ import com.sacmauquan.qrordering.security.JwtAuthFilter;
 
 import java.util.List;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
+/**
+ * Configure security settings for the application.
+ */
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
   private final JwtAuthFilter jwtAuthFilter;
 
+  /**
+   * Configures the security filter chain.
+   * 
+   * @param http HttpSecurity object
+   * @return SecurityFilterChain object
+   * @throws Exception if an error occurs
+   */
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
@@ -129,11 +136,23 @@ public class SecurityConfig {
     return http.build();
   }
 
+  /**
+   * Creates and configures an AuthenticationManager bean.
+   * 
+   * @param cfg AuthenticationConfiguration object
+   * @return AuthenticationManager object
+   * @throws Exception if an error occurs
+   */
   @Bean
   AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
     return cfg.getAuthenticationManager();
   }
 
+  /**
+   * Creates and configures a CorsConfigurationSource bean.
+   * 
+   * @return CorsConfigurationSource object
+   */
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     var c = new CorsConfiguration();

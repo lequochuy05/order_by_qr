@@ -31,7 +31,10 @@ import java.util.Optional;
 import java.math.BigDecimal;
 
 /**
- * PayosServiceImpl - Manages payment processing through PayOS gateway.
+ * PayosServiceImpl - Implementation of PayosService for handling PayOS gateway
+ * operations.
+ * Manages the full payment lifecycle including link generation, webhook
+ * verification, and state synchronization.
  */
 @Slf4j
 @Service
@@ -48,33 +51,36 @@ public class PayosServiceImpl implements PayosService {
     private String frontendUrl;
 
     /**
-     * Create Payment Link
+     * Creates a payment link via PayOS. Includes idempotency check to reuse
+     * existing pending links.
+     * 
+     * @param request Payment creation parameters
+     * @return Created payment details
      */
     @Override
     @Transactional
     public PayosCreateResponse createPaymentLink(@NonNull PayosCreateRequest request) {
         Order order = orderRepository.findById(Objects.requireNonNull(request.getOrderId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Không tìm thấy đơn hàng: " + request.getOrderId()));
+                        "Order not found: " + request.getOrderId()));
 
-        // --- IDEMPOTENCY CHECK ---
+        // IDEMPOTENCY CHECK
+        // Prevents generating multiple active PayOS links for the same order and amount
         Optional<PaymentTransaction> existing = transactionRepository
                 .findFirstByOrderIdAndStatusOrderByCreatedAtDesc(order.getId(),
                         PaymentTransaction.TransactionStatus.PENDING);
 
         if (existing.isPresent()) {
             PaymentTransaction oldTx = existing.get();
-            // Check if old transaction is still valid
             boolean isExpired = oldTx.getCreatedAt().plusMinutes(20).isBefore(LocalDateTime.now());
             if (!isExpired && oldTx.getAmount().compareTo(request.getAmount()) == 0 && oldTx.getQrCode() != null) {
                 log.info("[PayOS Idempotency] Reusing pending transaction {} for order {}", oldTx.getId(),
                         order.getId());
                 return convertToCreateResponse(oldTx);
             }
-            log.info("[PayOS Idempotency] Existing tx invalid (expired or amount mismatch). Creating new one.");
+            log.info("[PayOS Idempotency] Existing pending transaction is invalid or mismatched. Creating new one.");
         }
 
-        // Create transaction record
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .amount(request.getAmount())
@@ -84,15 +90,14 @@ public class PayosServiceImpl implements PayosService {
 
         transaction = transactionRepository.save(Objects.requireNonNull(transaction));
 
-        // Call PayOS SDK to create payment link
         try {
             String returnUrl = frontendUrl + "/admin/table-manager";
-            long expiredAt = (System.currentTimeMillis() / 1000) + (20 * 60); // 20 minutes
+            long expiredAt = (System.currentTimeMillis() / 1000) + (20 * 60); // Link valid for 20 minutes
 
             CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
-                    .orderCode(transaction.getId()) // Use transaction ID as order code
+                    .orderCode(transaction.getId()) // PayOS uses our Transaction ID as their Order Code
                     .amount(request.getAmount().longValue())
-                    .description("Thanh toan don #" + order.getId())
+                    .description("Payment for Order #" + order.getId())
                     .returnUrl(returnUrl)
                     .cancelUrl(returnUrl)
                     .expiredAt(expiredAt)
@@ -100,7 +105,6 @@ public class PayosServiceImpl implements PayosService {
 
             CreatePaymentLinkResponse response = payOS.paymentRequests().create(paymentData);
 
-            // Update QR information in Database
             transaction.setCheckoutUrl(response.getCheckoutUrl());
             transaction.setQrCode(response.getQrCode());
             transaction.setPayosReference(response.getPaymentLinkId());
@@ -109,16 +113,16 @@ public class PayosServiceImpl implements PayosService {
             return convertToCreateResponse(transaction);
 
         } catch (Exception e) {
-            log.error("Error creating PayOS link for order {}: {}", order.getId(), e.getMessage());
+            log.error("Failed to generate PayOS link for Order {}: {}", order.getId(), e.getMessage());
             transaction.setStatus(PaymentTransaction.TransactionStatus.FAILED);
             transactionRepository.save(transaction);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to connect to PayOS: " + e.getMessage());
+                    "PayOS Gateway error: " + e.getMessage());
         }
     }
 
     /**
-     * Cancel Payment Link
+     * Cancels a pending PayOS payment link.
      */
     @Override
     @Transactional
@@ -127,7 +131,7 @@ public class PayosServiceImpl implements PayosService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
         if (transaction.getStatus() != PaymentTransaction.TransactionStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending transactions can be cancelled.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PENDING transactions can be cancelled");
         }
 
         try {
@@ -137,16 +141,16 @@ public class PayosServiceImpl implements PayosService {
             transaction.setCancelReason(reason);
             transactionRepository.save(transaction);
 
-            log.info("Cancelled PayOS transaction ID: {}", transactionId);
+            log.info("PayOS payment link cancelled for Transaction ID: {}", transactionId);
         } catch (Exception e) {
-            log.error("Error cancelling PayOS transaction {}: {}", transactionId, e.getMessage());
+            log.error("Failed to cancel PayOS link {}: {}", transactionId, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error cancelling PayOS transaction: " + e.getMessage());
+                    "PayOS Cancellation error: " + e.getMessage());
         }
     }
 
     /**
-     * Sync Payment Status
+     * Actively synchronizes local transaction status with PayOS server.
      */
     @Override
     @Transactional
@@ -159,7 +163,7 @@ public class PayosServiceImpl implements PayosService {
                 PaymentLink data = payOS.paymentRequests().get(transaction.getId());
                 String remoteStatus = data.getStatus().toString();
 
-                log.info("[PayOS Sync] Tx: {}, PayOS Status: {}", transactionId, remoteStatus);
+                log.info("[PayOS Sync] Transaction: {}, Remote Status: {}", transactionId, remoteStatus);
 
                 if ("PAID".equalsIgnoreCase(remoteStatus)) {
                     handleSuccessfulPayment(transaction);
@@ -168,23 +172,23 @@ public class PayosServiceImpl implements PayosService {
                     transactionRepository.save(transaction);
                 }
             } catch (Exception e) {
-                log.error("Error syncing PayOS status {}: {}", transactionId, e.getMessage());
+                log.error("PayOS status sync failed for {}: {}", transactionId, e.getMessage());
             }
         }
         return transaction;
     }
 
     /**
-     * Process Webhook
+     * Validates and processes incoming webhook notifications from PayOS.
      */
     @Override
     @Transactional
     public void processWebhook(Webhook webhook) {
-        // Check if webhook is for testing
+        // Handle confirm URL test from PayOS dashboard
         if ("00".equals(webhook.getCode()) && webhook.getData() != null
                 && webhook.getData().getOrderCode() != null
                 && webhook.getData().getOrderCode() == 0) {
-            log.info("[PayOS Webhook] Received confirm webhook URL test.");
+            log.info("[PayOS Webhook] confirm_url validation received.");
             return;
         }
 
@@ -193,17 +197,18 @@ public class PayosServiceImpl implements PayosService {
             webhookData = payOS.webhooks().verify(webhook);
         } catch (Exception e) {
             log.error("[PayOS Webhook] Signature verification failed: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature verification failed");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid webhook signature");
         }
 
         long transactionId = webhookData.getOrderCode();
-        log.info("[PayOS Webhook] Verified! transactionId={}, amount={}", transactionId, webhookData.getAmount());
+        log.info("[PayOS Webhook] Verified transaction: {} | Amount: {}", transactionId, webhookData.getAmount());
 
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Transaction not found: " + transactionId));
+
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PAID) {
-            log.info("[PayOS Webhook] Transaction {} already PAID, skipping.", transactionId);
+            log.info("[PayOS Webhook] Transaction {} already marked as PAID.", transactionId);
             return;
         }
 
@@ -212,7 +217,7 @@ public class PayosServiceImpl implements PayosService {
     }
 
     /**
-     * Process tasks when payment is successful
+     * Core logic for finalizing an order once a successful payment is confirmed.
      */
     private void handleSuccessfulPayment(PaymentTransaction transaction) {
         transaction.setStatus(PaymentTransaction.TransactionStatus.PAID);
@@ -220,11 +225,12 @@ public class PayosServiceImpl implements PayosService {
 
         Order order = transaction.getOrder();
 
-        // Check if total paid amount equals total bill amount
+        // Calculate if the sum of all successful transactions covers the order total
         BigDecimal totalPaid = transactionRepository.sumPaidAmountByOrderId(order.getId());
         BigDecimal totalBill = order.getTotalAmount();
 
-        log.info("[Payment Progress] Order #{}: Paid {} / Total {}", order.getId(), totalPaid, totalBill);
+        log.info("[Payment Validation] Order #{}: Total Paid: {} | Total Bill: {}", order.getId(), totalPaid,
+                totalBill);
 
         if (totalPaid.compareTo(totalBill) >= 0) {
             if (order.getPaymentStatus() != Order.PaymentStatus.PAID) {
@@ -234,7 +240,7 @@ public class PayosServiceImpl implements PayosService {
                 order.setStatus(Order.OrderStatus.COMPLETED);
                 orderRepository.save(order);
 
-                // Free up table
+                // Transition table back to AVAILABLE
                 DiningTable table = order.getTable();
                 if (table != null) {
                     table.setStatus(DiningTable.TableStatus.AVAILABLE);
@@ -242,13 +248,13 @@ public class PayosServiceImpl implements PayosService {
                     notificationService.notifyTableChange();
                 }
 
-                log.info("Payment completed for order #{} via PayOS", order.getId());
+                log.info("Order #{} successfully completed via full PayOS payment", order.getId());
             }
         } else {
-            log.info("Partial payment for order #{} (Waiting for full payment)", order.getId());
+            log.info("Partial payment recorded for Order #{}. Awaiting remaining balance.", order.getId());
         }
 
-        // Always send WebSocket notification for each successful transaction
+        // Notify frontend in real-time
         notificationService.notifyPaymentSuccess(order.getId(), transaction.getId());
     }
 

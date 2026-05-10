@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * MenuItemController - Quản lý thực đơn món ăn.
+ * MenuItemController - Manages the food and beverage menu items.
  */
 @RestController
 @RequestMapping("/api/menu")
@@ -24,7 +24,9 @@ public class MenuItemController {
     private final MenuItemService menuItemService;
 
     /**
-     * Lấy toàn bộ thực đơn
+     * Retrieves the entire menu.
+     * 
+     * @return List of all MenuItemResponse objects
      */
     @GetMapping
     public ApiResponse<List<MenuItemResponse>> getAllMenuItems() {
@@ -32,7 +34,10 @@ public class MenuItemController {
     }
 
     /**
-     * Lấy danh sách món ăn theo từng danh mục cụ thể
+     * Retrieves menu items belonging to a specific category.
+     * 
+     * @param categoryId ID of the category
+     * @return List of MenuItemResponse objects in the category
      */
     @GetMapping("/category/{categoryId}")
     public ApiResponse<List<MenuItemResponse>> getItemsByCategory(@PathVariable @NonNull Integer categoryId) {
@@ -40,7 +45,11 @@ public class MenuItemController {
     }
 
     /**
-     * Lấy thông tin chi tiết một món ăn kèm theo các Options/Toppings
+     * Retrieves detailed information of a menu item, including its options and
+     * toppings.
+     * 
+     * @param id Menu item ID
+     * @return MenuItemResponse object
      */
     @GetMapping("/{id}")
     public ApiResponse<MenuItemResponse> getItemById(@PathVariable @NonNull Long id) {
@@ -48,37 +57,51 @@ public class MenuItemController {
     }
 
     /**
-     * Thêm món ăn mới vào thực đơn
+     * Adds a new menu item to the menu.
+     * 
+     * @param req Data for the new menu item
+     * @return Created MenuItemResponse object
      */
     @PostMapping
     public ApiResponse<MenuItemResponse> createItem(@Valid @RequestBody @NonNull MenuItemRequest req) {
-        return ApiResponse.success("Thêm món mới thành công", menuItemService.createItem(req));
+        return ApiResponse.success("Menu item added successfully", menuItemService.createItem(req));
     }
 
     /**
-     * Cập nhật thông tin món ăn và đồng bộ danh sách tùy chọn (Options)
+     * Updates an existing menu item and synchronizes its options/toppings.
+     * 
+     * @param id  ID of the menu item to update
+     * @param req Updated menu item data
+     * @return Updated MenuItemResponse object
      */
     @PutMapping("/{id}")
     public ApiResponse<MenuItemResponse> updateItem(@PathVariable @NonNull Long id,
             @Valid @RequestBody @NonNull MenuItemRequest req) {
-        return ApiResponse.success("Cập nhật món ăn thành công", menuItemService.updateItem(id, req));
+        return ApiResponse.success("Menu item updated successfully", menuItemService.updateItem(id, req));
     }
 
     /**
-     * Xóa món ăn khỏi thực đơn
+     * Deletes a menu item from the menu.
+     * 
+     * @param id ID of the menu item to delete
+     * @return Void success response
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteItem(@PathVariable @NonNull Long id) {
         menuItemService.deleteItem(id);
-        return ApiResponse.success("Xóa món ăn thành công", null);
+        return ApiResponse.success("Menu item deleted successfully", null);
     }
 
     /**
-     * Tải lên hoặc cập nhật ảnh đại diện cho món ăn
+     * Uploads or updates the image for a menu item.
+     * 
+     * @param id   Menu item ID
+     * @param file Image file to upload
+     * @return Map containing image upload results
      */
     @PostMapping("/{id}/image")
     public ApiResponse<Map<String, Object>> uploadImage(@PathVariable @NonNull Long id,
             @RequestParam("file") @NonNull MultipartFile file) {
-        return ApiResponse.success("Cập nhật ảnh thành công", menuItemService.uploadImage(id, file));
+        return ApiResponse.success("Image updated successfully", menuItemService.uploadImage(id, file));
     }
 }

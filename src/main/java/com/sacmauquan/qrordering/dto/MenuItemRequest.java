@@ -10,51 +10,78 @@ import java.math.BigDecimal;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * MenuItemRequest - Data transfer object for creating or updating a menu item.
+ */
 @Data
 public class MenuItemRequest {
-    @NotBlank(message = "Tên món ăn không được để trống")
+    /**
+     * Name of the dish or beverage.
+     */
+    @NotBlank(message = "Item name cannot be empty")
     private String name;
 
+    /**
+     * URL or identifier of the item's representative image.
+     */
     private String img;
 
-    @NotNull(message = "Giá món ăn không được để trống")
-    @Min(value = 0, message = "Giá món ăn không được âm")
+    /**
+     * Base price of the menu item.
+     */
+    @NotNull(message = "Price cannot be empty")
+    @Min(value = 0, message = "Price cannot be negative")
     private BigDecimal price;
 
-    @NotNull(message = "Danh mục không được để trống")
+    /**
+     * ID of the category this item belongs to.
+     */
+    @NotNull(message = "Category ID cannot be empty")
     private Integer categoryId;
 
+    /**
+     * Status to determine if the item is available for sale.
+     */
     private Boolean active;
 
+    /**
+     * List of customizable options (e.g., Size, Toppings).
+     */
     @Valid
     private List<ItemOptionRequest> itemOptions;
 
+    /**
+     * Request DTO for an item option.
+     */
     @Data
     public static class ItemOptionRequest {
         private Long id;
 
-        @NotBlank(message = "Tên lựa chọn không được để trống")
+        @NotBlank(message = "Option name cannot be empty")
         private String name;
 
         @JsonProperty("isRequired")
         private boolean isRequired;
 
-        @Min(value = 1, message = "Số lượng chọn tối đa phải ít nhất là 1")
+        @Min(value = 1, message = "Max selection must be at least 1")
         private int maxSelection;
 
         @Valid
         private List<ItemOptionValueRequest> optionValues;
     }
 
+    /**
+     * Request DTO for a specific value within an item option.
+     */
     @Data
     public static class ItemOptionValueRequest {
         private Long id;
 
-        @NotBlank(message = "Tên giá trị không được để trống")
+        @NotBlank(message = "Option value name cannot be empty")
         private String name;
 
-        @NotNull(message = "Giá thêm không được để trống")
-        @Min(value = 0, message = "Giá thêm không được âm")
+        @NotNull(message = "Extra price cannot be empty")
+        @Min(value = 0, message = "Extra price cannot be negative")
         private BigDecimal extraPrice;
     }
 }

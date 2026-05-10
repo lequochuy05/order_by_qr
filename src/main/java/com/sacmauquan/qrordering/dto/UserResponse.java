@@ -5,7 +5,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * UserResponse - DTO an toàn trả về thông tin người dùng cho Frontend
+ * UserResponse - Secure data transfer object for returning user profile information.
  */
 @Getter
 @Setter

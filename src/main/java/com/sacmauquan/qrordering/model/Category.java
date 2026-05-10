@@ -12,6 +12,9 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.Set;
 import java.util.LinkedHashSet;
 
+/**
+ * Category - Entity representing a grouping for menu items (e.g., Drinks, Appetizers).
+ */
 @Entity
 @Table(name = "category")
 @Getter
@@ -28,16 +31,28 @@ public class Category extends BaseEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @NotBlank(message = "Tên danh mục không được để trống")
+    /**
+     * Unique display name of the category.
+     */
+    @NotBlank(message = "Category name cannot be empty")
     @Column(nullable = false, unique = true, length = 50)
     private String name;
 
+    /**
+     * URL of the category's representative image or icon.
+     */
     @Column(length = 150)
     private String img;
 
+    /**
+     * Flag indicating if the category is currently active in the menu.
+     */
     @Builder.Default
     private Boolean active = true;
 
+    /**
+     * Collection of all menu items belonging to this category.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
     @JsonIgnoreProperties("category")

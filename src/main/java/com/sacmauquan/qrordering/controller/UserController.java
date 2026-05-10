@@ -9,9 +9,11 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
- * UserController - Quản lý nhân sự, xác thực và hồ sơ người dùng.
+ * UserController - Handles user authentication, profile management, and staff
+ * administration.
  */
 @RestController
 @RequestMapping("/api/users")
@@ -21,15 +23,22 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * Đăng nhập hệ thống và trả về JWT Token cùng thông tin cơ bản của người dùng.
+     * Authenticates a user and returns a JWT token along with basic user
+     * information.
+     * 
+     * @param req Authentication request containing email and password
+     * @return AuthResponse containing token and user details
      */
     @PostMapping("/login")
     public ApiResponse<AuthResponse> login(@Valid @RequestBody AuthRequest req) {
-        return ApiResponse.success("Đăng nhập thành công", userService.login(req));
+        return ApiResponse.success("Login successful",
+                userService.login(Objects.requireNonNull(req)));
     }
 
     /**
-     * Lấy danh sách toàn bộ nhân viên (Manager, Staff, Chef).
+     * Retrieves a list of all staff members (Managers, Staff, Chefs).
+     * 
+     * @return List of UserResponse objects
      */
     @GetMapping
     public ApiResponse<List<UserResponse>> list() {
@@ -37,7 +46,10 @@ public class UserController {
     }
 
     /**
-     * Lấy thông tin chi tiết của một người dùng theo ID.
+     * Retrieves detailed information of a specific user by ID.
+     * 
+     * @param id User ID
+     * @return UserResponse object
      */
     @GetMapping("/{id}")
     public ApiResponse<UserResponse> getOne(@PathVariable @NonNull Long id) {
@@ -45,53 +57,72 @@ public class UserController {
     }
 
     /**
-     * Tạo mới tài khoản nhân viên.
+     * Creates a new staff account.
+     * 
+     * @param req User data for creation
+     * @return Created UserResponse object
      */
     @PostMapping
     public ApiResponse<UserResponse> create(@Valid @RequestBody UserUpsertRequest req) {
-        return ApiResponse.success("Tạo tài khoản nhân viên thành công", userService.create(req));
+        return ApiResponse.success("Staff account created successfully",
+                userService.create(Objects.requireNonNull(req)));
     }
 
     /**
-     * Cập nhật thông tin cá nhân hoặc vai trò của nhân viên.
+     * Updates personal information or role of a staff member.
+     * 
+     * @param id  User ID to update
+     * @param req Updated user data
+     * @return Updated UserResponse object
      */
     @PatchMapping("/{id}")
     public ApiResponse<UserResponse> update(
             @PathVariable @NonNull Long id,
             @Valid @RequestBody UserUpsertRequest req) {
-        return ApiResponse.success("Cập nhật thông tin thành công", userService.update(id, req));
+        return ApiResponse.success("Profile updated successfully",
+                userService.update(id, Objects.requireNonNull(req)));
     }
 
     /**
-     * Đặt lại mật khẩu cho nhân viên. 
-     * Đảm bảo mật khẩu không được truyền qua URL QueryParams để bảo mật.
+     * Resets the password for a staff member.
+     * Password should be provided in the request body for security.
+     * 
+     * @param id   User ID to reset password
+     * @param body Request body containing the new password
+     * @return Void success response
      */
     @PatchMapping("/{id}/reset-password")
     public ApiResponse<Void> resetPassword(
             @PathVariable @NonNull Long id,
-            @RequestBody(required = false) AuthRequest body) {
-        String newPwd = (body == null || body.getPassword() == null) ? "" : body.getPassword();
-        userService.resetPassword(id, newPwd);
-        return ApiResponse.success("Đã đặt lại mật khẩu thành công", null);
+            @Valid @RequestBody @NonNull AuthRequest body) {
+        userService.resetPassword(id, Objects.requireNonNull(body.getPassword()));
+        return ApiResponse.success("Password reset successfully", null);
     }
 
     /**
-     * Xóa tài khoản nhân viên khỏi hệ thống (Sử dụng cơ chế Soft Delete).
+     * Deletes a staff account from the system using soft delete.
+     * 
+     * @param id User ID to delete
+     * @return Void success response
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
         userService.delete(id);
-        return ApiResponse.success("Đã xóa nhân viên khỏi hệ thống", null);
+        return ApiResponse.success("Staff member removed from system", null);
     }
 
     /**
-     * Cập nhật ảnh đại diện của nhân viên.
+     * Updates the avatar image of a staff member.
+     * 
+     * @param id   User ID
+     * @param file Image file to upload
+     * @return Updated UserResponse object
      */
     @PostMapping("/{id}/avatar")
     public ApiResponse<UserResponse> uploadAvatar(
             @PathVariable @NonNull Long id,
-            @RequestParam("file") MultipartFile file) {
-        UserResponse updated = userService.uploadAvatar(id, file);
-        return ApiResponse.success("Cập nhật ảnh đại diện thành công", updated);
+            @RequestParam("file") @NonNull MultipartFile file) {
+        UserResponse updated = userService.uploadAvatar(id, Objects.requireNonNull(file));
+        return ApiResponse.success("Avatar updated successfully", updated);
     }
 }

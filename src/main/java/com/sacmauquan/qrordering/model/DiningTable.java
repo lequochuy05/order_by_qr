@@ -10,6 +10,10 @@ import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * DiningTable - Entity representing a physical table in the restaurant.
+ * Linked to a unique QR code for customer ordering.
+ */
 @Entity
 @Table(name = "tables")
 @Getter
@@ -26,29 +30,50 @@ public class DiningTable extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Mã bàn không được để trống")
-    @Column(length = 5, nullable = false, unique = true)
+    /**
+     * Display label for the table (e.g., "A1", "05").
+     */
+    @NotBlank(message = "Table number cannot be empty")
+    @Column(length = 10, nullable = false, unique = true)
     private String tableNumber;
 
-    @NotBlank(message = "Mã QR không được để trống")
+    /**
+     * Unique identifier encoded in the table's QR code.
+     */
+    @NotBlank(message = "Table code cannot be empty")
     @Column(length = 50, nullable = false, unique = true)
     private String tableCode;
 
-    @NotBlank(message = "Link QR không được để trống")
+    /**
+     * URL of the QR code image stored on Cloudinary.
+     */
+    @NotBlank(message = "QR Code URL cannot be empty")
     @Column(length = 150, nullable = false, unique = true)
     private String qrCodeUrl;
 
+    /**
+     * Cloudinary's public ID for the QR code image.
+     */
     @Column(length = 50, nullable = false, unique = true)
     private String qrCodePublicId;
 
+    /**
+     * Current availability status of the table.
+     */
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private TableStatus status = TableStatus.AVAILABLE;
 
+    /**
+     * Maximum number of people the table can accommodate.
+     */
     @Column(nullable = false)
     @Min(1)
     private Integer capacity;
 
+    /**
+     * Enum for dining table lifecycle states.
+     */
     public enum TableStatus {
         AVAILABLE,
         OCCUPIED,

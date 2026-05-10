@@ -7,8 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * PasswordResetRequest - DTO cho luồng đặt lại mật khẩu.
- * Hỗ trợ cả Token (Email) và OTP (Phone).
+ * PasswordResetRequest - Data transfer object for the password reset flow.
+ * Supports verification via Token (Email) or OTP (Phone).
  */
 @Data
 @Builder
@@ -16,14 +16,24 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PasswordResetRequest {
     
-    // Dùng cho reset bằng Email
+    /**
+     * Verification token sent via email.
+     */
     private String token;
     
-    // Dùng cho reset bằng Phone
+    /**
+     * User's phone number for OTP-based reset.
+     */
     private String phone;
+
+    /**
+     * OTP code sent via SMS for phone-based reset.
+     */
     private String otp;
     
-    // Mật khẩu mới (Bắt buộc cho cả 2 luồng)
-    @NotBlank(message = "Mật khẩu mới không được để trống")
+    /**
+     * The new password to be set for the account.
+     */
+    @NotBlank(message = "New password cannot be empty")
     private String newPassword;
 }

@@ -9,60 +9,68 @@ import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.List;
 
-// StatsRepository - Cung cấp dữ liệu thống kê cho Dashboard.
+/**
+ * StatsRepository - Provides high-performance analytical and statistical data for the dashboard.
+ * Uses native SQL queries and projection interfaces for efficient reporting.
+ */
 public interface StatsRepository extends Repository<Order, Long> {
 
-  // Projection Interface
-
+  /**
+   * Projection interface for revenue statistics grouped by time buckets.
+   */
   interface RevenueStats {
     String getBucket();
-
     BigDecimal getRevenue();
-
     Long getOrders();
   }
 
+  /**
+   * Projection interface for evaluating employee performance.
+   */
   interface EmpPerformanceStats {
     Long getId();
-
     String getFullName();
-
     Long getOrders();
-
     BigDecimal getRevenue();
   }
 
+  /**
+   * Projection interface for detailed order summary in reports.
+   */
   interface OrderDetailStats {
     Long getId();
-
     Instant getPaymentTime();
-
     String getEmpName();
-
     BigDecimal getTotalAmount();
   }
 
+  /**
+   * Projection interface for identifying top-selling menu items.
+   */
   interface TopDishStats {
     Long getId();
-
     String getName();
-
     String getCategory();
-
     String getImg();
-
     Long getTotalQty();
-
     BigDecimal getTotalRevenue();
   }
 
+  /**
+   * Projection interface for tracking item sales trends over time.
+   */
   interface DishTrendStats {
     String getBucket();
-
     Long getTotalQty();
   }
 
-  // Doanh thu theo ngày
+  /**
+   * Calculates total revenue and order count grouped by day within a time range.
+   * 
+   * @param from Start timestamp
+   * @param to End timestamp
+   * @return List of daily revenue statistics
+   */
   @Query(value = """
       SELECT DATE(o.payment_time) AS bucket,
              SUM(o.total_amount)  AS revenue,
@@ -75,7 +83,13 @@ public interface StatsRepository extends Repository<Order, Long> {
       """, nativeQuery = true)
   List<RevenueStats> revenueByDay(@Param("from") Instant from, @Param("to") Instant to);
 
-  // Hiệu suất nhân viên
+  /**
+   * Aggregates completed orders and total revenue handled by each employee.
+   * 
+   * @param from Start timestamp
+   * @param to End timestamp
+   * @return List of employee performance metrics
+   */
   @Query(value = """
       SELECT u.id AS id, u.full_name AS fullName,
              COUNT(o.id) AS orders,
@@ -89,7 +103,13 @@ public interface StatsRepository extends Repository<Order, Long> {
       """, nativeQuery = true)
   List<EmpPerformanceStats> empPerformance(@Param("from") Instant from, @Param("to") Instant to);
 
-  // Chi tiết đơn hàng trong khoảng thời gian
+  /**
+   * Retrieves a list of completed orders with basic details for reporting.
+   * 
+   * @param from Start timestamp
+   * @param to End timestamp
+   * @return List of order details
+   */
   @Query(value = """
       SELECT o.id AS id, o.payment_time AS paymentTime,
              COALESCE(u.full_name, '—') AS empName, o.total_amount AS totalAmount
@@ -101,7 +121,13 @@ public interface StatsRepository extends Repository<Order, Long> {
       """, nativeQuery = true)
   List<OrderDetailStats> orderDetails(@Param("from") Instant from, @Param("to") Instant to);
 
-  // Top món bán chạy nhất
+  /**
+   * Identifies the most popular menu items based on quantity sold and total revenue.
+   * 
+   * @param from Start timestamp
+   * @param to End timestamp
+   * @return List of top-selling dishes
+   */
   @Query(value = """
       SELECT mi.id AS id, mi.name AS name, c.name AS category, mi.img AS img,
              SUM(oi.quantity) AS totalQty,
@@ -117,7 +143,13 @@ public interface StatsRepository extends Repository<Order, Long> {
       """, nativeQuery = true)
   List<TopDishStats> topDishes(@Param("from") Instant from, @Param("to") Instant to);
 
-  // Xu hướng bán món theo ngày
+  /**
+   * Tracks daily sales trends of individual dishes across the menu.
+   * 
+   * @param from Start timestamp
+   * @param to End timestamp
+   * @return List of quantity sold per day
+   */
   @Query(value = """
       SELECT DATE(o.payment_time) AS bucket,
              SUM(oi.quantity) AS totalQty

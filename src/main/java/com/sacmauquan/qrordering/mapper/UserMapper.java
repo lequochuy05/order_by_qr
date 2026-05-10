@@ -5,12 +5,27 @@ import com.sacmauquan.qrordering.dto.UserUpsertRequest;
 import com.sacmauquan.qrordering.model.User;
 import org.mapstruct.*;
 
+/**
+ * UserMapper - MapStruct interface for converting between User entities and DTOs.
+ */
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE, nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserMapper {
 
-    // MapStruct tự động hiểu Enum.name() -> String
+    /**
+     * Converts a User entity to a UserResponse DTO.
+     * 
+     * @param user The source entity
+     * @return The target DTO
+     */
     UserResponse toDto(User user);
 
+    /**
+     * Converts a UserUpsertRequest DTO to a User entity.
+     * Core sensitive fields are ignored during basic mapping and handled in services.
+     * 
+     * @param request The source DTO
+     * @return The target entity
+     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
@@ -19,12 +34,21 @@ public interface UserMapper {
     @Mapping(target = "role", ignore = true)
     User toEntity(UserUpsertRequest request);
 
-    @InheritConfiguration(name = "toEntity") // Kế thừa các rule ignore từ toEntity
-    @Mapping(target = "email", ignore = true) // Email không cho phép sửa
+    /**
+     * Updates an existing User entity with data from a UserUpsertRequest.
+     * 
+     * @param entity The entity to be updated
+     * @param request The source DTO containing updated values
+     */
+    @InheritConfiguration(name = "toEntity")
+    @Mapping(target = "email", ignore = true)
     void updateEntity(@MappingTarget User entity, UserUpsertRequest request);
 
     /**
-     * Logic bổ trợ để chuyển đổi String sang Enum an toàn
+     * Safe helper logic to convert a status string to its corresponding Enum.
+     * 
+     * @param status The status string
+     * @return The corresponding UserStatus enum or ACTIVE as default
      */
     @Named("stringToStatus")
     default User.UserStatus mapStatus(String status) {

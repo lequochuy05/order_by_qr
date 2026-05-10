@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 /**
- * PaymentController - Quản lý tích hợp cổng thanh toán PayOS.
+ * PaymentController - Manages the integration with the PayOS payment gateway.
  */
 @RestController
 @RequestMapping("/api/payments/payos")
@@ -23,28 +23,38 @@ public class PaymentController {
     private final PayosService payosService;
 
     /**
-     * Khởi tạo liên kết thanh toán PayOS (QR Code thanh toán)
+     * Initializes a PayOS payment link (generates a payment QR code).
+     * 
+     * @param request Data required to create a payment link
+     * @return PayosCreateResponse containing the payment URL and details
      */
     @PostMapping("/create")
     public ApiResponse<PayosCreateResponse> createPaymentLink(@Valid @RequestBody @NonNull PayosCreateRequest request) {
-        return ApiResponse.success("Khởi tạo thanh toán thành công", payosService.createPaymentLink(request));
+        return ApiResponse.success("Payment link initialized successfully", payosService.createPaymentLink(request));
     }
 
     /**
-     * Hủy liên kết thanh toán và cập nhật lý do hủy
+     * Cancels an existing payment link and records the reason for cancellation.
+     * 
+     * @param transactionId ID of the transaction to cancel
+     * @param body Map containing the cancellation reason
+     * @return Void success response
      */
     @PostMapping("/{transactionId}/cancel")
     public ApiResponse<Void> cancelPaymentLink(
             @PathVariable @NonNull Long transactionId,
             @RequestBody @NonNull Map<String, String> body) {
 
-        String reason = body.getOrDefault("reason", "Khách đổi hình thức thanh toán");
+        String reason = body.getOrDefault("reason", "Customer changed payment method");
         payosService.cancelPaymentLink(transactionId, reason);
-        return ApiResponse.success("Đã hủy giao dịch thanh toán thành công", null);
+        return ApiResponse.success("Transaction cancelled successfully", null);
     }
 
     /**
-     * Đồng bộ trạng thái giao dịch thực tế từ PayOS về hệ thống.
+     * Synchronizes the actual transaction status from PayOS with the local system.
+     * 
+     * @param transactionId ID of the local transaction
+     * @return PaymentTransaction object with updated status
      */
     @GetMapping("/{transactionId}/status")
     public ApiResponse<PaymentTransaction> syncPaymentStatus(@PathVariable @NonNull Long transactionId) {

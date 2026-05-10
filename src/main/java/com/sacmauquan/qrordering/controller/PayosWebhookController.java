@@ -10,7 +10,7 @@ import vn.payos.model.webhooks.Webhook;
 import java.util.Map;
 
 /**
- * PayosWebhookController - Tiếp nhận thông báo thanh toán tự động từ PayOS
+ * PayosWebhookController - Handles automated payment notifications from PayOS.
  */
 @RestController
 @RequestMapping("/api/webhooks")
@@ -21,7 +21,10 @@ public class PayosWebhookController {
     private final PayosService payosService;
 
     /**
-     * Tiếp nhận Webhook xác nhận thanh toán từ PayOS
+     * Handles the payment confirmation webhook sent by PayOS.
+     * 
+     * @param webhook The webhook payload from PayOS
+     * @return ResponseEntity containing success status
      */
     @PostMapping("/payos")
     public ResponseEntity<Map<String, Object>> handlePayosWebhook(@RequestBody Webhook webhook) {

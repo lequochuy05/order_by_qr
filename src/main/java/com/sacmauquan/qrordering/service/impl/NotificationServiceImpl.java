@@ -10,13 +10,17 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 /**
- * NotificationServiceImpl - Notification Management via WebSocket.
+ * NotificationServiceImpl - Implementation of NotificationService using Spring
+ * Application Events.
+ * Dispatches internal events which are subsequently picked up by
+ * WebSocketEventListener for real-time delivery.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
+    // STOMP Destination Topics
     private static final String TOPIC_TABLES = "/topic/tables";
     private static final String TOPIC_KITCHEN = "/topic/kitchen";
     private static final String TOPIC_MENU = "/topic/menu";
@@ -30,48 +34,49 @@ public class NotificationServiceImpl implements NotificationService {
     private final ApplicationEventPublisher eventPublisher;
 
     /**
-     * Notify order change
+     * Dispatches order change notifications to both customer tables and the kitchen
+     * management view.
      */
     @Override
     public void notifyOrderChange() {
-        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Order change for tables");
-        publishInternalEvent(TOPIC_KITCHEN, EVENT_UPDATED, "Order change for kitchen");
+        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Order state changed for customer views");
+        publishInternalEvent(TOPIC_KITCHEN, EVENT_UPDATED, "Order state changed for kitchen queue");
     }
 
     /**
-     * Notify menu change
+     * Notifies admin clients of changes in menu items.
      */
     @Override
     public void notifyMenuChange(String type, Object id) {
-        publishInternalEvent(TOPIC_MENU, Map.of("type", type, "id", id), "Menu changed");
+        publishInternalEvent(TOPIC_MENU, Map.of("type", type, "id", id), "Menu catalog modified");
     }
 
     /**
-     * Notify table change
+     * Notifies relevant clients of table status or configuration updates.
      */
     @Override
     public void notifyTableChange() {
-        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Tables status updated");
+        publishInternalEvent(TOPIC_TABLES, EVENT_UPDATED, "Dining table statuses refreshed");
     }
 
     /**
-     * Notify category change
+     * Notifies clients of category modifications.
      */
     @Override
     public void notifyCategoryChange(String event, Object id) {
-        publishInternalEvent(TOPIC_CATEGORIES, Map.of("event", event, "id", id), "Categories changed");
+        publishInternalEvent(TOPIC_CATEGORIES, Map.of("event", event, "id", id), "Category metadata updated");
     }
 
     /**
-     * Notify combo change
+     * Notifies clients of combo modifications.
      */
     @Override
     public void notifyComboChange(String event, Object id) {
-        publishInternalEvent(TOPIC_COMBOS, Map.of("event", event, "id", id), "Combos changed");
+        publishInternalEvent(TOPIC_COMBOS, Map.of("event", event, "id", id), "Menu combos updated");
     }
 
     /**
-     * Notify payment success
+     * Sends a specialized real-time notification for successful payments.
      */
     @Override
     public void notifyPaymentSuccess(Long orderId, Long transactionId) {
@@ -79,30 +84,31 @@ public class NotificationServiceImpl implements NotificationService {
                 "event", "PAYMENT_SUCCESS",
                 "orderId", orderId,
                 "transactionId", transactionId);
-        publishInternalEvent(TOPIC_TABLES, payload, "Payment success");
+        publishInternalEvent(TOPIC_TABLES, payload, "Successful payment received for Order #" + orderId);
     }
 
     /**
-     * Notify voucher change
+     * Notifies clients of voucher catalog changes.
      */
     @Override
     public void notifyVoucherChange() {
-        publishInternalEvent(TOPIC_VOUCHERS, EVENT_UPDATED, "Vouchers updated");
+        publishInternalEvent(TOPIC_VOUCHERS, EVENT_UPDATED, "Promotional vouchers catalog modified");
     }
 
     /**
-     * Notify user change
+     * Notifies administrative clients of user/staff account changes.
      */
     @Override
     public void notifyUserChange() {
-        publishInternalEvent(TOPIC_USERS, EVENT_UPDATED, "User list updated");
+        publishInternalEvent(TOPIC_USERS, EVENT_UPDATED, "Internal user management list modified");
     }
 
     /**
-     * Publish internal event
+     * Internal helper to wrap and publish events to the Spring Application Context.
+     * These events are asynchronously broadcast via WebSockets.
      */
     private void publishInternalEvent(String topic, Object payload, String logMsg) {
-        log.debug("[Internal Event] Preparing WS notify for {}: {}", topic, logMsg);
+        log.debug("[WebSocket Notification] Topic: {} | Action: {}", topic, logMsg);
         eventPublisher.publishEvent(new WebSocketEvent(topic, payload, logMsg));
     }
 }

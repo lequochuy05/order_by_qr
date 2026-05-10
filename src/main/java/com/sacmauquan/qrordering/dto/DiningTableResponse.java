@@ -3,8 +3,7 @@ package com.sacmauquan.qrordering.dto;
 import java.time.LocalDateTime;
 
 /**
- * DiningTableResponse - Dữ liệu trả về cho danh sách bàn ăn.
- * Sử dụng Record để đảm bảo tính bất biến (Immutable).
+ * DiningTableResponse - Data transfer object representing a dining table.
  */
 public record DiningTableResponse(
     Long id,

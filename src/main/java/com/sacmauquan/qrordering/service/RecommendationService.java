@@ -13,8 +13,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * RecommendationService - Smart food recommendation system based on order
- * history and context
+ * RecommendationService - Intelligent item recommendation engine.
+ * Uses historical order patterns and environmental context (time/weather) to suggest menu items.
  */
 @Slf4j
 @Service
@@ -25,8 +25,12 @@ public class RecommendationService {
     private final MenuItemRepository menuItemRepository;
 
     /**
-     * Suggest items often ordered together (Cross-sell)
-     * Analyze order history to find popular item pairs
+     * Suggests items that are frequently ordered alongside a specific item (Cross-sell).
+     * Falls back to popular items if no strong associations exist.
+     * 
+     * @param itemId Source menu item ID
+     * @param limit Maximum number of recommendations
+     * @return List of suggested menu items
      */
     @Cacheable(value = "recommendations", key = "'cross_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getCrossSellRecommendations(Long itemId, int limit) {
@@ -46,7 +50,7 @@ public class RecommendationService {
     }
 
     /**
-     * Get similar items
+     * Retrieves similar items based on sales associations.
      */
     @Cacheable(value = "recommendations", key = "'similar_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getRecommendations(Long itemId, int limit) {
@@ -54,7 +58,10 @@ public class RecommendationService {
     }
 
     /**
-     * Get top selling items
+     * Identifies the most popular items across the entire menu based on historical volume.
+     * 
+     * @param limit Maximum number of items
+     * @return List of trending menu items
      */
     @Cacheable(value = "popularItems", key = "'pop_' + #limit")
     public List<MenuItemResponse> getPopularItems(int limit) {
@@ -79,8 +86,13 @@ public class RecommendationService {
     }
 
     /**
-     * Personalized recommendation system based on time and weather context
-     * Use Weighted Scoring algorithm to score matching items
+     * Provides personalized recommendations by scoring items against current time and weather conditions.
+     * Implements a Weighted Scoring algorithm (Time: 40%, Weather: 30%, Popularity: 30%).
+     * 
+     * @param timeContext Current time description (e.g., "morning", "dinner")
+     * @param weatherContext Current weather status (e.g., "hot", "rainy")
+     * @param limit Maximum number of results
+     * @return Ranked list of contextually appropriate menu items
      */
     public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
         List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
@@ -104,7 +116,7 @@ public class RecommendationService {
     }
 
     /**
-     * Calculate item score based on time, weather and popularity
+     * Core scoring logic for contextual recommendations.
      */
     private double calculateItemScore(MenuItem item, String tKey, String wKey, long soldCount) {
         if (item.getCategory() == null)
@@ -112,7 +124,7 @@ public class RecommendationService {
 
         String cateName = item.getCategory().getName().toLowerCase();
 
-        // Recommendation weights: Time (40%) + Weather (30%) + Popularity (30%)
+        // Weighted attributes: Time alignment + Weather suitability + Sales popularity
         double timeScore = calculateTimeMatch(cateName, tKey) * 40;
         double weatherScore = calculateWeatherMatch(cateName, wKey) * 30;
         double popularityScore = Math.min(soldCount / 50.0, 1.0) * 30;
@@ -121,7 +133,7 @@ public class RecommendationService {
     }
 
     /**
-     * Calculate time match
+     * Matches category keywords against specific time periods.
      */
     private double calculateTimeMatch(String cateName, String tKey) {
         if (tKey.isBlank())
@@ -139,7 +151,7 @@ public class RecommendationService {
     }
 
     /**
-     * Calculate weather match
+     * Matches category keywords against specific weather conditions.
      */
     private double calculateWeatherMatch(String cateName, String wKey) {
         if (wKey.isBlank())
@@ -154,7 +166,7 @@ public class RecommendationService {
     }
 
     /**
-     * Get popularity map
+     * Batch retrieves sales volume for a list of items to calculate popularity scores efficiently.
      */
     private Map<Long, Long> getPopularityMap(List<MenuItem> items) {
         List<Long> ids = items.stream().map(MenuItem::getId).collect(Collectors.toList());
@@ -165,7 +177,7 @@ public class RecommendationService {
     }
 
     /**
-     * Convert MenuItem to MenuItemResponse
+     * Maps a MenuItem entity to its Response DTO.
      */
     private MenuItemResponse convertToResponse(MenuItem item) {
         return MenuItemResponse.builder()
@@ -181,16 +193,10 @@ public class RecommendationService {
                 .build();
     }
 
-    /**
-     * Normalize string
-     */
     private String normalize(String input) {
         return input != null ? input.toLowerCase().trim() : "";
     }
 
-    /**
-     * Check if text contains any keywords
-     */
     private boolean containsAny(String text, String... keywords) {
         for (String kw : keywords) {
             if (text.contains(kw.toLowerCase()))

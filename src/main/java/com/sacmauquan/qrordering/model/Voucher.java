@@ -12,6 +12,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/**
+ * Voucher - Entity representing a discount code that can be applied to orders.
+ * Supports both fixed amount and percentage-based discounts.
+ */
 @Entity
 @Table(name = "vouchers")
 @Getter
@@ -27,42 +31,72 @@ public class Voucher extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Mã voucher không được để trống")
+    /**
+     * Unique code string used by customers to claim the discount.
+     */
+    @NotBlank(message = "Voucher code cannot be empty")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
+    /**
+     * Type of discount calculation (e.g., FIXED_AMOUNT, PERCENTAGE).
+     */
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'FIXED_AMOUNT'")
     private VoucherType type = VoucherType.FIXED_AMOUNT;
 
+    /**
+     * Absolute monetary value to deduct if type is FIXED_AMOUNT.
+     */
     @Column(precision = 15, scale = 2)
-    @Min(0)
-    private BigDecimal discountAmount; // Số tiền giảm (FIXED_AMOUNT)
+    @Min(value = 0, message = "Discount amount cannot be negative")
+    private BigDecimal discountAmount;
 
-    @Min(0)
-    private Double discountPercent; // % giảm (PERCENTAGE)
+    /**
+     * Percentage value (0-100) to deduct if type is PERCENTAGE.
+     */
+    @Min(value = 0, message = "Discount percentage cannot be negative")
+    private Double discountPercent;
 
-    @Min(0)
-    private Integer usageLimit; // Tổng số lần mã này được dùng
+    /**
+     * Maximum number of times this voucher can be redeemed in total.
+     */
+    @Min(value = 0, message = "Usage limit cannot be negative")
+    private Integer usageLimit;
 
+    /**
+     * Current count of how many times this voucher has been successfully used.
+     */
     @Builder.Default
     @Column(nullable = false)
-    @Min(0)
+    @Min(value = 0, message = "Used count cannot be negative")
     private Integer usedCount = 0;
 
-    @NotNull(message = "Ngày bắt đầu không được để trống")
+    /**
+     * Start time when the voucher becomes active.
+     */
+    @NotNull(message = "Valid from date cannot be empty")
     @Column(nullable = false)
     private LocalDateTime validFrom;
 
-    @NotNull(message = "Ngày kết thúc không được để trống")
+    /**
+     * End time after which the voucher expires.
+     */
+    @NotNull(message = "Valid to date cannot be empty")
     @Column(nullable = false)
     private LocalDateTime validTo;
 
+    /**
+     * Flag indicating if the voucher is currently enabled for use.
+     */
     @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;
 
+    /**
+     * Enum for voucher discount calculation methods.
+     */
     public enum VoucherType {
         FIXED_AMOUNT, PERCENTAGE
     }

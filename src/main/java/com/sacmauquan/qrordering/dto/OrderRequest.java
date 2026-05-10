@@ -3,50 +3,85 @@ package com.sacmauquan.qrordering.dto;
 import lombok.Getter;
 import lombok.Setter;
 import java.util.List;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Min;
 
 /**
- * OrderRequest - Chứa thông tin đặt món từ khách hàng hoặc nhân viên.
+ * OrderRequest - Data transfer object containing ordering information from a
+ * customer or staff.
  */
 @Getter
 @Setter
 public class OrderRequest {
-    
-    private String tableCode; // Dùng cho khách quét QR
-    private Long tableId;     // Dùng cho nhân viên chọn bàn trực tiếp
-    
-    private String status;      // Mặc định là PENDING nếu từ khách
-    private String voucherCode; // Mã giảm giá áp dụng
 
+    /**
+     * Unique code from the table's QR code (used for customer scans).
+     */
+    private String tableCode;
+
+    /**
+     * ID of the dining table (used for staff direct selection).
+     */
+    private Long tableId;
+
+    /**
+     * Desired status for the order (e.g., PENDING, COMPLETED).
+     */
+    private String status;
+
+    /**
+     * Optional voucher code applied to the order for discounts.
+     */
+    private String voucherCode;
+
+    /**
+     * List of combo packages included in the order.
+     */
     private List<OrderComboRequest> combos;
+
+    /**
+     * List of individual menu items included in the order.
+     */
     private List<OrderItemRequest> items;
 
+    /**
+     * DTO for a combo package within an order.
+     */
     @Getter
     @Setter
     public static class OrderComboRequest {
-        @NotNull(message = "ID combo không được để trống")
+        @NotNull(message = "Combo ID cannot be empty")
         private Long comboId;
-        
-        @Min(value = 1, message = "Số lượng phải ít nhất là 1")
+
+        @Min(value = 1, message = "Quantity must be at least 1")
         private int quantity;
-        
+
+        /**
+         * Optional notes for the combo (e.g., specific instructions).
+         */
         private String notes;
     }
 
+    /**
+     * DTO for an individual menu item within an order.
+     */
     @Getter
     @Setter
     public static class OrderItemRequest {
-        @NotNull(message = "ID món ăn không được để trống")
+        @NotNull(message = "Menu item ID cannot be empty")
         private Long menuItemId;
-        
-        @Min(value = 1, message = "Số lượng phải ít nhất là 1")
+
+        @Min(value = 1, message = "Quantity must be at least 1")
         private int quantity;
-        
+
+        /**
+         * Optional notes for the item (e.g., "no ice", "less sugar").
+         */
         private String notes;
-        
-        // Danh sách ID của các topping/tùy chọn được chọn
+
+        /**
+         * List of IDs for selected toppings or item options.
+         */
         private List<Long> selectedOptionValueIds;
     }
 }

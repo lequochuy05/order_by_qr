@@ -13,6 +13,9 @@ import java.util.Set;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * Combo - Entity representing a promotional package containing multiple menu items at a fixed price.
+ */
 @Entity
 @Table(name = "combos")
 @Getter
@@ -29,18 +32,30 @@ public class Combo extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Tên combo không được để trống")
+    /**
+     * Unique display name of the combo package.
+     */
+    @NotBlank(message = "Combo name cannot be empty")
     @Column(length = 100, nullable = false, unique = true)
     private String name;
 
+    /**
+     * Total price of the combo package.
+     */
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
     private BigDecimal price;
 
+    /**
+     * Flag indicating if the combo is currently available for sale.
+     */
     @Builder.Default
     @Column(nullable = false)
     private Boolean active = true;
 
+    /**
+     * Collection of individual menu items included in this combo package.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "combo", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("combo")

@@ -10,6 +10,9 @@ import jakarta.validation.constraints.NotNull;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * ComboItem - Represents a specific menu item bundled within a combo meal.
+ */
 @Entity
 @Table(name = "combo_items")
 @Getter
@@ -26,13 +29,13 @@ public class ComboItem extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Combo không được để trống")
+    @NotNull(message = "Combo is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id", nullable = false)
     @JsonIgnoreProperties("items")
     private Combo combo;
 
-    @NotNull(message = "Món ăn không được để trống")
+    @NotNull(message = "Menu item is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id", nullable = false)
 

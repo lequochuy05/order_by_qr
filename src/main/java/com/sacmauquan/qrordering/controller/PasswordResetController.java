@@ -10,7 +10,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * PasswordResetController - Xử lý quy trình khôi phục mật khẩu.
+ * PasswordResetController - Handles the password recovery and reset processes.
  */
 @Slf4j
 @RestController
@@ -21,50 +21,62 @@ public class PasswordResetController {
     private final PasswordResetService resetService;
 
     /**
-     * Yêu cầu khôi phục mật khẩu qua Email.
-     * Luôn trả về thông báo chung để ngăn chặn kẻ xấu dò tìm email có trong hệ
-     * thống.
+     * Requests a password reset via email.
+     * Always returns a generic success message to prevent email enumeration
+     * attacks.
+     * 
+     * @param email The user's email address
+     * @return Void success response
      */
     @PostMapping("/forgot-password-email")
     public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email) {
         try {
             resetService.createPasswordResetToken(email);
         } catch (Exception e) {
-            log.warn("Yêu cầu quên mật khẩu cho email không tồn tại hoặc lỗi: {}", email);
+            log.warn("Password reset requested for non-existent or error email: {}", email);
         }
         return ApiResponse.success(
-                "Nếu email của bạn tồn tại trong hệ thống, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.", null);
+                "If your email exists in our system, you will receive password reset instructions.", null);
     }
 
     /**
-     * Xác nhận đặt lại mật khẩu bằng Token.
-     * Mật khẩu mới được truyền trong Body để đảm bảo an toàn tuyệt đối.
+     * Confirms and resets the password using a verification token.
+     * The new password is provided in the request body for security.
+     * 
+     * @param req Request containing the reset token and new password
+     * @return Void success response
      */
     @PostMapping("/reset-password-email")
     public ApiResponse<Void> resetPassword(@Valid @RequestBody @NonNull PasswordResetRequest req) {
         resetService.resetPassword(req.getToken(), req.getNewPassword());
-        return ApiResponse.success("Đặt lại mật khẩu thành công.", null);
+        return ApiResponse.success("Password reset successfully.", null);
     }
 
     /**
-     * Yêu cầu mã OTP khôi phục mật khẩu qua Số điện thoại.
+     * Requests an OTP code for password recovery via phone number.
+     * 
+     * @param phone The user's phone number
+     * @return Void success response
      */
     @PostMapping("/forgot-password-phone")
     public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone) {
         try {
             resetService.createOtpAndSendOtp(phone);
         } catch (Exception e) {
-            log.warn("Yêu cầu OTP cho số điện thoại không tồn tại hoặc lỗi: {}", phone);
+            log.warn("OTP requested for non-existent or error phone number: {}", phone);
         }
-        return ApiResponse.success("Nếu số điện thoại tồn tại, mã OTP đã được gửi đi.", null);
+        return ApiResponse.success("If the phone number exists, an OTP code has been sent.", null);
     }
 
     /**
-     * Xác nhận đặt lại mật khẩu bằng mã OTP.
+     * Confirms and resets the password using an OTP code and phone number.
+     * 
+     * @param req Request containing the phone number, OTP, and new password
+     * @return Void success response
      */
     @PostMapping("/reset-password-phone")
     public ApiResponse<Void> resetPasswordPhone(@Valid @RequestBody @NonNull PasswordResetRequest req) {
         resetService.resetPasswordWithOtp(req.getPhone(), req.getOtp(), req.getNewPassword());
-        return ApiResponse.success("Đặt lại mật khẩu thành công.", null);
+        return ApiResponse.success("Password reset successfully.", null);
     }
 }

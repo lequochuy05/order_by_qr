@@ -5,14 +5,21 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/**
+ * WebConfig - Configures web application resources and settings.
+ */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+  /**
+   * Adds resource handlers to map URL patterns to file system locations.
+   * 
+   * @param registry Resource handler registry
+   */
   @Override
   public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
-    // Map URL /uploads/** -> thư mục thật ./uploads/ trong hệ thống file
     registry.addResourceHandler("/uploads/**")
         .addResourceLocations("file:uploads/")
-        .setCachePeriod(3600); // cache 1h
+        .setCachePeriod(3600);
   }
 }

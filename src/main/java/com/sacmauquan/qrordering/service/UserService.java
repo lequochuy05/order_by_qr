@@ -23,7 +23,8 @@ import java.util.stream.Collectors;
 import org.springframework.lang.NonNull;
 
 /**
- * UserService - Manage users, authentication and authorization.
+ * UserService - Core service for user management, authentication, and security operations.
+ * Handles user lifecycle, JWT issuance, and profile management.
  */
 @Slf4j
 @Service
@@ -37,7 +38,11 @@ public class UserService {
     private final UserMapper userMapper;
 
     /**
-     * Login
+     * Authenticates a user and issues a JWT if credentials are valid.
+     * 
+     * @param req Login credentials
+     * @return AuthResponse containing user details and JWT
+     * @throws ResponseStatusException if authentication fails or account is inactive
      */
     public AuthResponse login(@NonNull AuthRequest req) {
         User u = userRepository.findByEmail(req.getEmail())
@@ -61,7 +66,9 @@ public class UserService {
     }
 
     /**
-     * Get all users
+     * Retrieves all users currently registered in the system.
+     * 
+     * @return List of user response DTOs
      */
     public List<UserResponse> findAll() {
         return userRepository.findAll().stream()
@@ -70,7 +77,11 @@ public class UserService {
     }
 
     /**
-     * Get user by ID
+     * Retrieves a single user by their identifier.
+     * 
+     * @param id User ID
+     * @return UserResponse DTO
+     * @throws ResponseStatusException if user not found
      */
     public UserResponse getOne(@NonNull Long id) {
         return userRepository.findById(id)
@@ -79,7 +90,11 @@ public class UserService {
     }
 
     /**
-     * Create new user
+     * Registers a new user with encrypted password and default roles.
+     * 
+     * @param req Registration details
+     * @return Created user details
+     * @throws ResponseStatusException if email or phone is already registered
      */
     @Transactional
     public UserResponse create(@NonNull UserUpsertRequest req) {
@@ -103,19 +118,21 @@ public class UserService {
     }
 
     /**
-     * Update user
+     * Updates an existing user's profile and credentials.
+     * 
+     * @param id User ID
+     * @param req Update details
+     * @return Updated user details
      */
     @Transactional
     public UserResponse update(@NonNull Long id, @NonNull UserUpsertRequest req) {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // Check email duplicate if changed
         if (!u.getEmail().equals(req.getEmail()) && userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
 
-        // Check phone duplicate if changed
         if (StringUtils.hasText(req.getPhone()) && !Objects.equals(u.getPhone(), req.getPhone())
                 && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
@@ -140,7 +157,9 @@ public class UserService {
     }
 
     /**
-     * Delete user
+     * Soft deletes a user from the system.
+     * 
+     * @param id User ID
      */
     @Transactional
     public void delete(@NonNull Long id) {
@@ -153,7 +172,10 @@ public class UserService {
     }
 
     /**
-     * Reset password for user
+     * Resets a user's password with a new provided value.
+     * 
+     * @param id User ID
+     * @param newPassword Plain text new password
      */
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
@@ -170,7 +192,11 @@ public class UserService {
     }
 
     /**
-     * Upload and update avatar for user
+     * Uploads a new profile picture for the user and updates their avatar URL.
+     * 
+     * @param id User ID
+     * @param file The image file
+     * @return Updated user details
      */
     @Transactional
     public UserResponse uploadAvatar(@NonNull Long id, @NonNull MultipartFile file) {
@@ -188,10 +214,13 @@ public class UserService {
             return userMapper.toDto(u);
         } catch (IOException e) {
             log.error("Failed to upload avatar: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error when upload avatar");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload avatar");
         }
     }
 
+    /**
+     * Internal helper to construct an AuthResponse with a generated JWT.
+     */
     private AuthResponse buildAuthResponse(User u) {
         String token = jwtService.generateToken(u.getEmail(), Map.of(
                 "uid", u.getId(),

@@ -1,5 +1,6 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.CategoryResponse;
 import com.sacmauquan.qrordering.model.Category;
 import com.sacmauquan.qrordering.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,55 +20,77 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CategoryService - Manages categories.
+ * CategoryService - Service for managing menu categories.
+ * Handles category lifecycle, imagery, and caching.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@org.springframework.transaction.annotation.Transactional(readOnly = true)
 public class CategoryService {
     private final CategoryRepository categoryRepo;
     private final NotificationService notificationService;
     private final ImageManagerService imageManager;
 
     /**
-     * Get all active categories with items
+     * Retrieves all active categories along with their associated menu items.
+     * Uses caching to optimize frontend menu displays.
+     * 
+     * @return List of active CategoryResponse DTOs
      */
     @Cacheable(value = "categories", key = "'all_active'")
-    public List<Category> getAllActive() {
-        return categoryRepo.findAllActiveWithItems();
+    public List<CategoryResponse> getAllActive() {
+        return categoryRepo.findAllActiveWithItems().stream()
+                .map(this::convertToResponse)
+                .toList();
     }
 
     /**
-     * Search categories by name
+     * Searches for categories by name with pagination support.
+     * 
+     * @param q Search keyword
+     * @param pageable Pagination and sorting information
+     * @return Paged result of matching CategoryResponse DTOs
      */
-    public Page<Category> search(String q, @NonNull Pageable pageable) {
+    public Page<CategoryResponse> search(String q, @NonNull Pageable pageable) {
+        Page<Category> page;
         if (q == null || q.trim().isEmpty()) {
-            return categoryRepo.findAll(pageable);
+            page = categoryRepo.findAll(pageable);
+        } else {
+            page = categoryRepo.findByNameContainingIgnoreCase(q, pageable);
         }
-        return categoryRepo.findByNameContainingIgnoreCase(q, pageable);
+        return page.map(this::convertToResponse);
     }
 
     /**
-     * Create a new category
+     * Creates a new category and invalidates the category cache.
+     * 
+     * @param c Category entity to create
+     * @return Saved CategoryResponse DTO
+     * @throws ResponseStatusException if category name already exists
      */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
-    public Category create(@NonNull Category c) {
+    public CategoryResponse create(@NonNull Category c) {
         if (categoryRepo.existsByNameIncludingDeleted(c.getName())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
         }
 
         Category saved = categoryRepo.save(c);
         notificationService.notifyCategoryChange("created", saved.getId());
-        return saved;
+        return convertToResponse(saved);
     }
 
     /**
-     * Update a category
+     * Updates an existing category's properties.
+     * 
+     * @param id Category ID
+     * @param input Updated category details
+     * @return Updated CategoryResponse DTO
      */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
-    public Category update(@NonNull Integer id, @NonNull Category input) {
+    public CategoryResponse update(@NonNull Integer id, @NonNull Category input) {
         Category exist = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
@@ -85,11 +108,13 @@ public class CategoryService {
 
         Category saved = categoryRepo.save(exist);
         notificationService.notifyCategoryChange("updated", saved.getId());
-        return saved;
+        return convertToResponse(saved);
     }
 
     /**
-     * Delete a category
+     * Soft deletes a category and cleans up its associated cloud image.
+     * 
+     * @param id Category ID
      */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
@@ -110,7 +135,11 @@ public class CategoryService {
     }
 
     /**
-     * Upload image for a category
+     * Replaces the representative image for a category.
+     * 
+     * @param id Category ID
+     * @param file The new image file
+     * @return Map containing the new image URL
      */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
@@ -132,5 +161,19 @@ public class CategoryService {
             log.error("Error uploading category image ID {}: {}", id, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload image");
         }
+    }
+
+    /**
+     * Mapping helper to convert Category entity to CategoryResponse DTO.
+     */
+    private CategoryResponse convertToResponse(Category category) {
+        return CategoryResponse.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .img(category.getImg())
+                .active(category.getActive())
+                .createdAt(category.getCreatedAt())
+                .updatedAt(category.getUpdatedAt())
+                .build();
     }
 }

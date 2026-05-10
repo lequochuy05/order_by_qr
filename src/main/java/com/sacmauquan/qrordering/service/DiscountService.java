@@ -23,7 +23,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Voucher - Manages discount codes.
+ * DiscountService - Manages the lifecycle of promotional vouchers and handles discount calculation logic.
+ * Ensures atomic usage tracking and provides validation services for checkout.
  */
 @Slf4j
 @Service
@@ -34,7 +35,9 @@ public class DiscountService {
     private final NotificationService notificationService;
 
     /**
-     * Get all vouchers
+     * Retrieves all vouchers currently registered, sorted by newest first.
+     * 
+     * @return List of all vouchers
      */
     @Cacheable(value = "vouchers", key = "'all_desc'")
     public List<Voucher> findAll() {
@@ -42,7 +45,11 @@ public class DiscountService {
     }
 
     /**
-     * Get voucher by id
+     * Finds a single voucher by its identifier.
+     * 
+     * @param id Voucher ID
+     * @return Voucher entity
+     * @throws ResponseStatusException if voucher not found
      */
     public Voucher findById(@NonNull Long id) {
         return voucherRepo.findById(id)
@@ -50,12 +57,15 @@ public class DiscountService {
     }
 
     /**
-     * Create voucher
+     * Creates a new promotional voucher.
+     * 
+     * @param req Voucher details
+     * @return Created Voucher entity
+     * @throws ResponseStatusException if the code already exists
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher create(VoucherRequest req) {
-        // Check if voucher code already exists
         if (voucherRepo.existsByCodeIgnoreCase(req.getCode())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
         }
@@ -79,14 +89,17 @@ public class DiscountService {
     }
 
     /**
-     * Update voucher
+     * Updates an existing voucher's properties.
+     * 
+     * @param id Voucher ID
+     * @param req Update request
+     * @return Updated Voucher entity
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher update(@NonNull Long id, VoucherRequest req) {
         Voucher v = findById(id);
 
-        // Check if voucher code already exists
         if (voucherRepo.existsByCodeIgnoreCaseAndIdNot(req.getCode(), id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
         }
@@ -107,7 +120,9 @@ public class DiscountService {
     }
 
     /**
-     * Delete voucher
+     * Permanently deletes a voucher and notifies system components.
+     * 
+     * @param id Voucher ID
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
@@ -118,7 +133,12 @@ public class DiscountService {
     }
 
     /**
-     * Validate and calculate discount
+     * Validates a discount code against current time and order total without applying it.
+     * Used for real-time validation on the frontend cart.
+     * 
+     * @param code The input code
+     * @param orderTotal Current subtotal of the cart
+     * @return Validation response including status and calculated discount value
      */
     public VoucherValidateResponse validateCode(String code, BigDecimal orderTotal) {
         if (code == null || code.isBlank()) {
@@ -144,7 +164,11 @@ public class DiscountService {
     }
 
     /**
-     * Apply voucher to order
+     * Applies a voucher to an order, performing final validation and atomic usage increment.
+     * 
+     * @param code The voucher code to apply
+     * @param subtotal The order subtotal
+     * @return DiscountResult containing final total and applied discount value
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
@@ -153,31 +177,26 @@ public class DiscountService {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Get voucher
         Voucher v = voucherRepo.findByCodeIgnoreCase(code.trim().toUpperCase())
                 .orElse(null);
 
-        // If voucher not found, return result without discount
         if (v == null) {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Check status
         String status = getVoucherStatus(v);
         if (!"ACTIVE".equals(status)) {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Calculate discount value
         BigDecimal discountValue = calculateDiscount(v, subtotal);
 
-        // Update used count
+        // Attempt to increment usage count atomically to prevent race conditions
         int updatedRows = voucherRepo.incrementUsedCountAtomically(v.getId());
         if (updatedRows == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher is exhausted");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher usage limit reached");
         }
 
-        // Calculate final total
         BigDecimal finalTotal = subtotal.subtract(discountValue).setScale(2, RoundingMode.HALF_UP);
         if (finalTotal.compareTo(BigDecimal.ZERO) < 0)
             finalTotal = BigDecimal.ZERO;
@@ -186,7 +205,7 @@ public class DiscountService {
     }
 
     /**
-     * Get voucher status
+     * Evaluates the comprehensive status of a voucher based on activation, time, and usage.
      */
     private String getVoucherStatus(Voucher v) {
         if (!Boolean.TRUE.equals(v.getActive()))
@@ -205,7 +224,7 @@ public class DiscountService {
     }
 
     /**
-     * Calculate discount value
+     * Core math logic for calculating discount values based on voucher type.
      */
     private BigDecimal calculateDiscount(Voucher v, BigDecimal orderTotal) {
         if (v.getType() == Voucher.VoucherType.FIXED_AMOUNT) {

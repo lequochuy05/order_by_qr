@@ -10,8 +10,8 @@ import org.springframework.util.StringUtils;
 import java.util.Objects;
 
 /**
- * WebSocketEventListener - Lắng nghe sự kiện nội bộ và đẩy ra WebSocket.
-*/
+ * WebSocketEventListener - Listens for internal WebSocketEvent and pushes them to the messaging template.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -20,8 +20,10 @@ public class WebSocketEventListener {
     private final SimpMessagingTemplate messagingTemplate;
 
     /**
-     * CHỈ gửi WebSocket khi Transaction chứa sự kiện đã COMMIT thành công.
-     * fallbackExecution = true: Đảm bảo vẫn gửi được nếu gọi ngoài Transaction.
+     * Handles WebSocketEvent after the transaction has successfully committed.
+     * Ensures that real-time notifications are only sent if the database changes are persistent.
+     * 
+     * @param event The triggered WebSocketEvent
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void handleWebSocketEvent(WebSocketEvent event) {
@@ -35,7 +37,7 @@ public class WebSocketEventListener {
                 log.debug("[WS Notification] Sent to {}: {}", destination, event.logMessage());
             }
         } catch (Exception e) {
-            log.error("Lỗi nghiêm trọng khi gửi WebSocket tới {}: {}", event.destination(), e.getMessage());
+            log.error("Critical error while sending WebSocket to {}: {}", event.destination(), e.getMessage());
         }
     }
 }

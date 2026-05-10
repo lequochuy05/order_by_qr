@@ -13,6 +13,10 @@ import java.util.Set;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * Order - Entity representing a customer's order in the system.
+ * Manages order status, payments, and associated items.
+ */
 @Entity
 @Table(name = "orders")
 @Getter
@@ -29,71 +33,119 @@ public class Order extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull(message = "Trạng thái đơn hàng không được để trống")
+    /**
+     * Current workflow status of the order.
+     */
+    @NotNull(message = "Order status cannot be empty")
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
 
+    /**
+     * Total amount before applying any discounts.
+     */
     @Column(precision = 15, scale = 2)
     @Min(0)
     private BigDecimal originalTotal;
 
+    /**
+     * Amount deducted from the original total via a voucher.
+     */
     @Column(precision = 15, scale = 2)
     @Min(0)
     private BigDecimal discountVoucher;
 
+    /**
+     * The voucher code applied to this order.
+     */
     @Column(length = 50)
     private String voucherCode;
 
-    @NotNull(message = "Tổng tiền không được để trống")
+    /**
+     * Final amount the customer must pay after discounts.
+     */
+    @NotNull(message = "Total amount cannot be empty")
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
     private BigDecimal totalAmount;
 
-    @NotNull(message = "Loại đơn hàng không được để trống")
+    /**
+     * Type of order (DINE_IN or TAKEAWAY).
+     */
+    @NotNull(message = "Order type cannot be empty")
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(length = 20, nullable = false)
     private OrderType orderType = OrderType.DINE_IN;
 
-    @NotNull(message = "Trạng thái thanh toán không được để trống")
+    /**
+     * Current payment lifecycle status.
+     */
+    @NotNull(message = "Payment status cannot be empty")
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(length = 20, nullable = false)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
+    /**
+     * Method used for payment (e.g., CASH, PAYOS).
+     */
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private PaymentMethod paymentMethod;
 
+    /**
+     * The user (staff/manager) who processed the payment.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paid_by")
     private User paidBy;
 
+    /**
+     * Precise time when the payment was confirmed.
+     */
     private LocalDateTime paymentTime;
 
+    /**
+     * The dining table associated with this order.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
     private DiningTable table;
 
+    /**
+     * Collection of individual items included in the order.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("order")
     private Set<OrderItem> orderItems = new LinkedHashSet<>();
 
+    /**
+     * Enum for order workflow states.
+     */
     public enum OrderStatus {
         PENDING, SERVING, COMPLETED, CANCELLED
     }
 
+    /**
+     * Enum for order consumption types.
+     */
     public enum OrderType {
         DINE_IN, TAKEAWAY
     }
 
+    /**
+     * Enum for payment lifecycle states.
+     */
     public enum PaymentStatus {
         PENDING, PAID, CANCELLED
     }
 
+    /**
+     * Enum for supported payment methods.
+     */
     public enum PaymentMethod {
         CASH, PAYOS
     }

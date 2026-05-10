@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * StatsService - Business reporting service for dashboard.
+ * StatsService - Analytical service for generating business reports and dashboard metrics.
  */
 @Slf4j
 @Service
@@ -26,7 +26,11 @@ public class StatsService {
         private final StatsRepository repo;
 
         /**
-         * Get revenue by day
+         * Retrieves daily revenue and order counts for a specified period.
+         * 
+         * @param from Start date
+         * @param to End date
+         * @return List of daily revenue statistics
          */
         @Cacheable(value = "stats_revenue", key = "#from.toString() + #to.toString()")
         public List<StatsResponse.Revenue> getRevenue(LocalDate from, LocalDate to) {
@@ -39,7 +43,11 @@ public class StatsService {
         }
 
         /**
-         * Employee performance
+         * Evaluates employee performance based on orders handled and revenue generated.
+         * 
+         * @param from Start date
+         * @param to End date
+         * @return List of employee performance metrics
          */
         public List<StatsResponse.EmpPerformance> getEmployeePerformance(LocalDate from, LocalDate to) {
                 return repo.empPerformance(toStartOfInstant(from), toEndOfInstant(to)).stream()
@@ -52,7 +60,11 @@ public class StatsService {
         }
 
         /**
-         * Get order details
+         * Retrieves detailed information for all completed orders within a date range.
+         * 
+         * @param from Start date
+         * @param to End date
+         * @return List of order summaries
          */
         public List<StatsResponse.OrderDetail> getOrderDetails(LocalDate from, LocalDate to) {
                 return repo.orderDetails(toStartOfInstant(from), toEndOfInstant(to)).stream()
@@ -65,7 +77,11 @@ public class StatsService {
         }
 
         /**
-         * Top most sold dishes
+         * Identifies top-selling dishes based on sales volume and revenue.
+         * 
+         * @param from Start date
+         * @param to End date
+         * @return List of popular menu items
          */
         @Cacheable(value = "stats_top_dishes", key = "#from.toString() + #to.toString()")
         public List<StatsResponse.TopDish> getTopDishes(LocalDate from, LocalDate to) {
@@ -81,7 +97,11 @@ public class StatsService {
         }
 
         /**
-         * Dish trend by day
+         * Analyzes daily sales trends for menu items.
+         * 
+         * @param from Start date
+         * @param to End date
+         * @return List of daily sales quantity trends
          */
         public List<StatsResponse.DishTrend> getDishTrend(LocalDate from, LocalDate to) {
                 return repo.dishTrendByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
@@ -91,12 +111,16 @@ public class StatsService {
                                 .collect(Collectors.toList());
         }
 
-        // --- Helper Methods ---
-
+        /**
+         * Converts LocalDate to an Instant at the start of the day in system default timezone.
+         */
         private Instant toStartOfInstant(LocalDate date) {
                 return date.atStartOfDay(ZoneId.systemDefault()).toInstant();
         }
 
+        /**
+         * Converts LocalDate to an Instant at the precise end of the day in system default timezone.
+         */
         private Instant toEndOfInstant(LocalDate date) {
                 return date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
         }

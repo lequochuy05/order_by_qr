@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * DiscountController - Quản lý Voucher và mã giảm giá.
+ * DiscountController - Manages vouchers and promotional discount codes.
  */
 @RestController
 @RequestMapping("/api/vouchers")
@@ -24,7 +24,9 @@ public class DiscountController {
     private final DiscountService service;
 
     /**
-     * Danh sách toàn bộ Voucher
+     * Retrieves a list of all vouchers in the system.
+     * 
+     * @return List of Voucher objects
      */
     @GetMapping
     public ApiResponse<List<Voucher>> list() {
@@ -32,7 +34,10 @@ public class DiscountController {
     }
 
     /**
-     * Lấy chi tiết Voucher theo ID
+     * Retrieves detailed information of a specific voucher by its ID.
+     * 
+     * @param id Voucher ID
+     * @return Found Voucher object
      */
     @GetMapping("/{id}")
     public ApiResponse<Voucher> get(@PathVariable @NonNull Long id) {
@@ -40,33 +45,50 @@ public class DiscountController {
     }
 
     /**
-     * Tạo mới Voucher (Tự động uppercase mã code trong Service)
+     * Creates a new voucher. The voucher code is automatically converted to
+     * uppercase in the service layer.
+     * 
+     * @param req Voucher data for creation
+     * @return Created Voucher object
      */
     @PostMapping
     public ApiResponse<Voucher> create(@Valid @RequestBody @NonNull VoucherRequest req) {
-        return ApiResponse.success("Tạo voucher thành công", service.create(req));
+        return ApiResponse.success("Voucher created successfully", service.create(req));
     }
 
     /**
-     * Cập nhật thông tin Voucher
+     * Updates an existing voucher's information.
+     * 
+     * @param id  Voucher ID to update
+     * @param req Updated voucher data
+     * @return Updated Voucher object
      */
     @PutMapping("/{id}")
     public ApiResponse<Voucher> update(@PathVariable @NonNull Long id,
             @Valid @RequestBody @NonNull VoucherRequest req) {
-        return ApiResponse.success("Cập nhật voucher thành công", service.update(id, req));
+        return ApiResponse.success("Voucher updated successfully", service.update(id, req));
     }
 
     /**
-     * Xóa Voucher khỏi hệ thống
+     * Deletes a voucher from the system.
+     * 
+     * @param id Voucher ID to delete
+     * @return Void success response
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
         service.delete(id);
-        return ApiResponse.success("Xóa voucher thành công", null);
+        return ApiResponse.success("Voucher deleted successfully", null);
     }
 
     /**
-     * Kiểm tra tính hợp lệ của mã Voucher và tính toán số tiền giảm giá.
+     * Validates a voucher code and calculates the discount value based on the total
+     * order amount.
+     * 
+     * @param code  The voucher code to validate
+     * @param total The total order amount to apply the discount to
+     * @return VoucherValidateResponse containing validity status and discount
+     *         amount
      */
     @GetMapping("/validate")
     public ApiResponse<VoucherValidateResponse> validate(

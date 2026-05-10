@@ -33,11 +33,17 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * OrderServiceImpl - Quản lý quy trình đặt món và thanh toán.
+ * OrderServiceImpl - Comprehensive implementation for managing the restaurant
+ * ordering lifecycle.
+ * Coordinates between table states, kitchen preparation, and promotional
+ * discount application.
+ * Implements a state-driven approach for order transitions and real-time
+ * WebSocket notifications.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
@@ -55,7 +61,7 @@ public class OrderServiceImpl implements OrderService {
     private EntityManager entityManager;
 
     /**
-     * Get all orders
+     * Fetches all orders with optimized details pre-fetching.
      */
     @Override
     public List<OrderResponse> getAllOrders() {
@@ -65,7 +71,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Get order history
+     * Provides a searchable order history view for administrators.
      */
     @Override
     public Page<OrderResponse> getOrderHistory(String status, LocalDateTime startDate,
@@ -94,7 +100,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Get order stats
+     * Generates a high-level summary of restaurant performance over a specified
+     * period.
      */
     @Override
     public Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate) {
@@ -126,20 +133,19 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Update order status
+     * Updates order status by delegating to specialized OrderState handlers.
      */
     @Override
     @Transactional
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         OrderState state = orderStateFactory.getState(status.toUpperCase());
         state.handleRequest(order);
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
 
-        // Handle table status when cancelled
         if (order.getStatus() == Order.OrderStatus.CANCELLED) {
             DiningTable table = order.getTable();
             if (table != null) {
@@ -155,19 +161,20 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Create order
+     * Orchestrates new order creation and manages item merging for active sessions.
      */
     @Override
     @Transactional
     public OrderResponse createOrder(@NonNull OrderRequest req) {
         if ((req.getItems() == null || req.getItems().isEmpty()) &&
                 (req.getCombos() == null || req.getCombos().isEmpty())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order must have at least one item or combo");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order content cannot be empty");
         }
 
         DiningTable table = resolveTable(req);
 
-        // Prevent duplicate orders
+        // Find existing PENDING order to merge, ensuring session persistence for the
+        // same table
         Order order = orderRepository.findFirstByTableIdAndStatusForUpdate(table.getId(), Order.OrderStatus.PENDING)
                 .orElse(null);
 
@@ -190,25 +197,26 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
 
-        // Update table status
         table.setStatus(DiningTable.TableStatus.OCCUPIED);
         tableRepository.save(table);
 
         notificationService.notifyOrderChange();
+        notificationService.notifyTableChange();
+        log.info("Order processed for Table {}: ID #{}", table.getTableNumber(), saved.getId());
         return convertToResponse(saved);
     }
 
     /**
-     * Cancel order item
+     * Cancels a line item and updates the financial summary of the order.
      */
     @Override
     @Transactional
     public void cancelOrderItem(@NonNull Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item in order"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item is prepared, cannot cancel");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel items that are already prepared");
         }
 
         Order order = item.getOrder();
@@ -232,29 +240,30 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Update order item status
+     * Updates kitchen preparation status for a specific item.
      */
     @Override
     @Transactional
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order item"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
 
         try {
             OrderItem.OrderItemStatus status = OrderItem.OrderItemStatus.valueOf(newStatus.toUpperCase());
             item.setStatus(status);
-            item.setPrepared(status == OrderItem.OrderItemStatus.READY || status == OrderItem.OrderItemStatus.SERVED);
+            item.setPrepared(status == OrderItem.OrderItemStatus.READY || status == OrderItem.OrderItemStatus.SERVED
+                    || status == OrderItem.OrderItemStatus.FINISHED);
             orderItemRepository.save(item);
 
             recalcTableStatus(item.getOrder());
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order item status: " + newStatus);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item status code: " + newStatus);
         }
     }
 
     /**
-     * Mark order item as prepared
+     * Shortcut to mark an item as READY for service.
      */
     @Override
     @Transactional
@@ -263,7 +272,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Get kitchen orders
+     * Retrieves all items requiring attention in the kitchen views.
      */
     @Override
     public List<OrderResponse> getKitchenOrders() {
@@ -277,7 +286,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Get active orders
+     * Lists active orders currently occupying tables.
      */
     @Override
     public List<OrderResponse> getActiveOrders() {
@@ -287,7 +296,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Get current order by table
+     * Locates the active session for a table.
      */
     @Override
     public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
@@ -298,16 +307,17 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Update order item
+     * Adjusts quantity or special notes for an item before preparation starts.
      */
     @Override
     @Transactional
     public OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order item"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item is prepared, cannot edit");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot update items that have already been prepared");
         }
 
         item.setQuantity(quantity);
@@ -323,28 +333,28 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Pay order
+     * Finalizes order payment (CASH flow) and closes the session.
      */
     @Override
     @Transactional
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
         if (order.getStatus() == Order.OrderStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is already settled");
         }
 
+        // Integrity check: All items should be prepared before final settlement
         boolean hasUnprepared = order.getOrderItems().stream().anyMatch(item -> !item.isPrepared());
         if (hasUnprepared) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Order is not prepared yet, cannot pay");
+                    "Outstanding items in preparation. Complete kitchen tasks first.");
         }
 
         User currentUser = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found user"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Processing user not found"));
 
-        // Apply Voucher (if any)
         if (voucherCode != null && !voucherCode.isBlank()) {
             DiscountResult result = discountService.applyVoucher(voucherCode, order.getOriginalTotal());
             order.setVoucherCode(voucherCode);
@@ -367,13 +377,14 @@ public class OrderServiceImpl implements OrderService {
         }
 
         notificationService.notifyOrderChange();
-        log.info("Paid successfully order ID: {} by: {}", id, currentUser.getFullName());
+        notificationService.notifyTableChange();
+        log.info("Order #{} settled via CASH by Staff Member: {}", id, currentUser.getFullName());
 
-        return "Paid successfully";
+        return "Order settled successfully";
     }
 
     /**
-     * Preview order
+     * Calculates order financials without persisting data.
      */
     @Override
     @Transactional(readOnly = true)
@@ -385,7 +396,7 @@ public class OrderServiceImpl implements OrderService {
             for (OrderRequest.OrderItemRequest it : req.getItems()) {
                 MenuItem mi = menuItemRepository.findById(Objects.requireNonNull(it.getMenuItemId()))
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Not found menu item: " + it.getMenuItemId()));
+                                "Menu item not found: " + it.getMenuItemId()));
 
                 BigDecimal optionsPrice = BigDecimal.ZERO;
                 if (it.getSelectedOptionValueIds() != null && !it.getSelectedOptionValueIds().isEmpty()) {
@@ -404,7 +415,7 @@ public class OrderServiceImpl implements OrderService {
             for (OrderRequest.OrderComboRequest cr : req.getCombos()) {
                 Combo combo = comboRepository.findById(Objects.requireNonNull(cr.getComboId()))
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Combo không tồn tại: " + cr.getComboId()));
+                                "Combo not found: " + cr.getComboId()));
 
                 subtotalCombos = subtotalCombos.add(combo.getPrice().multiply(BigDecimal.valueOf(cr.getQuantity())));
             }
@@ -436,32 +447,122 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
-    // Helpers
-
     /**
-     * Resolve table
+     * Administrative override to confirm payment.
      */
-    private DiningTable resolveTable(OrderRequest req) {
-        if (req.getTableCode() != null && !req.getTableCode().isBlank()) {
-            return tableRepository.findByTableCode(req.getTableCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found table code"));
-        } else if (req.getTableId() != null) {
-            return tableRepository.findById(Objects.requireNonNull(req.getTableId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found table"));
+    @Override
+    @Transactional
+    public OrderResponse confirmPaid(@NonNull Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        order.setStatus(Order.OrderStatus.COMPLETED);
+        order.setPaymentStatus(Order.PaymentStatus.PAID);
+        order.setPaymentTime(LocalDateTime.now());
+
+        Order saved = orderRepository.save(order);
+
+        DiningTable table = order.getTable();
+        if (table != null) {
+            table.setStatus(DiningTable.TableStatus.AVAILABLE);
+            tableRepository.save(table);
         }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing table information");
+
+        notificationService.notifyOrderChange();
+        notificationService.notifyTableChange();
+        return convertToResponse(saved);
     }
 
     /**
-     * Process items
+     * Terminates an active order session.
      */
+    @Override
+    @Transactional
+    public OrderResponse cancelOrder(@NonNull Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        order.setStatus(Order.OrderStatus.CANCELLED);
+        Order saved = orderRepository.save(order);
+
+        DiningTable table = order.getTable();
+        if (table != null) {
+            table.setStatus(DiningTable.TableStatus.AVAILABLE);
+            tableRepository.save(table);
+        }
+
+        notificationService.notifyOrderChange();
+        notificationService.notifyTableChange();
+        return convertToResponse(saved);
+    }
+
+    /**
+     * Finds a detailed order view by ID.
+     */
+    @Override
+    public OrderResponse getOrderById(@NonNull Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        return convertToResponse(order);
+    }
+
+    /**
+     * Provides a financial snapshot of a table's current order.
+     */
+    @Override
+    public OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId) {
+        Order order = orderRepository.findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId,
+                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No active session for this table"));
+
+        return OrderPreviewResponse.builder()
+                .originalTotal(order.getOriginalTotal())
+                .discountVoucher(order.getDiscountVoucher())
+                .finalTotal(order.getTotalAmount())
+                .build();
+    }
+
+    /**
+     * Deletes an order record permanently.
+     */
+    @Override
+    @Transactional
+    public void deleteOrder(@NonNull Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        
+        DiningTable table = order.getTable();
+        if (table != null) {
+            table.setStatus(DiningTable.TableStatus.AVAILABLE);
+            tableRepository.save(table);
+        }
+        
+        orderRepository.delete(Objects.requireNonNull(order));
+        notificationService.notifyOrderChange();
+        notificationService.notifyTableChange();
+    }
+
+    // --- Private Orchestration Helpers ---
+
+    private DiningTable resolveTable(OrderRequest req) {
+        if (req.getTableCode() != null && !req.getTableCode().isBlank()) {
+            return tableRepository.findByTableCode(req.getTableCode())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Secure Table Code invalid"));
+        } else if (req.getTableId() != null) {
+            return tableRepository.findById(Objects.requireNonNull(req.getTableId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Table ID invalid"));
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table identification required for order creation");
+    }
+
     private void processItems(OrderRequest req, Order order) {
         if (req.getItems() == null)
             return;
 
         for (OrderRequest.OrderItemRequest itReq : req.getItems()) {
             MenuItem mi = menuItemRepository.findById(Objects.requireNonNull(itReq.getMenuItemId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found menu item"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
 
             validateRequiredOptions(mi, itReq.getSelectedOptionValueIds());
 
@@ -474,7 +575,7 @@ public class OrderServiceImpl implements OrderService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal unitPrice = mi.getPrice().add(extraPrice);
 
-            // Find duplicate item to merge
+            // Attempt to merge with an existing unprepared item to keep the bill concise
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(oi -> oi.getMenuItem() != null && oi.getMenuItem().getId().equals(mi.getId()))
                     .filter(oi -> Objects.equals(oi.getNotes(), itReq.getNotes()))
@@ -513,7 +614,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderRequest.OrderComboRequest comboReq : req.getCombos()) {
             Combo combo = comboRepository.findById(Objects.requireNonNull(comboReq.getComboId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found combo"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Combo not found"));
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(oi -> oi.getCombo() != null && oi.getCombo().getId().equals(combo.getId()))
@@ -543,14 +644,12 @@ public class OrderServiceImpl implements OrderService {
                 .forEach(opt -> {
                     boolean ok = opt.getOptionValues().stream().anyMatch(val -> selectedIds.contains(val.getId()));
                     if (!ok) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please select: " + opt.getName());
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "Required option selection missing: " + opt.getName());
                     }
                 });
     }
 
-    /**
-     * Check if options match
-     */
     private boolean checkOptionsMatch(Collection<OrderItemOption> existing, List<Long> incomingIds) {
         Set<Long> existIds = existing.stream()
                 .map(o -> o.getItemOptionValue().getId())
@@ -559,9 +658,6 @@ public class OrderServiceImpl implements OrderService {
         return existIds.equals(inIds);
     }
 
-    /**
-     * Recalculate order totals
-     */
     private void recalculateOrderTotals(Order order) {
         BigDecimal subtotal = order.getOrderItems().stream()
                 .map(oi -> oi.getUnitPrice().multiply(BigDecimal.valueOf(oi.getQuantity())))
@@ -571,28 +667,26 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(subtotal.subtract(order.getDiscountVoucher()).max(BigDecimal.ZERO));
     }
 
-    /**
-     * Recalculate table status
-     */
     private void recalcTableStatus(Order order) {
         DiningTable table = order.getTable();
         if (table == null)
             return;
 
-        if (order.getOrderItems().isEmpty() || order.getStatus() == Order.OrderStatus.CANCELLED) {
+        if (order.getOrderItems().isEmpty() || order.getStatus() == Order.OrderStatus.CANCELLED
+                || order.getStatus() == Order.OrderStatus.COMPLETED) {
             table.setStatus(DiningTable.TableStatus.AVAILABLE);
         } else {
+            // Determine if the table is ready for billing or still being served
             boolean allServed = order.getOrderItems().stream()
                     .allMatch(oi -> oi.getStatus() == OrderItem.OrderItemStatus.SERVED
-                            || oi.getStatus() == OrderItem.OrderItemStatus.READY);
+                            || oi.getStatus() == OrderItem.OrderItemStatus.READY
+                            || oi.getStatus() == OrderItem.OrderItemStatus.FINISHED);
             table.setStatus(allServed ? DiningTable.TableStatus.WAITING_FOR_PAYMENT : DiningTable.TableStatus.OCCUPIED);
         }
         tableRepository.save(table);
+        notificationService.notifyTableChange();
     }
 
-    /**
-     * Convert order to response
-     */
     private OrderResponse convertToResponse(Order o) {
         return new OrderResponse(
                 o.getId(),
@@ -611,8 +705,17 @@ public class OrderServiceImpl implements OrderService {
                         : null,
                 o.getOrderItems().stream().map(oi -> new OrderResponse.OrderItemResponse(
                         oi.getId(),
-                        oi.getCombo() != null ? "[Combo] " + oi.getCombo().getName()
-                                : (oi.getMenuItem() != null ? oi.getMenuItem().getName() : "N/A"),
+                        oi.getMenuItem() != null ? new OrderResponse.MenuItemSummary(
+                                oi.getMenuItem().getId(),
+                                oi.getMenuItem().getName(),
+                                oi.getMenuItem().getCategory() != null
+                                        ? new OrderResponse.CategorySummary(oi.getMenuItem().getCategory().getName())
+                                        : null)
+                                : null,
+                        oi.getCombo() != null ? new OrderResponse.ComboSummary(
+                                oi.getCombo().getId(),
+                                oi.getCombo().getName(),
+                                oi.getCombo().getPrice()) : null,
                         oi.getUnitPrice(),
                         oi.getQuantity(),
                         oi.getNotes(),

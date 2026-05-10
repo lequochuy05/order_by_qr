@@ -17,7 +17,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * PasswordResetService - Manages the password reset process via Email and SMS.
+ * PasswordResetService - Manages secure password recovery flows via Email (token-based) and SMS (OTP-based).
  */
 @Slf4j
 @Service
@@ -31,7 +31,9 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Reset password via Email
+     * Initiates a password reset flow by generating a unique token and sending it via email.
+     * 
+     * @param email The registered email address
      */
     @Transactional
     public void createPasswordResetToken(String email) {
@@ -49,9 +51,15 @@ public class PasswordResetService {
         tokenRepo.save(resetToken);
 
         emailService.sendResetPasswordEmail(Objects.requireNonNull(email), Objects.requireNonNull(token));
-        log.info("Reset password link sent to email: {}", email);
+        log.info("Password reset link dispatched to email: {}", email);
     }
 
+    /**
+     * Completes the password reset process using a valid security token.
+     * 
+     * @param token The reset token from email
+     * @param newPassword The new plain text password
+     */
     @Transactional
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepo.findByToken(token)
@@ -69,11 +77,13 @@ public class PasswordResetService {
         resetToken.setUsed(true);
         tokenRepo.save(resetToken);
 
-        log.info("Password reset successfully for user: {}", user.getEmail());
+        log.info("Password successfully reset via email token for user: {}", user.getEmail());
     }
 
     /**
-     * Reset password via SMS (OTP)
+     * Initiates a mobile-based password reset by generating and sending a 6-digit OTP.
+     * 
+     * @param phone The registered phone number
      */
     @Transactional
     public void createOtpAndSendOtp(String phone) {
@@ -93,11 +103,18 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        String message = "Your OTP is: " + otpCode + ". Valid for 5 minutes.";
+        String message = "Your Sắc Màu Quán OTP is: " + otpCode + ". Valid for 5 minutes.";
         otpService.sendOtp(normalizedPhone, message);
-        log.info("OTP sent to phone: {}", normalizedPhone);
+        log.info("OTP successfully dispatched to phone: {}", normalizedPhone);
     }
 
+    /**
+     * Completes the password reset process using a valid OTP code.
+     * 
+     * @param phone The registered phone number
+     * @param otpCode The 6-digit OTP received via SMS
+     * @param newPassword The new plain text password
+     */
     @Transactional
     public void resetPasswordWithOtp(String phone, String otpCode, String newPassword) {
         String normalizedPhone = normalizePhone(phone);
@@ -113,14 +130,14 @@ public class PasswordResetService {
         otpToken.setUsed(true);
         tokenRepo.save(otpToken);
 
-        log.info("Password reset successfully via OTP for phone: {}", normalizedPhone);
+        log.info("Password successfully reset via SMS OTP for phone: {}", normalizedPhone);
     }
 
     /**
-     * Normalize phone number format 0xxx
+     * Normalizes Vietnamese phone number formats (e.g., converting +84 to 0).
      */
     private String normalizePhone(String phone) {
-        Objects.requireNonNull(phone, "Phone number cannot be empty");
+        Objects.requireNonNull(phone, "Phone number cannot be null");
         if (phone.startsWith("+84")) {
             return "0" + phone.substring(3);
         }

@@ -10,28 +10,55 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * VoucherRequest - Data transfer object for creating or updating a discount voucher.
+ */
 @Getter
 @Setter
 public class VoucherRequest {
-    @NotBlank(message = "Mã voucher không được để trống")
+    /**
+     * Unique voucher code.
+     */
+    @NotBlank(message = "Voucher code cannot be empty")
     private String code;
 
-    @NotNull(message = "Loại voucher không được để trống")
+    /**
+     * Type of the voucher (e.g., FIXED_AMOUNT, PERCENTAGE).
+     */
+    @NotNull(message = "Voucher type cannot be empty")
     private Voucher.VoucherType type;
 
-    @Min(value = 0, message = "Số tiền giảm không được âm")
+    /**
+     * Absolute amount to be deducted if type is FIXED_AMOUNT.
+     */
+    @Min(value = 0, message = "Discount amount cannot be negative")
     private BigDecimal discountAmount;
 
-    @Min(value = 0, message = "Phần trăm giảm không được âm")
+    /**
+     * Percentage to be deducted if type is PERCENTAGE.
+     */
+    @Min(value = 0, message = "Discount percentage cannot be negative")
     private Double discountPercent;
 
+    /**
+     * Status to determine if the voucher is active and usable.
+     */
     private Boolean active;
 
+    /**
+     * Maximum number of times this voucher can be used.
+     */
     private Integer usageLimit;
 
-    @NotNull(message = "Ngày bắt đầu không được để trống")
+    /**
+     * Starting date and time for the voucher's validity.
+     */
+    @NotNull(message = "Valid from date cannot be empty")
     private LocalDateTime validFrom;
 
-    @NotNull(message = "Ngày kết thúc không được để trống")
+    /**
+     * Ending date and time for the voucher's validity.
+     */
+    @NotNull(message = "Valid to date cannot be empty")
     private LocalDateTime validTo;
 }

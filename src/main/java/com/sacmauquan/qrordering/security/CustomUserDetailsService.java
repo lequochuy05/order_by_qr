@@ -1,30 +1,31 @@
-// src/main/java/com/sacmauquan/qrordering/security/CustomUserDetailsService.java
-/*
- * Tải user từ database để Spring Security xác thực
- */
 package com.sacmauquan.qrordering.security;
 
-import com.sacmauquan.qrordering.model.User;
 import com.sacmauquan.qrordering.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
+/**
+ * CustomUserDetailsService - Implementation of Spring Security's
+ * UserDetailsService.
+ * Responsible for retrieving user authentication data from the database using
+ * email.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
   private final UserRepository userRepository;
 
+  /**
+   * Loads user details based on the provided email address.
+   * 
+   * @param email The user's email address
+   * @return UserDetails implementation (the User entity)
+   * @throws UsernameNotFoundException if no user is found with the given email
+   */
   @Override
   public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-    User u = userRepository.findByEmail(email)
-        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-    // role "MANAGER"/"STAFF" -> authority "ROLE_MANAGER"/"ROLE_STAFF"
-    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + u.getRole().name()));
-    return new org.springframework.security.core.userdetails.User(
-        u.getEmail(), u.getPassword(), authorities);
+    return userRepository.findByEmail(email)
+        .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
   }
 }

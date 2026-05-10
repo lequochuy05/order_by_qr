@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * DiningTableController - Quản lý bàn ăn và QR Code.
+ * DiningTableController - Manages dining tables and their associated QR codes.
  */
 @RestController
 @RequestMapping("/api/tables")
@@ -22,7 +22,9 @@ public class DiningTableController {
     private final DiningTableService tableService;
 
     /**
-     * Lấy danh sách bàn 
+     * Retrieves a list of all dining tables, sorted accordingly.
+     * 
+     * @return List of DiningTableResponse objects
      */
     @GetMapping
     public ApiResponse<List<DiningTableResponse>> getAllTables() {
@@ -30,16 +32,22 @@ public class DiningTableController {
     }
 
     /**
-     * Lấy thông tin chi tiết bàn theo ID
+     * Retrieves detailed information of a table by its ID.
+     * 
+     * @param id Table ID
+     * @return Found DiningTableResponse object
      */
     @GetMapping("/{id}")
     public ApiResponse<DiningTableResponse> getTableById(@PathVariable @NonNull Long id) {
-        // Sử dụng service để lấy dữ liệu đã map sẵn sang Response
         return ApiResponse.success(tableService.getByIdResponse(id));
     }
 
     /**
-     * Khách quét mã QR: Truy vấn thông tin bàn từ tableCode
+     * Handles customer QR scan: Retrieves table information based on the table
+     * code.
+     * 
+     * @param tableCode Unique identifier encoded in the QR code
+     * @return DiningTableResponse object
      */
     @GetMapping("/code/{tableCode}")
     public ApiResponse<DiningTableResponse> getTableByCode(@PathVariable @NonNull String tableCode) {
@@ -47,28 +55,39 @@ public class DiningTableController {
     }
 
     /**
-     * Tạo bàn mới: Tự động tạo mã QR và lưu trữ Cloudinary trong Service
+     * Creates a new dining table. QR code generation and Cloudinary storage are
+     * handled automatically.
+     * 
+     * @param request Data for the new table
+     * @return Created DiningTableResponse object
      */
     @PostMapping
     public ApiResponse<DiningTableResponse> createTable(@Valid @RequestBody @NonNull DiningTableRequest request) {
-        return ApiResponse.success("Tạo bàn mới thành công", tableService.create(request));
+        return ApiResponse.success("Table created successfully", tableService.create(request));
     }
 
     /**
-     * Cập nhật trạng thái hoặc thông tin bàn
+     * Updates the status or information of an existing table.
+     * 
+     * @param id      Table ID to update
+     * @param request Updated table data
+     * @return Updated DiningTableResponse object
      */
     @PatchMapping("/{id}")
     public ApiResponse<DiningTableResponse> updateTable(@PathVariable @NonNull Long id,
             @Valid @RequestBody @NonNull DiningTableRequest request) {
-        return ApiResponse.success("Cập nhật bàn thành công", tableService.update(id, request));
+        return ApiResponse.success("Table updated successfully", tableService.update(id, request));
     }
 
     /**
-     * Xóa bàn và dọn dẹp ảnh QR liên quan
+     * Deletes a dining table and cleans up its associated QR code image.
+     * 
+     * @param id Table ID to delete
+     * @return Void success response
      */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteTable(@PathVariable @NonNull Long id) {
         tableService.delete(id);
-        return ApiResponse.success("Xóa bàn thành công", null);
+        return ApiResponse.success("Table deleted successfully", null);
     }
 }

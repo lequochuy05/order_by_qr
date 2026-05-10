@@ -11,7 +11,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * MenuItemResponse - DTO trả về thông tin món ăn.
+ * MenuItemResponse - Data transfer object representing a menu item and its related options.
  */
 @Data
 @Builder
@@ -28,6 +28,9 @@ public class MenuItemResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /**
+     * Brief summary of a category.
+     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -37,6 +40,9 @@ public class MenuItemResponse {
         private String name;
     }
 
+    /**
+     * Response DTO for a menu item option.
+     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -50,6 +56,9 @@ public class MenuItemResponse {
         private List<ItemOptionValueResponse> optionValues;
     }
 
+    /**
+     * Response DTO for a specific value within a menu item option.
+     */
     @Data
     @Builder
     @NoArgsConstructor

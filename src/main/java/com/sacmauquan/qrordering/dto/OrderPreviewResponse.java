@@ -4,10 +4,12 @@ import lombok.*;
 import java.math.BigDecimal;
 
 /**
- * OrderPreviewResponse - Dữ liệu xem trước đơn hàng.
+ * OrderPreviewResponse - Data transfer object representing an order preview.
  */
-@Getter @Setter
-@AllArgsConstructor @NoArgsConstructor
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class OrderPreviewResponse {
     private BigDecimal subtotalItems;
@@ -19,5 +21,5 @@ public class OrderPreviewResponse {
     private BigDecimal discountVoucher;
     private BigDecimal discountPromotion;
 
-    private BigDecimal originalTotal; // Tổng trước khi áp dụng giảm giá
+    private BigDecimal originalTotal;
 }

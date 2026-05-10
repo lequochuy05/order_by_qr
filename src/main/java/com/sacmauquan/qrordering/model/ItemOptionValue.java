@@ -11,11 +11,12 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * ItemOptionValue - Entity representing a specific choice within an ItemOption (e.g., "Regular Size", "Large Size").
+ */
 @Entity
 @Table(name = "item_option_values")
 @Getter
@@ -31,16 +32,25 @@ public class ItemOptionValue extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Tên giá trị lựa chọn không được để trống")
+    /**
+     * Display name of the specific option value.
+     */
+    @NotBlank(message = "Option value name cannot be empty")
     @Column(length = 50, nullable = false)
     private String name;
 
+    /**
+     * Additional cost applied when this specific option is selected.
+     */
     @Builder.Default
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
     private BigDecimal extraPrice = BigDecimal.ZERO;
 
-    @NotNull(message = "Lựa chọn không được để trống")
+    /**
+     * The parent option group this value belongs to.
+     */
+    @NotNull(message = "Parent option cannot be empty")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_option_id", nullable = false)
     @JsonIgnoreProperties({ "optionValues", "menuItem" })
