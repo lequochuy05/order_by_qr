@@ -26,7 +26,7 @@ public class OrderStateFactory {
     public OrderState getState(Order.OrderStatus status) {
         OrderState state = states.get(status);
         if (state == null) {
-            throw new IllegalArgumentException("Không tìm thấy logic xử lý cho trạng thái: " + status);
+            throw new IllegalArgumentException("State handler not found for status: " + status);
         }
         return state;
     }
@@ -39,7 +39,7 @@ public class OrderStateFactory {
             Order.OrderStatus status = Order.OrderStatus.valueOf(statusName.toUpperCase());
             return getState(status);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái đơn hàng không hợp lệ: " + statusName);
+            throw new IllegalArgumentException("Invalid order status: " + statusName);
         }
     }
 }

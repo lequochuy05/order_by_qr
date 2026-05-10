@@ -22,6 +22,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
 
     boolean existsByPhoneAndIdNot(String phone, Long id);
+    
+    // Kiểm tra tồn tại bao gồm cả bản ghi đã xóa (Native SQL để bypass SQLRestriction)
+    @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE email = :email", nativeQuery = true)
+    boolean existsByEmailIncludingDeleted(@Param("email") String email);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM users WHERE phone = :phone", nativeQuery = true)
+    boolean existsByPhoneIncludingDeleted(@Param("phone") String phone);
 
     // Tìm kiếm phân trang
     // Tìm theo Tên, Email hoặc Số điện thoại

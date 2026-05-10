@@ -54,6 +54,9 @@ public class OrderServiceImpl implements OrderService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /**
+     * Get all orders
+     */
     @Override
     public List<OrderResponse> getAllOrders() {
         return orderRepository.findAllWithDetails().stream()
@@ -61,6 +64,9 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
+    /**
+     * Get order history
+     */
     @Override
     public Page<OrderResponse> getOrderHistory(String status, LocalDateTime startDate,
             LocalDateTime endDate, String search, @NonNull Pageable pageable) {
@@ -87,6 +93,9 @@ public class OrderServiceImpl implements OrderService {
         return orderRepository.findAll(spec, pageable).map(this::convertToResponse);
     }
 
+    /**
+     * Get order stats
+     */
     @Override
     public Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -116,18 +125,21 @@ public class OrderServiceImpl implements OrderService {
                 "totalRevenue", result[1]);
     }
 
+    /**
+     * Update order status
+     */
     @Override
     @Transactional
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order"));
 
         OrderState state = orderStateFactory.getState(status.toUpperCase());
         state.handleRequest(order);
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
 
-        // Xử lý trạng thái bàn khi hủy
+        // Handle table status when cancelled
         if (order.getStatus() == Order.OrderStatus.CANCELLED) {
             DiningTable table = order.getTable();
             if (table != null) {
@@ -142,17 +154,20 @@ public class OrderServiceImpl implements OrderService {
         return convertToResponse(saved);
     }
 
+    /**
+     * Create order
+     */
     @Override
     @Transactional
     public OrderResponse createOrder(@NonNull OrderRequest req) {
         if ((req.getItems() == null || req.getItems().isEmpty()) &&
                 (req.getCombos() == null || req.getCombos().isEmpty())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn hàng phải có ít nhất một món hoặc combo");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order must have at least one item or combo");
         }
 
         DiningTable table = resolveTable(req);
 
-        // Chống tạo đơn trùng
+        // Prevent duplicate orders
         Order order = orderRepository.findFirstByTableIdAndStatusForUpdate(table.getId(), Order.OrderStatus.PENDING)
                 .orElse(null);
 
@@ -175,7 +190,7 @@ public class OrderServiceImpl implements OrderService {
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
 
-        // Cập nhật trạng thái bàn
+        // Update table status
         table.setStatus(DiningTable.TableStatus.OCCUPIED);
         tableRepository.save(table);
 
@@ -183,14 +198,17 @@ public class OrderServiceImpl implements OrderService {
         return convertToResponse(saved);
     }
 
+    /**
+     * Cancel order item
+     */
     @Override
     @Transactional
     public void cancelOrderItem(@NonNull Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món trong đơn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item in order"));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Món đã chế biến xong, không thể hủy");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item is prepared, cannot cancel");
         }
 
         Order order = item.getOrder();
@@ -213,11 +231,14 @@ public class OrderServiceImpl implements OrderService {
         notificationService.notifyOrderChange();
     }
 
+    /**
+     * Update order item status
+     */
     @Override
     @Transactional
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món ăn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order item"));
 
         try {
             OrderItem.OrderItemStatus status = OrderItem.OrderItemStatus.valueOf(newStatus.toUpperCase());
@@ -228,16 +249,22 @@ public class OrderServiceImpl implements OrderService {
             recalcTableStatus(item.getOrder());
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Trạng thái món không hợp lệ: " + newStatus);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order item status: " + newStatus);
         }
     }
 
+    /**
+     * Mark order item as prepared
+     */
     @Override
     @Transactional
     public void markItemPrepared(@NonNull Long itemId) {
         updateItemStatus(itemId, "READY");
     }
 
+    /**
+     * Get kitchen orders
+     */
     @Override
     public List<OrderResponse> getKitchenOrders() {
         return orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING)).stream()
@@ -249,6 +276,9 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
+    /**
+     * Get active orders
+     */
     @Override
     public List<OrderResponse> getActiveOrders() {
         return orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING)).stream()
@@ -256,6 +286,9 @@ public class OrderServiceImpl implements OrderService {
                 .toList();
     }
 
+    /**
+     * Get current order by table
+     */
     @Override
     public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
         return orderRepository
@@ -264,14 +297,17 @@ public class OrderServiceImpl implements OrderService {
                 .map(this::convertToResponse);
     }
 
+    /**
+     * Update order item
+     */
     @Override
     @Transactional
     public OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món ăn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order item"));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Món đã chế biến xong, không thể chỉnh sửa");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item is prepared, cannot edit");
         }
 
         item.setQuantity(quantity);
@@ -286,26 +322,29 @@ public class OrderServiceImpl implements OrderService {
         return convertToResponse(order);
     }
 
+    /**
+     * Pay order
+     */
     @Override
     @Transactional
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found order"));
 
         if (order.getStatus() == Order.OrderStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Đơn hàng đã được thanh toán trước đó");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
         }
 
         boolean hasUnprepared = order.getOrderItems().stream().anyMatch(item -> !item.isPrepared());
         if (hasUnprepared) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Còn món chưa hoàn tất chế biến, chưa thể thanh toán");
+                    "Order is not prepared yet, cannot pay");
         }
 
         User currentUser = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nhân viên không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found user"));
 
-        // Áp dụng Voucher (nếu có)
+        // Apply Voucher (if any)
         if (voucherCode != null && !voucherCode.isBlank()) {
             DiscountResult result = discountService.applyVoucher(voucherCode, order.getOriginalTotal());
             order.setVoucherCode(voucherCode);
@@ -328,11 +367,14 @@ public class OrderServiceImpl implements OrderService {
         }
 
         notificationService.notifyOrderChange();
-        log.info("Thanh toán thành công đơn hàng ID: {} bởi: {}", id, currentUser.getFullName());
+        log.info("Paid successfully order ID: {} by: {}", id, currentUser.getFullName());
 
-        return "Thanh toán thành công";
+        return "Paid successfully";
     }
 
+    /**
+     * Preview order
+     */
     @Override
     @Transactional(readOnly = true)
     public OrderPreviewResponse preview(@NonNull OrderRequest req) {
@@ -341,13 +383,14 @@ public class OrderServiceImpl implements OrderService {
 
         if (req.getItems() != null) {
             for (OrderRequest.OrderItemRequest it : req.getItems()) {
-                MenuItem mi = menuItemRepository.findById(it.getMenuItemId())
+                MenuItem mi = menuItemRepository.findById(Objects.requireNonNull(it.getMenuItemId()))
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                "Món không tồn tại: " + it.getMenuItemId()));
+                                "Not found menu item: " + it.getMenuItemId()));
 
                 BigDecimal optionsPrice = BigDecimal.ZERO;
                 if (it.getSelectedOptionValueIds() != null && !it.getSelectedOptionValueIds().isEmpty()) {
-                    optionsPrice = itemOptionValueRepository.findAllById(it.getSelectedOptionValueIds()).stream()
+                    optionsPrice = itemOptionValueRepository
+                            .findAllById(Objects.requireNonNull(it.getSelectedOptionValueIds())).stream()
                             .map(ItemOptionValue::getExtraPrice)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                 }
@@ -395,24 +438,30 @@ public class OrderServiceImpl implements OrderService {
 
     // Helpers
 
+    /**
+     * Resolve table
+     */
     private DiningTable resolveTable(OrderRequest req) {
         if (req.getTableCode() != null && !req.getTableCode().isBlank()) {
             return tableRepository.findByTableCode(req.getTableCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mã bàn không hợp lệ"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found table code"));
         } else if (req.getTableId() != null) {
             return tableRepository.findById(Objects.requireNonNull(req.getTableId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bàn không tồn tại"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found table"));
         }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thiếu thông tin bàn");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing table information");
     }
 
+    /**
+     * Process items
+     */
     private void processItems(OrderRequest req, Order order) {
         if (req.getItems() == null)
             return;
 
         for (OrderRequest.OrderItemRequest itReq : req.getItems()) {
             MenuItem mi = menuItemRepository.findById(Objects.requireNonNull(itReq.getMenuItemId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Món không tồn tại"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found menu item"));
 
             validateRequiredOptions(mi, itReq.getSelectedOptionValueIds());
 
@@ -425,7 +474,7 @@ public class OrderServiceImpl implements OrderService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             BigDecimal unitPrice = mi.getPrice().add(extraPrice);
 
-            // Tìm món trùng để gộp
+            // Find duplicate item to merge
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(oi -> oi.getMenuItem() != null && oi.getMenuItem().getId().equals(mi.getId()))
                     .filter(oi -> Objects.equals(oi.getNotes(), itReq.getNotes()))
@@ -464,7 +513,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderRequest.OrderComboRequest comboReq : req.getCombos()) {
             Combo combo = comboRepository.findById(Objects.requireNonNull(comboReq.getComboId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Combo không tồn tại"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found combo"));
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(oi -> oi.getCombo() != null && oi.getCombo().getId().equals(combo.getId()))
@@ -494,11 +543,14 @@ public class OrderServiceImpl implements OrderService {
                 .forEach(opt -> {
                     boolean ok = opt.getOptionValues().stream().anyMatch(val -> selectedIds.contains(val.getId()));
                     if (!ok) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng chọn: " + opt.getName());
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please select: " + opt.getName());
                     }
                 });
     }
 
+    /**
+     * Check if options match
+     */
     private boolean checkOptionsMatch(Collection<OrderItemOption> existing, List<Long> incomingIds) {
         Set<Long> existIds = existing.stream()
                 .map(o -> o.getItemOptionValue().getId())
@@ -507,16 +559,21 @@ public class OrderServiceImpl implements OrderService {
         return existIds.equals(inIds);
     }
 
+    /**
+     * Recalculate order totals
+     */
     private void recalculateOrderTotals(Order order) {
         BigDecimal subtotal = order.getOrderItems().stream()
                 .map(oi -> oi.getUnitPrice().multiply(BigDecimal.valueOf(oi.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         order.setOriginalTotal(subtotal);
-        // Tạm thời chưa áp dụng voucher lúc đặt món
         order.setTotalAmount(subtotal.subtract(order.getDiscountVoucher()).max(BigDecimal.ZERO));
     }
 
+    /**
+     * Recalculate table status
+     */
     private void recalcTableStatus(Order order) {
         DiningTable table = order.getTable();
         if (table == null)
@@ -533,6 +590,9 @@ public class OrderServiceImpl implements OrderService {
         tableRepository.save(table);
     }
 
+    /**
+     * Convert order to response
+     */
     private OrderResponse convertToResponse(Order o) {
         return new OrderResponse(
                 o.getId(),

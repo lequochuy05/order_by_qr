@@ -13,10 +13,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * RecommendationService - Hệ thống gợi ý món ăn thông minh dựa trên lịch sử đặt
- * hàng và ngữ cảnh.
- * Đã nâng cấp chuẩn Senior: Tách biệt hoàn toàn Entity và DTO, tối ưu hóa hiệu
- * năng nạp dữ liệu (Batch fetching).
+ * RecommendationService - Smart food recommendation system based on order
+ * history and context
  */
 @Slf4j
 @Service
@@ -27,8 +25,8 @@ public class RecommendationService {
     private final MenuItemRepository menuItemRepository;
 
     /**
-     * Gợi ý món ăn thường được đặt cùng với một món cụ thể (Cross-sell).
-     * Phân tích lịch sử đơn hàng để tìm ra các cặp món phổ biến.
+     * Suggest items often ordered together (Cross-sell)
+     * Analyze order history to find popular item pairs
      */
     @Cacheable(value = "recommendations", key = "'cross_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getCrossSellRecommendations(Long itemId, int limit) {
@@ -48,8 +46,7 @@ public class RecommendationService {
     }
 
     /**
-     * Lấy danh sách món ăn tương tự (Dùng chung logic với Cross-sell nhưng có thể
-     * mở rộng sau này).
+     * Get similar items
      */
     @Cacheable(value = "recommendations", key = "'similar_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getRecommendations(Long itemId, int limit) {
@@ -57,8 +54,7 @@ public class RecommendationService {
     }
 
     /**
-     * Lấy danh sách món ăn bán chạy nhất hệ thống.
-     * Có tích hợp Cache để giảm tải cho các phép tính Aggregate của Database.
+     * Get top selling items
      */
     @Cacheable(value = "popularItems", key = "'pop_' + #limit")
     public List<MenuItemResponse> getPopularItems(int limit) {
@@ -83,8 +79,8 @@ public class RecommendationService {
     }
 
     /**
-     * Hệ thống gợi ý cá nhân hóa dựa trên ngữ cảnh thời gian và thời tiết.
-     * Sử dụng thuật toán Weighted Scoring để chấm điểm món ăn phù hợp.
+     * Personalized recommendation system based on time and weather context
+     * Use Weighted Scoring algorithm to score matching items
      */
     public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
         List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
@@ -107,13 +103,16 @@ public class RecommendationService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Calculate item score based on time, weather and popularity
+     */
     private double calculateItemScore(MenuItem item, String tKey, String wKey, long soldCount) {
         if (item.getCategory() == null)
             return 0;
 
         String cateName = item.getCategory().getName().toLowerCase();
 
-        // Trọng số gợi ý: Thời gian (40%) + Thời tiết (30%) + Độ phổ biến thực tế (30%)
+        // Recommendation weights: Time (40%) + Weather (30%) + Popularity (30%)
         double timeScore = calculateTimeMatch(cateName, tKey) * 40;
         double weatherScore = calculateWeatherMatch(cateName, wKey) * 30;
         double popularityScore = Math.min(soldCount / 50.0, 1.0) * 30;
@@ -121,6 +120,9 @@ public class RecommendationService {
         return timeScore + weatherScore + popularityScore;
     }
 
+    /**
+     * Calculate time match
+     */
     private double calculateTimeMatch(String cateName, String tKey) {
         if (tKey.isBlank())
             return 0.5;
@@ -136,6 +138,9 @@ public class RecommendationService {
         return 0.1;
     }
 
+    /**
+     * Calculate weather match
+     */
     private double calculateWeatherMatch(String cateName, String wKey) {
         if (wKey.isBlank())
             return 0.5;
@@ -148,6 +153,9 @@ public class RecommendationService {
         return 0.1;
     }
 
+    /**
+     * Get popularity map
+     */
     private Map<Long, Long> getPopularityMap(List<MenuItem> items) {
         List<Long> ids = items.stream().map(MenuItem::getId).collect(Collectors.toList());
         List<Object[]> results = orderItemRepository.countTotalSoldBatch(ids);
@@ -156,6 +164,9 @@ public class RecommendationService {
                 res -> (Long) res[1]));
     }
 
+    /**
+     * Convert MenuItem to MenuItemResponse
+     */
     private MenuItemResponse convertToResponse(MenuItem item) {
         return MenuItemResponse.builder()
                 .id(item.getId())
@@ -170,10 +181,16 @@ public class RecommendationService {
                 .build();
     }
 
+    /**
+     * Normalize string
+     */
     private String normalize(String input) {
         return input != null ? input.toLowerCase().trim() : "";
     }
 
+    /**
+     * Check if text contains any keywords
+     */
     private boolean containsAny(String text, String... keywords) {
         for (String kw : keywords) {
             if (text.contains(kw.toLowerCase()))

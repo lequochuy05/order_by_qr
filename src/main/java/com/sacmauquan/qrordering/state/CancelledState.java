@@ -9,7 +9,7 @@ public class CancelledState implements OrderState {
     @Override
     public void handleRequest(Order order) {
         if (order.getStatus() == Order.OrderStatus.COMPLETED) {
-            throw new IllegalStateException("Đơn hàng đã hoàn thành không thể hủy.");
+            throw new IllegalStateException("Completed orders cannot be cancelled.");
         }
         order.setStatus(getStatus());
     }

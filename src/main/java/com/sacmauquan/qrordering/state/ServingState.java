@@ -9,7 +9,7 @@ public class ServingState implements OrderState {
     @Override
     public void handleRequest(Order order) {
         if (order.getStatus() != Order.OrderStatus.PENDING) {
-            throw new IllegalStateException("Chỉ đơn hàng PENDING mới có thể chuyển sang trạng thái đang phục vụ.");
+            throw new IllegalStateException("Only PENDING orders can transition to serving status.");
         }
         order.setStatus(getStatus());
     }

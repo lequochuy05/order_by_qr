@@ -16,15 +16,13 @@ const ComboManager = () => {
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Modal & Toggle State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCombo, setEditingCombo] = useState(null);
     const [toggleConfirm, setToggleConfirm] = useState({ isOpen: false, id: null, active: false });
+    const [errors, setErrors] = useState({});
 
-    // === Hook Status Modal ===
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
 
-    // === Tải dữ liệu ===
     const fetchData = useCallback(async (showLoading = false) => {
         if (showLoading) setLoading(true);
         try {
@@ -41,10 +39,7 @@ const ComboManager = () => {
         }
     }, []);
 
-    // === WebSocket ===
-    // Backend bắn "UPDATED" -> Frontend tải lại
     useWebSocket('/topic/combos', (message) => {
-        // message đã được JSON.parse bởi wsService. Nếu là object thì vẫn coi là có cập nhật.
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             fetchData();
         }
@@ -52,7 +47,6 @@ const ComboManager = () => {
 
     useEffect(() => { fetchData(true); }, [fetchData]);
 
-    // === XỬ LÝ SUBMIT (THÊM / SỬA) ===
     const handleSubmit = async (data) => {
         try {
             if (data.id) {
@@ -62,29 +56,32 @@ const ComboManager = () => {
                 await comboService.create(data);
                 showSuccess("Thêm mới Combo thành công!");
             }
-
+            setErrors({});
             setIsModalOpen(false);
 
         } catch (err) {
-            showError(err);
+            console.error('Error saving combo:', err)
+            const errorMsg = err.response?.data?.detail || err.message || '';
+            if (errorMsg.toLowerCase().includes('combo name already exists')) {
+                setErrors({ ...errors, name: "Tên Combo này đã tồn tại" });
+            } else {
+                showError(err);
+            }
         }
     };
 
-    // === XÓA ===
     const handleDelete = async (id) => {
         if (!window.confirm("Xác nhận xóa combo này?")) return;
         try {
             await comboService.delete(id);
             showSuccess("Đã xóa Combo thành công!");
 
-            // === CẬP NHẬT NGAY LẬP TỨC ===
             fetchData();
         } catch (err) {
             showError(err);
         }
     };
 
-    // === BẬT/TẮT TRẠNG THÁI ===
     const handleRequestToggle = (id, currentActive) => {
         setToggleConfirm({ isOpen: true, id, active: currentActive });
     };
@@ -94,24 +91,22 @@ const ComboManager = () => {
         try {
             await comboService.toggleActive(id);
 
-            // Đóng modal confirm
             setToggleConfirm({ isOpen: false, id: null, active: false });
         } catch (err) {
-            // Đóng modal trước khi hiện lỗi
             setToggleConfirm({ isOpen: false, id: null, active: false });
             showError(err);
         }
     };
 
-    // Chuẩn bị dữ liệu để sửa
     const handleEdit = async (id) => {
         try {
             const detail = await comboService.getById(id);
             const formatted = {
                 ...detail,
-                items: detail.items.map(i => ({ menuItemId: i.menuItem.id, quantity: i.quantity }))
+                items: detail.items.map(i => ({ id: i.id, menuItemId: i.menuItem.id, quantity: i.quantity }))
             };
             setEditingCombo(formatted);
+            setErrors({});
             setIsModalOpen(true);
         } catch (err) {
             showError(err);
@@ -128,7 +123,11 @@ const ComboManager = () => {
                 searchPlaceholder="Tìm kiếm combo..."
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
-                onAddClick={() => { setEditingCombo(null); setIsModalOpen(true); }}
+                onAddClick={() => {
+                    setEditingCombo(null);
+                    setErrors({});
+                    setIsModalOpen(true);
+                }}
                 addButtonText="Thêm mới"
             />
 
@@ -168,6 +167,7 @@ const ComboManager = () => {
                 key={isModalOpen ? (editingCombo?.id || 'new') : 'closed'}
                 isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
                 menuItems={menuItems} initialData={editingCombo} onSubmit={handleSubmit}
+                errors={errors} setErrors={setErrors}
             />
 
             <StatusModal

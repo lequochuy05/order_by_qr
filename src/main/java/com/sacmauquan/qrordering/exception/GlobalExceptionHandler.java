@@ -3,74 +3,80 @@ package com.sacmauquan.qrordering.exception;
 import com.sacmauquan.qrordering.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.handler.NoResourceFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 /**
- * GlobalExceptionHandler - Quản lý tập trung mọi ngoại lệ của hệ thống.
+ * GlobalExceptionHandler - Centralized management of system exceptions.
  */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Xử lý lỗi xác thực dữ liệu đầu vào (@Valid)
+     * Handle validation errors (@Valid)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ApiResponse<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ApiResponse<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage()));
-        
-        log.warn("Lỗi xác thực dữ liệu: {}", errors);
-        return ApiResponse.error("Dữ liệu đầu vào không hợp lệ", errors);
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        log.warn("Validation error: {}", errors);
+        return ApiResponse.error("Invalid input data", errors);
     }
 
     /**
-     * Xử lý ResponseStatusException (Các lỗi ném ra từ tầng Service)
+     * Handle ResponseStatusException (Errors thrown from Service layer)
      */
     @ExceptionHandler(ResponseStatusException.class)
-    public ApiResponse<Void> handleResponseStatusException(ResponseStatusException ex) {
-        return ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Yêu cầu không được thực hiện", null);
+    public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Request could not be processed",
+                        null));
     }
 
     /**
-     * Xử lý lỗi không tìm thấy tài nguyên
+     * Handle resource not found errors
      */
-    @ExceptionHandler(NoSuchElementException.class)
-    public ApiResponse<Void> handleNoSuchElementException(NoSuchElementException ex) {
-        return ApiResponse.error("Không tìm thấy thông tin yêu cầu", null);
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ApiResponse<Object> handleNoResourceFound(NoResourceFoundException ex) {
+        return ApiResponse.error("Requested resource not found", null);
     }
 
     /**
-     * Xử lý lỗi phân quyền (Access Denied)
+     * Handle access denied errors
      */
     @ExceptionHandler(AccessDeniedException.class)
-    public ApiResponse<Void> handleAccessDeniedException(AccessDeniedException ex) {
-        return ApiResponse.error("Bạn không có quyền thực hiện hành động này", null);
+    public ApiResponse<Object> handleAccessDenied(AccessDeniedException ex) {
+        return ApiResponse.error("You do not have permission to perform this action", null);
     }
 
     /**
-     * Xử lý lỗi logic nghiệp vụ hoặc trạng thái không hợp lệ
+     * Handle business logic errors or invalid states
      */
-    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
-    public ApiResponse<Void> handleBusinessLogicException(RuntimeException ex) {
+    @ExceptionHandler(IllegalStateException.class)
+    public ApiResponse<Object> handleIllegalState(IllegalStateException ex) {
         return ApiResponse.error(ex.getMessage(), null);
     }
 
     /**
-     * Xử lý các lỗi hệ thống không xác định
+     * Handle unknown system errors
      */
     @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleGeneralException(Exception ex) {
-        log.error("LỖI HỆ THỐNG: ", ex);
-        return ApiResponse.error("Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.", null);
+    public ApiResponse<Object> handleGlobalException(Exception ex) {
+        log.error("System error: ", ex);
+        return ApiResponse.error("Internal server error. Please try again later.", null);
     }
 }

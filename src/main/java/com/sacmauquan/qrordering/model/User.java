@@ -51,12 +51,10 @@ public class User extends BaseEntity implements UserDetails {
     @Column(unique = true, length = 15)
     private String phone;
 
-    @NotNull(message = "Quyền hạn không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
 
-    @NotNull(message = "Trạng thái người dùng không được để trống")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

@@ -18,6 +18,9 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * CategoryService - Manages categories.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,11 +29,17 @@ public class CategoryService {
     private final NotificationService notificationService;
     private final ImageManagerService imageManager;
 
+    /**
+     * Get all active categories with items
+     */
     @Cacheable(value = "categories", key = "'all_active'")
     public List<Category> getAllActive() {
         return categoryRepo.findAllActiveWithItems();
     }
 
+    /**
+     * Search categories by name
+     */
     public Page<Category> search(String q, @NonNull Pageable pageable) {
         if (q == null || q.trim().isEmpty()) {
             return categoryRepo.findAll(pageable);
@@ -38,11 +47,14 @@ public class CategoryService {
         return categoryRepo.findByNameContainingIgnoreCase(q, pageable);
     }
 
+    /**
+     * Create a new category
+     */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
     public Category create(@NonNull Category c) {
-        if (categoryRepo.existsByNameIgnoreCase(c.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên danh mục đã tồn tại");
+        if (categoryRepo.existsByNameIncludingDeleted(c.getName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
         }
 
         Category saved = categoryRepo.save(c);
@@ -50,19 +62,22 @@ public class CategoryService {
         return saved;
     }
 
+    /**
+     * Update a category
+     */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
     public Category update(@NonNull Integer id, @NonNull Category input) {
         Category exist = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
-        // Kiểm tra trùng tên
-        if (categoryRepo.existsByNameIgnoreCaseAndIdNot(input.getName(), id)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên danh mục đã tồn tại");
+        if (!exist.getName().equalsIgnoreCase(input.getName())
+                && categoryRepo.existsByNameIncludingDeleted(input.getName())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
         }
 
         exist.setName(input.getName());
-        exist.setActive(input.getActive()); // Cập nhật trạng thái kinh doanh
+        exist.setActive(input.getActive());
 
         if (input.getImg() != null && !input.getImg().isBlank()) {
             exist.setImg(input.getImg());
@@ -73,18 +88,20 @@ public class CategoryService {
         return saved;
     }
 
+    /**
+     * Delete a category
+     */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
     public void delete(@NonNull Integer id) {
         Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
-        // Xử lý ảnh nếu có trước khi xóa
         if (cat.getImg() != null && !cat.getImg().isBlank()) {
             try {
                 imageManager.delete(cat.getImg());
             } catch (Exception e) {
-                log.error("Lỗi xóa ảnh danh mục ID {}: {}", id, e.getMessage());
+                log.error("Error deleting category image ID {}: {}", id, e.getMessage());
             }
         }
 
@@ -92,14 +109,17 @@ public class CategoryService {
         notificationService.notifyCategoryChange("deleted", id);
     }
 
+    /**
+     * Upload image for a category
+     */
     @Transactional
     @CacheEvict(value = "categories", allEntries = true)
     public Map<String, String> uploadImage(@NonNull Integer id, @NonNull MultipartFile file) {
         Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy danh mục"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
         if (file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File không hợp lệ");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file");
         }
 
         try {
@@ -109,8 +129,8 @@ public class CategoryService {
             notificationService.notifyCategoryChange("image_updated", id);
             return Map.of("img", newUrl);
         } catch (Exception e) {
-            log.error("Lỗi upload ảnh cho danh mục ID {}: {}", id, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tải ảnh lên");
+            log.error("Error uploading category image ID {}: {}", id, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload image");
         }
     }
 }

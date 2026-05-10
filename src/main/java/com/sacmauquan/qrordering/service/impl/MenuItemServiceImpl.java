@@ -27,7 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * MenuItemServiceImpl - Quản lý thực đơn món ăn.
+ * MenuItemServiceImpl - Menu item management service.
  */
 @Slf4j
 @Service
@@ -39,6 +39,9 @@ public class MenuItemServiceImpl implements MenuItemService {
     private final NotificationService notificationService;
     private final ImageManagerService imageManager;
 
+    /**
+     * Get all menu items
+     */
     @Override
     @Cacheable(value = "menu", key = "'all'")
     public List<MenuItemResponse> getAllMenuItems() {
@@ -47,6 +50,9 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .toList();
     }
 
+    /**
+     * Get menu items by category
+     */
     @Override
     @Cacheable(value = "menu", key = "'category_' + #categoryId")
     public List<MenuItemResponse> getItemsByCategory(@NonNull Integer categoryId) {
@@ -55,31 +61,41 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .toList();
     }
 
+    /**
+     * Get menu item by id
+     */
     @Override
     public MenuItemResponse getItemById(@NonNull Long id) {
         MenuItem item = menuItemRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món ăn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
         return convertToResponse(item);
     }
 
+    /**
+     * Create menu item
+     */
     @Override
     @Transactional
     @CacheEvict(value = "menu", allEntries = true)
     public MenuItemResponse createItem(@NonNull MenuItemRequest req) {
         if (menuItemRepository.existsByNameIgnoreCase(req.getName())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tên món ăn đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Item name already exists");
         }
 
-        Category category = categoryRepository.findById(req.getCategoryId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Danh mục không hợp lệ"));
+        Category category = categoryRepository.findById(Objects.requireNonNull(req.getCategoryId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
-        MenuItem item = MenuItem.builder()
+        MenuItem.MenuItemBuilder<?, ?> itemBuilder = MenuItem.builder()
                 .name(req.getName())
-                .img(req.getImg())
                 .price(req.getPrice())
                 .active(req.getActive() != null ? req.getActive() : true)
-                .category(category)
-                .build();
+                .category(category);
+
+        if (req.getImg() != null && !req.getImg().isBlank()) {
+            itemBuilder.img(req.getImg());
+        }
+
+        MenuItem item = itemBuilder.build();
 
         if (req.getItemOptions() != null) {
             req.getItemOptions().forEach(optReq -> {
@@ -88,30 +104,34 @@ public class MenuItemServiceImpl implements MenuItemService {
             });
         }
 
-        MenuItem saved = menuItemRepository.save(item);
+        MenuItem saved = menuItemRepository.save(Objects.requireNonNull(item));
         notificationService.notifyMenuChange("create", saved.getId());
         return convertToResponse(saved);
     }
 
+    /**
+     * Update menu item
+     */
     @Override
     @Transactional
     @CacheEvict(value = "menu", allEntries = true)
     public MenuItemResponse updateItem(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món ăn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
 
         if (menuItemRepository.existsByNameIgnoreCaseAndIdNot(req.getName(), id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tên món ăn đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Item name already exists");
         }
 
-        Category category = categoryRepository.findById(req.getCategoryId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Danh mục không hợp lệ"));
+        Category category = categoryRepository.findById(Objects.requireNonNull(req.getCategoryId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
         item.setName(req.getName());
         item.setPrice(req.getPrice());
         item.setCategory(category);
         item.setActive(req.getActive() != null ? req.getActive() : item.getActive());
-        if (req.getImg() != null) item.setImg(req.getImg());
+        if (req.getImg() != null)
+            item.setImg(req.getImg());
 
         syncOptions(item, req.getItemOptions());
 
@@ -120,24 +140,30 @@ public class MenuItemServiceImpl implements MenuItemService {
         return convertToResponse(saved);
     }
 
+    /**
+     * Delete menu item
+     */
     @Override
     @Transactional
     @CacheEvict(value = "menu", allEntries = true)
     public void deleteItem(@NonNull Long id) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món ăn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
 
         imageManager.delete(item.getImg());
         menuItemRepository.delete(item);
         notificationService.notifyMenuChange("delete", id);
     }
 
+    /**
+     * Upload image
+     */
     @Override
     @Transactional
     @CacheEvict(value = "menu", allEntries = true)
     public Map<String, Object> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy món"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
 
         try {
             String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
@@ -146,11 +172,14 @@ public class MenuItemServiceImpl implements MenuItemService {
             notificationService.notifyMenuChange("upload_image", id);
             return Map.of("img", newUrl);
         } catch (IOException e) {
-            log.error("Lỗi upload ảnh cho món ăn {}: {}", id, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống khi upload ảnh");
+            log.error("Error uploading image for item {}: {}", id, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error system when upload image");
         }
     }
 
+    /**
+     * Sync options
+     */
     private void syncOptions(MenuItem item, List<MenuItemRequest.ItemOptionRequest> incoming) {
         if (incoming == null) {
             item.getItemOptions().clear();
@@ -165,7 +194,7 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        // Xóa những option không còn trong list gửi lên
+        // Delete option if not in incoming list
         item.getItemOptions().removeIf(o -> !incomingIds.contains(o.getId()));
 
         for (MenuItemRequest.ItemOptionRequest optReq : incoming) {
@@ -183,6 +212,9 @@ public class MenuItemServiceImpl implements MenuItemService {
         }
     }
 
+    /**
+     * Sync values
+     */
     private void syncValues(ItemOption opt, List<MenuItemRequest.ItemOptionValueRequest> incoming) {
         if (incoming == null) {
             opt.getOptionValues().clear();
@@ -214,6 +246,9 @@ public class MenuItemServiceImpl implements MenuItemService {
         }
     }
 
+    /**
+     * Build item option
+     */
     private ItemOption buildItemOption(MenuItemRequest.ItemOptionRequest optReq, MenuItem item) {
         ItemOption opt = ItemOption.builder()
                 .name(optReq.getName())
@@ -233,6 +268,9 @@ public class MenuItemServiceImpl implements MenuItemService {
         return opt;
     }
 
+    /**
+     * Convert to response
+     */
     private MenuItemResponse convertToResponse(MenuItem item) {
         return new MenuItemResponse(
                 item.getId(),
@@ -247,11 +285,9 @@ public class MenuItemServiceImpl implements MenuItemService {
                         o.isRequired(),
                         o.getMaxSelection(),
                         o.getOptionValues().stream().map(v -> new MenuItemResponse.ItemOptionValueResponse(
-                                v.getId(), v.getName(), v.getExtraPrice()
-                        )).toList()
-                )).toList(),
+                                v.getId(), v.getName(), v.getExtraPrice())).toList()))
+                        .toList(),
                 item.getCreatedAt(),
-                item.getUpdatedAt()
-        );
+                item.getUpdatedAt());
     }
 }

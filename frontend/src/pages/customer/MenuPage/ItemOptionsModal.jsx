@@ -7,8 +7,12 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
     const defaultSelections = {};
     if (item?.itemOptions) {
       item.itemOptions.forEach(opt => {
-        if (opt.optionValues && opt.optionValues.length > 0) {
+        // Chỉ tự động chọn nếu là Bắt buộc và chỉ cho phép chọn 1 (Radio)
+        if (opt.isRequired && opt.maxSelection === 1 && opt.optionValues?.length > 0) {
           defaultSelections[opt.id] = opt.optionValues[0].id;
+        } else {
+          // Nếu chọn nhiều (Checkbox) hoặc không bắt buộc, để trống/mảng rỗng
+          defaultSelections[opt.id] = opt.maxSelection > 1 ? [] : null;
         }
       });
     }
@@ -17,42 +21,76 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
 
   if (!isOpen || !item) return null;
 
-  const handleOptionSelect = (optionId, valueId) => {
-    setSelectedOptions(prev => ({
-      ...prev,
-      [optionId]: valueId
-    }));
+  const handleOptionSelect = (optionId, valueId, maxSelection) => {
+    setSelectedOptions(prev => {
+      if (maxSelection > 1) {
+        // Logic Checkbox (Chọn nhiều)
+        const currentSelected = Array.isArray(prev[optionId]) ? prev[optionId] : [];
+        if (currentSelected.includes(valueId)) {
+          return { ...prev, [optionId]: currentSelected.filter(id => id !== valueId) };
+        } else {
+          if (currentSelected.length >= maxSelection) {
+            alert(`Bạn chỉ được chọn tối đa ${maxSelection} mục cho phần này!`);
+            return prev;
+          }
+          return { ...prev, [optionId]: [...currentSelected, valueId] };
+        }
+      } else {
+        // Logic Radio (Chọn 1)
+        // Nếu click lại cái đang chọn thì bỏ chọn (nếu không bắt buộc)
+        const isRequired = item.itemOptions?.find(o => o.id === optionId)?.isRequired;
+        if (prev[optionId] === valueId && !isRequired) {
+          return { ...prev, [optionId]: null };
+        }
+        return { ...prev, [optionId]: valueId };
+      }
+    });
   };
 
   const calculateTotalPrice = () => {
     let total = item.price;
     item.itemOptions?.forEach(opt => {
-      const selectedValueId = selectedOptions[opt.id];
-      if (selectedValueId) {
-        const val = opt.optionValues.find(v => v.id === selectedValueId);
-        if (val && val.extraPrice) {
-          total += val.extraPrice;
-        }
+      const selection = selectedOptions[opt.id];
+      if (Array.isArray(selection)) {
+        selection.forEach(valId => {
+          const val = opt.optionValues.find(v => v.id === valId);
+          if (val?.extraPrice) total += val.extraPrice;
+        });
+      } else if (selection) {
+        const val = opt.optionValues.find(v => v.id === selection);
+        if (val?.extraPrice) total += val.extraPrice;
       }
     });
     return total;
   };
 
   const handleConfirm = () => {
-    // Validate required options
     const requiredOptions = item.itemOptions?.filter(o => o.isRequired) || [];
     for (const opt of requiredOptions) {
-      if (!selectedOptions[opt.id]) {
+      const selection = selectedOptions[opt.id];
+      const hasSelection = Array.isArray(selection) ? selection.length > 0 : !!selection;
+      if (!hasSelection) {
         alert(`Vui lòng chọn ${opt.name}!`);
         return;
       }
     }
 
-    const selectedValueIds = Object.values(selectedOptions).filter(Boolean);
+    // Flatten all selected IDs
+    const selectedValueIds = [];
+    Object.values(selectedOptions).forEach(val => {
+      if (Array.isArray(val)) selectedValueIds.push(...val);
+      else if (val) selectedValueIds.push(val);
+    });
+
     const selectedOptionObjs = item.itemOptions?.flatMap(opt => {
-      const selectedValueId = selectedOptions[opt.id];
-      if (selectedValueId) {
-        const val = opt.optionValues.find(v => v.id === selectedValueId);
+      const selection = selectedOptions[opt.id];
+      if (Array.isArray(selection)) {
+        return selection.map(valId => {
+          const val = opt.optionValues.find(v => v.id === valId);
+          return { optionName: opt.name, valueName: val.name, extraPrice: val.extraPrice };
+        });
+      } else if (selection) {
+        const val = opt.optionValues.find(v => v.id === selection);
         return val ? [{ optionName: opt.name, valueName: val.name, extraPrice: val.extraPrice }] : [];
       }
       return [];
@@ -84,11 +122,13 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
                   <label key={val.id} className="flex items-center justify-between p-3 rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/80 cursor-pointer hover:border-orange-200 dark:hover:border-orange-500 transition-colors">
                     <div className="flex items-center gap-3">
                       <input
-                        type="radio"
+                        type={opt.maxSelection > 1 ? "checkbox" : "radio"}
                         name={`opt-${opt.id}`}
-                        checked={selectedOptions[opt.id] === val.id}
-                        onChange={() => handleOptionSelect(opt.id, val.id, opt.isRequired)}
-                        className="w-4 h-4 text-orange-500 rounded-full border-gray-300 focus:ring-orange-500"
+                        checked={opt.maxSelection > 1 
+                          ? (selectedOptions[opt.id] || []).includes(val.id)
+                          : selectedOptions[opt.id] === val.id}
+                        onChange={() => handleOptionSelect(opt.id, val.id, opt.maxSelection)}
+                        className={`w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500 ${opt.maxSelection > 1 ? 'rounded' : 'rounded-full'}`}
                       />
                       <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors">{val.name}</span>
                     </div>

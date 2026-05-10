@@ -7,6 +7,6 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class OtpService {
     public void sendOtp(String phone, String otp) {
-        System.out.println("Gửi OTP " + otp + " đến số điện thoại " + phone);
+        System.out.println("Sending OTP " + otp + " to phone number " + phone);
     }
 }

@@ -109,7 +109,14 @@ const TableManager = () => {
             showSuccess(data.id ? "Cập nhật bàn thành công" : "Thêm bàn thành công");
             setFormModal({ open: false, data: null });
             // Không cần gọi fetchTables vì Socket sẽ tự gọi
-        } catch (e) { showError(e); }
+        } catch (e) {
+            const errorMsg = e.response?.data?.detail || e.message || '';
+            if (errorMsg.includes("Table number already exists")) {
+                showError("Số bàn này đã tồn tại");
+            } else {
+                showError(e);
+            }
+        }
         finally { setIsSubmitting(false); }
     };
 

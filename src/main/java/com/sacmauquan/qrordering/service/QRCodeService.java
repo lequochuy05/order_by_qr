@@ -18,14 +18,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * QRCodeService - Tạo mã QR chuyên nghiệp cho bàn ăn và thanh toán.
+ * QRCodeService - Generates professional QR codes for tables and payments.
  */
 @Slf4j
 @Service
 public class QRCodeService {
 
     /**
-     * Tạo mã QR dưới dạng chuỗi Base64 
+     * Generate QR code as Base64 string
      */
     @Cacheable(value = "qrcodes", key = "#text + #width + #height")
     public String generateQRCodeBase64(String text, int width, int height) {
@@ -33,19 +33,19 @@ public class QRCodeService {
             byte[] imageBytes = generateQRCodeImage(text, width, height);
             return "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);
         } catch (IOException e) {
-            log.error("Lỗi khi tạo Base64 QR: {}", e.getMessage());
+            log.error("Failed to generate Base64 QR: {}", e.getMessage());
             return "";
         }
     }
 
     /**
-     * Tạo mã QR dưới dạng byte array với cấu hình nâng cao
+     * Generate QR code as byte array with advanced configuration
      */
     public byte[] generateQRCodeImage(String text, int width, int height) throws IOException {
         try {
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
 
-            // Cấu hình nâng cao
+            // Advanced configuration
             Map<EncodeHintType, Object> hints = new HashMap<>();
             hints.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
             hints.put(EncodeHintType.MARGIN, 1);
@@ -58,8 +58,8 @@ public class QRCodeService {
             return pngOutputStream.toByteArray();
 
         } catch (WriterException e) {
-            log.error("Lỗi thư viện ZXing khi tạo QR cho [{}]: {}", text, e.getMessage());
-            throw new IOException("Không thể tạo mã QR", e);
+            log.error("ZXing library error when generating QR for [{}]: {}", text, e.getMessage());
+            throw new IOException("Unable to generate QR code", e);
         }
     }
 }

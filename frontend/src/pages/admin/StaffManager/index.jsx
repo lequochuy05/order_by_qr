@@ -20,6 +20,7 @@ const StaffManager = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [errors, setErrors] = useState({});
 
   // Hook Status Modal
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
@@ -40,7 +41,6 @@ const StaffManager = () => {
 
   // WebSocket Realtime 
   useWebSocket('/topic/users', (message) => {
-    // message đã được JSON.parse bởi wsService.
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       fetchStaffs();
     }
@@ -54,45 +54,37 @@ const StaffManager = () => {
       // CHUẨN HÓA DỮ LIỆU
       const payload = { ...formData };
 
-      // Nếu phone rỗng -> gửi null (để Backend bỏ qua check Regex)
       if (!payload.phone || payload.phone.trim() === '') {
         payload.phone = null;
       }
 
-      // Xóa trường ID nếu là null (Create mode) để tránh lỗi thừa trường
       if (!payload.id) {
         delete payload.id;
       }
 
       if (!payload.password) {
-        payload.password = null; // Hoặc: delete payload.password;
+        payload.password = null;
       }
 
-      // Trim email và tên cho sạch
       payload.email = payload.email?.trim();
       payload.fullName = payload.fullName?.trim();
 
-      // GỬI API
       let result;
       let actionType = '';
 
       if (formData.id) {
-        // UPDATE
         result = await staffService.update(formData.id, payload);
         actionType = 'Cập nhật';
       } else {
-        // CREATE
         result = await staffService.create(payload);
         actionType = 'Thêm';
       }
 
-      // UPLOAD ẢNH
       let avatarResult = null;
       if (selectedFile) {
         avatarResult = await staffService.uploadAvatar(result.id, selectedFile);
       }
 
-      // Cập nhật header nếu đang sửa chính mình
       if (formData.id && user?.userId && formData.id === user.userId) {
         updateUser({
           fullName: result.fullName,
@@ -106,18 +98,24 @@ const StaffManager = () => {
       fetchStaffs();
 
     } catch (err) {
-      // Log lỗi ra console để debug nếu cần
-      console.error("Submit Error:", err);
+      console.error('Error saving staff:', err);
+      const errorMsg = err.response?.data?.detail || err.message || '';
 
-      const errorMsg = err.response?.data?.error ||
-        err.response?.data?.message ||
-        // Nếu lỗi validation trả về Map, lấy lỗi đầu tiên
-        (typeof err.response?.data === 'object' ? Object.values(err.response.data)[0] : "Có lỗi xảy ra");
+      const newErrors = {};
+      if (errorMsg.includes("Email already exists")) {
+        newErrors.email = "Email này đã tồn tại.";
+      }
+      else if (errorMsg.includes("Phone number already exists")) {
+        newErrors.phone = "Số điện thoại này đã tồn tại.";
+      }
 
-      showError(errorMsg);
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+      } else {
+        showError(errorMsg || "Có lỗi xảy ra");
+      }
     }
   };
-
   //  Xóa 
   const handleDelete = async (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa nhân viên này?")) return;
@@ -142,7 +140,11 @@ const StaffManager = () => {
         searchPlaceholder="Tìm tên, email, sđt..."
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        onAddClick={() => { setEditingStaff(null); setIsModalOpen(true); }}
+        onAddClick={() => {
+          setEditingStaff(null);
+          setErrors({});
+          setIsModalOpen(true);
+        }}
         addButtonText="Thêm Nhân viên"
       />
 
@@ -177,6 +179,8 @@ const StaffManager = () => {
         onClose={() => setIsModalOpen(false)}
         data={editingStaff}
         onSubmit={handleSubmit}
+        errors={errors}
+        setErrors={setErrors}
       />
 
       <StatusModal

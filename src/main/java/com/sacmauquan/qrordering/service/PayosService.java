@@ -7,17 +7,17 @@ import org.springframework.lang.NonNull;
 import vn.payos.model.webhooks.Webhook;
 
 /**
- * PayosService - Quản lý tích hợp cổng thanh toán PayOS.
+ * PayosService - Manages PayOS payment gateway integration.
  */
 public interface PayosService {
     PayosCreateResponse createPaymentLink(@NonNull PayosCreateRequest request);
-    
+
     void cancelPaymentLink(@NonNull Long transactionId, String reason);
-    
+
     PaymentTransaction syncPaymentStatus(@NonNull Long transactionId);
 
     /**
-     * Xử lý dữ liệu Webhook từ PayOS (Xác thực chữ ký và cập nhật tài chính)
+     * Process Webhook data from PayOS (Verify signature and update financial)
      */
     void processWebhook(Webhook webhook);
 }

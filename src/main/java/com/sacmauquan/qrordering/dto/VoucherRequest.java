@@ -27,7 +27,6 @@ public class VoucherRequest {
 
     private Boolean active;
 
-    @Min(value = 1, message = "Giới hạn sử dụng phải ít nhất là 1")
     private Integer usageLimit;
 
     @NotNull(message = "Ngày bắt đầu không được để trống")

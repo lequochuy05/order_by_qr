@@ -1,11 +1,11 @@
 /**
  * Định dạng số thành tiền Việt Nam (VND)
- * Ví dụ: 100000 -> "100.000 ₫"
  */
 export const fmtVND = (amount) => {
     return new Intl.NumberFormat('vi-VN', {
         style: 'currency',
-        currency: 'VND'
+        currency: 'VND',
+        currencyDisplay: 'narrowSymbol'
     }).format(amount || 0);
 };
 

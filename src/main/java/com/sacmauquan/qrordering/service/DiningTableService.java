@@ -18,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 /**
- * DiningTableService - Quản lý bàn ăn và QR Code.
+ * DiningTableService - Manages dining tables and QR Codes.
  */
 @Slf4j
 @Service
@@ -33,6 +33,9 @@ public class DiningTableService {
     @Value("${app.frontend.base-url}")
     private String frontendBaseUrl;
 
+    /*
+     * Get All Tables
+     */
     @Cacheable(value = "tables", key = "'all_sorted'")
     public List<DiningTableResponse> getAllTablesSorted() {
         return repo.findAllByOrderByTableNumberAsc().stream()
@@ -40,45 +43,63 @@ public class DiningTableService {
                 .toList();
     }
 
+    /*
+     * Get Table by Id
+     */
     public DiningTable getById(@NonNull Long id) {
         return repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy bàn"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Table not found"));
     }
 
+    /*
+     * Get Table by Id Response
+     */
     public DiningTableResponse getByIdResponse(@NonNull Long id) {
         return convertToResponse(getById(id));
     }
 
+    /*
+     * Get Table by Table Code
+     */
     public DiningTableResponse getByTableCode(@NonNull String tableCode) {
         return repo.findByTableCode(tableCode)
                 .map(this::convertToResponse)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Mã bàn không hợp lệ"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid table code"));
     }
 
+    /*
+     * Get Table by Table Number
+     */
     public DiningTableResponse getByTableNumber(@NonNull String tableNumber) {
         return repo.findByTableNumber(tableNumber)
                 .map(this::convertToResponse)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Không tìm thấy bàn số: " + tableNumber));
+                        "Table number not found: " + tableNumber));
     }
 
+    /*
+     * Get Table by Status
+     */
     public List<DiningTableResponse> getTablesByStatus(@NonNull DiningTable.TableStatus status) {
         return repo.findByStatus(status).stream()
                 .map(this::convertToResponse)
                 .toList();
     }
 
+    /*
+     * Create Table
+     */
     @Transactional
     @CacheEvict(value = "tables", allEntries = true)
     public DiningTableResponse create(DiningTableRequest req) {
         if (repo.existsByTableNumber(req.getTableNumber())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số bàn đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
         }
-        // Tạo tableCode
+        // Create tableCode
         String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        // Tạo và Upload QR Code
+        // Create and Upload QR Code
         Map<String, String> qrMedia = generateQRMedia(tableCode);
-        // Khởi tạo đối tượng bàn
+        // Initialize table object
         DiningTable table = DiningTable.builder()
                 .tableNumber(req.getTableNumber())
                 .capacity(req.getCapacity())
@@ -87,13 +108,15 @@ public class DiningTableService {
                 .qrCodeUrl(qrMedia.get("url"))
                 .qrCodePublicId(qrMedia.get("publicId"))
                 .build();
-        // Lưu
+        // Save table
         DiningTable savedTable = repo.save(Objects.requireNonNull(table));
         notificationService.notifyTableChange();
         return convertToResponse(savedTable);
     }
 
-    // Tách logic tạo QR ra một hàm riêng trả về Map thông tin
+    /*
+     * Generate QR Code
+     */
     private Map<String, String> generateQRMedia(String tableCode) {
         try {
             String qrContent = frontendBaseUrl + "/order?tableCode=" + tableCode;
@@ -105,18 +128,21 @@ public class DiningTableService {
                     "url", result.get("secure_url").toString(),
                     "publicId", result.get("public_id").toString());
         } catch (Exception e) {
-            log.error("Lỗi tạo mã QR: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi hệ thống khi tạo mã QR");
+            log.error("Error generating QR code: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "System error generating QR code");
         }
     }
 
+    /*
+     * Update Table
+     */
     @Transactional
     @CacheEvict(value = "tables", allEntries = true)
     public DiningTableResponse update(@NonNull Long id, DiningTableRequest req) {
         DiningTable table = getById(id);
 
         if (repo.existsByTableNumberAndIdNot(req.getTableNumber(), id)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số bàn đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
         }
 
         table.setTableNumber(req.getTableNumber());
@@ -128,17 +154,20 @@ public class DiningTableService {
         return convertToResponse(saved);
     }
 
+    /*
+     * Delete Table
+     */
     @Transactional
     @CacheEvict(value = "tables", allEntries = true)
     public void delete(@NonNull Long id) {
         DiningTable table = getById(id);
 
-        // Xóa ảnh QR trên Cloudinary
+        // Delete QR code image on Cloudinary
         if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
             try {
                 imageManagerService.delete(table.getQrCodePublicId());
             } catch (Exception e) {
-                log.error("Lỗi xóa ảnh QR của bàn ID {}: {}", id, e.getMessage());
+                log.error("Error deleting QR code image ID {}: {}", id, e.getMessage());
             }
         }
 
@@ -146,7 +175,9 @@ public class DiningTableService {
         notificationService.notifyTableChange();
     }
 
-    // Helper
+    /*
+     * Convert Table to Response
+     */
     private DiningTableResponse convertToResponse(DiningTable table) {
         return new DiningTableResponse(
                 table.getId(),

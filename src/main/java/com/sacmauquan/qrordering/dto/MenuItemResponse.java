@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * MenuItemResponse - DTO trả về thông tin món ăn.
@@ -43,6 +44,7 @@ public class MenuItemResponse {
     public static class ItemOptionResponse {
         private Long id;
         private String name;
+        @JsonProperty("isRequired")
         private boolean isRequired;
         private int maxSelection;
         private List<ItemOptionValueResponse> optionValues;

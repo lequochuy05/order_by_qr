@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power } from 'lucide-react';
+import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power, AlertCircle } from 'lucide-react';
 
-const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
+const StaffModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
   const [formData, setFormData] = useState(() => {
     if (data) {
       return {
@@ -28,8 +28,25 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(data?.avatarUrl || '');
 
-  // Thêm State để lưu lỗi
-  const [errors, setErrors] = useState({});
+  // Sử dụng errors và setErrors từ props truyền xuống
+
+  // === Senior UX: Dirty Checking ===
+  const isChanged = React.useMemo(() => {
+    if (!formData.id) return true; // Luôn cho phép khi tạo mới
+
+    // Nếu chọn ảnh mới
+    if (selectedFile) return true;
+
+    // So sánh dữ liệu gốc
+    if (formData.fullName !== (data.fullName || '')) return true;
+    if (formData.email !== (data.email || '')) return true;
+    if (formData.phone !== (data.phone || '')) return true;
+    if (formData.role !== (data.role || 'STAFF')) return true;
+    if (formData.status !== (data.status || 'ACTIVE')) return true;
+    if (formData.password !== '') return true;
+
+    return false;
+  }, [formData, selectedFile, data]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -49,9 +66,9 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
 
     // Validate Họ tên
     if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Họ tên không được để trống';
+      newErrors.fullName = 'Họ và tên không được để trống';
     } else if (formData.fullName.length < 2) {
-      newErrors.fullName = 'Họ tên phải từ 2 ký tự trở lên';
+      newErrors.fullName = 'Họ và tên phải có ít nhất 2 ký tự';
     }
 
     // Validate Email
@@ -59,10 +76,10 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
     if (!formData.email.trim()) {
       newErrors.email = 'Email không được để trống';
     } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Email không đúng định dạng';
+      newErrors.email = 'Email không hợp lệ';
     }
 
-    // Validate Password (chỉ khi tạo mới)
+    // Validate Password
     if (!formData.id) {
       if (!formData.password) {
         newErrors.password = 'Mật khẩu không được để trống';
@@ -71,14 +88,13 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
       }
     }
 
-    // Validate Phone (nếu có nhập)
+    // Validate Phone
     if (formData.phone && !/^(84|0)[0-9]{9}$\b/.test(formData.phone)) {
-      newErrors.phone = 'Số điện thoại không hợp lệ (VN)';
+      newErrors.phone = 'Số điện thoại không hợp lệ';
     }
 
     setErrors(newErrors);
 
-    // Trả về true nếu không có lỗi nào
     return Object.keys(newErrors).length === 0;
   };
 
@@ -137,17 +153,15 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
                     type="text"
                     className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
                       ${errors.fullName ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
-                    placeholder="abc"
+                    placeholder="Nguyễn Văn A"
                     value={formData.fullName}
                     onChange={e => {
                       setFormData({ ...formData, fullName: e.target.value });
-                      // Xóa lỗi khi người dùng bắt đầu nhập lại
                       if (errors.fullName) setErrors({ ...errors, fullName: '' });
                     }}
                   />
                 </div>
-                {/* 5. Hiển thị lỗi ngay bên dưới */}
-                {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.fullName}</p>}
+                {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12} />{errors.fullName}</p>}
               </div>
 
               <div>
@@ -158,7 +172,7 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
                     type="email"
                     className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
                       ${errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
-                    placeholder="abc@xyz.com"
+                    placeholder="example@gmail.com"
                     value={formData.email}
                     onChange={e => {
                       setFormData({ ...formData, email: e.target.value });
@@ -167,7 +181,7 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
                     disabled={!!formData.id}
                   />
                 </div>
-                {errors.email && <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>}
+                {errors.email && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12} />{errors.email}</p>}
               </div>
 
               <div>
@@ -186,7 +200,7 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
                     }}
                   />
                 </div>
-                {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
+                {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12} />{errors.phone}</p>}
               </div>
 
               {!formData.id && (
@@ -206,7 +220,7 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
                       placeholder="Tối thiểu 6 ký tự"
                     />
                   </div>
-                  {errors.password && <p className="text-red-500 text-xs mt-1 ml-1">{errors.password}</p>}
+                  {errors.password && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={12} />{errors.password}</p>}
                 </div>
               )}
 
@@ -251,7 +265,15 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit }) => {
 
         <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
           <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-gray-600 font-medium hover:bg-gray-200 transition-colors">Hủy bỏ</button>
-          <button form="staffForm" type="submit" className="px-6 py-2.5 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 shadow-lg shadow-orange-200 transition-transform active:scale-95">
+          <button
+            form="staffForm"
+            type="submit"
+            disabled={!isChanged}
+            className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${!isChanged
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+              : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-200'
+              }`}
+          >
             {formData.id ? 'Lưu thay đổi' : 'Tạo nhân viên'}
           </button>
         </div>

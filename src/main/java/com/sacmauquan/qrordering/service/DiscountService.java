@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Voucher - Quản lý mã giảm giá.
+ * Voucher - Manages discount codes.
  */
 @Slf4j
 @Service
@@ -34,21 +33,31 @@ public class DiscountService {
     private final VoucherRepository voucherRepo;
     private final NotificationService notificationService;
 
+    /**
+     * Get all vouchers
+     */
     @Cacheable(value = "vouchers", key = "'all_desc'")
     public List<Voucher> findAll() {
         return voucherRepo.findAll(Sort.by(Sort.Direction.DESC, "id"));
     }
 
+    /**
+     * Get voucher by id
+     */
     public Voucher findById(@NonNull Long id) {
         return voucherRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher not found"));
     }
 
+    /**
+     * Create voucher
+     */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher create(VoucherRequest req) {
+        // Check if voucher code already exists
         if (voucherRepo.existsByCodeIgnoreCase(req.getCode())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
         }
 
         Voucher v = Voucher.builder()
@@ -69,13 +78,17 @@ public class DiscountService {
         return saved;
     }
 
+    /**
+     * Update voucher
+     */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher update(@NonNull Long id, VoucherRequest req) {
         Voucher v = findById(id);
 
+        // Check if voucher code already exists
         if (voucherRepo.existsByCodeIgnoreCaseAndIdNot(req.getCode(), id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Mã voucher đã tồn tại");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
         }
 
         v.setCode(req.getCode().trim().toUpperCase());
@@ -93,6 +106,9 @@ public class DiscountService {
         return saved;
     }
 
+    /**
+     * Delete voucher
+     */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public void delete(@NonNull Long id) {
@@ -102,7 +118,7 @@ public class DiscountService {
     }
 
     /**
-     * Kiểm tra và tính toán giảm giá
+     * Validate and calculate discount
      */
     public VoucherValidateResponse validateCode(String code, BigDecimal orderTotal) {
         if (code == null || code.isBlank()) {
@@ -128,7 +144,7 @@ public class DiscountService {
     }
 
     /**
-     * Áp dụng voucher vào đơn hàng
+     * Apply voucher to order
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
@@ -137,31 +153,31 @@ public class DiscountService {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Lấy dữ liệu trước
+        // Get voucher
         Voucher v = voucherRepo.findByCodeIgnoreCase(code.trim().toUpperCase())
                 .orElse(null);
 
-        // Nếu không thấy Voucher, trả về kết quả không giảm giá
+        // If voucher not found, return result without discount
         if (v == null) {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Sử dụng các hàm helper đã có để kiểm tra trạng thái
+        // Check status
         String status = getVoucherStatus(v);
         if (!"ACTIVE".equals(status)) {
             return new DiscountResult(subtotal, BigDecimal.ZERO, null);
         }
 
-        // Tính toán số tiền giảm
+        // Calculate discount value
         BigDecimal discountValue = calculateDiscount(v, subtotal);
 
-        // Cập nhật lượt dùng
+        // Update used count
         int updatedRows = voucherRepo.incrementUsedCountAtomically(v.getId());
         if (updatedRows == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mã giảm giá đã hết lượt sử dụng ngay lúc này.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher is exhausted");
         }
 
-        // Tính tổng tiền cuối cùng
+        // Calculate final total
         BigDecimal finalTotal = subtotal.subtract(discountValue).setScale(2, RoundingMode.HALF_UP);
         if (finalTotal.compareTo(BigDecimal.ZERO) < 0)
             finalTotal = BigDecimal.ZERO;
@@ -169,6 +185,9 @@ public class DiscountService {
         return new DiscountResult(finalTotal, discountValue, v);
     }
 
+    /**
+     * Get voucher status
+     */
     private String getVoucherStatus(Voucher v) {
         if (!Boolean.TRUE.equals(v.getActive()))
             return "INACTIVE";
@@ -185,6 +204,9 @@ public class DiscountService {
         return "ACTIVE";
     }
 
+    /**
+     * Calculate discount value
+     */
     private BigDecimal calculateDiscount(Voucher v, BigDecimal orderTotal) {
         if (v.getType() == Voucher.VoucherType.FIXED_AMOUNT) {
             return v.getDiscountAmount() != null ? v.getDiscountAmount() : BigDecimal.ZERO;

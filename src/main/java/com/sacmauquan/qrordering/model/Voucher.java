@@ -31,6 +31,7 @@ public class Voucher extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'FIXED_AMOUNT'")
     private VoucherType type = VoucherType.FIXED_AMOUNT;
@@ -42,7 +43,7 @@ public class Voucher extends BaseEntity {
     @Min(0)
     private Double discountPercent; // % giảm (PERCENTAGE)
 
-    @Min(1)
+    @Min(0)
     private Integer usageLimit; // Tổng số lần mã này được dùng
 
     @Builder.Default

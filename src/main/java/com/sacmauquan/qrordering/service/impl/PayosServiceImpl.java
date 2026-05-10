@@ -31,7 +31,7 @@ import java.util.Optional;
 import java.math.BigDecimal;
 
 /**
- * PayosServiceImpl - Quản lý quy trình thanh toán qua cổng PayOS.
+ * PayosServiceImpl - Manages payment processing through PayOS gateway.
  */
 @Slf4j
 @Service
@@ -47,6 +47,9 @@ public class PayosServiceImpl implements PayosService {
     @Value("${app.frontend.base-url}")
     private String frontendUrl;
 
+    /**
+     * Create Payment Link
+     */
     @Override
     @Transactional
     public PayosCreateResponse createPaymentLink(@NonNull PayosCreateRequest request) {
@@ -54,14 +57,14 @@ public class PayosServiceImpl implements PayosService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Không tìm thấy đơn hàng: " + request.getOrderId()));
 
-        // --- KIỂM TRA TRÙNG LẶP (IDEMPOTENCY) ---
+        // --- IDEMPOTENCY CHECK ---
         Optional<PaymentTransaction> existing = transactionRepository
                 .findFirstByOrderIdAndStatusOrderByCreatedAtDesc(order.getId(),
                         PaymentTransaction.TransactionStatus.PENDING);
 
         if (existing.isPresent()) {
             PaymentTransaction oldTx = existing.get();
-            // Giao dịch cũ chưa quá 20 phút và khớp số tiền -> Trả về luôn link cũ
+            // Check if old transaction is still valid
             boolean isExpired = oldTx.getCreatedAt().plusMinutes(20).isBefore(LocalDateTime.now());
             if (!isExpired && oldTx.getAmount().compareTo(request.getAmount()) == 0 && oldTx.getQrCode() != null) {
                 log.info("[PayOS Idempotency] Reusing pending transaction {} for order {}", oldTx.getId(),
@@ -71,7 +74,7 @@ public class PayosServiceImpl implements PayosService {
             log.info("[PayOS Idempotency] Existing tx invalid (expired or amount mismatch). Creating new one.");
         }
 
-        // 1. Tạo bản ghi Transaction ở trạng thái PENDING
+        // Create transaction record
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .amount(request.getAmount())
@@ -81,13 +84,13 @@ public class PayosServiceImpl implements PayosService {
 
         transaction = transactionRepository.save(Objects.requireNonNull(transaction));
 
-        // 2. Gọi SDK PayOS tạo Link thanh toán
+        // Call PayOS SDK to create payment link
         try {
             String returnUrl = frontendUrl + "/admin/table-manager";
-            long expiredAt = (System.currentTimeMillis() / 1000) + (20 * 60); // 20 phút
+            long expiredAt = (System.currentTimeMillis() / 1000) + (20 * 60); // 20 minutes
 
             CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
-                    .orderCode(transaction.getId()) // Sử dụng ID giao dịch làm mã đơn hàng
+                    .orderCode(transaction.getId()) // Use transaction ID as order code
                     .amount(request.getAmount().longValue())
                     .description("Thanh toan don #" + order.getId())
                     .returnUrl(returnUrl)
@@ -97,7 +100,7 @@ public class PayosServiceImpl implements PayosService {
 
             CreatePaymentLinkResponse response = payOS.paymentRequests().create(paymentData);
 
-            // 3. Cập nhật thông tin QR vào Database
+            // Update QR information in Database
             transaction.setCheckoutUrl(response.getCheckoutUrl());
             transaction.setQrCode(response.getQrCode());
             transaction.setPayosReference(response.getPaymentLinkId());
@@ -106,22 +109,25 @@ public class PayosServiceImpl implements PayosService {
             return convertToCreateResponse(transaction);
 
         } catch (Exception e) {
-            log.error("Lỗi khi tạo PayOS link cho đơn hàng {}: {}", order.getId(), e.getMessage());
+            log.error("Error creating PayOS link for order {}: {}", order.getId(), e.getMessage());
             transaction.setStatus(PaymentTransaction.TransactionStatus.FAILED);
             transactionRepository.save(transaction);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Không thể kết nối tới PayOS: " + e.getMessage());
+                    "Failed to connect to PayOS: " + e.getMessage());
         }
     }
 
+    /**
+     * Cancel Payment Link
+     */
     @Override
     @Transactional
     public void cancelPaymentLink(@NonNull Long transactionId, String reason) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
         if (transaction.getStatus() != PaymentTransaction.TransactionStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ có thể hủy giao dịch đang chờ thanh toán.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only pending transactions can be cancelled.");
         }
 
         try {
@@ -131,19 +137,22 @@ public class PayosServiceImpl implements PayosService {
             transaction.setCancelReason(reason);
             transactionRepository.save(transaction);
 
-            log.info("Đã hủy giao dịch PayOS ID: {}", transactionId);
+            log.info("Cancelled PayOS transaction ID: {}", transactionId);
         } catch (Exception e) {
-            log.error("Lỗi khi hủy giao dịch PayOS {}: {}", transactionId, e.getMessage());
+            log.error("Error cancelling PayOS transaction {}: {}", transactionId, e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Lỗi hủy giao dịch PayOS: " + e.getMessage());
+                    "Error cancelling PayOS transaction: " + e.getMessage());
         }
     }
 
+    /**
+     * Sync Payment Status
+     */
     @Override
     @Transactional
     public PaymentTransaction syncPaymentStatus(@NonNull Long transactionId) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PENDING) {
             try {
@@ -159,15 +168,19 @@ public class PayosServiceImpl implements PayosService {
                     transactionRepository.save(transaction);
                 }
             } catch (Exception e) {
-                log.error("Lỗi khi đồng bộ trạng thái PayOS {}: {}", transactionId, e.getMessage());
+                log.error("Error syncing PayOS status {}: {}", transactionId, e.getMessage());
             }
         }
         return transaction;
     }
 
+    /**
+     * Process Webhook
+     */
     @Override
     @Transactional
     public void processWebhook(Webhook webhook) {
+        // Check if webhook is for testing
         if ("00".equals(webhook.getCode()) && webhook.getData() != null
                 && webhook.getData().getOrderCode() != null
                 && webhook.getData().getOrderCode() == 0) {
@@ -180,7 +193,7 @@ public class PayosServiceImpl implements PayosService {
             webhookData = payOS.webhooks().verify(webhook);
         } catch (Exception e) {
             log.error("[PayOS Webhook] Signature verification failed: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Xác thực chữ ký thất bại");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Signature verification failed");
         }
 
         long transactionId = webhookData.getOrderCode();
@@ -188,7 +201,7 @@ public class PayosServiceImpl implements PayosService {
 
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Không tìm thấy giao dịch: " + transactionId));
+                        "Transaction not found: " + transactionId));
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PAID) {
             log.info("[PayOS Webhook] Transaction {} already PAID, skipping.", transactionId);
             return;
@@ -199,7 +212,7 @@ public class PayosServiceImpl implements PayosService {
     }
 
     /**
-     * Xử lý các tác vụ khi thanh toán thành công
+     * Process tasks when payment is successful
      */
     private void handleSuccessfulPayment(PaymentTransaction transaction) {
         transaction.setStatus(PaymentTransaction.TransactionStatus.PAID);
@@ -207,7 +220,7 @@ public class PayosServiceImpl implements PayosService {
 
         Order order = transaction.getOrder();
 
-        // Kiểm tra tổng tiền đã thanh toán vs tổng đơn
+        // Check if total paid amount equals total bill amount
         BigDecimal totalPaid = transactionRepository.sumPaidAmountByOrderId(order.getId());
         BigDecimal totalBill = order.getTotalAmount();
 
@@ -221,7 +234,7 @@ public class PayosServiceImpl implements PayosService {
                 order.setStatus(Order.OrderStatus.COMPLETED);
                 orderRepository.save(order);
 
-                // Giải phóng bàn
+                // Free up table
                 DiningTable table = order.getTable();
                 if (table != null) {
                     table.setStatus(DiningTable.TableStatus.AVAILABLE);
@@ -229,13 +242,13 @@ public class PayosServiceImpl implements PayosService {
                     notificationService.notifyTableChange();
                 }
 
-                log.info("Thanh toán HOÀN TẤT đơn hàng #{} qua PayOS", order.getId());
+                log.info("Payment completed for order #{} via PayOS", order.getId());
             }
         } else {
-            log.info("Thanh toán MỘT PHẦN đơn hàng #{} (Chờ thanh toán đủ)", order.getId());
+            log.info("Partial payment for order #{} (Waiting for full payment)", order.getId());
         }
 
-        // Luôn gửi thông báo WebSocket cho mỗi giao dịch thành công
+        // Always send WebSocket notification for each successful transaction
         notificationService.notifyPaymentSuccess(order.getId(), transaction.getId());
     }
 

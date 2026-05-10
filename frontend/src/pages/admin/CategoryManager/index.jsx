@@ -23,9 +23,11 @@ const CategoryManager = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editId, setEditId] = useState(null);
     const [catName, setCatName] = useState('');
+    const [initialCatName, setInitialCatName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState('');
+    const [errors, setErrors] = useState({});
 
     // === Hook Status Modal ===
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
@@ -45,7 +47,6 @@ const CategoryManager = () => {
 
     // === WebSocket ===
     useWebSocket('/topic/categories', (message) => {
-        // message đã được JSON.parse bởi wsService. Nếu là object thì vẫn coi là có cập nhật.
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             fetchCategories();
         }
@@ -53,13 +54,27 @@ const CategoryManager = () => {
 
     useEffect(() => { fetchCategories(true); }, [fetchCategories]);
 
+    // === Validate ===
+    const validateForm = () => {
+        const newErrors = {};
+        if (!catName || !catName.trim()) {
+            newErrors.name = "Tên danh mục không được để trống";
+        } else if (catName.length < 2) {
+            newErrors.name = "Tên danh mục phải có ít nhất 2 ký tự";
+        } else if (/^\d/.test(catName)) {
+            newErrors.name = "Tên danh mục không được bắt đầu bằng số";
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     // === Lưu (Thêm/Sửa) ===
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!validateForm()) return;
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            // 1. Lưu thông tin cơ bản
             let result;
             if (editId) {
                 result = await categoryService.update(editId, catName);
@@ -68,15 +83,18 @@ const CategoryManager = () => {
                 result = await categoryService.create(catName);
                 showSuccess("Thêm mới danh mục thành công!");
             }
-
-            // 2. Upload ảnh (nếu có)
             if (selectedFile) {
                 await categoryService.uploadImage(result?.id || editId, selectedFile);
             }
 
             setIsModalOpen(false);
         } catch (err) {
-            showError(err);
+            const errorMsg = err.response?.data?.detail || err.message || '';
+            if (errorMsg.toLowerCase().includes('category name already exists')) {
+                setErrors({ ...errors, name: "Tên danh mục này đã tồn tại" });
+            } else {
+                showError(err);
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -99,13 +117,16 @@ const CategoryManager = () => {
         if (cat) {
             setEditId(cat.id);
             setCatName(cat.name);
-            setPreview(cat.img || ''); // Fix hiển thị ảnh
+            setInitialCatName(cat.name);
+            setPreview(cat.img || '');
         } else {
             setEditId(null);
             setCatName('');
+            setInitialCatName('');
             setPreview('');
         }
         setSelectedFile(null);
+        setErrors({});
         setIsModalOpen(true);
     };
 
@@ -154,9 +175,14 @@ const CategoryManager = () => {
                 isOpen={isModalOpen} onClose={closeModal} onSubmit={handleSubmit}
                 editId={editId} catName={catName} setCatName={setCatName}
                 preview={preview} isSubmitting={isSubmitting}
+                initialCatName={initialCatName} selectedFile={selectedFile}
+                errors={errors} setErrors={setErrors}
                 handleFileChange={(e) => {
                     const f = e.target.files[0];
-                    if (f) { setSelectedFile(f); setPreview(URL.createObjectURL(f)); }
+                    if (f) {
+                        setSelectedFile(f);
+                        setPreview(URL.createObjectURL(f));
+                    }
                 }}
             />
 

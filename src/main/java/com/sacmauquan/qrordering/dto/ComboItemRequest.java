@@ -3,6 +3,7 @@ import lombok.Data;
 
 @Data
 public class ComboItemRequest {
+    private Long id;
     private Long menuItemId;
     private Integer quantity;
 }

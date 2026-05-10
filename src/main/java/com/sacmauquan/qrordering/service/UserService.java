@@ -18,11 +18,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.lang.NonNull;
 
 /**
- * UserService - Quản lý người dùng, xác thực và phân quyền.
+ * UserService - Manage users, authentication and authorization.
  */
 @Slf4j
 @Service
@@ -36,23 +37,23 @@ public class UserService {
     private final UserMapper userMapper;
 
     /**
-     * Đăng nhập bảo mật
+     * Login
      */
     public AuthResponse login(@NonNull AuthRequest req) {
         User u = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> {
                     log.warn("Login failed: Email {} not found", req.getEmail());
-                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Thông tin đăng nhập không chính xác");
+                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login credentials");
                 });
 
         if (u.getStatus() != User.UserStatus.ACTIVE) {
             log.warn("Login blocked: Account {} is {}", u.getEmail(), u.getStatus());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Tài khoản hiện đang bị khóa hoặc chưa kích hoạt");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked or not activated");
         }
 
         if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
             log.warn("Login failed: Wrong password for user {}", req.getEmail());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Thông tin đăng nhập không chính xác");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login credentials");
         }
 
         log.info("User {} logged in successfully", u.getEmail());
@@ -60,7 +61,7 @@ public class UserService {
     }
 
     /**
-     * Lấy danh sách tất cả người dùng (Nhân viên)
+     * Get all users
      */
     public List<UserResponse> findAll() {
         return userRepository.findAll().stream()
@@ -69,27 +70,31 @@ public class UserService {
     }
 
     /**
-     * Lấy thông tin một người dùng theo ID
+     * Get user by ID
      */
     public UserResponse getOne(@NonNull Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     /**
-     * Tạo mới một tài khoản người dùng
+     * Create new user
      */
     @Transactional
     public UserResponse create(@NonNull UserUpsertRequest req) {
-        if (userRepository.existsByEmail(req.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email đã tồn tại trên hệ thống");
+        if (userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        if (StringUtils.hasText(req.getPhone()) && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
         }
 
         User u = userMapper.toEntity(req);
         u.setPassword(passwordEncoder.encode(req.getPassword()));
         u.setStatus(User.UserStatus.ACTIVE);
-        u.setRole(req.getRole() != null ? req.getRole() : User.Role.STAFF);
+        u.setRole(User.Role.STAFF);
 
         userRepository.save(u);
         log.info("New user created: {}", u.getEmail());
@@ -98,12 +103,23 @@ public class UserService {
     }
 
     /**
-     * Cập nhật thông tin người dùng
+     * Update user
      */
     @Transactional
     public UserResponse update(@NonNull Long id, @NonNull UserUpsertRequest req) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // Check email duplicate if changed
+        if (!u.getEmail().equals(req.getEmail()) && userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        // Check phone duplicate if changed
+        if (StringUtils.hasText(req.getPhone()) && !Objects.equals(u.getPhone(), req.getPhone())
+                && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
 
         userMapper.updateEntity(u, req);
 
@@ -117,19 +133,19 @@ public class UserService {
             u.setStatus(userMapper.mapStatus(req.getStatus()));
         }
 
-        userRepository.save(u);
+        userRepository.save(Objects.requireNonNull(u));
         log.info("User updated: {}", u.getEmail());
         notificationService.notifyUserChange();
         return userMapper.toDto(u);
     }
 
     /**
-     * Xóa người dùng (Soft Delete được cấu hình tại Entity)
+     * Delete user
      */
     @Transactional
     public void delete(@NonNull Long id) {
         if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Người dùng không tồn tại");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
         userRepository.deleteById(id);
         log.info("User with id {} deleted", id);
@@ -137,15 +153,15 @@ public class UserService {
     }
 
     /**
-     * Đặt lại mật khẩu cho tài khoản
+     * Reset password for user
      */
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         if (!StringUtils.hasText(newPassword)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mật khẩu mới không được để trống");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password cannot be empty");
         }
 
         u.setPassword(passwordEncoder.encode(newPassword));
@@ -154,12 +170,12 @@ public class UserService {
     }
 
     /**
-     * Tải lên và cập nhật ảnh đại diện
+     * Upload and update avatar for user
      */
     @Transactional
     public UserResponse uploadAvatar(@NonNull Long id, @NonNull MultipartFile file) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         try {
             String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
@@ -172,7 +188,7 @@ public class UserService {
             return userMapper.toDto(u);
         } catch (IOException e) {
             log.error("Failed to upload avatar: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Lỗi khi lưu ảnh đại diện");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error when upload avatar");
         }
     }
 

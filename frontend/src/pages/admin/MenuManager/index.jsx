@@ -23,8 +23,10 @@ const MenuManager = () => {
   const [aiScanning, setAiScanning] = useState(false);
 
   const [formData, setFormData] = useState({ id: null, name: '', price: '', categoryId: '', itemOptions: [] });
+  const [initialFormData, setInitialFormData] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('');
+  const [errors, setErrors] = useState({});
 
   // Hook Status Modal
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
@@ -53,7 +55,6 @@ const MenuManager = () => {
 
   // WebSocket
   useWebSocket('/topic/menu', (message) => {
-    // message đã được JSON.parse bởi wsService.
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       fetchItems();
     }
@@ -61,7 +62,7 @@ const MenuManager = () => {
 
   useEffect(() => { fetchItems(true); }, [fetchItems]);
 
-  // AI Magic Scan (TF.js — chạy offline trên browser)
+  // AI Magic Scan
   const handleAiScan = useCallback(async () => {
     if (!preview) return;
     setAiScanning(true);
@@ -79,11 +80,7 @@ const MenuManager = () => {
         categoryId: result.categoryId,
         price: result.price
       }));
-
-      const top3Text = result.top3
-        .map(p => `${p.label} (${(p.confidence * 100).toFixed(0)}%)`)
-        .join(', ');
-      showSuccess(`Nhận diện: ${result.name} — ${(result.confidence * 100).toFixed(0)}%\nTop 3: ${top3Text}`);
+      showSuccess(`Nhận diện: ${result.name}`);
     } catch (err) {
       showError("Lỗi AI: " + err.message);
     } finally {
@@ -97,7 +94,6 @@ const MenuManager = () => {
     return () => window.removeEventListener('aiScan', handler);
   }, [handleAiScan]);
 
-
   // SUBMIT 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -107,8 +103,9 @@ const MenuManager = () => {
       const payload = {
         name: formData.name,
         price: Number(formData.price),
-        category: { id: Number(formData.categoryId) },
-        itemOptions: formData.itemOptions
+        categoryId: Number(formData.categoryId),
+        itemOptions: formData.itemOptions,
+        active: formData.active ?? true
       };
 
       let res;
@@ -126,7 +123,14 @@ const MenuManager = () => {
 
       setIsModalOpen(false);
     } catch (err) {
-      showError(err);
+      console.error('Error saving menu item:', err);
+      const errorMsg = err.response?.data?.detail || err.message || '';
+
+      if (errorMsg.toLowerCase().includes('item name already exists')) {
+        setErrors({ ...errors, name: "Tên món ăn này đã tồn tại" });
+      } else {
+        showError(err);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +155,10 @@ const MenuManager = () => {
         setFilterValue={setFilterCate}
         filterOptions={categories}
         onAddClick={() => {
-          setFormData({ id: null, name: '', price: '', categoryId: categories[0]?.id || '', itemOptions: [] });
+          const emptyForm = { id: null, name: '', price: '', categoryId: categories[0]?.id || '', itemOptions: [] };
+          setFormData(emptyForm);
+          setInitialFormData(null);
+          setErrors({});
           setPreview('');
           setSelectedFile(null);
           setIsModalOpen(true);
@@ -170,13 +177,16 @@ const MenuManager = () => {
               key={it.id}
               item={it}
               onEdit={(item) => {
-                setFormData({
+                const data = {
                   id: item.id,
                   name: item.name,
                   price: item.price,
                   categoryId: item.category?.id,
                   itemOptions: item.itemOptions || []
-                });
+                };
+                setFormData(data);
+                setInitialFormData(data);
+                setErrors({});
                 setPreview(item.img || '');
                 setIsModalOpen(true);
               }}
@@ -203,6 +213,10 @@ const MenuManager = () => {
         preview={preview}
         isSubmitting={isSubmitting}
         aiScanning={aiScanning}
+        initialFormData={initialFormData}
+        selectedFile={selectedFile}
+        errors={errors}
+        setErrors={setErrors}
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) { setSelectedFile(f); setPreview(URL.createObjectURL(f)); }

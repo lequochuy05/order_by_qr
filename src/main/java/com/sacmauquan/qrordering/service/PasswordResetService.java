@@ -17,7 +17,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * PasswordResetService - Quản lý quy trình khôi phục mật khẩu qua Email và SMS.
+ * PasswordResetService - Manages the password reset process via Email and SMS.
  */
 @Slf4j
 @Service
@@ -31,12 +31,12 @@ public class PasswordResetService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Khôi phục qua Email
+     * Reset password via Email
      */
     @Transactional
     public void createPasswordResetToken(String email) {
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email not found"));
 
         String token = UUID.randomUUID().toString();
 
@@ -56,10 +56,10 @@ public class PasswordResetService {
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepo.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Token không hợp lệ hoặc đã hết hạn"));
+                        "Token invalid or expired"));
 
         if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token đã hết hạn hoặc đã được sử dụng");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token expired or already used");
         }
 
         User user = resetToken.getUser();
@@ -73,14 +73,14 @@ public class PasswordResetService {
     }
 
     /**
-     * Khôi phục qua SMS (OTP)
+     * Reset password via SMS (OTP)
      */
     @Transactional
     public void createOtpAndSendOtp(String phone) {
         String normalizedPhone = normalizePhone(phone);
 
         User user = userRepo.findByPhone(normalizedPhone)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Số điện thoại không tồn tại"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phone number not found"));
 
         String otpCode = String.format("%06d", (int) (Math.random() * 1_000_000));
 
@@ -93,7 +93,7 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        String message = "Mã OTP của bạn là: " + otpCode + ". Hiệu lực trong 5 phút.";
+        String message = "Your OTP is: " + otpCode + ". Valid for 5 minutes.";
         otpService.sendOtp(normalizedPhone, message);
         log.info("OTP sent to phone: {}", normalizedPhone);
     }
@@ -104,7 +104,7 @@ public class PasswordResetService {
 
         PasswordResetToken otpToken = tokenRepo.findValidOtp(otpCode, normalizedPhone)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Mã OTP không hợp lệ hoặc đã hết hạn"));
+                        "OTP invalid or expired"));
 
         User user = otpToken.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -117,10 +117,10 @@ public class PasswordResetService {
     }
 
     /**
-     * Chuẩn hóa số điện thoại về định dạng 0xxx
+     * Normalize phone number format 0xxx
      */
     private String normalizePhone(String phone) {
-        Objects.requireNonNull(phone, "Số điện thoại không được để trống");
+        Objects.requireNonNull(phone, "Phone number cannot be empty");
         if (phone.startsWith("+84")) {
             return "0" + phone.substring(3);
         }

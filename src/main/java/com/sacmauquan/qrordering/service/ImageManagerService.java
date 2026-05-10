@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * ImageManagerService - Quản lý tải lên và xóa hình ảnh trên Cloudinary.
+ * ImageManagerService - Manages uploading and deleting images on Cloudinary.
  */
 @Slf4j
 @Service
@@ -21,17 +21,18 @@ public class ImageManagerService {
 
     private final Cloudinary cloudinary;
 
+    /**
+     * Initializes the Cloudinary service with the provided configuration.
+     */
     public ImageManagerService(
             @Value("${cloudinary.cloud_name}") String cloudName,
             @Value("${cloudinary.api_key}") String apiKey,
-            @Value("${cloudinary.api_secret}") String apiSecret
-    ) {
+            @Value("${cloudinary.api_secret}") String apiSecret) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
                 "cloud_name", cloudName,
                 "api_key", apiKey,
                 "api_secret", apiSecret,
-                "secure", true
-        ));
+                "secure", true));
         log.info("Cloudinary Service initialized successfully.");
     }
 
@@ -40,36 +41,37 @@ public class ImageManagerService {
      */
     public String upload(@NonNull MultipartFile file, String folder) throws IOException {
         try {
-            log.info("Đang upload file lên thư mục: {}", folder);
+            log.info("Uploading file to folder: {}", folder);
             @SuppressWarnings("unchecked")
-            Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
-                    "folder", folder,
-                    "resource_type", "auto"
-            ));
+            Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(),
+                    ObjectUtils.asMap(
+                            "folder", folder,
+                            "resource_type", "auto"));
             String url = Objects.requireNonNull(uploadResult.get("secure_url")).toString();
-            log.info("Upload thành công. URL: {}", url);
+            log.info("Upload successfully. URL: {}", url);
             return url;
         } catch (Exception e) {
-            log.error("Lỗi khi upload file lên Cloudinary: {}", e.getMessage());
+            log.error("Failed to upload file to Cloudinary: {}", e.getMessage());
             throw e;
         }
     }
 
     /**
-     * Xóa ảnh dựa trên Public ID.
+     * Delete image by Public ID.
      */
     public void deleteByPublicId(String publicId) {
-        if (publicId == null || publicId.isBlank() || "PENDING".equals(publicId)) return;
+        if (publicId == null || publicId.isBlank() || "PENDING".equals(publicId))
+            return;
         try {
-            log.info("Đang xóa ảnh trên Cloudinary với PublicID: {}", publicId);
+            log.info("Deleting image on Cloudinary with PublicID: {}", publicId);
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
         } catch (Exception e) {
-            log.error("Không thể xóa ảnh Cloudinary (PublicID: {}): {}", publicId, e.getMessage());
+            log.error("Failed to delete image on Cloudinary (PublicID: {}): {}", publicId, e.getMessage());
         }
     }
 
     /**
-     * Xóa ảnh dựa trên URL hoặc Public ID.
+     * Delete image by ID or Public ID.
      */
     public void delete(String idOrUrl) {
         if (idOrUrl == null || idOrUrl.isBlank() || "PENDING".equals(idOrUrl))
@@ -79,12 +81,12 @@ public class ImageManagerService {
             String publicId = idOrUrl.contains("/upload/") ? extractPublicId(idOrUrl) : idOrUrl;
             deleteByPublicId(publicId);
         } catch (Exception e) {
-            log.error("Lỗi khi xử lý xóa ảnh {}: {}", idOrUrl, e.getMessage());
+            log.error("Failed to process delete image {}: {}", idOrUrl, e.getMessage());
         }
     }
 
     /**
-     * Thay thế ảnh cũ bằng ảnh mới.
+     * Replace old image with new image.
      */
     public String replace(@NonNull MultipartFile newFile, String oldUrl, String folder) throws IOException {
         if (oldUrl != null) {
@@ -94,43 +96,42 @@ public class ImageManagerService {
     }
 
     /**
-     * Tách public_id từ URL Cloudinary một cách an toàn hơn.
+     * Extract public_id from Cloudinary URL more safely.
      */
     private String extractPublicId(String url) {
-        // Ví dụ URL: https://res.cloudinary.com/demo/image/upload/v1234567/sample.jpg
-        // PublicID sẽ là: sample
+        // URL example: https://res.cloudinary.com/demo/image/upload/v1234567/sample.jpg
+        // PublicID will be: sample
         try {
             String part = url.substring(url.indexOf("/upload/") + 8);
-            // Bỏ qua phần version (v1234567/) nếu có
+            // Skip version (v1234567/) if exists
             if (part.contains("/")) {
                 part = part.substring(part.indexOf("/") + 1);
             }
-            // Bỏ đuôi file (.jpg, .png...)
+            // Remove file extension (.jpg, .png, .webp...)
             if (part.contains(".")) {
                 part = part.substring(0, part.lastIndexOf("."));
             }
             return part;
         } catch (Exception e) {
-            log.warn("Không thể tách PublicID từ URL: {}", url);
+            log.warn("Failed to extract PublicID from URL: {}", url);
             return "";
         }
     }
 
     /**
-     * Upload dữ liệu bytes (Dùng cho QR Code).
+     * Upload data bytes (For QR Code).
      */
     public Map<String, Object> uploadBytes(byte[] data, String folder, String publicId) throws IOException {
         try {
-            log.info("Đang upload bytes lên Cloudinary (PublicID: {})", publicId);
+            log.info("Uploading bytes to Cloudinary (PublicID: {})", publicId);
             @SuppressWarnings("unchecked")
             Map<String, Object> result = (Map<String, Object>) cloudinary.uploader().upload(data, ObjectUtils.asMap(
                     "folder", folder,
                     "public_id", publicId,
-                    "resource_type", "image"
-            ));
+                    "resource_type", "image"));
             return result;
         } catch (Exception e) {
-            log.error("Lỗi khi upload bytes lên Cloudinary: {}", e.getMessage());
+            log.error("Failed to upload bytes to Cloudinary: {}", e.getMessage());
             throw e;
         }
     }

@@ -54,6 +54,7 @@ const VoucherManager = () => {
     const payload = {
       ...data,
       code: data.code.trim().toUpperCase(),
+      type: data.discountPercent ? 'PERCENTAGE' : 'FIXED_AMOUNT',
       discountPercent: data.discountPercent ? parseFloat(data.discountPercent) : null,
       discountAmount: data.discountAmount ? parseFloat(data.discountAmount) : null,
       usageLimit: parseInt(data.usageLimit) || 0,
@@ -71,8 +72,12 @@ const VoucherManager = () => {
       }
       setIsModalOpen(false);
     } catch (err) {
-      // Dùng hàm hiển thị lỗi mới thay cho alert
-      showError(err);
+      const errorMsg = err.response?.data?.detail || err.message || '';
+      if (errorMsg.includes("Voucher code already exists")) {
+        showError("Mã voucher này đã tồn tại trên hệ thống");
+      } else {
+        showError(err);
+      }
     }
   };
 
