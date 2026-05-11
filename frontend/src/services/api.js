@@ -1,13 +1,18 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 api.interceptors.request.use((config) => {
+  // Nếu url chưa có chữ /api ở đầu, tự động gắn thêm vào
+  if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('http')) {
+    config.url = '/api' + (config.url.startsWith('/') ? '' : '/') + config.url;
+  }
+
   const token = localStorage.getItem('accessToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -20,20 +25,17 @@ api.interceptors.response.use(
   (response) => {
     const apiResponse = response.data;
 
-    // Nếu response có cấu trúc ApiResponse (success, message, data)
     if (apiResponse && Object.prototype.hasOwnProperty.call(apiResponse, 'success')) {
       if (apiResponse.success) {
-        return apiResponse.data; // Trả về T trực tiếp cho service
+        return apiResponse.data;
       } else {
-        // Ném lỗi từ nghiệp vụ backend
         return Promise.reject(new Error(apiResponse.message || 'Đã xảy ra lỗi nghiệp vụ'));
       }
     }
 
-    return response; // Trả về raw response nếu không khớp format (ví dụ external API)
+    return response;
   },
   (error) => {
-    // Xử lý lỗi HTTP (401, 403, 500...)
     if (error.response && error.response.data && error.response.data.message) {
       return Promise.reject(new Error(error.response.data.message));
     }

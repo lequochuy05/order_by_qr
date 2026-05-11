@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: order-by-qr-backend:latest
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+
+  frontend:
+    image: order-by-qr-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

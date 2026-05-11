@@ -5,23 +5,22 @@ class WebSocketService {
     constructor() {
         this.client = null;
         this.connected = false;
-        this.onConnectCallbacks = []; 
+        this.onConnectCallbacks = [];
     }
 
     connect() {
         if (this.client) return;
+        // Nếu url chưa có chữ /api ở đầu, tự động gắn thêm vào
+        const wsUrl = '/ws';
 
-        const wsUrl = import.meta.env.VITE_WS_URL || 'http://localhost:8080/ws';
-        
         this.client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
             reconnectDelay: 5000,
             onConnect: () => {
                 this.connected = true;
-                console.log("WebSocket Connected");
                 // Chạy toàn bộ hàng đợi subscribe
                 this.onConnectCallbacks.forEach(cb => cb());
-                this.onConnectCallbacks = []; 
+                this.onConnectCallbacks = [];
             },
             onDisconnect: () => {
                 this.connected = false;
