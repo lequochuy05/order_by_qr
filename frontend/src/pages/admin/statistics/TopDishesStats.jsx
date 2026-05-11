@@ -36,7 +36,7 @@ const TopDishesStats = () => {
     // KPI
     const kpi = useMemo(() => {
         const totalDishes = dishes.length;
-        const totalQty = dishes.reduce((s, d) => s + (d.totalQuantity || 0), 0);
+        const totalQty = dishes.reduce((s, d) => s + (d.totalQty || 0), 0);
         const totalRev = dishes.reduce((s, d) => s + (d.totalRevenue || 0), 0);
         const avg = totalDishes ? Math.round(totalQty / totalDishes) : 0;
         return { totalDishes, totalQty, totalRev, avg };
@@ -47,27 +47,27 @@ const TopDishesStats = () => {
         return dishes.slice(0, 10).map(d => ({
             name: d.name.length > 16 ? d.name.substring(0, 16) + '...' : d.name,
             fullName: d.name,
-            quantity: d.totalQuantity,
+            quantity: d.totalQty,
             revenue: d.totalRevenue
-        })).reverse();
+        }));
     }, [dishes]);
 
     // Trend chart data
     const trendData = useMemo(() => {
         return trend.map(t => ({
-            date: fmtDate(new Date(t.date)),
-            quantity: t.totalQuantity
+            date: fmtDate(t.bucket),
+            quantity: t.totalQty
         }));
     }, [trend]);
 
     // Max quantity for progress bars
-    const maxQty = dishes.length > 0 ? dishes[0].totalQuantity : 1;
+    const maxQty = dishes.length > 0 ? dishes[0].totalQty : 1;
 
     // Export CSV
     const handleExport = () => {
         const header = 'Hạng,Tên món,Danh mục,SL bán,Doanh thu\n';
         const rows = dishes.map((d, i) =>
-            `${i + 1},"${d.name}","${d.categoryName || ''}",${d.totalQuantity},${d.totalRevenue}`
+            `${i + 1},"${d.name}","${d.categoryName || ''}",${d.totalQty},${d.totalRevenue}`
         ).join('\n');
         const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -114,7 +114,7 @@ const TopDishesStats = () => {
                                             <RechartsTooltip
                                                 cursor={{ fill: '#f3f4f6' }}
                                                 formatter={(v, name) => [
-                                                    name === 'quantity' ? `${v} phần` : fmtVND(v),
+                                                    name === 'quantity' ? `${v}` : fmtVND(v),
                                                     name === 'quantity' ? 'Số lượng' : 'Doanh thu'
                                                 ]}
                                                 labelFormatter={(l, p) => p[0]?.payload.fullName}
@@ -148,7 +148,7 @@ const TopDishesStats = () => {
                                             <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} dy={10} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} allowDecimals={false} />
                                             <RechartsTooltip
-                                                formatter={(v) => [`${v} phần`, 'Tổng SL bán']}
+                                                formatter={(v) => [`${v}`, 'Tổng SL bán']}
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                             />
                                             <Area type="monotone" dataKey="quantity" stroke="#f97316" fill="url(#colorQty)" strokeWidth={3} activeDot={{ r: 6 }} />
@@ -185,7 +185,7 @@ const TopDishesStats = () => {
                                 </thead>
                                 <tbody className="text-sm">
                                     {dishes.map((dish, idx) => (
-                                        <tr key={dish.menuItemId} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                                        <tr key={`dish-${dish.menuItemId || idx}`} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
                                             {/* Rank */}
                                             <td className="p-4 text-center">
                                                 {idx < 3 ? (
@@ -214,13 +214,13 @@ const TopDishesStats = () => {
                                             {/* Category */}
                                             <td className="p-4">
                                                 <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                                                    {dish.categoryName || 'Khác'}
+                                                    {dish.category || 'Khác'}
                                                 </span>
                                             </td>
                                             {/* Quantity */}
                                             <td className="p-4 text-center">
                                                 <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold">
-                                                    {dish.totalQuantity}
+                                                    {dish.totalQty}
                                                 </span>
                                             </td>
                                             {/* Revenue */}
@@ -233,33 +233,29 @@ const TopDishesStats = () => {
                                                     <div
                                                         className="h-2 rounded-full transition-all duration-700 ease-out"
                                                         style={{
-                                                            width: `${(dish.totalQuantity / maxQty) * 100}%`,
+                                                            width: `${(dish.totalQty / maxQty) * 100}%`,
                                                             backgroundColor: COLORS_TOP[idx % COLORS_TOP.length]
                                                         }}
                                                     />
                                                 </div>
                                             </td>
+
                                         </tr>
                                     ))}
+
                                     {dishes.length === 0 && (
-                                        <tr>
+                                        <tr key="empty-row">
                                             <td colSpan="7" className="p-8 text-center text-gray-400">
                                                 <UtensilsCrossed className="w-12 h-12 mx-auto mb-2 opacity-20" />
                                                 <p>Không có dữ liệu món ăn trong khoảng thời gian này.</p>
                                             </td>
                                         </tr>
                                     )}
+
                                 </tbody>
                             </table>
                         </div>
 
-                        {dishes.length > 0 && (
-                            <div className="p-4 border-t border-gray-100 flex justify-center">
-                                <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
-                                    <Download size={16} /> Xuất CSV ({dishes.length} món)
-                                </button>
-                            </div>
-                        )}
                     </div>
 
                 </div>

@@ -46,7 +46,8 @@ const RevenueStats = () => {
         });
 
         return revenueData.map(item => {
-            const dateKey = fmtDate(new Date(item.bucket));
+            // Nếu bucket là string "YYYY-MM-DD"
+            const dateKey = fmtDate(new Date(item.bucket + 'T00:00:00'));
             return {
                 date: dateKey,
                 fullDate: fmtDateTime(new Date(item.bucket)),
@@ -157,7 +158,7 @@ const RevenueStats = () => {
                                                 {fmtDateTime(order.paymentTime || order.createdAt)}
                                             </td>
                                             <td className="p-4 text-gray-800 font-medium">
-                                                {order.employeeName || '—'}
+                                                {order.empName || '—'}
                                             </td>
                                             <td className="p-4 text-center">
                                                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
@@ -170,7 +171,7 @@ const RevenueStats = () => {
                                         </tr>
                                     ))}
                                     {orders.length === 0 && (
-                                        <tr>
+                                        <tr key="empty-revenue-row">
                                             <td colSpan="5" className="p-8 text-center text-gray-400">
                                                 Không có dữ liệu giao dịch trong khoảng thời gian này.
                                             </td>

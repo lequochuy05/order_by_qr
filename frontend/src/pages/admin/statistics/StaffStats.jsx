@@ -58,7 +58,9 @@ const StaffStats = () => {
     const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#9ca3af'];
 
     // Tìm max revenue cho progress bar
-    const maxRev = Math.max(...employees.map(e => e.revenue || 0), 1);
+    const maxRev = employees.length > 0
+        ? Math.max(...employees.map(e => e.revenue || 0))
+        : 1;
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
@@ -117,7 +119,7 @@ const StaffStats = () => {
                     <div className="lg:w-2/3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {employees.map((emp, idx) => (
-                                <div key={idx} className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
+                                <div key={`staff-${emp.fullName || idx}`} className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg transition-all duration-300 relative overflow-hidden group">
                                     {/* Huy hiệu Top 1-3 */}
                                     {idx < 3 && (
                                         <div className={`absolute top-0 right-0 text-xs font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1

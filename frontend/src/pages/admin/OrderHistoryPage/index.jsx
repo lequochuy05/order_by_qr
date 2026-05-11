@@ -330,7 +330,7 @@ export default function OrderHistoryPage() {
             </thead>
             <tbody className="text-sm">
               {loading ? (
-                <tr>
+                <tr key="loading-row">
                   <td colSpan="6" className="p-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
@@ -339,7 +339,7 @@ export default function OrderHistoryPage() {
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
-                <tr>
+                <tr key="empty-history-row">
                   <td colSpan="6" className="p-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Search size={32} className="text-gray-300 mb-2" />
@@ -350,7 +350,7 @@ export default function OrderHistoryPage() {
               ) : (
                 orders.map((order, idx) => (
                   <tr
-                    key={order.id || idx}
+                    key={`order-${order.id || idx}`}
                     className="border-b border-gray-50 hover:bg-gray-50 transition-colors group cursor-pointer"
                     onClick={() => setSelectedOrder(order)}
                   >
