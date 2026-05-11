@@ -17,6 +17,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     Optional<PaymentTransaction> findFirstByOrderIdAndStatusOrderByCreatedAtDesc(Long orderId,
             TransactionStatus status);
 
+    Optional<PaymentTransaction> findFirstByOrderIdOrderByCreatedAtDesc(Long orderId);
+
     @Query("SELECT SUM(t.amount) FROM PaymentTransaction t WHERE t.order.id = :orderId AND t.status = 'SUCCESS'")
     java.math.BigDecimal sumPaidAmountByOrderId(Long orderId);
 }

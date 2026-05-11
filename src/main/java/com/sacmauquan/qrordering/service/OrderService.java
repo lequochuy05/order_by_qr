@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,22 +29,32 @@ public interface OrderService {
     /**
      * Retrieves filtered and paginated order history records.
      * 
-     * @param status    Status filter
-     * @param startDate Range start
-     * @param endDate   Range end
-     * @param search    Keyword search (Table/Order ID)
-     * @param pageable  Pagination configuration
+     * @param status        Status filter
+     * @param startDate     Range start
+     * @param endDate       Range end
+     * @param orderId       Order ID filter
+     * @param tableNumber   Table number filter
+     * @param pageable      Pagination configuration
      * @return Page of OrderResponse objects
      */
-    Page<OrderResponse> getOrderHistory(String status, LocalDateTime startDate, LocalDateTime endDate, String search,
-            @NonNull Pageable pageable);
+    Page<OrderResponse> getOrderHistory(String status, LocalDate startDate, LocalDate endDate, String orderId,
+            String tableNumber, @NonNull Pageable pageable);
 
     /**
      * Generates high-level statistical summaries for specified order criteria.
      * 
      * @return Map containing metrics like total revenue and volume
      */
-    Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate);
+    Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
+            String tableNumber);
+
+    /**
+     * Synchronizes order status with external payment providers or internal rules.
+     * 
+     * @param id Order ID
+     * @return Updated OrderResponse
+     */
+    OrderResponse reconcileOrder(@NonNull Long id);
 
     /**
      * Transitions an order between lifecycle states (e.g., PENDING to SERVING).

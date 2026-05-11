@@ -1,20 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign } from 'lucide-react';
+import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
 import { fmtVND, fmtDateTime, fmtStatus } from '../../../utils/formatters';
 import { orderService } from '../../../services/admin/orderService';
+import { printInvoice } from '../../../utils/invoiceGenerator';
 import OrderDetailsModal from './OrderDetailsModal';
+import { toast } from 'react-hot-toast';
 
 const DATE_PRESETS = [
+  { label: 'Tất cả', value: 'all' },
   { label: 'Hôm nay', value: 'today' },
   { label: 'Hôm qua', value: 'yesterday' },
   { label: '7 ngày', value: '7days' },
   { label: '30 ngày', value: '30days' },
-  { label: 'Tất cả', value: 'all' },
 ];
 
 function getDateRange(preset) {
   const today = new Date();
-  const fmt = (d) => d.toISOString().split('T')[0];
+  const fmt = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   switch (preset) {
     case 'today':
@@ -51,7 +58,8 @@ export default function OrderHistoryPage() {
   const itemsPerPage = 15;
 
   // Filters
-  const [search, setSearch] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const [tableNumber, setTableNumber] = useState('');
   const [status, setStatus] = useState('');
   const [datePreset, setDatePreset] = useState('today');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -60,39 +68,56 @@ export default function OrderHistoryPage() {
   // Stats
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0 });
 
-  // Debounce search
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 400);
-    return () => clearTimeout(timer);
-  }, [search]);
+  // Applied filters (only update when user clicks "Lọc")
+  const [appliedFilters, setAppliedFilters] = useState(() => {
+    const range = getDateRange('today');
+    return {
+      orderId: '',
+      tableNumber: '',
+      status: '',
+      datePreset: 'today',
+      startDate: range.startDate,
+      endDate: range.endDate
+    };
+  });
 
-  // Reset page on filter change
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [debouncedSearch, status, datePreset, customStartDate, customEndDate]);
 
-  const getFilters = useCallback(() => {
+
+  const getRequestParams = useCallback(() => {
+    return {
+      page: currentPage,
+      size: itemsPerPage,
+      ...(appliedFilters.orderId && { orderId: appliedFilters.orderId }),
+      ...(appliedFilters.tableNumber && { tableNumber: appliedFilters.tableNumber }),
+      ...(appliedFilters.status && { status: appliedFilters.status }),
+      ...(appliedFilters.startDate && { startDate: appliedFilters.startDate }),
+      ...(appliedFilters.endDate && { endDate: appliedFilters.endDate }),
+    };
+  }, [currentPage, appliedFilters]);
+
+  const handleApplyFilters = () => {
     let dateRange;
     if (datePreset === 'custom') {
       dateRange = { startDate: customStartDate, endDate: customEndDate };
     } else {
       dateRange = getDateRange(datePreset);
     }
-    return {
-      page: currentPage,
-      size: itemsPerPage,
-      ...(debouncedSearch && { search: debouncedSearch }),
-      ...(status && { status }),
-      ...(dateRange.startDate && { startDate: dateRange.startDate }),
-      ...(dateRange.endDate && { endDate: dateRange.endDate }),
-    };
-  }, [currentPage, debouncedSearch, status, datePreset, customStartDate, customEndDate]);
+
+    setAppliedFilters({
+      orderId: orderId.trim(),
+      tableNumber: tableNumber.trim(),
+      status,
+      datePreset,
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    });
+    setCurrentPage(0); // Reset to first page on new filter
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const params = getFilters();
+      const params = getRequestParams();
       const data = await orderService.getOrderHistory(params);
       setOrders(data.content || []);
       setTotalPages(data.totalPages || 0);
@@ -102,21 +127,20 @@ export default function OrderHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [getFilters]);
+  }, [getRequestParams]);
 
   const fetchStats = useCallback(async () => {
     try {
-      const params = getFilters();
+      const params = getRequestParams();
       const statsParams = { ...params };
       delete statsParams.page;
       delete statsParams.size;
-      delete statsParams.search;
       const data = await orderService.getOrderStats(statsParams);
       setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  }, [getFilters]);
+  }, [getRequestParams]);
 
   useEffect(() => {
     fetchOrders();
@@ -124,6 +148,35 @@ export default function OrderHistoryPage() {
   }, [fetchOrders, fetchStats]);
 
   const avgOrder = stats.totalOrders > 0 ? stats.totalRevenue / stats.totalOrders : 0;
+
+  const handlePrint = (e, order) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    if (order.status !== 'COMPLETED') {
+      toast.error('Chỉ có thể in hóa đơn cho đơn hàng đã hoàn tất');
+      return;
+    }
+
+    printInvoice({
+      order,
+      table: order.table,
+      paidBy: order.paidByName || 'Nhân viên',
+      paidAt: order.paymentTime
+    });
+  };
+
+  const handleReconcile = async (e, orderId) => {
+    e.stopPropagation();
+    try {
+      const res = await orderService.reconcileOrder(orderId);
+      if (res.success) {
+        toast.success('Tra soát thành công: ' + res.message);
+        fetchOrders(); // Reload data
+      }
+    } catch (error) {
+      toast.error('Lỗi khi tra soát đơn hàng');
+    }
+  };
 
   return (
     <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
@@ -148,7 +201,7 @@ export default function OrderHistoryPage() {
           <div className="p-3 bg-orange-50 rounded-xl"><TrendingUp size={22} className="text-orange-500" /></div>
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">TB/Đơn</p>
-            <p className="text-2xl font-bold text-gray-800">{fmtVND(avgOrder)}</p>
+            <p className="text-2xl font-bold text-gray-800">{fmtVND(avgOrder) || fmtVND(0)}</p>
           </div>
         </div>
       </div>
@@ -177,6 +230,15 @@ export default function OrderHistoryPage() {
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
           >
             <Calendar size={14} /> Tùy chọn
+          </button>
+
+          {/* Apply Button */}
+          <button
+            onClick={handleApplyFilters}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all border flex items-center gap-1.5 bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-200"
+          >
+            <Filter size={18} />
+            <span>Áp dụng</span>
           </button>
         </div>
 
@@ -210,19 +272,33 @@ export default function OrderHistoryPage() {
       )}
 
       {/* Filters bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="relative group md:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
+        {/* Order ID */}
+        <div className="relative group md:col-span-3">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
           <input
             type="text"
-            placeholder="Tìm theo Mã ĐH hoặc Bàn..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Mã ĐH..."
+            value={orderId}
+            onChange={(e) => setOrderId(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-gray-400 text-sm"
           />
         </div>
 
-        <div className="relative group">
+        {/* Table Number */}
+        <div className="relative group md:col-span-3">
+          <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
+          <input
+            type="text"
+            placeholder="Số bàn..."
+            value={tableNumber}
+            onChange={(e) => setTableNumber(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all placeholder:text-gray-400 text-sm"
+          />
+        </div>
+
+        {/* Status */}
+        <div className="relative group md:col-span-4">
           <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
           <select
             value={status}
@@ -230,11 +306,12 @@ export default function OrderHistoryPage() {
             className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none text-sm cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
-            {['PENDING', 'COOKING', 'READY', 'FINISHED', 'PAID', 'CANCELLED'].map(key => (
+            {['PENDING', 'SERVING', 'COMPLETED', 'CANCELLED'].map(key => (
               <option key={key} value={key}>{fmtStatus('order', key).label}</option>
             ))}
           </select>
         </div>
+
       </div>
 
       {/* Data Table */}
@@ -279,10 +356,10 @@ export default function OrderHistoryPage() {
                   >
                     <td className="p-5 text-gray-800 font-mono font-medium">
                       <span className="text-gray-400 mr-1">#</span>
-                      {order.id?.toString().substring(0, 8).toUpperCase() || 'N/A'}
+                      {order.id?.toString().substring(0, 8).toUpperCase()}
                     </td>
                     <td className="p-5 text-gray-600">
-                      {fmtDateTime(order.createdAt) || 'N/A'}
+                      {fmtDateTime(order.createdAt)}
                     </td>
                     <td className="p-5">
                       {order.table?.tableNumber || order.table?.name ? (
@@ -299,7 +376,23 @@ export default function OrderHistoryPage() {
                         {fmtStatus('order', order.status).label}
                       </span>
                     </td>
-                    <td className="p-5 text-right">
+                    <td className="p-5 text-right flex justify-end gap-1">
+                      <button
+                        className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                        title="Tra soát thanh toán"
+                        onClick={(e) => handleReconcile(e, order.id)}
+                      >
+                        <RotateCw size={18} />
+                      </button>
+                      {order.status === 'COMPLETED' && (
+                        <button
+                          className="p-2 text-gray-400 hover:text-green-500 hover:bg-green-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                          title="In hóa đơn"
+                          onClick={(e) => handlePrint(e, order)}
+                        >
+                          <Printer size={18} />
+                        </button>
+                      )}
                       <button
                         className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                         title="Xem chi tiết"
@@ -317,37 +410,41 @@ export default function OrderHistoryPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div >
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-3 pt-2">
-          <button
-            disabled={currentPage === 0}
-            onClick={() => setCurrentPage(prev => prev - 1)}
-            className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
-          >
-            Trước
-          </button>
-          <span className="text-gray-500 font-medium px-4">
-            Trang {currentPage + 1} / {totalPages}
-            <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
-          </span>
-          <button
-            disabled={currentPage >= totalPages - 1}
-            onClick={() => setCurrentPage(prev => prev + 1)}
-            className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
-          >
-            Sau
-          </button>
-        </div>
-      )}
+      {
+        totalPages > 1 && (
+          <div className="flex justify-center items-center gap-3 pt-2">
+            <button
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage(prev => prev - 1)}
+              className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+            >
+              Trước
+            </button>
+            <span className="text-gray-500 font-medium px-4">
+              Trang {currentPage + 1} / {totalPages}
+              <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
+            </span>
+            <button
+              disabled={currentPage >= totalPages - 1}
+              onClick={() => setCurrentPage(prev => prev + 1)}
+              className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+            >
+              Sau
+            </button>
+          </div>
+        )
+      }
 
       <OrderDetailsModal
         isOpen={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
+        onPrint={(order) => handlePrint({ stopPropagation: () => { } }, order)}
+        onReconcile={(orderId) => handleReconcile({ stopPropagation: () => { } }, orderId)}
       />
-    </div>
+    </div >
   );
 }

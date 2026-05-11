@@ -1,8 +1,8 @@
 import { fmtVND, fmtDateTime } from '../../../utils/formatters';
-import { X, Receipt, Clock, Utensils, Printer, Search } from 'lucide-react';
+import { X, Receipt, Clock, Utensils, Printer, RotateCw } from 'lucide-react';
 
 
-export default function OrderDetailsModal({ isOpen, onClose, order }) {
+export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
   if (!isOpen || !order) return null;
 
   return (
@@ -52,8 +52,26 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
               <span className="block text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1">
                 <Utensils size={12} /> BÀN
               </span>
-              <span className="text-gray-800 font-medium text-sm">{order.table?.tableNumber || 'Mang đi'}</span>
+              <span className="text-gray-800 font-medium text-sm">{order.table?.tableNumber}</span>
             </div>
+            {order.paidByName && (
+              <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100 col-span-2">
+                <span className="block text-xs text-orange-600 font-medium mb-1.5 flex items-center gap-1">
+                  THU NGÂN
+                </span>
+                <span className="text-orange-900 font-bold text-sm uppercase">{order.paidByName}</span>
+              </div>
+            )}
+            {order.paymentMethod && (
+              <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 col-span-2">
+                <span className="block text-xs text-indigo-600 font-medium mb-1.5 flex items-center gap-1">
+                  HÌNH THỨC THANH TOÁN
+                </span>
+                <span className="text-indigo-900 font-bold text-sm uppercase">
+                  {order.paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Line Items */}
@@ -66,7 +84,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
                 <div key={idx} className="flex justify-between items-start group">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-800 font-medium">{item.menuItem?.name || 'Món ăn'}</span>
+                      <span className="text-gray-800 font-medium">{item.menuItem?.name || 'Combo ' + item.combo?.name}</span>
                       <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md font-medium">x{item.quantity}</span>
                     </div>
                     {item.notes && (
@@ -103,35 +121,25 @@ export default function OrderDetailsModal({ isOpen, onClose, order }) {
 
         {/* Footer Actions */}
         <div className="p-6 border-t border-gray-100 bg-gray-50 sm:rounded-bl-2xl flex gap-3">
-          <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all border border-gray-200 shadow-sm">
-            <Search size={18} />
+          <button
+            onClick={() => onReconcile(order.id)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all border border-gray-200 shadow-sm"
+          >
+            <RotateCw size={18} />
             <span>Tra soát</span>
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-xl transition-all shadow-md shadow-orange-500/20">
-            <Printer size={18} />
-            <span>In biên lai</span>
-          </button>
+          {order.status === 'COMPLETED' && (
+            <button
+              onClick={() => onPrint(order)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-xl transition-all shadow-md shadow-orange-500/20"
+            >
+              <Printer size={18} />
+              <span>In biên lai</span>
+            </button>
+          )}
         </div>
 
       </div>
     </div>
   );
 }
-
-// const Clock = ({ size = 24, ...props }) => (
-//   <svg
-//     xmlns="http://www.w3.org/2000/svg"
-//     width={size}
-//     height={size}
-//     viewBox="0 0 24 24"
-//     fill="none"
-//     stroke="currentColor"
-//     strokeWidth="2"
-//     strokeLinecap="round"
-//     strokeLinejoin="round"
-//     {...props}
-//   >
-//     <circle cx="12" cy="12" r="10" />
-//     <polyline points="12 6 12 12 16 14" />
-//   </svg>
-// );

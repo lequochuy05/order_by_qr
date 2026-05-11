@@ -6,6 +6,7 @@ import com.sacmauquan.qrordering.repository.*;
 import com.sacmauquan.qrordering.service.DiscountService;
 import com.sacmauquan.qrordering.service.NotificationService;
 import com.sacmauquan.qrordering.service.OrderService;
+import com.sacmauquan.qrordering.service.PayosService;
 import com.sacmauquan.qrordering.state.OrderState;
 import com.sacmauquan.qrordering.state.OrderStateFactory;
 import lombok.RequiredArgsConstructor;
@@ -23,11 +24,14 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,6 +58,8 @@ public class OrderServiceImpl implements OrderService {
     private final ComboRepository comboRepository;
     private final ItemOptionValueRepository itemOptionValueRepository;
     private final DiscountService discountService;
+    private final PaymentTransactionRepository transactionRepository;
+    private final PayosService payosService;
     private final OrderStateFactory orderStateFactory;
     private final NotificationService notificationService;
 
@@ -74,29 +80,65 @@ public class OrderServiceImpl implements OrderService {
      * Provides a searchable order history view for administrators.
      */
     @Override
-    public Page<OrderResponse> getOrderHistory(String status, LocalDateTime startDate,
-            LocalDateTime endDate, String search, @NonNull Pageable pageable) {
+    public Page<OrderResponse> getOrderHistory(String status, LocalDate startDate,
+            LocalDate endDate, String orderId, String tableNumber, @NonNull Pageable pageable) {
         Specification<Order> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            if (status != null && !status.isBlank()) {
-                predicates.add(cb.equal(root.get("status"), Order.OrderStatus.valueOf(status.toUpperCase())));
+            Class<?> resultType = query.getResultType();
+            boolean isCountQuery = resultType == Long.class || resultType == long.class;
+
+            if (!isCountQuery) {
+                root.fetch("table", JoinType.LEFT);
             }
-            if (startDate != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
-            }
-            if (endDate != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
-            }
-            if (search != null && !search.isBlank()) {
-                Join<Order, DiningTable> tableJoin = root.join("table", JoinType.LEFT);
-                String pattern = "%" + search.toLowerCase() + "%";
-                Predicate idPred = cb.like(cb.lower(root.get("id").as(String.class)), pattern);
-                Predicate tablePred = cb.like(cb.lower(tableJoin.get("tableNumber")), pattern);
-                predicates.add(cb.or(idPred, tablePred));
-            }
+
+            List<Predicate> predicates = buildPredicates(root, query, cb, status, startDate, endDate, orderId,
+                    tableNumber);
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+
         return orderRepository.findAll(spec, pageable).map(this::convertToResponse);
+    }
+
+    private List<Predicate> buildPredicates(Root<Order> root, CriteriaQuery<?> query, CriteriaBuilder cb, String status,
+            LocalDate startDate, LocalDate endDate, String orderId, String tableNumber) {
+        List<Predicate> predicates = new ArrayList<>();
+        if (status != null && !status.isBlank()) {
+            try {
+                predicates.add(cb.equal(root.get("status"), Order.OrderStatus.valueOf(status.toUpperCase())));
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid order status: {}", status);
+            }
+        }
+        if (startDate != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate.atStartOfDay()));
+        }
+        if (endDate != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate.atTime(23, 59, 59)));
+        }
+
+        if (orderId != null && !orderId.isBlank()) {
+            try {
+                // Parse ID user from text to Long
+                Long parsedId = Long.parseLong(orderId.trim());
+                predicates.add(cb.equal(root.get("id"), parsedId));
+            } catch (NumberFormatException e) {
+                // If user enter invalid ID -> Return no result
+                predicates.add(cb.disjunction());
+            }
+        }
+
+        if (tableNumber != null && !tableNumber.isBlank()) {
+            String pattern = "%" + tableNumber.trim().toLowerCase() + "%";
+
+            Subquery<Long> subquery = query.subquery(Long.class);
+            Root<Order> subRoot = subquery.from(Order.class);
+            Join<Order, DiningTable> subTable = subRoot.join("table"); // Inner join ở subquery
+
+            subquery.select(subRoot.get("id"))
+                    .where(cb.like(cb.lower(subTable.get("tableNumber")), pattern));
+
+            predicates.add(root.get("id").in(subquery));
+        }
+        return predicates;
     }
 
     /**
@@ -104,21 +146,13 @@ public class OrderServiceImpl implements OrderService {
      * period.
      */
     @Override
-    public Map<String, Object> getOrderStats(String status, LocalDateTime startDate, LocalDateTime endDate) {
+    public Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
+            String tableNumber) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
         Root<Order> root = cq.from(Order.class);
 
-        List<Predicate> predicates = new ArrayList<>();
-        if (status != null && !status.isBlank()) {
-            predicates.add(cb.equal(root.get("status"), Order.OrderStatus.valueOf(status.toUpperCase())));
-        }
-        if (startDate != null) {
-            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
-        }
-        if (endDate != null) {
-            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
-        }
+        List<Predicate> predicates = buildPredicates(root, cq, cb, status, startDate, endDate, orderId, tableNumber);
 
         cq.multiselect(
                 cb.count(root),
@@ -130,6 +164,35 @@ public class OrderServiceImpl implements OrderService {
         return Map.of(
                 "totalOrders", result[0],
                 "totalRevenue", result[1]);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse reconcileOrder(@NonNull Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+
+        // Nếu đã hoàn thành hoặc đã hủy thì không cần tra soát sâu
+        if (order.getStatus() == Order.OrderStatus.COMPLETED || order.getStatus() == Order.OrderStatus.CANCELLED) {
+            return convertToResponse(order);
+        }
+
+        // Tìm giao dịch gần nhất của đơn hàng này
+        Optional<PaymentTransaction> latestTx = transactionRepository
+                .findFirstByOrderIdOrderByCreatedAtDesc(order.getId());
+
+        if (latestTx.isPresent()) {
+            PaymentTransaction tx = latestTx.get();
+            // Nếu là PayOS và đang chờ, thử đồng bộ trạng thái thực tế
+            if (tx.getPaymentMethod() == PaymentTransaction.PaymentMethod.PAYOS
+                    && tx.getStatus() == PaymentTransaction.TransactionStatus.PENDING) {
+                payosService.syncPaymentStatus(tx.getId());
+                // Reload order after sync
+                order = orderRepository.findById(id).orElse(order);
+            }
+        }
+
+        return convertToResponse(order);
     }
 
     /**
@@ -531,13 +594,13 @@ public class OrderServiceImpl implements OrderService {
     public void deleteOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        
+
         DiningTable table = order.getTable();
         if (table != null) {
             table.setStatus(DiningTable.TableStatus.AVAILABLE);
             tableRepository.save(table);
         }
-        
+
         orderRepository.delete(Objects.requireNonNull(order));
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();

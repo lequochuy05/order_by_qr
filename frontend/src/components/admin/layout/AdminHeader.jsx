@@ -32,11 +32,11 @@ const AdminHeader = ({ toggleSidebar }) => {
             case '/admin/promotions':
                 return 'Quản lý khuyến mãi';
             case '/admin/statistics/revenue':
-                return 'Thống kê doanh thu';
+                return 'Doanh thu';
             case '/admin/statistics/top-dishes':
-                return 'Thống kê món ăn bán chạy';
+                return 'Món ăn bán chạy';
             case '/admin/statistics/staff':
-                return 'Thống kê nhân viên';
+                return 'Hiệu suất nhân viên';
             case '/admin/history':
                 return 'Lịch sử đơn hàng';
             case '/admin/kitchen':

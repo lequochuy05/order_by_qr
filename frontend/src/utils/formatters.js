@@ -65,17 +65,15 @@ export const fmtRole = (role) => {
 export const fmtStatus = (type, status) => {
     const maps = {
         order: {
-            'PENDING': { label: 'Đang chờ', color: 'bg-yellow-100 text-yellow-700' },
-            'CONFIRMED': { label: 'Đã xác nhận', color: 'bg-blue-100 text-blue-700' },
-            'PAID': { label: 'Đã thanh toán', color: 'bg-green-100 text-green-700' },
-            'CANCELLED': { label: 'Đã hủy', color: 'bg-red-100 text-red-700' },
-            'COMPLETED': { label: 'Hoàn tất', color: 'bg-green-100 text-green-700' },
-            'FINISHED': { label: 'Hoàn thành', color: 'bg-emerald-100 text-emerald-700' }
+            'PENDING': { label: 'Chờ xử lý', color: 'bg-amber-100 text-amber-700' },
+            'SERVING': { label: 'Đang phục vụ', color: 'bg-blue-100 text-blue-700' },
+            'COMPLETED': { label: 'Hoàn tất', color: 'bg-emerald-100 text-emerald-700' },
+            'CANCELLED': { label: 'Đã hủy', color: 'bg-rose-100 text-rose-700' }
         },
         table: {
-            'AVAILABLE': { label: 'Bàn trống', color: 'bg-gray-100 text-gray-400' },
-            'OCCUPIED': { label: 'Đang có khách', color: 'text-orange-500' },
-            'WAITING_FOR_PAYMENT': { label: 'Chờ tính tiền', color: 'text-green-500' },
+            'AVAILABLE': { label: 'Bàn trống', color: 'border-slate-200 bg-white text-slate-400' },
+            'OCCUPIED': { label: 'Đang có khách', color: 'border-orange-400 bg-orange-50 text-orange-600' },
+            'WAITING_FOR_PAYMENT': { label: 'Chờ tính tiền', color: 'border-emerald-400 bg-emerald-50 text-emerald-600' },
         },
         active: {
             true: { label: 'Đang kinh doanh', color: 'bg-green-100 text-green-700' },
@@ -86,11 +84,12 @@ export const fmtStatus = (type, status) => {
             false: { label: 'Đã khóa', color: 'bg-red-100 text-red-600' }
         },
         kitchen: {
-            'PENDING': { label: 'Chờ chế biến', color: 'bg-yellow-50 text-yellow-600' },
-            'COOKING': { label: 'Đang làm', color: 'bg-blue-50 text-blue-600' },
-            'READY': { label: 'Đã xong', color: 'bg-green-50 text-green-600' },
-            'SERVED': { label: 'Đã phục vụ', color: 'bg-gray-50 text-gray-500' },
-            'CANCELLED': { label: 'Đã hủy', color: 'bg-red-50 text-red-500' }
+            'PENDING': { label: 'Chờ chế biến', color: 'bg-amber-50 text-amber-600' },
+            'COOKING': { label: 'Đang chế biến', color: 'bg-blue-50 text-blue-600' },
+            'READY': { label: 'Sẵn sàng', color: 'bg-indigo-50 text-indigo-600' },
+            'FINISHED': { label: 'Hoàn thành', color: 'bg-emerald-50 text-emerald-600' },
+            'SERVED': { label: 'Đã phục vụ', color: 'bg-slate-50 text-slate-500' },
+            'CANCELLED': { label: 'Đã hủy', color: 'bg-rose-50 text-rose-500' }
         }
     };
 

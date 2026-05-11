@@ -2,13 +2,8 @@ package com.sacmauquan.qrordering.repository;
 
 import com.sacmauquan.qrordering.model.Order;
 import com.sacmauquan.qrordering.model.Order.OrderStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import jakarta.persistence.LockModeType;
 import java.util.*;
 
@@ -17,20 +12,6 @@ import java.util.*;
  * Includes advanced filtering, pagination, and concurrency control logic.
  */
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
-
-        /**
-         * Retrieves a paged list of orders based on complex filtering specifications.
-         * Uses EntityGraph to optimize fetching of related entities.
-         * 
-         * @param spec     Search specifications
-         * @param pageable Pagination and sorting information
-         * @return Paged result of Order entities
-         */
-        @Override
-        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions",
-                        "orderItems.orderItems.combo" })
-        @NonNull
-        Page<Order> findAll(@Nullable Specification<Order> spec, @NonNull Pageable pageable);
 
         /**
          * Retrieves an order with a specific status for a given table, using a

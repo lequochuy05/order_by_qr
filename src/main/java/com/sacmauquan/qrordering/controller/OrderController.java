@@ -1,5 +1,6 @@
 package com.sacmauquan.qrordering.controller;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -62,12 +63,14 @@ public class OrderController {
     @GetMapping("/history")
     public ApiResponse<Page<OrderResponse>> getOrderHistory(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
-            @RequestParam(required = false) String search,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber,
             @PageableDefault(size = 15, sort = "createdAt", direction = Direction.DESC) @NonNull Pageable pageable) {
 
-        return ApiResponse.success(orderService.getOrderHistory(status, startDate, endDate, search, pageable));
+        return ApiResponse
+                .success(orderService.getOrderHistory(status, startDate, endDate, orderId, tableNumber, pageable));
     }
 
     /**
@@ -76,15 +79,14 @@ public class OrderController {
     @GetMapping("/stats")
     public ApiResponse<Map<String, Object>> getOrderStats(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber) {
 
-        return ApiResponse.success(orderService.getOrderStats(status, startDate, endDate));
+        return ApiResponse.success(orderService.getOrderStats(status, startDate, endDate, orderId, tableNumber));
     }
 
-    /**
-     * Update order status
-     */
     @PatchMapping("/{id}/status")
     public ApiResponse<OrderResponse> updateStatus(
             @PathVariable @NonNull Long id,
@@ -92,6 +94,14 @@ public class OrderController {
         String status = body.get("status");
         return ApiResponse.success("Update status successfully",
                 orderService.updateStatus(id, Objects.requireNonNull(status)));
+    }
+
+    /**
+     * Reconcile payment status with external providers
+     */
+    @PostMapping("/{id}/reconcile")
+    public ApiResponse<OrderResponse> reconcileOrder(@PathVariable @NonNull Long id) {
+        return ApiResponse.success("Reconcile successfully", orderService.reconcileOrder(id));
     }
 
     /**

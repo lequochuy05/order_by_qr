@@ -81,5 +81,10 @@ export const orderService = {
     getActiveOrders: async () => {
         const res = await api.get('/orders/active');
         return res;
+    },
+
+    reconcileOrder: async (orderId) => {
+        const res = await api.post(`/orders/${orderId}/reconcile`);
+        return res;
     }
 };

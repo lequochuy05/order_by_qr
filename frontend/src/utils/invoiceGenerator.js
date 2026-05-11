@@ -1,205 +1,189 @@
-// src/utils/invoiceGenerator.js
-/**
- * Hàm định dạng tiền tệ
- */
-const fmtVND = (num) => {
-    return Number(num || 0).toLocaleString('vi-VN') + ' đ';
-};
+import { fmtVND } from "./formatters"
 
 /**
- * Tạo chuỗi HTML hóa đơn từ dữ liệu đơn hàng
- * @param {Object} data - Bao gồm { order, table, paidBy, paidAt }
- * @returns {string} - Mã HTML của hóa đơn
+ * Tạo chuỗi HTML hóa đơn chuyên nghiệp
+ * @param {Object} data - { order, table, paidBy, paidAt }
  */
 export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
-    const items = order?.orderItems || [];
+  if (!order) return '';
 
-    // 1. GOM NHÓM MÓN ĂN & COMBO
-    const comboMap = {};   // { [comboId]: { name, qty, price } }
-    const normalItems = [];
+  const items = order.orderItems || [];
 
-    items.forEach(it => {
-        if (it.combo) {
-            const key = it.combo.id;
-            if (!comboMap[key]) {
-                comboMap[key] = {
-                    name: it.combo.name,
-                    qty: 0,
-                    price: it.combo.price || it.unitPrice || 0
-                };
-            }
-            comboMap[key].qty += (it.quantity || 1);
-        } else {
-            normalItems.push(it);
-        }
-    });
+  // 1. Phân loại Combo và Món lẻ
+  const comboMap = {};
+  const normalItems = [];
 
-    // 2. TẠO CÁC DÒNG HTML CHO COMBO
-    const rowsCombo = Object.values(comboMap).map(c => {
-        const lineTotal = (c.price || 0) * (c.qty || 0);
-        return `
-            <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #eee;">
-                    <strong>Combo ${c.name}</strong>
-                </td>
-                <td style="text-align: center; padding: 8px; border-bottom: 1px solid #eee;">${c.qty}</td>
-                <td style="text-align: right; padding: 8px; border-bottom: 1px solid #eee;">${fmtVND(c.price)}</td>
-                <td style="text-align: right; padding: 8px; border-bottom: 1px solid #eee;">${fmtVND(lineTotal)}</td>
-            </tr>
-        `;
-    }).join('');
+  items.forEach(it => {
+    if (it.combo) {
+      const key = it.combo.id;
+      if (!comboMap[key]) {
+        comboMap[key] = {
+          name: it.combo.name,
+          qty: 0,
+          price: it.unitPrice || it.combo.price || 0,
+          originalPrice: it.combo.price || 0
+        };
+      }
+      comboMap[key].qty += (it.quantity || 1);
+    } else {
+      normalItems.push(it);
+    }
+  });
 
-    // 3. TẠO CÁC DÒNG HTML CHO MÓN LẺ
-    const rowsNormal = normalItems.map(it => {
-        const name = it?.menuItem?.name ?? 'Món chưa đặt tên';
-        const price = it.unitPrice ?? it.menuItem?.price ?? 0;
-        const qty = it.quantity ?? 0;
-        const notes = it.notes ? `<div style="color: #6b7280; font-style: italic; font-size: 12px;">(${it.notes})</div>` : '';
-        const lineTotal = price * qty;
-        
-        return `
-            <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #eee;">
-                    ${name}
-                    ${notes}
-                </td>
-                <td style="text-align: center; padding: 8px; border-bottom: 1px solid #eee;">${qty}</td>
-                <td style="text-align: right; padding: 8px; border-bottom: 1px solid #eee;">${fmtVND(price)}</td>
-                <td style="text-align: right; padding: 8px; border-bottom: 1px solid #eee;">${fmtVND(lineTotal)}</td>
-            </tr>
-        `;
-    }).join('');
-
-    const rows = rowsCombo + rowsNormal;
-
-    // 4. TÍNH TOÁN TỔNG TIỀN
-    // Ưu tiên lấy từ order snapshot nếu có (để khớp với lúc thanh toán)
-    const originalTotal = order.originalTotal ?? order.totalAmount ?? 0;
-    const discount = order.discountVoucher ?? 0;
-    const finalTotal = order.totalAmount ?? 0;
-
-    const timeStr = paidAt ? new Date(paidAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
-
-    // 5. TRẢ VỀ HTML TEMPLATE
+  // 2. Render dòng Combo
+  const rowsCombo = Object.values(comboMap).map(c => {
+    const lineTotal = c.price * c.qty;
     return `
-    <!doctype html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Hóa đơn - Bàn ${table?.tableNumber ?? 'Mang về'}</title>
-        <style>
-            * { box-sizing: border-box; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111827; padding: 20px; font-size: 14px; line-height: 1.5; }
-            .bill { max-width: 480px; margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #eee; }
-            .brand { font-weight: 800; font-size: 22px; text-transform: uppercase; margin-bottom: 4px; }
-            .muted { color: #6b7280; font-size: 13px; }
-            .header { text-align: center; margin-bottom: 24px; }
-            .divider { border-top: 1px dashed #ddd; margin: 12px 0; }
-            table { width: 100%; border-collapse: collapse; }
-            th { text-align: left; background: #f9fafb; padding: 8px; font-size: 12px; text-transform: uppercase; color: #6b7280; }
-            .right { text-align: right; }
-            .total-row td { font-weight: 700; font-size: 16px; border-top: 2px solid #333; padding-top: 12px; }
-            .footer { text-align: center; margin-top: 24px; font-size: 13px; }
-            @media print { 
-                .no-print { display: none; } 
-                body { padding: 0; background: #fff; } 
-                .bill { border: none; max-width: 100%; width: 100%; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="bill">
-            <div class="header">
-                <div class="brand">Sắc Màu Quán</div>
-                <div class="muted">V328+9QR, Đại Minh, Đại Lộc, Quảng Nam</div>
-                <div class="muted">Hotline: 0706163387</div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px;">
-                <div>
-                    <div>Bàn: <strong>${table?.tableNumber ?? '??'}</strong></div>
-                    <div>Thu ngân: ${paidBy || 'Staff'}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div>Đơn #: ${order.id}</div>
-                    <div>${timeStr}</div>
-                </div>
-            </div>
-
-            <div class="divider"></div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 45%">Món</th>
-                        <th style="width: 15%; text-align: center;">SL</th>
-                        <th style="width: 20%; text-align: right;">Đơn giá</th>
-                        <th style="width: 20%; text-align: right;">Thành tiền</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows || '<tr><td colspan="4" style="text-align:center; padding: 20px;">Không có món nào</td></tr>'}
-                </tbody>
-            </table>
-
-            <div class="divider"></div>
-
-            <table>
-                <tbody>
-                    <tr>
-                        <td class="right" colspan="3">Tạm tính:</td>
-                        <td class="right" style="width: 25%">${fmtVND(originalTotal)}</td>
-                    </tr>
-                    ${discount > 0 ? `
-                    <tr>
-                        <td class="right" colspan="3">Giảm giá (Voucher):</td>
-                        <td class="right">-${fmtVND(discount)}</td>
-                    </tr>
-                    ` : ''}
-                    <tr class="total-row">
-                        <td class="right" colspan="3">THANH TOÁN:</td>
-                        <td class="right">${fmtVND(finalTotal)}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="footer">
-                <div>Cảm ơn quý khách & Hẹn gặp lại!</div>
-                <div class="muted">Wifi: SacMauQuan / Pass: 12345678</div>
-            </div>
-
-            <div class="no-print" style="text-align: center; margin-top: 30px;">
-                <button onclick="window.print()" style="background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                    🖨️ In hóa đơn ngay
-                </button>
-            </div>
-        </div>
-        <script>
-            // Tự động in khi mở popup
-            window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
-        </script>
-    </body>
-    </html>
+      <tr>
+        <td style="padding: 10px 0;">
+          <div style="font-weight: bold; color: #000;">[COMBO] ${c.name}</div>
+        </td>
+        <td style="text-align: center; padding: 10px 0;">${c.qty}</td>
+        <td style="text-align: right; padding: 10px 0;">${fmtVND(c.price)}</td>
+        <td style="text-align: right; padding: 10px 0; font-weight: bold;">${fmtVND(lineTotal)}</td>
+      </tr>
     `;
+  }).join('');
+
+  // 3. Render dòng Món lẻ (Kèm Options)
+  const rowsNormal = normalItems.map(it => {
+    const name = it.menuItem?.name || 'Món không tên';
+    const price = it.unitPrice || 0;
+    const qty = it.quantity || 0;
+    const lineTotal = price * qty;
+
+    // Xử lý Options (Topping/Lựa chọn)
+    const optionsHtml = (it.orderItemOptions || []).map(opt => {
+      const extra = opt.extraPrice > 0 ? ` (+${fmtVND(opt.extraPrice)})` : '';
+      return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${opt.optionName}: ${opt.optionValueName}${extra}</div>`;
+    }).join('');
+
+    const noteHtml = it.notes ? `<div style="font-size: 11px; color: #ef4444; font-style: italic; margin-left: 8px;">* Ghi chú: ${it.notes}</div>` : '';
+
+    return `
+      <tr>
+        <td style="padding: 10px 0; border-bottom: 1px dashed #eee;">
+          <div style="font-weight: 600; color: #1f2937;">${name}</div>
+          ${optionsHtml}
+          ${noteHtml}
+        </td>
+        <td style="text-align: center; padding: 10px 0; border-bottom: 1px dashed #eee;">${qty}</td>
+        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee;">${fmtVND(price)}</td>
+        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee; font-weight: bold;">${fmtVND(lineTotal)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const timeStr = paidAt ? new Date(paidAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
+
+  // 4. Template HTML hoàn chỉnh
+  return `
+  <!DOCTYPE html>
+  <html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <style>
+      @page { size: 80mm auto; margin: 0; }
+      body { 
+        font-family: 'Courier New', Courier, monospace; 
+        width: 80mm; margin: 0 auto; padding: 5mm;
+        color: #000; background: #fff; line-height: 1.4; font-size: 13px;
+      }
+      .container { width: 100%; }
+      .header { text-align: center; margin-bottom: 10px; }
+      .store-name { font-size: 20px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+      .info { font-size: 12px; margin-bottom: 2px; }
+      .divider { border-top: 1px dashed #000; margin: 8px 0; }
+      .bold { font-weight: bold; }
+      table { width: 100%; border-collapse: collapse; }
+      th { text-align: left; font-size: 11px; border-bottom: 1px solid #000; padding: 5px 0; }
+      .footer { text-align: center; margin-top: 15px; font-size: 12px; }
+      .qr-placeholder { margin-top: 10px; border: 1px solid #eee; width: 80px; height: 80px; margin: 10px auto; }
+      @media print {
+        .no-print { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="store-name">SẮC MÀU QUÁN</div>
+        <div class="info">Đ/C: V328+9QR, Đại Minh, Đại Lộc, Quảng Nam</div>
+        <div class="info">SĐT: 0706.163.387</div>
+        <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">HÓA ĐƠN THANH TOÁN</div>
+      </div>
+
+      <div class="info">Mã đơn: <span class="bold">#${order.id}</span></div>
+      <div class="info">Bàn: <span class="bold">${table?.tableNumber || 'Mang về'}</span></div>
+      <div class="info">Thời gian: ${timeStr}</div>
+      <div class="info">Thu ngân: ${paidBy || 'Hệ thống'}</div>
+      <div class="info">Hình thức thanh toán: <span class="bold">${order.paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}</span></div>
+
+      <div class="divider"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 45%;">Tên món</th>
+            <th style="width: 10%; text-align: center;">SL</th>
+            <th style="width: 20%; text-align: right;">Đơn giá</th>
+            <th style="width: 25%; text-align: right;">T.Tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsCombo}
+          ${rowsNormal}
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <table>
+        <tr>
+          <td style="padding: 3px 0;">Tổng cộng món:</td>
+          <td style="text-align: right;">${fmtVND(order.originalTotal)}</td>
+        </tr>
+        ${order.discountVoucher > 0 ? `
+        <tr>
+          <td style="padding: 3px 0;">Giảm giá (Voucher):</td>
+          <td style="text-align: right;">-${fmtVND(order.discountVoucher)}</td>
+        </tr>
+        ` : ''}
+        <tr style="font-size: 16px; font-weight: bold;">
+          <td style="padding: 10px 0;">TỔNG THANH TOÁN:</td>
+          <td style="text-align: right; padding: 10px 0;">${fmtVND(order.totalAmount)}</td>
+        </tr>
+      </table>
+
+      <div class="divider"></div>
+      
+      <div class="footer">
+        <div style="font-weight: bold;">CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!</div>
+        <div style="font-size: 11px; margin-top: 5px;">Wifi: SacMauQuan / Pass: 12345678</div>
+      </div>
+    </div>
+
+    <div class="no-print" style="position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;">
+        <button onclick="window.print()" style="background: #f97316; color: white; border: none; padding: 12px 24px; border-radius: 50px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);">
+          🖨️ IN HÓA ĐƠN
+        </button>
+    </div>
+  </body>
+  </html>
+  `;
 };
 
 /**
- * Hàm gọi cửa sổ in
+ * Thực hiện mở cửa sổ in
  */
 export const printInvoice = (data) => {
-    const html = generateInvoice(data);
-    // Mở popup
-    const win = window.open('', 'INVOICE_PRINT', 'width=480,height=640,scrollbars=yes');
-    if(win) {
-        win.document.write(html);
-        win.document.close();
-        // Tự động in khi popup load xong
-        win.onload = function() {
-            setTimeout(function() {
-                win.print();
-            }, 500);
-        };
-    } else {
-        alert("Vui lòng cho phép mở cửa sổ popup để in hóa đơn.");
-    }
+  const html = generateInvoice(data);
+  const win = window.open('', 'PRINT_INVOICE', 'width=450,height=600');
+
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    alert('Vui lòng cho phép popup để in hóa đơn!');
+  }
 };

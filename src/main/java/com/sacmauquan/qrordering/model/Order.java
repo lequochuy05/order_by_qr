@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * Order - Entity representing a customer's order in the system.
@@ -120,6 +121,7 @@ public class Order extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnoreProperties("order")
+    @BatchSize(size = 20)
     private Set<OrderItem> orderItems = new LinkedHashSet<>();
 
     /**
