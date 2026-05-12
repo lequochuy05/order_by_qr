@@ -22,7 +22,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").setAllowedOriginPatterns("*").withSockJS();
+        registry.addEndpoint("/ws")
+                .setAllowedOrigins(
+                        "http://localhost:5173",
+                        "https://order-by-qr.vercel.app")
+                .withSockJS();
     }
 
     /**
