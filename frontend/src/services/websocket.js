@@ -10,8 +10,8 @@ class WebSocketService {
 
     connect() {
         if (this.client) return;
-        // Nếu url chưa có chữ /api ở đầu, tự động gắn thêm vào
-        const wsUrl = '/ws';
+        const wsUrl = import.meta.env.VITE_WS_URL;
+        console.log(wsUrl);
 
         this.client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
