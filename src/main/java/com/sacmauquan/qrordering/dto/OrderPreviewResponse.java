@@ -1,18 +1,25 @@
 package com.sacmauquan.qrordering.dto;
 
 import lombok.*;
+import java.math.BigDecimal;
 
-@Getter @Setter
-@AllArgsConstructor @NoArgsConstructor
+/**
+ * OrderPreviewResponse - Data transfer object representing an order preview.
+ */
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class OrderPreviewResponse {
-    private Double subtotalItems;
-    private Double subtotalCombos;
-    private Double finalTotal;
+    private BigDecimal subtotalItems;
+    private BigDecimal subtotalCombos;
+    private BigDecimal finalTotal;
 
     private boolean voucherValid;
     private String voucherMessage;
-    private Double discountVoucher;
-    private Double discountPromotion;
+    private BigDecimal discountVoucher;
+    private BigDecimal discountPromotion;
 
-    private Double originalTotal; // tổng trước khi áp dụng giảm giá
+    private BigDecimal originalTotal;
 }

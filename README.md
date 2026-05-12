@@ -1,45 +1,46 @@
-# 🧾 QR Ordering System
+# 🧾 QR Code Ordering System (QROS)
 
-**QR Ordering System** is a modern ordering system using QR codes, designed to optimize the service process in restaurants and eateries. Customers can easily scan QR codes at their table to view menus, receive smart food recommendations, and order directly without waiting for staff.
+**QROS** is a modern ordering system using QR codes, designed to optimize the service process in restaurants and eateries. Customers can easily scan the QR code at their table to view the menu, receive smart food recommendations, and order directly without waiting for staff.
 
 ---
 
 ## 🚀 Key Features
 
-### 1. 📱 Customer Experience (Customer Side)
+### 1. 📱 Customer Experience (Customer's Perspective)
 
-- **QR Code Scanning:** Automatically identifies table numbers and displays the corresponding menu.
+- **QR Code Scanning:** Automatically identifies the table number and displays the corresponding menu.
 
 - **Smart Menu:** Clearly categorizes dishes, supports searching and filtering by category.
 
 - **AI Recommendations:**
 
-- Personalized food recommendations based on time of day and weather conditions.
+- Personalized food recommendations based on the time of day and weather conditions.
 
-- Cross-sell suggestions for accompanying items (drinks, toppings) when customers add items to their cart.
+- Cross-selling suggestions for complementary items (drinks, toppings) when customers add items to their cart.
 
 - **Shopping Cart & Ordering:** Fast checkout and ordering process, smooth interface.
 
 ### 2. 👔 Store Management (Admin Side)
-- **Menu Management:** Add, edit, and delete dishes, categories, and combo packages.
+
+- **Menu Management:** Add, edit, and delete food combos, categories, and product bundles.
 
 - **Order Management:** Track order status in real time.
 
-- **Statistics & Reports:** Revenue charts, best-selling dishes, and business performance via Recharts.
+- **Statistics & Reports:** Revenue charts, number of dishes sold, and business performance through Recharts.
 
-- **QR Code Management:** Create and manage unique QR codes for each table.
+- **QR Code Management:** Create and manage custom QR codes for each computer.
 
 ### 3. 🤖 Outstanding AI Features
 
-The system integrates **AI** to:
+Integrated **AI** system to:
 
 - Analyze food images to automatically fill in information (name, estimated price).
 
-- Provide intelligent food suggestions based on the user's real-world context.
+- Provide intelligent food recommendations based on the user's real-world context.
 
 ---
 
-## 🛠️ Technology Used
+## 🛠️ Technologies Used
 
 | Components | Technology |
 |-----------|-----------|
@@ -65,25 +66,31 @@ Create a `.env` file in the root directory with the following parameters:
 DB_URL=jdbc:postgresql://your-db-url
 DB_USERNAME=your-username
 DB_PASSWORD=your-password
+
 JWT_SECRET=your-secret-key
-GEMINI_API_KEY=your-gemini-api-key
+
 CLOUDINARY_CLOUD_NAME=your-name
 CLOUDINARY_API_KEY=your-key
 CLOUDINARY_API_SECRET=your-secret
+
+ROBOFLOW_API_KEY=your-secret-key
+ROBOFLOW_WORKSPACE=your-workspace
+ROBOFLOW_PROJECT=your-project
+ROBOFLOW_VERSION=your-version
 ```
 
 Run the application:
-```bash
+
+``` bash
 mvn spring-boot:run
 ```
 
-### 2. Configuration Frontend
+### 2. User Interface Configuration
 ```bash
-cd order-by-qr-frontend
+cd frontend
 npm install
 npm run dev
 ```
-
 
 ---
 ## 📧 Contact & Support

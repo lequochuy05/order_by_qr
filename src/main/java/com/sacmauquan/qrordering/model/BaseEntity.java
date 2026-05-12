@@ -3,10 +3,7 @@ package com.sacmauquan.qrordering.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.Builder;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -14,6 +11,10 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * BaseEntity - Abstract base class for all JPA entities.
+ * Provides automated auditing fields for creation and update timestamps.
+ */
 @Getter
 @Setter
 @MappedSuperclass
@@ -22,15 +23,23 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
 public abstract class BaseEntity {
 
+    /**
+     * Timestamp when the record was first created.
+     */
     @CreatedDate
-    @Column(name = "created_at", updatable = false)
+    @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * Timestamp when the record was last modified.
+     */
     @LastModifiedDate
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Soft delete flag to indicate if the record is logically removed.
+     */
     @Builder.Default
-    @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean isDeleted = false;
 }

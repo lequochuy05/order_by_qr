@@ -1,21 +1,27 @@
 package com.sacmauquan.qrordering.repository;
 
-import java.util.List;
+import java.util.*;
 
 import com.sacmauquan.qrordering.model.Combo;
 
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.lang.NonNull;
 
 public interface ComboRepository extends JpaRepository<Combo, Long> {
     boolean existsByNameIgnoreCase(String name);
 
-    @EntityGraph(attributePaths = { "items.menuItem.category" })
-    List<Combo> findByActiveTrue();
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
+    @Query(value = "SELECT COUNT(*) > 0 FROM combos WHERE LOWER(name) = LOWER(:name)", nativeQuery = true)
+    boolean existsByNameIncludingDeleted(String name);
 
     @Override
     @EntityGraph(attributePaths = { "items.menuItem.category" })
     @NonNull
     List<Combo> findAll();
+
+    @Query("SELECT DISTINCT c FROM Combo c LEFT JOIN FETCH c.items " +
+            "WHERE c.active = true")
+    List<Combo> findAllActiveWithItems();
+
 }

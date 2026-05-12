@@ -3,21 +3,28 @@ package com.sacmauquan.qrordering.state;
 import com.sacmauquan.qrordering.model.Order;
 import org.springframework.stereotype.Component;
 
+/**
+ * CompletedState - Handles the logic for orders that have been successfully finished and paid.
+ */
 @Component
 public class CompletedState implements OrderState {
 
+    /**
+     * Transitions the order status to COMPLETED.
+     * Orders that are already CANCELLED cannot be marked as COMPLETED.
+     * 
+     * @param order The order entity
+     */
     @Override
     public void handleRequest(Order order) {
-        if (!"READY".equals(order.getStatus()) && !"PENDING".equals(order.getStatus())) {
-             // Depending on business rules, we might allow PENDING -> COMPLETED direct for some cases, but generally it's READY -> COMPLETED.
-             // We'll allow READY -> COMPLETED.
-             throw new IllegalStateException("Only READY orders can be moved to COMPLETED state.");
+        if (order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new IllegalStateException("Cancelled orders cannot be completed.");
         }
-        order.setStatus(getStatusString());
+        order.setStatus(getStatus());
     }
 
     @Override
-    public String getStatusString() {
-        return "COMPLETED";
+    public Order.OrderStatus getStatus() {
+        return Order.OrderStatus.COMPLETED;
     }
 }

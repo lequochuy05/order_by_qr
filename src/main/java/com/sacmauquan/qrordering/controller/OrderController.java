@@ -2,17 +2,15 @@ package com.sacmauquan.qrordering.controller;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,164 +21,175 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
-import com.sacmauquan.qrordering.model.Order;
-import com.sacmauquan.qrordering.model.OrderItem;
+import com.sacmauquan.qrordering.dto.OrderResponse;
+import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.service.OrderService;
 
 import jakarta.validation.Valid;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * OrderController -
+ */
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class OrderController {
 
     private final OrderService orderService;
 
-    // ===================== CREATE ORDER =====================
+    /**
+     * Create new order
+     */
     @PostMapping
-    public ResponseEntity<?> createOrder(@Valid @RequestBody OrderRequest orderRequest) {
-        Order order = orderService.createOrder(Objects.requireNonNull(orderRequest));
-        return ResponseEntity.ok(order);
+    public ApiResponse<OrderResponse> createOrder(@Valid @RequestBody @NonNull OrderRequest orderRequest) {
+        return ApiResponse.success("Đặt món thành công", orderService.createOrder(orderRequest));
     }
 
-    // ===================== GET ALL ORDERS =====================
+    /**
+     * Get all orders
+     */
     @GetMapping
-    public List<Order> getAllOrders() {
-        return orderService.getAllOrders();
+    public ApiResponse<List<OrderResponse>> getAllOrders() {
+        return ApiResponse.success(orderService.getAllOrders());
     }
 
-    // ===================== GET ORDER HISTORY (PAGINATED) =====================
+    /**
+     * Get order history with advanced filtering and pagination
+     */
     @GetMapping("/history")
-    public ResponseEntity<?> getOrderHistory(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "15") int size,
+    public ApiResponse<Page<OrderResponse>> getOrderHistory(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Direction.DESC) @NonNull Pageable pageable) {
 
-        LocalDateTime start = null;
-        LocalDateTime end = null;
-        if (startDate != null && !startDate.isBlank()) {
-            start = LocalDate.parse(startDate).atStartOfDay();
-        }
-        if (endDate != null && !endDate.isBlank()) {
-            end = LocalDate.parse(endDate).atTime(23, 59, 59);
-        }
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<Order> result = orderService.getOrderHistory(status, start, end, search, pageable);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("content", result.getContent());
-        response.put("totalElements", result.getTotalElements());
-        response.put("totalPages", result.getTotalPages());
-        response.put("currentPage", result.getNumber());
-        response.put("size", result.getSize());
-
-        return ResponseEntity.ok(response);
+        return ApiResponse
+                .success(orderService.getOrderHistory(status, startDate, endDate, orderId, tableNumber, pageable));
     }
 
-    // ===================== GET ORDER STATS =====================
+    /**
+     * Get order statistics with time filter
+     */
     @GetMapping("/stats")
-    public ResponseEntity<?> getOrderStats(
+    public ApiResponse<Map<String, Object>> getOrderStats(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber) {
 
-        LocalDateTime start = null;
-        LocalDateTime end = null;
-        if (startDate != null && !startDate.isBlank()) {
-            start = LocalDate.parse(startDate).atStartOfDay();
-        }
-        if (endDate != null && !endDate.isBlank()) {
-            end = LocalDate.parse(endDate).atTime(23, 59, 59);
-        }
-
-        return ResponseEntity.ok(orderService.getOrderStats(status, start, end));
+        return ApiResponse.success(orderService.getOrderStats(status, startDate, endDate, orderId, tableNumber));
     }
 
-    // ===================== UPDATE STATUS =====================
     @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(orderService.updateStatus(
-                Objects.requireNonNull(id),
-                Objects.requireNonNull(body.get("status"))));
-    }
-
-    // ===================== MARK ITEM PREPARED =====================
-    @PatchMapping("/items/{itemId}/prepared")
-    public ResponseEntity<?> markItemPrepared(@PathVariable Long itemId) {
-        orderService.updateItemStatus(Objects.requireNonNull(itemId), "FINISHED");
-        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món"));
-    }
-
-    // ===================== UPDATE ITEM STATUS (KDS) =====================
-    @PatchMapping("/items/{itemId}/status")
-    public ResponseEntity<?> updateItemStatus(
-            @PathVariable Long itemId,
-            @RequestBody Map<String, String> body) {
+    public ApiResponse<OrderResponse> updateStatus(
+            @PathVariable @NonNull Long id,
+            @RequestBody @NonNull Map<String, String> body) {
         String status = body.get("status");
-        orderService.updateItemStatus(Objects.requireNonNull(itemId), Objects.requireNonNull(status));
-        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái món: " + status));
+        return ApiResponse.success("Update status successfully",
+                orderService.updateStatus(id, Objects.requireNonNull(status)));
     }
 
-    // ===================== GET KITCHEN ORDERS = :p =====================
+    /**
+     * Reconcile payment status with external providers
+     */
+    @PostMapping("/{id}/reconcile")
+    public ApiResponse<OrderResponse> reconcileOrder(@PathVariable @NonNull Long id) {
+        return ApiResponse.success("Reconcile successfully", orderService.reconcileOrder(id));
+    }
+
+    /**
+     * Mark item as prepared (KDS)
+     */
+    @PatchMapping("/items/{itemId}/prepared")
+    public ApiResponse<Void> markItemPrepared(@PathVariable @NonNull Long itemId) {
+        orderService.updateItemStatus(itemId, "FINISHED");
+        return ApiResponse.success("Mark item as prepared successfully", null);
+    }
+
+    /**
+     * Update item status
+     */
+    @PatchMapping("/items/{itemId}/status")
+    public ApiResponse<Void> updateItemStatus(
+            @PathVariable @NonNull Long itemId,
+            @RequestBody @NonNull Map<String, String> body) {
+        String status = body.get("status");
+        orderService.updateItemStatus(itemId, Objects.requireNonNull(status));
+        return ApiResponse.success("Update item status successfully", null);
+    }
+
+    /**
+     * Get kitchen orders
+     */
     @GetMapping("/kitchen")
-    public List<Order> getKitchenOrders() {
-        return orderService.getKitchenOrders();
+    public ApiResponse<List<OrderResponse>> getKitchenOrders() {
+        return ApiResponse.success(orderService.getKitchenOrders());
     }
 
-    // ===================== GET CURRENT ORDER BY TABLE =====================
+    /**
+     * Get current order of a table
+     */
     @GetMapping("/table/{tableId}/current")
-    public ResponseEntity<?> getCurrentOrderByTable(@PathVariable Long tableId) {
-        return orderService.getCurrentOrderByTable(Objects.requireNonNull(tableId))
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.noContent().build());
+    public ApiResponse<OrderResponse> getCurrentOrderByTable(@PathVariable @NonNull Long tableId) {
+        return orderService.getCurrentOrderByTable(tableId)
+                .map(ApiResponse::success)
+                .orElseGet(() -> ApiResponse.success(null));
     }
 
-    // ===================== GET ALL ACTIVE ORDERS =====================
+    /**
+     * Get active orders
+     */
     @GetMapping("/active")
-    public List<Order> getActiveOrders() {
-        return orderService.getActiveOrders();
+    public ApiResponse<List<OrderResponse>> getActiveOrders() {
+        return ApiResponse.success(orderService.getActiveOrders());
     }
 
-    // ===================== UPDATE ORDER ITEM =====================
+    /**
+     * Update order item
+     */
     @PatchMapping("/items/{itemId}")
-    public ResponseEntity<?> updateOrderItem(
-            @PathVariable Long itemId,
-            @RequestBody Map<String, Object> body) {
+    public ApiResponse<OrderResponse> updateOrderItem(
+            @PathVariable @NonNull Long itemId,
+            @RequestBody @NonNull Map<String, Object> body) {
         int qty = (int) body.getOrDefault("quantity", 1);
         String notes = (String) body.getOrDefault("notes", "");
-        OrderItem updated = orderService.updateOrderItem(Objects.requireNonNull(itemId), qty, notes);
-        return ResponseEntity.ok(updated);
+        return ApiResponse.success("Update order item successfully",
+                orderService.updateOrderItem(itemId, qty, notes));
     }
 
-    // ===================== PAY ORDER =====================
+    /**
+     * Pay order and apply voucher
+     */
     @PatchMapping("/{orderId}/pay")
-    public ResponseEntity<?> payOrder(
-            @PathVariable Long orderId,
-            @RequestParam Long userId,
+    public ApiResponse<String> payOrder(
+            @PathVariable @NonNull Long orderId,
+            @RequestParam @NonNull Long userId,
             @RequestParam(required = false) String voucherCode) {
-        String result = orderService.payOrder(Objects.requireNonNull(orderId), Objects.requireNonNull(userId),
-                voucherCode);
-        return ResponseEntity.ok(Map.of("message", result));
+        String result = orderService.payOrder(orderId, userId, voucherCode);
+        return ApiResponse.success("Pay order successfully", result);
     }
 
-    // ===================== CANCEL ORDER ITEM =====================
+    /**
+     * Cancel order item
+     */
     @DeleteMapping("/items/{itemId}")
-    public ResponseEntity<?> cancelOrderItem(@PathVariable Long itemId) {
-        orderService.cancelOrderItem(Objects.requireNonNull(itemId));
-        return ResponseEntity.ok(Map.of("message", "Đã hủy món"));
+    public ApiResponse<Void> cancelOrderItem(@PathVariable @NonNull Long itemId) {
+        orderService.cancelOrderItem(itemId);
+        return ApiResponse.success("Cancel order item successfully", null);
     }
 
-    // ===================== PREVIEW ORDER (tính thử tiền) =====================
+    /**
+     * Preview order
+     */
     @PostMapping("/preview")
-    public ResponseEntity<?> preview(@Valid @RequestBody OrderRequest req) {
-        return ResponseEntity.ok(orderService.preview(Objects.requireNonNull(req)));
+    public ApiResponse<OrderPreviewResponse> preview(@Valid @RequestBody @NonNull OrderRequest req) {
+        return ApiResponse.success(orderService.preview(req));
     }
-
 }

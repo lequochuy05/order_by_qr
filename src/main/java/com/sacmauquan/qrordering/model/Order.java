@@ -1,76 +1,154 @@
 package com.sacmauquan.qrordering.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.Builder;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.BatchSize;
 
+/**
+ * Order - Entity representing a customer's order in the system.
+ * Manages order status, payments, and associated items.
+ */
 @Entity
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "orders")
 @Getter
 @Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@SQLDelete(sql = "UPDATE orders SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Order extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "table_id")
-    private DiningTable table;
+    /**
+     * Current workflow status of the order.
+     */
+    @NotNull(message = "Order status cannot be empty")
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    @Builder.Default
+    private OrderStatus status = OrderStatus.PENDING;
 
-    @Column(name = "status")
-    private String status;
+    /**
+     * Total amount before applying any discounts.
+     */
+    @Column(precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal originalTotal;
 
-    @Column(name = "original_total")
-    private Double originalTotal;
+    /**
+     * Amount deducted from the original total via a voucher.
+     */
+    @Column(precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal discountVoucher;
 
-    @Column(name = "discount_voucher")
-    private Double discountVoucher;
-
-    @Column(name = "voucher_code")
+    /**
+     * The voucher code applied to this order.
+     */
+    @Column(length = 50)
     private String voucherCode;
 
-    @Column(name = "total_amount")
-    private double totalAmount;
+    /**
+     * Final amount the customer must pay after discounts.
+     */
+    @NotNull(message = "Total amount cannot be empty")
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal totalAmount;
 
+    /**
+     * Type of order (DINE_IN or TAKEAWAY).
+     */
+    @NotNull(message = "Order type cannot be empty")
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(name = "order_type")
-    private String orderType = "DINE_IN"; // DINE_IN, TAKEAWAY
+    @Column(length = 20, nullable = false)
+    private OrderType orderType = OrderType.DINE_IN;
 
+    /**
+     * Current payment lifecycle status.
+     */
+    @NotNull(message = "Payment status cannot be empty")
+    @Enumerated(EnumType.STRING)
     @Builder.Default
-    @Column(name = "payment_status")
-    private String paymentStatus = "PENDING"; // PENDING, COMPLETED, CANCELLED
+    @Column(length = 20, nullable = false)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
-    @Column(name = "payment_method")
-    private String paymentMethod; // CASH, TRANSFER, VNPAY
+    /**
+     * Method used for payment (e.g., CASH, PAYOS).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private PaymentMethod paymentMethod;
 
-    @ManyToOne
+    /**
+     * The user (staff/manager) who processed the payment.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paid_by")
     private User paidBy;
 
-    @Column(name = "payment_time")
+    /**
+     * Precise time when the payment was confirmed.
+     */
     private LocalDateTime paymentTime;
 
-    
+    /**
+     * The dining table associated with this order.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "table_id")
+    private DiningTable table;
+
+    /**
+     * Collection of individual items included in the order.
+     */
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private List<OrderItem> orderItems = new ArrayList<>();
+    @JsonIgnoreProperties("order")
+    @BatchSize(size = 20)
+    private Set<OrderItem> orderItems = new LinkedHashSet<>();
 
+    /**
+     * Enum for order workflow states.
+     */
+    public enum OrderStatus {
+        PENDING, SERVING, COMPLETED, CANCELLED
+    }
+
+    /**
+     * Enum for order consumption types.
+     */
+    public enum OrderType {
+        DINE_IN, TAKEAWAY
+    }
+
+    /**
+     * Enum for payment lifecycle states.
+     */
+    public enum PaymentStatus {
+        PENDING, PAID, CANCELLED
+    }
+
+    /**
+     * Enum for supported payment methods.
+     */
+    public enum PaymentMethod {
+        CASH, PAYOS
+    }
 }

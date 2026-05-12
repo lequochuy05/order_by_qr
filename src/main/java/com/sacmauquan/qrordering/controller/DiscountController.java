@@ -1,57 +1,99 @@
 package com.sacmauquan.qrordering.controller;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.VoucherRequest;
 import com.sacmauquan.qrordering.dto.VoucherValidateResponse;
 import com.sacmauquan.qrordering.model.Voucher;
 import com.sacmauquan.qrordering.service.DiscountService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Objects;
 
+/**
+ * DiscountController - Manages vouchers and promotional discount codes.
+ */
 @RestController
 @RequestMapping("/api/vouchers")
 @RequiredArgsConstructor
 public class DiscountController {
+
     private final DiscountService service;
 
+    /**
+     * Retrieves a list of all vouchers in the system.
+     * 
+     * @return List of Voucher objects
+     */
     @GetMapping
-    public List<Voucher> list() {
-        return service.findAll();
+    public ApiResponse<List<Voucher>> list() {
+        return ApiResponse.success(service.findAll());
     }
 
+    /**
+     * Retrieves detailed information of a specific voucher by its ID.
+     * 
+     * @param id Voucher ID
+     * @return Found Voucher object
+     */
     @GetMapping("/{id}")
-    public Voucher get(@PathVariable Long id) {
-        return service.findById(Objects.requireNonNull(id));
+    public ApiResponse<Voucher> get(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(service.findById(id));
     }
 
+    /**
+     * Creates a new voucher. The voucher code is automatically converted to
+     * uppercase in the service layer.
+     * 
+     * @param req Voucher data for creation
+     * @return Created Voucher object
+     */
     @PostMapping
-    public ResponseEntity<Voucher> create(@RequestBody VoucherRequest req) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.create(req));
+    public ApiResponse<Voucher> create(@Valid @RequestBody @NonNull VoucherRequest req) {
+        return ApiResponse.success("Voucher created successfully", service.create(req));
     }
 
-    public Voucher update(@PathVariable Long id, @RequestBody VoucherRequest req) {
-        return service.update(Objects.requireNonNull(id), req);
+    /**
+     * Updates an existing voucher's information.
+     * 
+     * @param id  Voucher ID to update
+     * @param req Updated voucher data
+     * @return Updated Voucher object
+     */
+    @PutMapping("/{id}")
+    public ApiResponse<Voucher> update(@PathVariable @NonNull Long id,
+            @Valid @RequestBody @NonNull VoucherRequest req) {
+        return ApiResponse.success("Voucher updated successfully", service.update(id, req));
     }
 
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(Objects.requireNonNull(id));
-        return ResponseEntity.noContent().build();
+    /**
+     * Deletes a voucher from the system.
+     * 
+     * @param id Voucher ID to delete
+     * @return Void success response
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
+        service.delete(id);
+        return ApiResponse.success("Voucher deleted successfully", null);
     }
 
-    // Kiểm tra mã + tính tiền giảm theo tổng đơn
+    /**
+     * Validates a voucher code and calculates the discount value based on the total
+     * order amount.
+     * 
+     * @param code  The voucher code to validate
+     * @param total The total order amount to apply the discount to
+     * @return VoucherValidateResponse containing validity status and discount
+     *         amount
+     */
     @GetMapping("/validate")
-    public VoucherValidateResponse validate(
-            @RequestParam String code,
-            @RequestParam(required = false) Double total) {
-        return service.validateCode(code, total);
-    }
-
-    // Tăng used_count sau khi thanh toán thành công
-    public ResponseEntity<Void> markUsed(@PathVariable Long id) {
-        service.increaseUsedCount(Objects.requireNonNull(id));
-        return ResponseEntity.noContent().build();
+    public ApiResponse<VoucherValidateResponse> validate(
+            @RequestParam @NonNull String code,
+            @RequestParam(defaultValue = "0") BigDecimal total) {
+        return ApiResponse.success(service.validateCode(code, total));
     }
 }

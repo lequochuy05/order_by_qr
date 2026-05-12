@@ -1,86 +1,93 @@
 package com.sacmauquan.qrordering.controller;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.DiningTableRequest;
 import com.sacmauquan.qrordering.dto.DiningTableResponse;
-import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.service.DiningTableService;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import lombok.RequiredArgsConstructor;
-
+/**
+ * DiningTableController - Manages dining tables and their associated QR codes.
+ */
 @RestController
 @RequestMapping("/api/tables")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class DiningTableController {
 
     private final DiningTableService tableService;
 
+    /**
+     * Retrieves a list of all dining tables, sorted accordingly.
+     * 
+     * @return List of DiningTableResponse objects
+     */
     @GetMapping
-    public ResponseEntity<List<DiningTableResponse>> getAllTables() {
-        List<DiningTableResponse> responses = tableService.getAllTablesSorted()
-                .stream().map(this::convertToResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+    public ApiResponse<List<DiningTableResponse>> getAllTables() {
+        return ApiResponse.success(tableService.getAllTablesSorted());
     }
 
+    /**
+     * Retrieves detailed information of a table by its ID.
+     * 
+     * @param id Table ID
+     * @return Found DiningTableResponse object
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<DiningTableResponse> getTableById(@PathVariable Long id) {
-        return tableService.getTableById(id)
-                .map(this::convertToResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<DiningTableResponse> getTableById(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(tableService.getByIdResponse(id));
     }
 
-    //  Truy vấn bàn theo mã QR (dành cho khách khi quét mã)
+    /**
+     * Handles customer QR scan: Retrieves table information based on the table
+     * code.
+     * 
+     * @param tableCode Unique identifier encoded in the QR code
+     * @return DiningTableResponse object
+     */
     @GetMapping("/code/{tableCode}")
-    public ResponseEntity<DiningTableResponse> getTableByCode(@PathVariable String tableCode) {
-        return tableService.getTableByCode(tableCode)
-                .map(this::convertToResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ApiResponse<DiningTableResponse> getTableByCode(@PathVariable @NonNull String tableCode) {
+        return ApiResponse.success(tableService.getByTableCode(tableCode));
     }
 
+    /**
+     * Creates a new dining table. QR code generation and Cloudinary storage are
+     * handled automatically.
+     * 
+     * @param request Data for the new table
+     * @return Created DiningTableResponse object
+     */
     @PostMapping
-    public ResponseEntity<?> createTable(@RequestBody DiningTableRequest request) {
-        DiningTable table = convertToEntity(request);
-        DiningTable saved = tableService.createTable(table);
-        return ResponseEntity.ok(convertToResponse(saved));
+    public ApiResponse<DiningTableResponse> createTable(@Valid @RequestBody @NonNull DiningTableRequest request) {
+        return ApiResponse.success("Table created successfully", tableService.create(request));
     }
 
+    /**
+     * Updates the status or information of an existing table.
+     * 
+     * @param id      Table ID to update
+     * @param request Updated table data
+     * @return Updated DiningTableResponse object
+     */
     @PatchMapping("/{id}")
-    public ResponseEntity<?> updateTable(@PathVariable Long id, @RequestBody DiningTableRequest request) {
-        DiningTable updated = tableService.updateStatusAndCapacity(id, request.getStatus(), request.getCapacity());
-        return ResponseEntity.ok(convertToResponse(updated));
+    public ApiResponse<DiningTableResponse> updateTable(@PathVariable @NonNull Long id,
+            @Valid @RequestBody @NonNull DiningTableRequest request) {
+        return ApiResponse.success("Table updated successfully", tableService.update(id, request));
     }
 
+    /**
+     * Deletes a dining table and cleans up its associated QR code image.
+     * 
+     * @param id Table ID to delete
+     * @return Void success response
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteTable(@PathVariable Long id) {
-        tableService.deleteTable(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    // ===== Helper methods =====
-    private DiningTable convertToEntity(DiningTableRequest request) {
-        DiningTable table = new DiningTable();
-        table.setQrCodeUrl(request.getQrCodeUrl());
-        table.setTableNumber(request.getTableNumber());
-        table.setStatus(request.getStatus());
-        table.setCapacity(request.getCapacity());
-        return table;
-    }
-
-    private DiningTableResponse convertToResponse(DiningTable table) {
-        DiningTableResponse res = new DiningTableResponse();
-        res.setId(table.getId());
-        res.setQrCodeUrl(table.getQrCodeUrl());
-        res.setTableNumber(table.getTableNumber());
-        res.setStatus(table.getStatus());
-        res.setCapacity(table.getCapacity());
-        return res;
+    public ApiResponse<Void> deleteTable(@PathVariable @NonNull Long id) {
+        tableService.delete(id);
+        return ApiResponse.success("Table deleted successfully", null);
     }
 }

@@ -1,26 +1,60 @@
 package com.sacmauquan.qrordering.state;
 
+import com.sacmauquan.qrordering.model.Order;
 import org.springframework.stereotype.Component;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 
+/**
+ * OrderStateFactory - Manages the initialization and retrieval of OrderState implementations.
+ * Centralizes the mapping between OrderStatus enums and their corresponding behavior classes.
+ */
 @Component
 public class OrderStateFactory {
     
-    private final Map<String, OrderState> states = new HashMap<>();
+    private final Map<Order.OrderStatus, OrderState> states = new EnumMap<>(Order.OrderStatus.class);
 
+    /**
+     * Initializes the factory by mapping each injected OrderState to its status.
+     * 
+     * @param orderStates List of all OrderState implementations managed by Spring
+     */
     public OrderStateFactory(List<OrderState> orderStates) {
         for (OrderState state : orderStates) {
-            states.put(state.getStatusString(), state);
+            states.put(state.getStatus(), state);
         }
     }
 
-    public OrderState getState(String status) {
+    /**
+     * Retrieves the State handler object based on the OrderStatus enum.
+     * 
+     * @param status The target order status
+     * @return The corresponding OrderState implementation
+     * @throws IllegalArgumentException if no handler is found for the given status
+     */
+    public OrderState getState(Order.OrderStatus status) {
         OrderState state = states.get(status);
         if (state == null) {
-            throw new IllegalArgumentException("Invalid state: " + status);
+            throw new IllegalArgumentException("State handler not found for status: " + status);
         }
         return state;
+    }
+
+    /**
+     * Retrieves the State handler object based on a status name string.
+     * Useful for processing input from API requests.
+     * 
+     * @param statusName The name of the order status (case-insensitive)
+     * @return The corresponding OrderState implementation
+     * @throws IllegalArgumentException if the status name is invalid
+     */
+    public OrderState getState(String statusName) {
+        try {
+            Order.OrderStatus status = Order.OrderStatus.valueOf(statusName.toUpperCase());
+            return getState(status);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid order status: " + statusName);
+        }
     }
 }

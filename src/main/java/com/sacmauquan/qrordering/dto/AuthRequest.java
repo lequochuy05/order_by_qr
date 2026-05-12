@@ -3,11 +3,20 @@ package com.sacmauquan.qrordering.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+/**
+ * AuthRequest - Data transfer object for login requests.
+ */
 @Data
 public class AuthRequest {
-    @NotBlank(message = "Email không được để trống")
+    /**
+     * User's registered email address.
+     */
+    @NotBlank(message = "Email cannot be empty")
     private String email;
 
-    @NotBlank(message = "Mật khẩu không được để trống")
+    /**
+     * User's account password.
+     */
+    @NotBlank(message = "Password cannot be empty")
     private String password;
 }

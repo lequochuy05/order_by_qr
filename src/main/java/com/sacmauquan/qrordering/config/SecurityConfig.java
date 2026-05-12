@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -23,14 +22,22 @@ import com.sacmauquan.qrordering.security.JwtAuthFilter;
 
 import java.util.List;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
+/**
+ * Configure security settings for the application.
+ */
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
   private final JwtAuthFilter jwtAuthFilter;
 
+  /**
+   * Configures the security filter chain.
+   * 
+   * @param http HttpSecurity object
+   * @return SecurityFilterChain object
+   * @throws Exception if an error occurs
+   */
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
@@ -40,28 +47,35 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
 
-            // Static Admin UI
-            .requestMatchers("/admin/**").permitAll()
+            // ws
+            .requestMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
+            // login
+            .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
 
-            // WebSocket & Auth
-            .requestMatchers("/ws/**").permitAll()
-            .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
-            .requestMatchers("/api/auth/**").permitAll()
-
-            // Public GET (keep as is for guests)
+            // Public GET
             .requestMatchers(HttpMethod.GET,
                 "/api/categories/**",
                 "/api/menu/**",
                 "/api/tables/**",
                 "/api/combos/**",
                 "/api/orders/table/*/current",
-                "/api/vouchers/**",
                 "/api/combos/active",
                 "/api/combos/*/items",
                 "/api/recommendations/**")
             .permitAll()
+
+            // Public Voucher Validation only
+            .requestMatchers(HttpMethod.GET, "/api/vouchers/validate").permitAll()
             // Guest order creation
             .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
+            // AI Customer Assistant (public chat)
+            .requestMatchers(HttpMethod.POST, "/api/ai/chat").permitAll()
+
+            // PayOS webhook
+            .requestMatchers(HttpMethod.POST, "/api/webhooks/**").permitAll()
+
+            .requestMatchers(HttpMethod.POST, "/api/payments/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/payments/**").permitAll()
 
             // admin
             .requestMatchers(HttpMethod.POST,
@@ -108,8 +122,11 @@ public class SecurityConfig {
             // revenue / stats
             .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER", "STAFF")
 
-            // upload avatar
-            .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").permitAll()
+            // voucher management
+            .requestMatchers(HttpMethod.GET, "/api/vouchers/**").hasAnyRole("MANAGER", "STAFF")
+
+            // upload avatar (Authenticated users only)
+            .requestMatchers(HttpMethod.POST, "/api/users/*/avatar").authenticated()
 
             // Allow /error to avoid error loops
             .requestMatchers("/error").permitAll()
@@ -121,26 +138,31 @@ public class SecurityConfig {
     return http.build();
   }
 
-  @Bean
-  PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
-
+  /**
+   * Creates and configures an AuthenticationManager bean.
+   * 
+   * @param cfg AuthenticationConfiguration object
+   * @return AuthenticationManager object
+   * @throws Exception if an error occurs
+   */
   @Bean
   AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
     return cfg.getAuthenticationManager();
   }
 
+  /**
+   * Creates and configures a CorsConfigurationSource bean.
+   * 
+   * @return CorsConfigurationSource object
+   */
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     var c = new CorsConfiguration();
-    c.addAllowedOriginPattern("*");
     c.setAllowedOrigins(List.of(
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://order-by-qr.vercel.app", // Your Vercel domain
-        "https://order-by-qr.onrender.com" // Backend domain on Render
-    ));
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://order-by-qr.vercel.app"));
     c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
     c.setAllowCredentials(true);

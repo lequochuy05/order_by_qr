@@ -1,55 +1,100 @@
 package com.sacmauquan.qrordering.controller;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
 import com.sacmauquan.qrordering.dto.ComboRequest;
-import com.sacmauquan.qrordering.model.Combo;
+import com.sacmauquan.qrordering.dto.ComboResponse;
 import com.sacmauquan.qrordering.service.ComboService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
-import java.util.*;
+import java.util.List;
 
+/**
+ * ComboController - Manages food and beverage combo packages.
+ */
 @RestController
 @RequestMapping("/api/combos")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ComboController {
 
     private final ComboService comboService;
 
+    /**
+     * Retrieves all combos in the system (Admin only).
+     * 
+     * @return List of all ComboResponse objects
+     */
     @GetMapping
-    public List<Combo> getAll() {
-        return comboService.getAll();
+    public ApiResponse<List<ComboResponse>> getAll() {
+        return ApiResponse.success(comboService.getAll());
     }
 
+    /**
+     * Retrieves a list of all active combos currently being sold (Cached).
+     * 
+     * @return List of active ComboResponse objects
+     */
     @GetMapping("/active")
-    public ResponseEntity<List<Combo>> getAllActiveCombos() {
-        return ResponseEntity.ok(comboService.getAllActive());
+    public ApiResponse<List<ComboResponse>> getAllActiveCombos() {
+        return ApiResponse.success(comboService.getAllActive());
     }
 
+    /**
+     * Retrieves detailed information of a specific combo by its ID.
+     * 
+     * @param id Combo ID
+     * @return Found ComboResponse object
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(comboService.getById(id));
+    public ApiResponse<ComboResponse> getById(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(comboService.getById(id));
     }
 
+    /**
+     * Creates a new combo with a list of associated items.
+     * 
+     * @param req Combo data for creation
+     * @return Created ComboResponse object
+     */
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody ComboRequest req) {
-        Combo combo = comboService.create(req);
-        return ResponseEntity.status(HttpStatus.CREATED).body(combo);
+    public ApiResponse<ComboResponse> create(@Valid @RequestBody @NonNull ComboRequest req) {
+        return ApiResponse.success("Combo created successfully", comboService.create(req));
     }
 
+    /**
+     * Updates an existing combo's information.
+     * 
+     * @param id  Combo ID
+     * @param req Updated combo data
+     * @return Updated ComboResponse object
+     */
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ComboRequest req) {
-        return ResponseEntity.ok(comboService.update(id, req));
+    public ApiResponse<ComboResponse> update(@PathVariable @NonNull Long id,
+            @Valid @RequestBody @NonNull ComboRequest req) {
+        return ApiResponse.success("Combo updated successfully", comboService.update(id, req));
     }
 
+    /**
+     * Deletes a combo from the system.
+     * 
+     * @param id Combo ID to delete
+     * @return Void success response
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
         comboService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success("Combo deleted successfully", null);
     }
 
+    /**
+     * Toggles the active status of a combo (Enable/Disable for sale).
+     * 
+     * @param id Combo ID to toggle
+     * @return Updated ComboResponse object
+     */
     @PatchMapping("/{id}/toggle-active")
-    public ResponseEntity<?> toggleActive(@PathVariable Long id) {
-        return ResponseEntity.ok(comboService.toggleActive(id));
+    public ApiResponse<ComboResponse> toggleActive(@PathVariable @NonNull Long id) {
+        return ApiResponse.success("Combo status toggled successfully", comboService.toggleActive(id));
     }
 }

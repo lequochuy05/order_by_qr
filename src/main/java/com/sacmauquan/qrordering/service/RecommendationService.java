@@ -1,113 +1,251 @@
 package com.sacmauquan.qrordering.service;
 
+import com.sacmauquan.qrordering.dto.MenuItemResponse;
 import com.sacmauquan.qrordering.model.MenuItem;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.sacmauquan.qrordering.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * RecommendationService - Intelligent item recommendation engine.
+ * Uses historical order patterns and environmental context (time/weather) to suggest menu items.
+ */
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class RecommendationService {
 
     private final OrderItemRepository orderItemRepository;
     private final MenuItemRepository menuItemRepository;
-    private final AIService aiService;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     /**
-     * Recommends items frequently bought with the given item.
+     * Suggests items that are frequently ordered alongside a specific item
+     * (Cross-sell).
+     * Falls back to popular items if no strong associations exist.
+     * 
+     * @param itemId Source menu item ID
+     * @param limit  Maximum number of recommendations
+     * @return List of suggested menu items
      */
-    public List<MenuItem> getRecommendations(Long itemId, int limit) {
-        if (itemId == null) return List.of();
-        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, limit);
-        if (associatedIds == null || associatedIds.isEmpty()) return List.of();
-        return menuItemRepository.findAllById(associatedIds);
-    }
+    @Transactional(readOnly = true)
+    @Cacheable(value = "recommendations", key = "'cross_' + #itemId + '_' + #limit")
+    public List<MenuItemResponse> getCrossSellRecommendations(Long itemId, int limit) {
+        if (itemId == null)
+            return getPopularItems(limit);
 
-    /**
-     * Gets personalized recommendations based on external context using Gemini.
-     */
-    public List<MenuItem> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
-        try {
-            List<MenuItem> allMenu = menuItemRepository.findAll();
-            // Minimize data sent to AI: only ID and Name
-            List<Map<String, Object>> menuData = allMenu.stream()
-                    .map(item -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("id", item.getId());
-                        map.put("name", item.getName());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
+        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, PageRequest.of(0, limit * 2));
 
-            String menuJson = objectMapper.writeValueAsString(menuData);
-            String aiResponse = aiService.getMenuRecommendations(menuJson, timeContext, weatherContext);
+        if (associatedIds == null || associatedIds.isEmpty())
+            return getPopularItems(limit);
 
-            List<Long> recommendedIds = parseIdsFromAi(aiResponse);
-            if (!recommendedIds.isEmpty()) {
-                return menuItemRepository.findAllById(recommendedIds).stream().limit(limit).collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.error("Error getting personalized recommendations from AI", e);
-        }
-        return getPopularItems(limit);
-    }
-
-    /**
-     * Gets cross-sell recommendations when an item is added to cart.
-     */
-    public List<MenuItem> getCrossSellRecommendations(Long currentItemId, int limit) {
-        try {
-            MenuItem currentItem = menuItemRepository.findById(currentItemId).orElse(null);
-            if (currentItem == null) return getPopularItems(limit);
-
-            List<MenuItem> allMenu = menuItemRepository.findAll();
-            List<Map<String, Object>> menuData = allMenu.stream()
-                    .filter(item -> !item.getId().equals(currentItemId))
-                    .map(item -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("id", item.getId());
-                        map.put("name", item.getName());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-
-            String menuJson = objectMapper.writeValueAsString(menuData);
-            String aiResponse = aiService.getCrossSellRecommendations(currentItem.getName(), menuJson);
-
-            List<Long> recommendedIds = parseIdsFromAi(aiResponse);
-            if (!recommendedIds.isEmpty()) {
-                return menuItemRepository.findAllById(recommendedIds).stream().limit(limit).collect(Collectors.toList());
-            }
-        } catch (Exception e) {
-            log.error("Error getting cross-sell recommendations from AI", e);
-        }
-        return getRecommendations(currentItemId, limit); // Fallback to frequency-based
-    }
-
-    private List<Long> parseIdsFromAi(String aiResponse) {
-        try {
-            return objectMapper.readValue(aiResponse, new com.fasterxml.jackson.core.type.TypeReference<List<Long>>() {});
-        } catch (Exception e) {
-            log.warn("Failed to parse AI response as IDs: {}", aiResponse);
-            return List.of();
-        }
-    }
-
-    /**
-     * Recommends top selling items as a fallback.
-     */
-    public List<MenuItem> getPopularItems(int limit) {
-        return menuItemRepository.findAll().stream()
+        return menuItemRepository.findAllById(associatedIds).stream()
+                .filter(item -> Boolean.TRUE.equals(item.getActive()))
                 .limit(limit)
+                .map(this::convertToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Retrieves similar items based on sales associations.
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "recommendations", key = "'similar_' + #itemId + '_' + #limit")
+    public List<MenuItemResponse> getRecommendations(Long itemId, int limit) {
+        return getCrossSellRecommendations(itemId, limit);
+    }
+
+    /**
+     * Identifies the most popular items across the entire menu based on historical
+     * volume.
+     * 
+     * @param limit Maximum number of items
+     * @return List of trending menu items
+     */
+    @Transactional(readOnly = true)
+    @Cacheable(value = "popularItems", key = "'pop_' + #limit")
+    public List<MenuItemResponse> getPopularItems(int limit) {
+        List<Long> topIds = orderItemRepository.findTopSellingItemIds(PageRequest.of(0, limit * 2));
+
+        List<MenuItem> items;
+        if (topIds == null || topIds.isEmpty()) {
+            items = menuItemRepository.findAllByActiveTrue().stream()
+                    .sorted(Comparator.comparing(MenuItem::getCreatedAt).reversed())
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        } else {
+            items = menuItemRepository.findAllById(topIds).stream()
+                    .filter(item -> Boolean.TRUE.equals(item.getActive()))
+                    .limit(limit)
+                    .collect(Collectors.toList());
+        }
+
+        return items.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Provides personalized recommendations by scoring items against current time
+     * and weather conditions.
+     * Implements a Weighted Scoring algorithm (Time: 40%, Weather: 30%, Popularity:
+     * 30%).
+     * 
+     * @param timeContext    Current time description (e.g., "morning", "dinner")
+     * @param weatherContext Current weather status (e.g., "hot", "rainy")
+     * @param limit          Maximum number of results
+     * @return Ranked list of contextually appropriate menu items
+     */
+    @Transactional(readOnly = true)
+    public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
+        List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
+        if (activeMenu.isEmpty())
+            return List.of();
+
+        Map<Long, Long> popularityMap = getPopularityMap(activeMenu);
+        String tKey = normalize(timeContext);
+        String wKey = normalize(weatherContext);
+
+        return activeMenu.stream()
+                .map(item -> {
+                    double score = calculateItemScore(item, tKey, wKey, popularityMap.getOrDefault(item.getId(), 0L));
+                    return new AbstractMap.SimpleEntry<>(item, score);
+                })
+                .filter(entry -> entry.getValue() > 0)
+                .sorted(Map.Entry.<MenuItem, Double>comparingByValue().reversed())
+                .limit(limit)
+                .map(entry -> convertToResponse(entry.getKey()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Core scoring logic for contextual recommendations.
+     */
+    private double calculateItemScore(MenuItem item, String tKey, String wKey, long soldCount) {
+        if (item.getCategory() == null)
+            return 0;
+
+        String cateName = item.getCategory().getName().toLowerCase();
+
+        // Weighted attributes: Time alignment + Weather suitability + Sales popularity
+        double timeScore = calculateTimeMatch(cateName, tKey) * 40;
+        double weatherScore = calculateWeatherMatch(cateName, wKey) * 30;
+        double popularityScore = Math.min(soldCount / 50.0, 1.0) * 30;
+
+        return timeScore + weatherScore + popularityScore;
+    }
+
+    /**
+     * Matches category keywords against specific time periods.
+     */
+    private double calculateTimeMatch(String cateName, String tKey) {
+        if (tKey.isBlank())
+            return 0.5;
+        if (containsAny(tKey, "sáng", "morning") &&
+                containsAny(cateName, "Mỳ cay", "Trà", "Soda", "Giải Khát", "Trà Sữa"))
+            return 1.0;
+        if (containsAny(tKey, "trưa", "lunch") &&
+                containsAny(cateName, "Ăn Vặt", "Trà Sữa", "Nước Ép"))
+            return 1.0;
+        if (containsAny(tKey, "tối", "dinner") &&
+                containsAny(cateName, "Ăn Vặt", "Giải Khát", "Mỳ cay"))
+            return 1.0;
+        return 0.1;
+    }
+
+    /**
+     * Matches category keywords against specific weather conditions.
+     */
+    private double calculateWeatherMatch(String cateName, String wKey) {
+        if (wKey.isBlank())
+            return 0.5;
+        if (containsAny(wKey, "nóng", "hot") &&
+                containsAny(cateName, "Trà", "Soda", "Nước Ép", "Giải Khát"))
+            return 1.0;
+        if (containsAny(wKey, "lạnh", "mưa", "cold") &&
+                containsAny(cateName, "Mỳ cay", "Ăn Vặt"))
+            return 1.0;
+        return 0.1;
+    }
+
+    /**
+     * Batch retrieves sales volume for a list of items to calculate popularity
+     * scores efficiently.
+     */
+    private Map<Long, Long> getPopularityMap(List<MenuItem> items) {
+        List<Long> ids = items.stream().map(MenuItem::getId).collect(Collectors.toList());
+        List<Object[]> results = orderItemRepository.countTotalSoldBatch(ids);
+        return results.stream().collect(Collectors.toMap(
+                res -> ((Number) res[0]).longValue(),
+                res -> ((Number) res[1]).longValue()));
+    }
+
+    /**
+     * Maps a MenuItem entity to its Response DTO, including nested options and
+     * values.
+     */
+    private MenuItemResponse convertToResponse(MenuItem item) {
+        List<MenuItemResponse.ItemOptionResponse> options = new ArrayList<>();
+
+        if (item.getItemOptions() != null) {
+            for (var opt : item.getItemOptions()) {
+                if (opt.isDeleted())
+                    continue;
+
+                List<MenuItemResponse.ItemOptionValueResponse> values = new ArrayList<>();
+                if (opt.getOptionValues() != null) {
+                    for (var val : opt.getOptionValues()) {
+                        if (val.isDeleted())
+                            continue;
+                        values.add(MenuItemResponse.ItemOptionValueResponse.builder()
+                                .id(val.getId())
+                                .name(val.getName())
+                                .extraPrice(val.getExtraPrice())
+                                .build());
+                    }
+                }
+
+                options.add(MenuItemResponse.ItemOptionResponse.builder()
+                        .id(opt.getId())
+                        .name(opt.getName())
+                        .isRequired(opt.isRequired())
+                        .maxSelection(opt.getMaxSelection())
+                        .optionValues(values)
+                        .build());
+            }
+        }
+
+        return MenuItemResponse.builder()
+                .id(item.getId())
+                .name(item.getName())
+                .price(item.getPrice())
+                .img(item.getImg())
+                .active(item.getActive())
+                .category(item.getCategory() != null ? MenuItemResponse.CategorySummary.builder()
+                        .id(item.getCategory().getId())
+                        .name(item.getCategory().getName())
+                        .build() : null)
+                .itemOptions(options)
+                .build();
+    }
+
+    private String normalize(String input) {
+        return input != null ? input.toLowerCase().trim() : "";
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        for (String kw : keywords) {
+            if (text.contains(kw.toLowerCase()))
+                return true;
+        }
+        return false;
     }
 }

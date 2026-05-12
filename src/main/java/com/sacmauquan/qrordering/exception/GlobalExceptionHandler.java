@@ -1,68 +1,106 @@
 package com.sacmauquan.qrordering.exception;
 
+import com.sacmauquan.qrordering.dto.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.net.URI;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
+/**
+ * GlobalExceptionHandler - Centralized management of system exceptions.
+ * Provides consistent error responses across the entire API.
+ */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage() != null ? ex.getMessage() : "Dữ liệu không hợp lệ");
-        problemDetail.setTitle("Bad Request");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/bad-request")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
-    @ExceptionHandler(NoSuchElementException.class)
-    public ProblemDetail handleNoSuchElementException(NoSuchElementException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage() != null ? ex.getMessage() : "Không tìm thấy dữ liệu");
-        problemDetail.setTitle("Resource Not Found");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/not-found")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ProblemDetail handleIllegalStateException(IllegalStateException ex) {
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage() != null ? ex.getMessage() : "Trạng thái không hợp lệ");
-        problemDetail.setTitle("Conflict / Illegal State");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/conflict")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
-    }
-
+    /**
+     * Handles validation errors triggered by @Valid annotations on DTOs.
+     * 
+     * @param ex MethodArgumentNotValidException containing validation results
+     * @return ApiResponse containing field-specific error messages
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage()));
-                
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Lỗi xác thực dữ liệu đầu vào");
-        problemDetail.setTitle("Validation Error");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/validation")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        problemDetail.setProperty("errors", errors);
-        return problemDetail;
+        ex.getBindingResult().getAllErrors().forEach((error) -> {
+            String fieldName = ((FieldError) error).getField();
+            String errorMessage = error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        log.warn("Validation error: {}", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid input data", errors));
     }
 
+    /**
+     * Handles ResponseStatusException typically thrown from the service layer for business logic errors.
+     * 
+     * @param ex ResponseStatusException containing the status code and reason
+     * @return ResponseEntity with the specific error message and status
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode())
+                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Request could not be processed",
+                        null));
+    }
+
+    /**
+     * Handles 404 errors when a requested URL or static resource is not found.
+     * 
+     * @param ex NoResourceFoundException
+     * @return ResponseEntity with 404 Not Found status
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Requested resource not found", null));
+    }
+
+    /**
+     * Handles authorization errors when a user lacks the required role or permission.
+     * 
+     * @param ex AccessDeniedException
+     * @return ResponseEntity with 403 Forbidden status
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("You do not have permission to perform this action", null));
+    }
+
+    /**
+     * Handles IllegalStateException for invalid business logic transitions or states.
+     * 
+     * @param ex IllegalStateException
+     * @return ResponseEntity with 400 Bad Request status
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage(), null));
+    }
+
+    /**
+     * Catch-all handler for any unhandled exceptions to prevent leaking internal details.
+     * 
+     * @param ex The unhandled exception
+     * @return ResponseEntity with 500 Internal Server Error status
+     */
     @ExceptionHandler(Exception.class)
-    public ProblemDetail handleGeneralException(Exception ex) {
-        ex.printStackTrace(); // Keep this for server logs
-        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() != null ? ex.getMessage() : "Lỗi hệ thống nội bộ");
-        problemDetail.setTitle("Internal Server Error");
-        problemDetail.setType(java.util.Objects.requireNonNull(URI.create("https://api.qr-ordering.com/errors/internal-error")));
-        problemDetail.setProperty("timestamp", Instant.now());
-        return problemDetail;
+    public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex) {
+        log.error("System error: ", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Internal server error. Please try again later.", null));
     }
 }
