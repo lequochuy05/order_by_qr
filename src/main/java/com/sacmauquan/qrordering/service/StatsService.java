@@ -49,6 +49,7 @@ public class StatsService {
          * @param to End date
          * @return List of employee performance metrics
          */
+        @Cacheable(value = "stats_emp_performance", key = "#from.toString() + #to.toString()")
         public List<StatsResponse.EmpPerformance> getEmployeePerformance(LocalDate from, LocalDate to) {
                 return repo.empPerformance(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.EmpPerformance(
@@ -103,6 +104,7 @@ public class StatsService {
          * @param to End date
          * @return List of daily sales quantity trends
          */
+        @Cacheable(value = "stats_dish_trend", key = "#from.toString() + #to.toString()")
         public List<StatsResponse.DishTrend> getDishTrend(LocalDate from, LocalDate to) {
                 return repo.dishTrendByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.DishTrend(

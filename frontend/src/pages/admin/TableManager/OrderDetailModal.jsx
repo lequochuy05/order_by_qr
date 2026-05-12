@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react'; // 1. Đã thêm UtensilsCrossed
 import { orderService } from '../../../services/admin/orderService';
-import { useAuth } from '../../../context/AuthContext'; // 2. Import Auth
+import { useAuth } from '../../../context/AuthContext';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     const [items, setItems] = useState(order?.orderItems || []);
@@ -94,6 +94,17 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                                         {isPrepared && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Đã phục vụ</span>}
                                     </div>
                                     
+                                    {/* Hiển thị Options (Size, Toppings...) */}
+                                    {item.options && item.options.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                            {item.options.map((opt, idx) => (
+                                                <span key={idx} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium">
+                                                    {opt.optionName}: {opt.optionValueName}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     {editingId === item.id ? (
                                         <div className="mt-2 flex gap-2">
                                             <input type="number" min="1" className="w-20 p-2 border rounded-lg outline-none focus:ring-2 ring-blue-500" value={editVal.quantity} onChange={e => setEditVal({...editVal, quantity: parseInt(e.target.value)})}/>

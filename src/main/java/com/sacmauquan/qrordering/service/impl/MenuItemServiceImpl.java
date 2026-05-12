@@ -66,9 +66,11 @@ public class MenuItemServiceImpl implements MenuItemService {
      * Get menu item by id
      */
     @Override
+    @Cacheable(value = "menu", key = "'item_' + #id", unless = "#result == null")
     public MenuItemResponse getItemById(@NonNull Long id) {
-        MenuItem item = menuItemRepository.findById(Objects.requireNonNull(id))
+        MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
+
         return convertToResponse(item);
     }
 
@@ -115,7 +117,7 @@ public class MenuItemServiceImpl implements MenuItemService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = "menu", allEntries = true)
+    @CacheEvict(value = { "menu", "recommendations", "popularItems" }, allEntries = true)
     public MenuItemResponse updateItem(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));

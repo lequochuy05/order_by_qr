@@ -108,7 +108,7 @@ const TableManager = () => {
             else await tableService.create(data);
             showSuccess(data.id ? "Cập nhật bàn thành công" : "Thêm bàn thành công");
             setFormModal({ open: false, data: null });
-            // Không cần gọi fetchTables vì Socket sẽ tự gọi
+            fetchTables(); // Refresh immediately
         } catch (e) {
             const errorMsg = e.response?.data?.detail || e.message || '';
             if (errorMsg.includes("Table number already exists")) {
@@ -125,7 +125,7 @@ const TableManager = () => {
         try {
             await tableService.delete(id);
             showSuccess("Đã xóa bàn");
-            // Không cần gọi fetchTables vì Socket sẽ tự gọi
+            fetchTables(); // Refresh immediately
         } catch (e) { showError(e); }
     };
 
@@ -136,6 +136,7 @@ const TableManager = () => {
             await orderService.addItemsToOrder(payload);
             showSuccess("Đã thêm món vào bàn");
             setAddItemModal({ open: false, table: null });
+            fetchTables(); // Refresh immediately
         } catch (e) { showError(e); }
         finally { setIsSubmitting(false); }
     };
@@ -189,6 +190,7 @@ const TableManager = () => {
                     // Khi cập nhật món (bếp xong/hủy), cần reload lại order ngay trong modal
                     const res = await orderService.getCurrentOrder(detailModal.table.id);
                     setDetailModal(prev => ({ ...prev, order: res }));
+                    fetchTables();
                 }}
             />
 
@@ -196,7 +198,10 @@ const TableManager = () => {
                 key={payModal.open ? (payModal.order?.id || payModal.table?.id || 'new') : 'pay-closed'}
                 isOpen={payModal.open} onClose={() => setPayModal({ open: false, table: null, order: null })}
                 table={payModal.table} order={payModal.order}
-                onPaymentSuccess={() => { showSuccess("Thanh toán thành công"); }}
+                onPaymentSuccess={() => {
+                    showSuccess("Thanh toán thành công");
+                    fetchTables();
+                }}
             />
 
             <StatusModal isOpen={statusModal.isOpen} onClose={closeStatusModal} type={statusModal.type} title={statusModal.title} message={statusModal.message} />

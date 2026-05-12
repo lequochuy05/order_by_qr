@@ -13,6 +13,7 @@ import com.sacmauquan.qrordering.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -154,6 +155,7 @@ public class PayosServiceImpl implements PayosService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
     public PaymentTransaction syncPaymentStatus(@NonNull Long transactionId) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
@@ -183,6 +185,7 @@ public class PayosServiceImpl implements PayosService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
     public void processWebhook(Webhook webhook) {
         // Handle confirm URL test from PayOS dashboard
         if ("00".equals(webhook.getCode()) && webhook.getData() != null

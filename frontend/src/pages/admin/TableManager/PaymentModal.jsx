@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { X, CreditCard, Tag, QrCode, Banknote, RefreshCw, XCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { orderService } from '../../../services/admin/orderService';
 import { paymentService } from '../../../services/admin/paymentService';
+import { printInvoice } from '../../../utils/invoiceGenerator';
 
 const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
     const [voucherCode, setVoucherCode] = useState('');
@@ -133,7 +134,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
     const handleCancelPayos = async () => {
         if (!payosData) return;
         try {
-            await paymentService.cancelPaymentLink(payosData.transactionId, "Người dùng hủy trên UI");
+            await paymentService.cancelPaymentLink(payosData.transactionId, "Customer changed payment method");
             setPayosStatus('idle');
             setPayosData(null);
             if (pollingRef.current) clearInterval(pollingRef.current);
@@ -153,13 +154,13 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
     };
 
     const finishPayment = () => {
-        ({
+        printInvoice({
             order: { ...order, ...previewData, totalAmount: previewData.finalTotal },
             table,
             paidBy: localStorage.getItem('fullname') || 'Admin',
             paidAt: new Date(),
             paymentMethod: paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'
-        }); printInvoice
+        });
 
         onPaymentSuccess();
         onClose();

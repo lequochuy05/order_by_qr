@@ -11,7 +11,8 @@ import java.util.Optional;
 
 /**
  * MenuItemRepository - Repository interface for managing MenuItem entities.
- * Features optimized fetching using EntityGraph for related options and categories.
+ * Features optimized fetching using EntityGraph for related options and
+ * categories.
  */
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
@@ -36,7 +37,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
      * Checks if another menu item already uses a specific name (case-insensitive).
      * 
      * @param name The name to check
-     * @param id The ID to exclude from search
+     * @param id   The ID to exclude from search
      * @return true if another item with the same name exists
      */
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
@@ -44,7 +45,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     /**
      * Searches for menu items by name with partial match and pagination.
      * 
-     * @param name The search keyword
+     * @param name     The search keyword
      * @param pageable Pagination and sorting information
      * @return Paged result of matching items
      */

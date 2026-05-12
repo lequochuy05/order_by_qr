@@ -112,7 +112,6 @@ const VoucherManager = () => {
             const status = getStatusInfo(v);
             return (
               <div key={v.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all">
-                {/* ... (Phần hiển thị card giữ nguyên) ... */}
                 <div className="flex justify-between items-start mb-4">
                   <div className="bg-orange-50 p-3 rounded-2xl text-orange-500"><Ticket size={24} /></div>
                   <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${status.color}`}>

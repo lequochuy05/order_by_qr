@@ -48,7 +48,7 @@ public class CategoryService {
     /**
      * Searches for categories by name with pagination support.
      * 
-     * @param q Search keyword
+     * @param q        Search keyword
      * @param pageable Pagination and sorting information
      * @return Paged result of matching CategoryResponse DTOs
      */
@@ -70,7 +70,7 @@ public class CategoryService {
      * @throws ResponseStatusException if category name already exists
      */
     @Transactional
-    @CacheEvict(value = "categories", allEntries = true)
+    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
     public CategoryResponse create(@NonNull Category c) {
         if (categoryRepo.existsByNameIncludingDeleted(c.getName())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
@@ -84,12 +84,12 @@ public class CategoryService {
     /**
      * Updates an existing category's properties.
      * 
-     * @param id Category ID
+     * @param id    Category ID
      * @param input Updated category details
      * @return Updated CategoryResponse DTO
      */
     @Transactional
-    @CacheEvict(value = "categories", allEntries = true)
+    @CacheEvict(value = { "categories", "menu", "recommendations" }, allEntries = true)
     public CategoryResponse update(@NonNull Integer id, @NonNull Category input) {
         Category exist = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
@@ -117,7 +117,7 @@ public class CategoryService {
      * @param id Category ID
      */
     @Transactional
-    @CacheEvict(value = "categories", allEntries = true)
+    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
     public void delete(@NonNull Integer id) {
         Category cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
@@ -137,12 +137,12 @@ public class CategoryService {
     /**
      * Replaces the representative image for a category.
      * 
-     * @param id Category ID
+     * @param id   Category ID
      * @param file The new image file
      * @return Map containing the new image URL
      */
     @Transactional
-    @CacheEvict(value = "categories", allEntries = true)
+    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
     public Map<String, String> uploadImage(@NonNull Integer id, @NonNull MultipartFile file) {
         Category cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));

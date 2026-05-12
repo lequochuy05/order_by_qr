@@ -12,14 +12,14 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [categories, setCategories] = useState([]);
     const [selectedCate, setSelectedCate] = useState('ALL');
     const [cart, setCart] = useState([]); // [{cartId, id, type, name, price, qty, notes, options}]
-    
+
     // State cho Modal chọn Options
     const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
     const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
-        
+
         const loadAllData = async () => {
             try {
                 const [m, c, cat] = await Promise.all([
@@ -54,13 +54,13 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
             setCart(cart.map(x => x.cartId === cartId ? { ...x, qty: x.qty + 1 } : x));
         } else {
             const addedName = item.name + (optionObjs.length > 0 ? ` (${optionObjs.map(o => o.valueName).join(', ')})` : '');
-            setCart([...cart, { 
-                cartId, 
-                id: item.id, 
-                type, 
-                name: addedName, 
-                price: priceToUse, 
-                qty: 1, 
+            setCart([...cart, {
+                cartId,
+                id: item.id,
+                type,
+                name: addedName,
+                price: priceToUse,
+                qty: 1,
                 notes: '',
                 options: options.map(optId => ({ optionValueId: optId }))
             }]);
@@ -88,7 +88,12 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         if (cart.length === 0) return alert("Chưa chọn món nào");
         const payload = {
             tableId: table.id,
-            items: cart.filter(x => x.type === 'ITEM').map(x => ({ menuItemId: x.id, quantity: x.qty, notes: x.notes, options: x.options || [] })),
+            items: cart.filter(x => x.type === 'ITEM').map(x => ({
+                menuItemId: x.id,
+                quantity: x.qty,
+                notes: x.notes,
+                selectedOptionValueIds: (x.options || []).map(opt => opt.optionValueId)
+            })),
             combos: cart.filter(x => x.type === 'COMBO').map(x => ({ comboId: x.id, quantity: x.qty, notes: x.notes }))
         };
         onSubmit(payload);
@@ -104,9 +109,11 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex shadow-2xl overflow-hidden">
                 {/* LEFT: Menu Selection */}
-                <div className="flex-1 flex flex-col border-r bg-gray-50">
+                <div className="flex-1 flex flex-col border-r bg-gray-50 min-w-0">
                     <div className="p-4 bg-white border-b">
-                        <h3 className="font-bold text-lg mb-4">Thêm món - Bàn {table.tableNumber}</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-lg">Thêm món - Bàn {table.tableNumber}</h3>
+                        </div>
                         <div className="flex gap-2 mb-4">
                             <button onClick={() => setActiveTab('ITEMS')} className={`flex-1 py-2 rounded-lg font-bold ${activeTab === 'ITEMS' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'}`}>Món lẻ</button>
                             <button onClick={() => setActiveTab('COMBOS')} className={`flex-1 py-2 rounded-lg font-bold ${activeTab === 'COMBOS' ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'}`}>Combo</button>
@@ -125,19 +132,21 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                     <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 content-start">
                         {displayList.map(item => (
                             <div key={item.id} onClick={() => handleItemClick(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
-                                className="bg-white p-3 rounded-xl border shadow-sm cursor-pointer hover:border-orange-500 hover:shadow-md transition-all active:scale-95">
-                                <div className="font-bold text-gray-800 line-clamp-1">{item.name}</div>
-                                <div className="text-orange-600 font-bold text-sm mt-1">{item.price.toLocaleString()}đ</div>
+                                className="bg-white p-3 rounded-xl border shadow-sm cursor-pointer hover:border-orange-500 hover:shadow-md transition-all active:scale-95 flex flex-col justify-between min-h-[80px]">
+                                <div className="font-bold text-gray-800 text-sm leading-tight">{item.name}</div>
+                                <div className="text-orange-600 font-bold text-sm mt-2">{item.price.toLocaleString()}đ</div>
                             </div>
                         ))}
                     </div>
                 </div>
 
                 {/* RIGHT: Cart */}
-                <div className="w-[350px] flex flex-col bg-white">
+                <div className="w-[350px] flex flex-col bg-white shrink-0">
                     <div className="p-4 border-b bg-orange-50 flex justify-between items-center">
                         <h3 className="font-bold text-orange-800">Món đã chọn ({cart.length})</h3>
-                        <button onClick={onClose}><X size={20} className="text-gray-500" /></button>
+                        <button onClick={onClose} className="p-1 hover:bg-orange-100 rounded-lg transition-colors">
+                            <X size={20} className="text-orange-600" />
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -165,7 +174,13 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                                             setCart(newCart);
                                         }}
                                     />
-                                    <button onClick={() => removeFromCart(idx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><X size={16} /></button>
+                                    <button
+                                        onClick={() => removeFromCart(idx)}
+                                        className="text-red-500 hover:bg-red-50 p-1 rounded shrink-0 transition-colors"
+                                        title="Xóa khỏi giỏ"
+                                    >
+                                        <X size={16} />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -182,7 +197,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                     </div>
                 </div>
             </div>
-            
+
             {/* Modal Chọn Options của món (dùng chung từ khách hàng) */}
             <ItemOptionsModal
                 key={isOptionsModalOpen ? (selectedItemForOptions?.id || 'new') : 'closed'}

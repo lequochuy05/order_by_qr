@@ -19,12 +19,12 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.cache.annotation.CacheEvict;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -200,6 +200,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -228,6 +229,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
     public OrderResponse createOrder(@NonNull OrderRequest req) {
         if ((req.getItems() == null || req.getItems().isEmpty()) &&
                 (req.getCombos() == null || req.getCombos().isEmpty())) {
@@ -274,6 +276,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
     public void cancelOrderItem(@NonNull Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
@@ -307,6 +310,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
@@ -400,6 +404,8 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+            "stats_dish_trend" }, allEntries = true)
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -515,6 +521,8 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+            "stats_dish_trend" }, allEntries = true)
     public OrderResponse confirmPaid(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -541,6 +549,8 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+            "stats_dish_trend" }, allEntries = true)
     public OrderResponse cancelOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -591,6 +601,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
     public void deleteOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -619,6 +630,12 @@ public class OrderServiceImpl implements OrderService {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table identification required for order creation");
     }
 
+    /**
+     * Processes all items in an order request.
+     * 
+     * @param req   The order request containing item details
+     * @param order The order entity to add items to
+     */
     private void processItems(OrderRequest req, Order order) {
         if (req.getItems() == null)
             return;
@@ -671,6 +688,12 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * Processes combo meals in an order request.
+     * 
+     * @param req   The order request containing combo details
+     * @param order The order entity to add combos to
+     */
     private void processCombos(OrderRequest req, Order order) {
         if (req.getCombos() == null)
             return;
@@ -700,6 +723,13 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * Validates that all required options for a menu item are selected.
+     * 
+     * @param mi               The menu item to validate
+     * @param selectedValueIds The list of selected option value IDs
+     * @throws ResponseStatusException if required options are missing
+     */
     private void validateRequiredOptions(MenuItem mi, List<Long> selectedValueIds) {
         Set<Long> selectedIds = selectedValueIds != null ? new HashSet<>(selectedValueIds) : Set.of();
         mi.getItemOptions().stream()
@@ -713,6 +743,14 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
+    /**
+     * Checks if the selected option values match the existing option values in an
+     * order item.
+     * 
+     * @param existing    The existing option values
+     * @param incomingIds The incoming option value IDs
+     * @return true if the option values match, false otherwise
+     */
     private boolean checkOptionsMatch(Collection<OrderItemOption> existing, List<Long> incomingIds) {
         Set<Long> existIds = existing.stream()
                 .map(o -> o.getItemOptionValue().getId())
@@ -721,6 +759,11 @@ public class OrderServiceImpl implements OrderService {
         return existIds.equals(inIds);
     }
 
+    /**
+     * Recalculates the total amounts for an order based on its items.
+     * 
+     * @param order The order to recalculate totals for
+     */
     private void recalculateOrderTotals(Order order) {
         BigDecimal subtotal = order.getOrderItems().stream()
                 .map(oi -> oi.getUnitPrice().multiply(BigDecimal.valueOf(oi.getQuantity())))
@@ -730,6 +773,11 @@ public class OrderServiceImpl implements OrderService {
         order.setTotalAmount(subtotal.subtract(order.getDiscountVoucher()).max(BigDecimal.ZERO));
     }
 
+    /**
+     * Recalculates the status of the table based on the order.
+     * 
+     * @param order The order to recalculate table status for
+     */
     private void recalcTableStatus(Order order) {
         DiningTable table = order.getTable();
         if (table == null)
@@ -750,6 +798,12 @@ public class OrderServiceImpl implements OrderService {
         notificationService.notifyTableChange();
     }
 
+    /**
+     * Converts an order entity to an order response.
+     * 
+     * @param o The order entity to convert
+     * @return The order response
+     */
     private OrderResponse convertToResponse(Order o) {
         return new OrderResponse(
                 o.getId(),
