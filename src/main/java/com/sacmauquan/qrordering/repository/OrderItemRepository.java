@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.repository;
 import com.sacmauquan.qrordering.model.OrderItem;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
@@ -18,9 +19,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
                         WHERE oi1.menu_item_id = :itemId AND oi2.menu_item_id != :itemId
                         GROUP BY oi2.menu_item_id
                         ORDER BY COUNT(oi2.menu_item_id) DESC
-                        LIMIT :limit
                         """, nativeQuery = true)
-        List<Long> findTopAssociatedItems(@Param("itemId") Long itemId, @Param("limit") int limit);
+        List<Long> findTopAssociatedItems(@Param("itemId") Long itemId, Pageable pageable);
 
         @Query(value = """
                         SELECT oi.menu_item_id
@@ -29,9 +29,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
                         WHERE o.status = 'COMPLETED'
                         GROUP BY oi.menu_item_id
                         ORDER BY SUM(oi.quantity) DESC
-                        LIMIT :limit
                         """, nativeQuery = true)
-        List<Long> findTopSellingItemIds(@Param("limit") int limit);
+        List<Long> findTopSellingItemIds(Pageable pageable);
 
         @Query(value = """
                         SELECT COALESCE(SUM(oi.quantity), 0)

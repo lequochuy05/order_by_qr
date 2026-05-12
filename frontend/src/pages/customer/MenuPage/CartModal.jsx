@@ -123,7 +123,7 @@ const CartModal = ({
                                         </p>
                                     </div>
                                     <button
-                                        onClick={() => handleAddToCart(item, (cart.items[item.id]?.qty || 0) + 1, false, item.itemOptions?.length > 0)}
+                                        onClick={() => handleAddToCart(item, getCartItemQty(item) + 1, false, item.itemOptions?.length > 0)}
                                         className="w-full py-2 bg-orange-500 text-white text-[10px] font-extrabold rounded-xl shadow-md shadow-orange-100 dark:shadow-orange-900/20 active:scale-95 transition-all"
                                     >
                                         + {fmtVND(item.price)}

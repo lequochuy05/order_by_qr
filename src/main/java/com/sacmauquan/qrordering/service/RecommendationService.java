@@ -16,6 +16,9 @@ import java.util.stream.Collectors;
  * RecommendationService - Intelligent item recommendation engine.
  * Uses historical order patterns and environmental context (time/weather) to suggest menu items.
  */
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,21 +28,23 @@ public class RecommendationService {
     private final MenuItemRepository menuItemRepository;
 
     /**
-     * Suggests items that are frequently ordered alongside a specific item (Cross-sell).
+     * Suggests items that are frequently ordered alongside a specific item
+     * (Cross-sell).
      * Falls back to popular items if no strong associations exist.
      * 
      * @param itemId Source menu item ID
-     * @param limit Maximum number of recommendations
+     * @param limit  Maximum number of recommendations
      * @return List of suggested menu items
      */
+    @Transactional(readOnly = true)
     @Cacheable(value = "recommendations", key = "'cross_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getCrossSellRecommendations(Long itemId, int limit) {
         if (itemId == null)
             return getPopularItems(limit);
 
-        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, limit * 2);
+        List<Long> associatedIds = orderItemRepository.findTopAssociatedItems(itemId, PageRequest.of(0, limit * 2));
 
-        if (associatedIds.isEmpty())
+        if (associatedIds == null || associatedIds.isEmpty())
             return getPopularItems(limit);
 
         return menuItemRepository.findAllById(associatedIds).stream()
@@ -52,20 +57,23 @@ public class RecommendationService {
     /**
      * Retrieves similar items based on sales associations.
      */
+    @Transactional(readOnly = true)
     @Cacheable(value = "recommendations", key = "'similar_' + #itemId + '_' + #limit")
     public List<MenuItemResponse> getRecommendations(Long itemId, int limit) {
         return getCrossSellRecommendations(itemId, limit);
     }
 
     /**
-     * Identifies the most popular items across the entire menu based on historical volume.
+     * Identifies the most popular items across the entire menu based on historical
+     * volume.
      * 
      * @param limit Maximum number of items
      * @return List of trending menu items
      */
+    @Transactional(readOnly = true)
     @Cacheable(value = "popularItems", key = "'pop_' + #limit")
     public List<MenuItemResponse> getPopularItems(int limit) {
-        List<Long> topIds = orderItemRepository.findTopSellingItemIds(limit * 2);
+        List<Long> topIds = orderItemRepository.findTopSellingItemIds(PageRequest.of(0, limit * 2));
 
         List<MenuItem> items;
         if (topIds == null || topIds.isEmpty()) {
@@ -86,14 +94,17 @@ public class RecommendationService {
     }
 
     /**
-     * Provides personalized recommendations by scoring items against current time and weather conditions.
-     * Implements a Weighted Scoring algorithm (Time: 40%, Weather: 30%, Popularity: 30%).
+     * Provides personalized recommendations by scoring items against current time
+     * and weather conditions.
+     * Implements a Weighted Scoring algorithm (Time: 40%, Weather: 30%, Popularity:
+     * 30%).
      * 
-     * @param timeContext Current time description (e.g., "morning", "dinner")
+     * @param timeContext    Current time description (e.g., "morning", "dinner")
      * @param weatherContext Current weather status (e.g., "hot", "rainy")
-     * @param limit Maximum number of results
+     * @param limit          Maximum number of results
      * @return Ranked list of contextually appropriate menu items
      */
+    @Transactional(readOnly = true)
     public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
         List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
         if (activeMenu.isEmpty())
@@ -166,20 +177,52 @@ public class RecommendationService {
     }
 
     /**
-     * Batch retrieves sales volume for a list of items to calculate popularity scores efficiently.
+     * Batch retrieves sales volume for a list of items to calculate popularity
+     * scores efficiently.
      */
     private Map<Long, Long> getPopularityMap(List<MenuItem> items) {
         List<Long> ids = items.stream().map(MenuItem::getId).collect(Collectors.toList());
         List<Object[]> results = orderItemRepository.countTotalSoldBatch(ids);
         return results.stream().collect(Collectors.toMap(
-                res -> (Long) res[0],
-                res -> (Long) res[1]));
+                res -> ((Number) res[0]).longValue(),
+                res -> ((Number) res[1]).longValue()));
     }
 
     /**
-     * Maps a MenuItem entity to its Response DTO.
+     * Maps a MenuItem entity to its Response DTO, including nested options and
+     * values.
      */
     private MenuItemResponse convertToResponse(MenuItem item) {
+        List<MenuItemResponse.ItemOptionResponse> options = new ArrayList<>();
+
+        if (item.getItemOptions() != null) {
+            for (var opt : item.getItemOptions()) {
+                if (opt.isDeleted())
+                    continue;
+
+                List<MenuItemResponse.ItemOptionValueResponse> values = new ArrayList<>();
+                if (opt.getOptionValues() != null) {
+                    for (var val : opt.getOptionValues()) {
+                        if (val.isDeleted())
+                            continue;
+                        values.add(MenuItemResponse.ItemOptionValueResponse.builder()
+                                .id(val.getId())
+                                .name(val.getName())
+                                .extraPrice(val.getExtraPrice())
+                                .build());
+                    }
+                }
+
+                options.add(MenuItemResponse.ItemOptionResponse.builder()
+                        .id(opt.getId())
+                        .name(opt.getName())
+                        .isRequired(opt.isRequired())
+                        .maxSelection(opt.getMaxSelection())
+                        .optionValues(values)
+                        .build());
+            }
+        }
+
         return MenuItemResponse.builder()
                 .id(item.getId())
                 .name(item.getName())
@@ -190,6 +233,7 @@ public class RecommendationService {
                         .id(item.getCategory().getId())
                         .name(item.getCategory().getName())
                         .build() : null)
+                .itemOptions(options)
                 .build();
     }
 

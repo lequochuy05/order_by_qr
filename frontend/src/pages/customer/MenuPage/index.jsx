@@ -12,6 +12,7 @@ import CartModal from './CartModal';
 import CategoryFilter from './CategoryFilter';
 import ShoppingCartButton from './ShoppingCart';
 import ItemOptionsModal from './ItemOptionsModal';
+import AiChatAssistant from '../../../components/customer/AiChatAssistant';
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
@@ -354,6 +355,7 @@ const MenuPage = () => {
             crossSellItems={crossSellItems}
             setCrossSellItems={setCrossSellItems}
             handleAddToCart={handleAddToCart}
+            getCartItemQty={getCartItemQty}
             calculateTotal={calculateTotal}
             isSubmitting={isSubmitting}
             handleSubmitOrder={handleSubmitOrder}
@@ -366,6 +368,9 @@ const MenuPage = () => {
             onClose={() => setSelectedItemForOptions(null)}
             onConfirm={handleAddWithOptions}
           />
+
+          {/* AI Customer Assistant */}
+          <AiChatAssistant />
         </div>
       </div>
     </div>

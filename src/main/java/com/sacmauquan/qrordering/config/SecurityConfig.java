@@ -68,6 +68,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.GET, "/api/vouchers/validate").permitAll()
             // Guest order creation
             .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
+            // AI Customer Assistant (public chat)
+            .requestMatchers(HttpMethod.POST, "/api/ai/chat").permitAll()
 
             // PayOS webhook
             .requestMatchers(HttpMethod.POST, "/api/webhooks/**").permitAll()

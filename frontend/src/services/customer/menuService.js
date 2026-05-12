@@ -13,4 +13,6 @@ export const menuService = {
     api.get(`/recommendations/personalized?timeContext=${time}&weatherContext=${weather}`),
   getCrossSellRecommendations: (itemId) =>
     api.get(`/recommendations/cross-sell/${itemId}`),
+  sendAiChat: (message, history = []) =>
+    api.post('/ai/chat', { message, history }),
 };
