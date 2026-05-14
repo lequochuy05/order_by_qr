@@ -839,6 +839,7 @@ public class OrderServiceImpl implements OrderService {
                         oi.isPrepared(),
                         oi.getStatus().name(),
                         oi.getOrderItemOptions().stream().map(opt -> new OrderResponse.OrderItemOptionResponse(
+                                opt.getItemOptionValue() != null ? opt.getItemOptionValue().getId() : null,
                                 opt.getOptionName(), opt.getOptionValueName(), opt.getExtraPrice())).toList()))
                         .toList(),
                 o.getCreatedAt());

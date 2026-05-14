@@ -205,6 +205,23 @@ public class DiscountService {
     }
 
     /**
+     * Atomically increments the usage count of a voucher code.
+     * Used when a payment is finalized (e.g., PayOS webhook).
+     * 
+     * @param code The voucher code to increment
+     */
+    @Transactional
+    public void incrementUsage(String code) {
+        if (code == null || code.isBlank())
+            return;
+        Voucher v = voucherRepo.findByCodeIgnoreCase(code.trim().toUpperCase())
+                .orElse(null);
+        if (v != null) {
+            voucherRepo.incrementUsedCountAtomically(v.getId());
+        }
+    }
+
+    /**
      * Evaluates the comprehensive status of a voucher based on activation, time, and usage.
      */
     private String getVoucherStatus(Voucher v) {

@@ -28,6 +28,7 @@ import com.sacmauquan.qrordering.model.PaymentTransaction;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import com.sacmauquan.qrordering.repository.OrderRepository;
 import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
+import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.service.impl.PayosServiceImpl;
 
 import vn.payos.PayOS;
@@ -50,13 +51,17 @@ class PayosServiceImplTest {
     NotificationService notificationService;
     @Mock
     TransactionSideEffectService sideEffects;
+    @Mock
+    DiscountService discountService;
+    @Mock
+    UserRepository userRepository;
 
     PayosServiceImpl payosService;
 
     @BeforeEach
     void setUp() {
         payosService = new PayosServiceImpl(payOS, orderRepository, transactionRepository, tableRepository,
-                notificationService, sideEffects);
+                notificationService, sideEffects, discountService, userRepository);
         ReflectionTestUtils.setField(payosService, "frontendUrl", "http://localhost:5173");
     }
 

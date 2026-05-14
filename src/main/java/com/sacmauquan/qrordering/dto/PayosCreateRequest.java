@@ -13,4 +13,14 @@ public class PayosCreateRequest {
      */
     @NotNull(message = "Order ID is required")
     private Long orderId;
+
+    /**
+     * Optional voucher code to apply before payment.
+     */
+    private String voucherCode;
+
+    /**
+     * ID of the user who created the request.
+     */
+    private Long createdById;
 }

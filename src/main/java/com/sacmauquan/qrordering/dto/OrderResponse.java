@@ -57,6 +57,7 @@ public record OrderResponse(
      * Response DTO for a selected option within an order item.
      */
     public record OrderItemOptionResponse(
+            Long valueId,
             String optionName,
             String optionValueName,
             BigDecimal extraPrice) {

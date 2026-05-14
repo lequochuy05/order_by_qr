@@ -90,6 +90,13 @@ public class PaymentTransaction extends BaseEntity {
     private String payosReference;
 
     /**
+     * The staff or manager who created this transaction link.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id")
+    private User createdBy;
+
+    /**
      * Descriptive reason if the transaction was cancelled or failed.
      */
     @Column(length = 255)

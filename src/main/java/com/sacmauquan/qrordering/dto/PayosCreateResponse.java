@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.dto;
 
 import lombok.Builder;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -22,4 +23,8 @@ public class PayosCreateResponse {
     private String checkoutUrl;
     private String qrCode;
     private LocalDateTime createdAt;
+    private BigDecimal amount;
+    private BigDecimal originalTotal;
+    private BigDecimal discountVoucher;
+    private String voucherCode;
 }

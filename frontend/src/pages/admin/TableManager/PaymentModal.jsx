@@ -4,6 +4,7 @@ import { X, CreditCard, Tag, QrCode, Banknote, RefreshCw, XCircle, CheckCircle2,
 import { orderService } from '../../../services/admin/orderService';
 import { paymentService } from '../../../services/admin/paymentService';
 import { printInvoice } from '../../../utils/invoiceGenerator';
+import { useWebSocket } from '../../../hooks/useWebSocket';
 
 const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
     const [voucherCode, setVoucherCode] = useState('');
@@ -18,6 +19,26 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const [payosStatus, setPayosStatus] = useState('idle'); // 'idle', 'waiting', 'success', 'expired', 'error'
     const [timeLeft, setTimeLeft] = useState(0);
     const pollingRef = useRef(null);
+    const finishingRef = useRef(false);
+    const draftKey = order?.id ? `payment_draft_${order.id}` : null;
+
+    const savePaymentDraft = useCallback((code, preview) => {
+        if (!draftKey || !code || !preview?.voucherValid) return;
+        sessionStorage.setItem(draftKey, JSON.stringify({ voucherCode: code, previewData: preview }));
+    }, [draftKey]);
+
+    const clearPaymentDraft = useCallback(() => {
+        if (draftKey) sessionStorage.removeItem(draftKey);
+    }, [draftKey]);
+
+    const readPaymentDraft = useCallback(() => {
+        if (!draftKey) return null;
+        try {
+            return JSON.parse(sessionStorage.getItem(draftKey));
+        } catch {
+            return null;
+        }
+    }, [draftKey]);
 
     useEffect(() => {
         let timer;
@@ -52,10 +73,15 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const loadPreview = useCallback(async (code) => {
+    const loadPreview = useCallback(async (code, { persistDraft = false } = {}) => {
         setLoading(true);
         try {
-            const items = order.orderItems.filter(i => i.menuItem).map(i => ({ menuItemId: i.menuItem.id, quantity: i.quantity, notes: i.notes }));
+            const items = order.orderItems.filter(i => i.menuItem).map(i => ({
+                menuItemId: i.menuItem.id,
+                quantity: i.quantity,
+                notes: i.notes,
+                selectedOptionValueIds: i.options?.map(opt => opt.valueId).filter(id => id != null) || []
+            }));
             const combos = order.orderItems.filter(i => i.combo).map(i => ({ comboId: i.combo.id, quantity: i.quantity, notes: i.notes }));
 
             const res = await orderService.previewOrder({
@@ -65,27 +91,55 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             });
             setPreviewData(res);
 
-            if (code && !res.voucherValid) setError(res.voucherMessage || "Voucher không hợp lệ");
-            else setError('');
+            if (code && !res.voucherValid) {
+                clearPaymentDraft();
+                setError(res.voucherMessage || "Voucher không hợp lệ");
+            }
+            else {
+                setError('');
+                if (persistDraft) savePaymentDraft(code, res);
+            }
+
+            if (!code) clearPaymentDraft();
+            return res;
 
         } catch (_e) {
             setError("Lỗi tính toán hóa đơn");
+            return null;
         } finally {
             setLoading(false);
         }
-    }, [order, table?.id]);
+    }, [order, table?.id, savePaymentDraft, clearPaymentDraft]);
 
     useEffect(() => {
-        if (isOpen && table && order) {
-            loadPreview('');
+        if (isOpen) {
+            const draft = readPaymentDraft();
+            const initialVoucher = order?.voucherCode || draft?.voucherCode || '';
+
+            setVoucherCode(initialVoucher);
+            if (draft?.previewData && !order?.voucherCode) {
+                setPreviewData(draft.previewData);
+            }
+            loadPreview(initialVoucher, { persistDraft: Boolean(initialVoucher && !order?.voucherCode) });
             setPaymentMethod('CASH');
             setPayosStatus('idle');
             setPayosData(null);
+            setError('');
+            finishingRef.current = false;
         }
+    }, [isOpen]); // Only reset when modal opens/closes
+
+    useEffect(() => {
+        if (isOpen && (table?.id || order?.id)) {
+            loadPreview(voucherCode || '', { persistDraft: Boolean(voucherCode && !order?.voucherCode) });
+        }
+    }, [table?.id, order?.id, isOpen]); // Reload preview when data changes but don't reset method
+
+    useEffect(() => {
         return () => {
             if (pollingRef.current) clearInterval(pollingRef.current);
         };
-    }, [isOpen, table, order, loadPreview]);
+    }, []);
 
     const handleInputChange = (e) => {
         const val = e.target.value;
@@ -93,9 +147,11 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         if (val.trim() === '') loadPreview('');
     };
 
+    // WebSocket listener removed from here (moved down)
+
     const handleApplyVoucher = () => {
         if (!voucherCode.trim()) return;
-        loadPreview(voucherCode);
+        loadPreview(voucherCode, { persistDraft: true });
     };
 
     // PayOS Logic
@@ -103,9 +159,23 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         setPayosLoading(true);
         setError('');
         try {
-            const data = await paymentService.createPaymentLink(order.id);
+            const data = await paymentService.createPaymentLink(order.id, voucherCode, currentUser?.userId);
             setPayosData(data);
             setPayosStatus('waiting');
+            setPaymentMethod('PAYOS');
+            const nextPreview = {
+                ...previewData,
+                originalTotal: data.originalTotal ?? previewData?.originalTotal ?? order.originalTotal,
+                discountVoucher: data.discountVoucher ?? previewData?.discountVoucher ?? order.discountVoucher ?? 0,
+                finalTotal: data.amount ?? data.finalTotal ?? previewData?.finalTotal ?? order.totalAmount,
+                voucherValid: Boolean(data.voucherCode || previewData?.voucherValid),
+                voucherMessage: data.voucherCode ? 'ACTIVE' : previewData?.voucherMessage,
+            };
+            setPreviewData(nextPreview);
+            if (data.voucherCode) {
+                setVoucherCode(data.voucherCode);
+                savePaymentDraft(data.voucherCode, nextPreview);
+            }
 
             // Bắt đầu polling kiểm tra trạng thái (fallback nếu WebSocket chậm)
             startPolling(data.transactionId);
@@ -131,6 +201,82 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         }, 3000);
     };
 
+    const buildInvoiceOrder = useCallback((latestOrder, method) => {
+        const effectiveMethod = method || latestOrder?.paymentMethod || paymentMethod;
+        const sourceOrder = latestOrder || order;
+        const originalTotal = latestOrder?.originalTotal
+            ?? payosData?.originalTotal
+            ?? previewData?.originalTotal
+            ?? order?.originalTotal;
+        const discountVoucher = latestOrder?.discountVoucher
+            ?? payosData?.discountVoucher
+            ?? previewData?.discountVoucher
+            ?? order?.discountVoucher
+            ?? 0;
+        const totalAmount = latestOrder?.totalAmount
+            ?? payosData?.amount
+            ?? previewData?.finalTotal
+            ?? order?.totalAmount;
+
+        return {
+            ...sourceOrder,
+            originalTotal,
+            discountVoucher,
+            voucherCode: latestOrder?.voucherCode ?? payosData?.voucherCode ?? order?.voucherCode,
+            totalAmount,
+            paymentMethod: effectiveMethod,
+            paymentStatus: latestOrder?.paymentStatus ?? 'PAID',
+            paymentTime: latestOrder?.paymentTime ?? new Date().toISOString(),
+            paidByName: latestOrder?.paidByName ?? currentUser?.fullName,
+        };
+    }, [order, previewData, payosData, currentUser, paymentMethod]);
+
+    const finishPayment = useCallback(async (methodOverride = paymentMethod) => {
+        if (finishingRef.current) return;
+        finishingRef.current = true;
+
+        let latestOrder = null;
+        try {
+            if (order?.id) {
+                latestOrder = await orderService.reconcileOrder(order.id);
+            }
+        } catch (e) {
+            console.warn("Could not load latest paid order before printing invoice:", e);
+        }
+
+        const invoiceOrder = buildInvoiceOrder(latestOrder, methodOverride);
+        printInvoice({
+            order: invoiceOrder,
+            table,
+            paidBy: invoiceOrder.paidByName || currentUser?.fullName || 'Admin',
+            paidAt: invoiceOrder.paymentTime || new Date(),
+        });
+
+        clearPaymentDraft();
+        onPaymentSuccess();
+        onClose();
+    }, [order?.id, table, currentUser, paymentMethod, onPaymentSuccess, onClose, buildInvoiceOrder]);
+
+    const handlePaymentSuccess = useCallback((transactionData) => {
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        setPayosStatus('success');
+        setPaymentMethod('PAYOS');
+        console.log("[PaymentModal] Payment success detected. Preparing to finish...");
+
+        // Tự động đóng và in hóa đơn sau 1.5s thành công (giảm từ 2s cho cảm giác nhanh hơn)
+        setTimeout(() => {
+            finishPayment('PAYOS');
+        }, 1500);
+    }, [finishPayment]);
+
+    // WebSocket listener for real-time payment success
+    useWebSocket('/topic/tables', (msg) => {
+        if (msg && msg.event === 'PAYMENT_SUCCESS' && (msg.orderId === order?.id || msg.transactionId === payosData?.transactionId)) {
+            console.log("[WebSocket] Payment success received!");
+            handlePaymentSuccess();
+        }
+    });
+
     const handleCancelPayos = async () => {
         if (!payosData) return;
         try {
@@ -143,29 +289,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         }
     };
 
-    const handlePaymentSuccess = (transactionData) => {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        setPayosStatus('success');
-
-        // Tự động đóng và in hóa đơn sau 2s thành công
-        setTimeout(() => {
-            finishPayment();
-        }, 2000);
-    };
-
-    const finishPayment = () => {
-        printInvoice({
-            order: { ...order, ...previewData, totalAmount: previewData.finalTotal },
-            table,
-            paidBy: currentUser?.fullName || 'Admin',
-            paidAt: new Date(),
-            paymentMethod: paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'
-        });
-
-        onPaymentSuccess();
-        onClose();
-    };
-
     const handleConfirmCashPay = async () => {
         if (!confirm(`Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`)) return;
         try {
@@ -173,7 +296,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             if (!userId) throw new Error('Không xác định được nhân viên thanh toán');
             const finalVoucher = voucherCode.trim() === '' ? null : voucherCode;
             await orderService.payOrder(order.id, userId, finalVoucher);
-            finishPayment();
+            await finishPayment('CASH');
         } catch (e) {
             alert("Thanh toán thất bại: " + (e.response?.data?.message || e.message));
         }
@@ -181,9 +304,13 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
 
     if (!isOpen || !table) return null;
 
-    const subTotal = (previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0);
-    const discount = previewData?.discountVoucher || 0;
-    const finalTotal = previewData?.finalTotal || 0;
+    const subTotal = previewData?.originalTotal
+        || ((previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0))
+        || payosData?.originalTotal
+        || order?.originalTotal
+        || 0;
+    const discount = previewData?.discountVoucher ?? payosData?.discountVoucher ?? order?.discountVoucher ?? 0;
+    const finalTotal = previewData?.finalTotal ?? payosData?.amount ?? order?.totalAmount ?? 0;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">

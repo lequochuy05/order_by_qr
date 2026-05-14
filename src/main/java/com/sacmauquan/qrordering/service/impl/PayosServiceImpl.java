@@ -8,6 +8,7 @@ import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.repository.OrderRepository;
 import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
+import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.service.PayosService;
 import com.sacmauquan.qrordering.service.NotificationService;
 import com.sacmauquan.qrordering.service.TransactionSideEffectService;
@@ -26,6 +27,7 @@ import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
+import com.sacmauquan.qrordering.service.DiscountService;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -49,6 +51,8 @@ public class PayosServiceImpl implements PayosService {
     private final DiningTableRepository tableRepository;
     private final NotificationService notificationService;
     private final TransactionSideEffectService sideEffects;
+    private final DiscountService discountService;
+    private final UserRepository userRepository;
 
     @Value("${app.frontend.base-url}")
     private String frontendUrl;
@@ -74,6 +78,20 @@ public class PayosServiceImpl implements PayosService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
         }
 
+        // Apply voucher if present in request
+        if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
+            var vr = discountService.validateCode(request.getVoucherCode(), order.getOriginalTotal());
+            if (vr.applicable()) {
+                order.setVoucherCode(vr.code());
+                order.setDiscountVoucher(vr.discountValue());
+                order.setTotalAmount(order.getOriginalTotal().subtract(vr.discountValue()).max(BigDecimal.ZERO));
+                orderRepository.save(order);
+                payableAmount = order.getTotalAmount();
+            } else {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher invalid: " + vr.status());
+            }
+        }
+
         // IDEMPOTENCY CHECK
         // Prevents generating multiple active PayOS links for the same order and amount
         Optional<PaymentTransaction> existing = transactionRepository
@@ -96,6 +114,7 @@ public class PayosServiceImpl implements PayosService {
                 .amount(payableAmount)
                 .status(PaymentTransaction.TransactionStatus.PENDING)
                 .paymentMethod(PaymentTransaction.PaymentMethod.PAYOS)
+                .createdBy(request.getCreatedById() != null ? userRepository.findById(request.getCreatedById()).orElse(null) : null)
                 .build();
 
         transaction = transactionRepository.save(Objects.requireNonNull(transaction));
@@ -174,7 +193,8 @@ public class PayosServiceImpl implements PayosService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+            "stats_dish_trend" }, allEntries = true)
     public PaymentTransaction syncPaymentStatus(@NonNull Long transactionId) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
@@ -204,7 +224,8 @@ public class PayosServiceImpl implements PayosService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
+    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+            "stats_dish_trend" }, allEntries = true)
     public void processWebhook(Webhook webhook) {
         // Handle confirm URL test from PayOS dashboard
         if ("00".equals(webhook.getCode()) && webhook.getData() != null
@@ -265,8 +286,14 @@ public class PayosServiceImpl implements PayosService {
                 order.setPaymentStatus(Order.PaymentStatus.PAID);
                 order.setPaymentMethod(Order.PaymentMethod.PAYOS);
                 order.setPaymentTime(LocalDateTime.now());
+                order.setPaidBy(transaction.getCreatedBy());
                 order.setStatus(Order.OrderStatus.COMPLETED);
                 orderRepository.save(order);
+
+                // Increment voucher usage if applied
+                if (order.getVoucherCode() != null) {
+                    discountService.incrementUsage(order.getVoucherCode());
+                }
 
                 // Transition table back to AVAILABLE
                 DiningTable table = order.getTable();
@@ -292,6 +319,10 @@ public class PayosServiceImpl implements PayosService {
                 .checkoutUrl(tx.getCheckoutUrl())
                 .qrCode(tx.getQrCode())
                 .createdAt(tx.getCreatedAt())
+                .amount(tx.getAmount())
+                .originalTotal(tx.getOrder() != null ? tx.getOrder().getOriginalTotal() : null)
+                .discountVoucher(tx.getOrder() != null ? tx.getOrder().getDiscountVoucher() : null)
+                .voucherCode(tx.getOrder() != null ? tx.getOrder().getVoucherCode() : null)
                 .build();
     }
 }
