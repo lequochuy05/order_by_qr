@@ -1,8 +1,8 @@
 import api from '../api';
 
 export const paymentService = {
-    createPaymentLink: async (orderId, amount) => {
-        const res = await api.post('/payments/payos/create', { orderId, amount });
+    createPaymentLink: async (orderId) => {
+        const res = await api.post('/payments/payos/create', { orderId });
         return res;
     },
 

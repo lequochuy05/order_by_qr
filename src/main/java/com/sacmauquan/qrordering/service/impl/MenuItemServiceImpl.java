@@ -11,6 +11,7 @@ import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.sacmauquan.qrordering.service.ImageManagerService;
 import com.sacmauquan.qrordering.service.MenuItemService;
 import com.sacmauquan.qrordering.service.NotificationService;
+import com.sacmauquan.qrordering.service.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -39,6 +40,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     private final CategoryRepository categoryRepository;
     private final NotificationService notificationService;
     private final ImageManagerService imageManager;
+    private final TransactionSideEffectService sideEffects;
 
     /**
      * Get all menu items
@@ -79,7 +81,7 @@ public class MenuItemServiceImpl implements MenuItemService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = "menu", allEntries = true)
+    @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public MenuItemResponse createItem(@NonNull MenuItemRequest req) {
         if (menuItemRepository.existsByNameIgnoreCase(req.getName())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Item name already exists");
@@ -117,7 +119,7 @@ public class MenuItemServiceImpl implements MenuItemService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "menu", "recommendations", "popularItems" }, allEntries = true)
+    @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public MenuItemResponse updateItem(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
@@ -148,13 +150,15 @@ public class MenuItemServiceImpl implements MenuItemService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = "menu", allEntries = true)
+    @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public void deleteItem(@NonNull Long id) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
 
-        imageManager.delete(item.getImg());
+        String oldImg = item.getImg();
         menuItemRepository.delete(item);
+        sideEffects.afterCommit(() -> imageManager.delete(oldImg),
+                "delete menu item image after item delete " + id);
         notificationService.notifyMenuChange("delete", id);
     }
 
@@ -163,13 +167,20 @@ public class MenuItemServiceImpl implements MenuItemService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = "menu", allEntries = true)
+    @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public Map<String, Object> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
 
         try {
-            String newUrl = imageManager.replace(file, item.getImg(), "order_by_qr/menu_items");
+            String oldUrl = item.getImg();
+            String newUrl = imageManager.upload(file, "order_by_qr/menu_items");
+            sideEffects.afterRollback(() -> imageManager.delete(newUrl),
+                    "delete rolled back menu item image " + id);
+            if (oldUrl != null) {
+                sideEffects.afterCommit(() -> imageManager.delete(oldUrl),
+                        "delete replaced menu item image " + id);
+            }
             item.setImg(newUrl);
             menuItemRepository.save(item);
             notificationService.notifyMenuChange("upload_image", id);

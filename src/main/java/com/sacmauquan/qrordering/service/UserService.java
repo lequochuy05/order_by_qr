@@ -19,8 +19,11 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.springframework.lang.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * UserService - Core service for user management, authentication, and security operations.
@@ -36,6 +39,11 @@ public class UserService {
     private final JwtService jwtService;
     private final NotificationService notificationService;
     private final UserMapper userMapper;
+    private final TransactionSideEffectService sideEffects;
+    private final CacheService cacheService;
+
+    @Value("${security.jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
 
     /**
      * Authenticates a user and issues a JWT if credentials are valid.
@@ -63,6 +71,52 @@ public class UserService {
 
         log.info("User {} logged in successfully", u.getEmail());
         return buildAuthResponse(u);
+    }
+
+    public AuthResponse refreshAccessToken(@NonNull String refreshToken) {
+        if (!jwtService.isRefreshToken(refreshToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+
+        String email = jwtService.extractSubject(refreshToken);
+        Long userId = Long.valueOf(jwtService.extractClaim(refreshToken, "uid").toString());
+        String jti = Objects.toString(jwtService.extractClaim(refreshToken, "jti"), "");
+        String cacheKey = refreshTokenCacheKey(userId, jti);
+
+        if (jti.isBlank() || !cacheService.hasKey(cacheKey)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has expired or was revoked");
+        }
+        cacheService.delete(cacheKey);
+
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+
+        if (u.getStatus() != User.UserStatus.ACTIVE || !u.isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked or not activated");
+        }
+
+        return buildAuthResponse(u);
+    }
+
+    public String issueRefreshToken(@NonNull AuthResponse auth) {
+        String jti = UUID.randomUUID().toString();
+        String token = jwtService.generateRefreshToken(auth.getEmail(), Map.of(
+                "uid", auth.getUserId(),
+                "role", auth.getRole().name(),
+                "jti", jti));
+        cacheService.set(refreshTokenCacheKey(auth.getUserId(), jti), true, refreshExpirationMs, TimeUnit.MILLISECONDS);
+        return token;
+    }
+
+    public void revokeRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || !jwtService.isValid(refreshToken)) {
+            return;
+        }
+        Object uid = jwtService.extractClaim(refreshToken, "uid");
+        Object jti = jwtService.extractClaim(refreshToken, "jti");
+        if (uid != null && jti != null) {
+            cacheService.delete(refreshTokenCacheKey(Long.valueOf(uid.toString()), jti.toString()));
+        }
     }
 
     /**
@@ -206,8 +260,12 @@ public class UserService {
         try {
             String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
             if (StringUtils.hasText(u.getAvatarUrl())) {
-                imageManagerService.delete(u.getAvatarUrl());
+                String oldUrl = u.getAvatarUrl();
+                sideEffects.afterCommit(() -> imageManagerService.delete(oldUrl),
+                        "delete replaced avatar image for user " + id);
             }
+            sideEffects.afterRollback(() -> imageManagerService.delete(newUrl),
+                    "delete rolled back avatar image for user " + id);
             u.setAvatarUrl(newUrl);
             userRepository.save(u);
             log.info("Avatar updated for user: {}", u.getEmail());
@@ -222,9 +280,13 @@ public class UserService {
      * Internal helper to construct an AuthResponse with a generated JWT.
      */
     private AuthResponse buildAuthResponse(User u) {
-        String token = jwtService.generateToken(u.getEmail(), Map.of(
+        String token = jwtService.generateAccessToken(u.getEmail(), Map.of(
                 "uid", u.getId(),
                 "role", u.getRole().name()));
-        return new AuthResponse(u.getId(), u.getFullName(), u.getRole(), token, u.getAvatarUrl());
+        return new AuthResponse(u.getId(), u.getFullName(), u.getRole(), token, u.getAvatarUrl(), u.getEmail());
+    }
+
+    private String refreshTokenCacheKey(Long userId, String jti) {
+        return "auth:refresh:" + userId + ":" + jti;
     }
 }

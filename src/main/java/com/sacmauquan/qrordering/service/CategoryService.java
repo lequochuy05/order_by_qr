@@ -31,6 +31,7 @@ public class CategoryService {
     private final CategoryRepository categoryRepo;
     private final NotificationService notificationService;
     private final ImageManagerService imageManager;
+    private final TransactionSideEffectService sideEffects;
 
     /**
      * Retrieves all active categories along with their associated menu items.
@@ -70,7 +71,7 @@ public class CategoryService {
      * @throws ResponseStatusException if category name already exists
      */
     @Transactional
-    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
+    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public CategoryResponse create(@NonNull Category c) {
         if (categoryRepo.existsByNameIncludingDeleted(c.getName())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
@@ -89,7 +90,7 @@ public class CategoryService {
      * @return Updated CategoryResponse DTO
      */
     @Transactional
-    @CacheEvict(value = { "categories", "menu", "recommendations" }, allEntries = true)
+    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public CategoryResponse update(@NonNull Integer id, @NonNull Category input) {
         Category exist = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
@@ -117,17 +118,15 @@ public class CategoryService {
      * @param id Category ID
      */
     @Transactional
-    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
+    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public void delete(@NonNull Integer id) {
         Category cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
 
         if (cat.getImg() != null && !cat.getImg().isBlank()) {
-            try {
-                imageManager.delete(cat.getImg());
-            } catch (Exception e) {
-                log.error("Error deleting category image ID {}: {}", id, e.getMessage());
-            }
+            String oldImg = cat.getImg();
+            sideEffects.afterCommit(() -> imageManager.delete(oldImg),
+                    "delete category image after category delete " + id);
         }
 
         categoryRepo.delete(cat);
@@ -142,7 +141,7 @@ public class CategoryService {
      * @return Map containing the new image URL
      */
     @Transactional
-    @CacheEvict(value = { "categories", "menu" }, allEntries = true)
+    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public Map<String, String> uploadImage(@NonNull Integer id, @NonNull MultipartFile file) {
         Category cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
@@ -152,7 +151,14 @@ public class CategoryService {
         }
 
         try {
-            String newUrl = imageManager.replace(file, cat.getImg(), "order_by_qr/categories");
+            String oldUrl = cat.getImg();
+            String newUrl = imageManager.upload(file, "order_by_qr/categories");
+            sideEffects.afterRollback(() -> imageManager.delete(newUrl),
+                    "delete rolled back category image " + id);
+            if (oldUrl != null && !oldUrl.isBlank()) {
+                sideEffects.afterCommit(() -> imageManager.delete(oldUrl),
+                        "delete replaced category image " + id);
+            }
             cat.setImg(newUrl);
             categoryRepo.save(cat);
             notificationService.notifyCategoryChange("image_updated", id);

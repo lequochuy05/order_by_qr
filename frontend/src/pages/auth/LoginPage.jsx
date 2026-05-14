@@ -29,7 +29,7 @@ const LoginPage = () => {
       // Gọi API login từ UserController
       const data = await authService.login(credentials.email, credentials.password);
       
-      // Lưu vào Context và LocalStorage (userId, fullName, role, accessToken)
+      // Lưu access token trong memory; refresh token nằm trong httpOnly cookie.
       login(data); 
       
       // Điều hướng

@@ -17,6 +17,8 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * RedisConfig - Configuration for Redis caching and template.
@@ -66,8 +68,23 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
                 .disableCachingNullValues();
 
+        Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
+        cacheConfigurations.put("categories", config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put("menu", config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put("combos", config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put("qrcodes", config.entryTtl(Duration.ofDays(7)));
+        cacheConfigurations.put("tables", config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("vouchers", config.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigurations.put("recommendations", config.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put("popularItems", config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("stats_revenue", config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("stats_emp_performance", config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("stats_top_dishes", config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("stats_dish_trend", config.entryTtl(Duration.ofMinutes(10)));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
+                .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
     }
 

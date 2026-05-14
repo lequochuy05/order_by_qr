@@ -29,6 +29,7 @@ public class DiningTableService {
     private final QRCodeService qrCodeService;
     private final ImageManagerService imageManagerService;
     private final NotificationService notificationService;
+    private final TransactionSideEffectService sideEffects;
 
     @Value("${app.frontend.base-url}")
     private String frontendBaseUrl;
@@ -73,6 +74,7 @@ public class DiningTableService {
      * @param tableCode Unique QR code
      * @return DiningTableResponse
      */
+    @Cacheable(value = "tables", key = "'code_' + #tableCode")
     public DiningTableResponse getByTableCode(@NonNull String tableCode) {
         return repo.findByTableCode(tableCode)
                 .map(this::convertToResponse)
@@ -119,6 +121,8 @@ public class DiningTableService {
         
         String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         Map<String, String> qrMedia = generateQRMedia(tableCode);
+        sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
+                "delete rolled back table QR media " + tableCode);
         
         DiningTable table = DiningTable.builder()
                 .tableNumber(req.getTableNumber())
@@ -189,11 +193,9 @@ public class DiningTableService {
         DiningTable table = getById(id);
 
         if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
-            try {
-                imageManagerService.delete(table.getQrCodePublicId());
-            } catch (Exception e) {
-                log.error("Error deleting QR code image ID {}: {}", id, e.getMessage());
-            }
+            String publicId = table.getQrCodePublicId();
+            sideEffects.afterCommit(() -> imageManagerService.delete(publicId),
+                    "delete table QR media after table delete " + id);
         }
 
         repo.delete(Objects.requireNonNull(table));

@@ -4,7 +4,7 @@ from pathlib import Path
 
 # CẤU HÌNH
 CONFIG = {
-    "roboflow_api_key": "tFdV1c98yEO7oJm1R7l0", 
+    "roboflow_api_key": "tFdV1c98yEO7oJm1R7l0",
     "roboflow_workspace": "wuchuyworkspace",
     "roboflow_project": "order_by_qr",
     "roboflow_version": 1,

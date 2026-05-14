@@ -1,6 +1,7 @@
 package com.sacmauquan.qrordering.config;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 
@@ -13,6 +14,7 @@ import java.util.Objects;
  * DataInitializer - Initialize essential data when the application starts.
  */
 @Component
+@Profile("dev")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 

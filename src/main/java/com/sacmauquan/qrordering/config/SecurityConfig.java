@@ -50,13 +50,14 @@ public class SecurityConfig {
             // ws
             .requestMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
             // login
-            .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/refresh", "/api/users/logout")
+            .permitAll()
 
             // Public GET
             .requestMatchers(HttpMethod.GET,
                 "/api/categories/**",
                 "/api/menu/**",
-                "/api/tables/**",
+                "/api/tables/code/*",
                 "/api/combos/**",
                 "/api/orders/table/*/current",
                 "/api/combos/active",
@@ -67,15 +68,14 @@ public class SecurityConfig {
             // Public Voucher Validation only
             .requestMatchers(HttpMethod.GET, "/api/vouchers/validate").permitAll()
             // Guest order creation
-            .requestMatchers(HttpMethod.POST, "/api/orders/**").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/orders", "/api/orders/preview").permitAll()
             // AI Customer Assistant (public chat)
             .requestMatchers(HttpMethod.POST, "/api/ai/chat").permitAll()
 
             // PayOS webhook
             .requestMatchers(HttpMethod.POST, "/api/webhooks/**").permitAll()
 
-            .requestMatchers(HttpMethod.POST, "/api/payments/**").permitAll()
-            .requestMatchers(HttpMethod.GET, "/api/payments/**").permitAll()
+            .requestMatchers("/api/payments/**").hasAnyRole("MANAGER", "STAFF")
 
             // admin
             .requestMatchers(HttpMethod.POST,
@@ -94,6 +94,8 @@ public class SecurityConfig {
             .hasRole("MANAGER")
 
             // Kitchen
+            .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("MANAGER", "STAFF")
+            .requestMatchers(HttpMethod.GET, "/api/tables/**").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF")
             .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER", "STAFF", "CHEF")

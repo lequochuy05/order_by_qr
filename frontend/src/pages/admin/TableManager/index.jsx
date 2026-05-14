@@ -31,7 +31,7 @@ const TableManager = () => {
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
 
     const { user } = useAuth();
-    const userRole = user?.role || localStorage.getItem('role') || 'STAFF';
+    const userRole = user?.role || 'STAFF';
 
     const checkPermission = () => {
         if (userRole !== 'MANAGER') {
@@ -198,6 +198,7 @@ const TableManager = () => {
                 key={payModal.open ? (payModal.order?.id || payModal.table?.id || 'new') : 'pay-closed'}
                 isOpen={payModal.open} onClose={() => setPayModal({ open: false, table: null, order: null })}
                 table={payModal.table} order={payModal.order}
+                currentUser={user}
                 onPaymentSuccess={() => {
                     showSuccess("Thanh toán thành công");
                     fetchTables();

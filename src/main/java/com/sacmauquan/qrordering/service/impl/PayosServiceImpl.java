@@ -10,6 +10,7 @@ import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import com.sacmauquan.qrordering.service.PayosService;
 import com.sacmauquan.qrordering.service.NotificationService;
+import com.sacmauquan.qrordering.service.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,6 +48,7 @@ public class PayosServiceImpl implements PayosService {
     private final PaymentTransactionRepository transactionRepository;
     private final DiningTableRepository tableRepository;
     private final NotificationService notificationService;
+    private final TransactionSideEffectService sideEffects;
 
     @Value("${app.frontend.base-url}")
     private String frontendUrl;
@@ -64,6 +66,13 @@ public class PayosServiceImpl implements PayosService {
         Order order = orderRepository.findById(Objects.requireNonNull(request.getOrderId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Order not found: " + request.getOrderId()));
+        BigDecimal payableAmount = order.getTotalAmount();
+        if (payableAmount == null || payableAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has no payable amount");
+        }
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID || order.getStatus() == Order.OrderStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
+        }
 
         // IDEMPOTENCY CHECK
         // Prevents generating multiple active PayOS links for the same order and amount
@@ -74,7 +83,7 @@ public class PayosServiceImpl implements PayosService {
         if (existing.isPresent()) {
             PaymentTransaction oldTx = existing.get();
             boolean isExpired = oldTx.getCreatedAt().plusMinutes(20).isBefore(LocalDateTime.now());
-            if (!isExpired && oldTx.getAmount().compareTo(request.getAmount()) == 0 && oldTx.getQrCode() != null) {
+            if (!isExpired && oldTx.getAmount().compareTo(payableAmount) == 0 && oldTx.getQrCode() != null) {
                 log.info("[PayOS Idempotency] Reusing pending transaction {} for order {}", oldTx.getId(),
                         order.getId());
                 return convertToCreateResponse(oldTx);
@@ -84,7 +93,7 @@ public class PayosServiceImpl implements PayosService {
 
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
-                .amount(request.getAmount())
+                .amount(payableAmount)
                 .status(PaymentTransaction.TransactionStatus.PENDING)
                 .paymentMethod(PaymentTransaction.PaymentMethod.PAYOS)
                 .build();
@@ -97,7 +106,7 @@ public class PayosServiceImpl implements PayosService {
 
             CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
                     .orderCode(transaction.getId()) // PayOS uses our Transaction ID as their Order Code
-                    .amount(request.getAmount().longValue())
+                    .amount(payableAmount.longValue())
                     .description("Payment for Order #" + order.getId())
                     .returnUrl(returnUrl)
                     .cancelUrl(returnUrl)
@@ -110,6 +119,16 @@ public class PayosServiceImpl implements PayosService {
             transaction.setQrCode(response.getQrCode());
             transaction.setPayosReference(response.getPaymentLinkId());
             transactionRepository.save(transaction);
+            PaymentTransaction createdTransaction = transaction;
+            sideEffects.afterRollback(() -> {
+                try {
+                    payOS.paymentRequests().cancel(createdTransaction.getId(),
+                            "Local transaction rolled back after PayOS link creation");
+                } catch (Exception e) {
+                    log.error("Failed to cancel rolled back PayOS link {}: {}", createdTransaction.getId(),
+                            e.getMessage());
+                }
+            }, "cancel rolled back PayOS link " + createdTransaction.getId());
 
             return convertToCreateResponse(transaction);
 
@@ -213,6 +232,12 @@ public class PayosServiceImpl implements PayosService {
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PAID) {
             log.info("[PayOS Webhook] Transaction {} already marked as PAID.", transactionId);
             return;
+        }
+        BigDecimal webhookAmount = BigDecimal.valueOf(webhookData.getAmount());
+        if (transaction.getAmount().compareTo(webhookAmount) != 0) {
+            log.error("[PayOS Webhook] Amount mismatch for transaction {}. Expected {}, got {}",
+                    transactionId, transaction.getAmount(), webhookAmount);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Webhook amount does not match transaction");
         }
 
         transaction.setPayosReference(webhookData.getPaymentLinkId());

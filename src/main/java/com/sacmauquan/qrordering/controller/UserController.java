@@ -3,11 +3,19 @@ package com.sacmauquan.qrordering.controller;
 import com.sacmauquan.qrordering.dto.*;
 import com.sacmauquan.qrordering.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +30,15 @@ public class UserController {
 
     private final UserService userService;
 
+    @Value("${security.jwt.refresh-cookie-name}")
+    private String refreshCookieName;
+
+    @Value("${security.jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
+
+    @Value("${security.jwt.refresh-cookie-secure}")
+    private boolean refreshCookieSecure;
+
     /**
      * Authenticates a user and returns a JWT token along with basic user
      * information.
@@ -30,9 +47,31 @@ public class UserController {
      * @return AuthResponse containing token and user details
      */
     @PostMapping("/login")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody AuthRequest req) {
-        return ApiResponse.success("Login successful",
-                userService.login(Objects.requireNonNull(req)));
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody AuthRequest req, HttpServletResponse response) {
+        AuthResponse auth = userService.login(Objects.requireNonNull(req));
+        setRefreshCookie(response, userService.issueRefreshToken(auth), Duration.ofMillis(refreshExpirationMs));
+        return ApiResponse.success("Login successful", auth);
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<AuthResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = extractRefreshToken(request);
+        AuthResponse auth = userService.refreshAccessToken(refreshToken);
+        setRefreshCookie(response, userService.issueRefreshToken(auth), Duration.ofMillis(refreshExpirationMs));
+        return ApiResponse.success("Token refreshed", auth);
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        if (request.getCookies() != null) {
+            Arrays.stream(request.getCookies())
+                    .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .ifPresent(userService::revokeRefreshToken);
+        }
+        setRefreshCookie(response, "", Duration.ZERO);
+        return ApiResponse.success("Logout successful", null);
     }
 
     /**
@@ -124,5 +163,29 @@ public class UserController {
             @RequestParam("file") @NonNull MultipartFile file) {
         UserResponse updated = userService.uploadAvatar(id, Objects.requireNonNull(file));
         return ApiResponse.success("Avatar updated successfully", updated);
+    }
+
+    private String extractRefreshToken(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token missing");
+        }
+        return Arrays.stream(request.getCookies())
+                .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token missing"));
+    }
+
+    private void setRefreshCookie(HttpServletResponse response, String token, Duration maxAge) {
+        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, token)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite(refreshCookieSecure ? "None" : "Lax")
+                .path("/api/users")
+                .maxAge(maxAge)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

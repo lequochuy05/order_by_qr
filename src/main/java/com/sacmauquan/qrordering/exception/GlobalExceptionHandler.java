@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
         });
         log.warn("Validation error: {}", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Invalid input data", errors));
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), "Invalid input data", errors));
     }
 
     /**
@@ -51,8 +51,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode())
-                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Request could not be processed",
-                        null));
+                .body(ApiResponse.error(ex.getStatusCode().value(),
+                        ex.getReason() != null ? ex.getReason() : "Request could not be processed", null));
     }
 
     /**
@@ -64,7 +64,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleNoResourceFound(NoResourceFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error("Requested resource not found", null));
+                .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "Requested resource not found", null));
     }
 
     /**
@@ -76,7 +76,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error("You do not have permission to perform this action", null));
+                .body(ApiResponse.error(HttpStatus.FORBIDDEN.value(),
+                        "You do not have permission to perform this action", null));
     }
 
     /**
@@ -88,7 +89,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Object>> handleIllegalState(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage(), null));
+                .body(ApiResponse.error(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), null));
     }
 
     /**
@@ -101,6 +102,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleGlobalException(Exception ex) {
         log.error("System error: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Internal server error. Please try again later.", null));
+                .body(ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Internal server error. Please try again later.", null));
     }
 }

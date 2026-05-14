@@ -5,7 +5,7 @@ import { orderService } from '../../../services/admin/orderService';
 import { paymentService } from '../../../services/admin/paymentService';
 import { printInvoice } from '../../../utils/invoiceGenerator';
 
-const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
+const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
     const [voucherCode, setVoucherCode] = useState('');
     const [previewData, setPreviewData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -103,7 +103,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
         setPayosLoading(true);
         setError('');
         try {
-            const data = await paymentService.createPaymentLink(order.id, previewData.finalTotal);
+            const data = await paymentService.createPaymentLink(order.id);
             setPayosData(data);
             setPayosStatus('waiting');
 
@@ -157,7 +157,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
         printInvoice({
             order: { ...order, ...previewData, totalAmount: previewData.finalTotal },
             table,
-            paidBy: localStorage.getItem('fullname') || 'Admin',
+            paidBy: currentUser?.fullName || 'Admin',
             paidAt: new Date(),
             paymentMethod: paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'
         });
@@ -169,7 +169,8 @@ const PaymentModal = ({ isOpen, onClose, table, order, onPaymentSuccess }) => {
     const handleConfirmCashPay = async () => {
         if (!confirm(`Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`)) return;
         try {
-            const userId = localStorage.getItem('userId');
+            const userId = currentUser?.userId;
+            if (!userId) throw new Error('Không xác định được nhân viên thanh toán');
             const finalVoucher = voucherCode.trim() === '' ? null : voucherCode;
             await orderService.payOrder(order.id, userId, finalVoucher);
             finishPayment();

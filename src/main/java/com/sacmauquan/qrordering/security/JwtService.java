@@ -19,6 +19,7 @@ public class JwtService {
 
   private final Key key;
   private final long expirationMs;
+  private final long refreshExpirationMs;
 
   /**
    * Initializes the JwtService with secret key and expiration time from configuration.
@@ -27,9 +28,11 @@ public class JwtService {
    * @param expirationMs The duration (in milliseconds) before a token expires
    */
   public JwtService(@Value("${security.jwt.secret}") String secret,
-                    @Value("${security.jwt.expiration-ms}") long expirationMs) {
+                    @Value("${security.jwt.expiration-ms}") long expirationMs,
+                    @Value("${security.jwt.refresh-expiration-ms}") long refreshExpirationMs) {
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     this.expirationMs = expirationMs;
+    this.refreshExpirationMs = refreshExpirationMs;
   }
 
   /**
@@ -40,8 +43,20 @@ public class JwtService {
    * @return The signed JWT string
    */
   public String generateToken(String subject, Map<String, Object> claims) {
+    return generateToken(subject, claims, expirationMs);
+  }
+
+  public String generateAccessToken(String subject, Map<String, Object> claims) {
+    return generateToken(subject, withType(claims, "access"), expirationMs);
+  }
+
+  public String generateRefreshToken(String subject, Map<String, Object> claims) {
+    return generateToken(subject, withType(claims, "refresh"), refreshExpirationMs);
+  }
+
+  private String generateToken(String subject, Map<String, Object> claims, long ttlMs) {
     Date now = new Date();
-    Date exp = new Date(now.getTime() + expirationMs);
+    Date exp = new Date(now.getTime() + ttlMs);
     return Jwts.builder()
         .setClaims(claims)
         .setSubject(subject)
@@ -49,6 +64,12 @@ public class JwtService {
         .setExpiration(exp)
         .signWith(key, SignatureAlgorithm.HS256)
         .compact();
+  }
+
+  private Map<String, Object> withType(Map<String, Object> claims, String tokenType) {
+    Map<String, Object> typedClaims = new java.util.HashMap<>(claims);
+    typedClaims.put("typ", tokenType);
+    return typedClaims;
   }
 
   /**
@@ -74,6 +95,19 @@ public class JwtService {
    */
   public String extractSubject(String token) {
     return parse(token).getBody().getSubject();
+  }
+
+  public String extractTokenType(String token) {
+    Object type = parse(token).getBody().get("typ");
+    return type != null ? type.toString() : null;
+  }
+
+  public Object extractClaim(String token, String claimName) {
+    return parse(token).getBody().get(claimName);
+  }
+
+  public boolean isRefreshToken(String token) {
+    return isValid(token) && "refresh".equals(extractTokenType(token));
   }
 
   /**

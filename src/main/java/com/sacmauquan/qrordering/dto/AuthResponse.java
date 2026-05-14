@@ -22,4 +22,5 @@ public class AuthResponse {
     private User.Role role;
     private String accessToken;
     private String avatarUrl;
+    private String email;
 }

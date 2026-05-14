@@ -1,24 +1,54 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
+import wsService from '../services/websocket';
+import { authService } from '../services/authService';
+import { setAccessToken } from '../services/api';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    if (!token) return null;
-    const role = localStorage.getItem('role');
-    const fullName = localStorage.getItem('fullname');
-    const avatarUrl = localStorage.getItem('avatarUrl');
-    const userId = localStorage.getItem('userId');
-    return { role, fullName, avatarUrl, userId: userId ? Number(userId) : null };
-  });
+  const [user, setUser] = useState(null);
 
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const timerRef = useRef(null);
 
   const logout = useCallback(() => {
-    localStorage.clear();
+    wsService.disconnect();
+    setAccessToken(null);
+    authService.logout().catch(() => {});
     setUser(null);
+  }, []);
+
+  useEffect(() => {
+    // Không tự động refresh ở trang khách hàng (Menu)
+    if (window.location.pathname.startsWith('/menu')) {
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    authService.refresh()
+      .then((data) => {
+        if (!mounted) return;
+        setAccessToken(data.accessToken);
+        setUser({
+          role: data.role,
+          fullName: data.fullName,
+          avatarUrl: data.avatarUrl,
+          userId: data.userId,
+          email: data.email,
+        });
+      })
+      .catch(() => {
+        setAccessToken(null);
+        if (mounted) setUser(null);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const resetTimer = useCallback(() => {
@@ -57,20 +87,19 @@ export const AuthProvider = ({ children }) => {
   }, [user, resetTimer]);
 
   const login = (data) => {
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('role', data.role);
-    localStorage.setItem('fullname', data.fullName);
-    localStorage.setItem('userId', data.userId);
-    if (data.avatarUrl) localStorage.setItem('avatarUrl', data.avatarUrl);
-    setUser({ role: data.role, fullName: data.fullName, avatarUrl: data.avatarUrl, userId: data.userId });
+    setAccessToken(data.accessToken);
+    setUser({
+      role: data.role,
+      fullName: data.fullName,
+      avatarUrl: data.avatarUrl,
+      userId: data.userId,
+      email: data.email,
+    });
   };
 
   const updateUser = (updatedFields) => {
     setUser(prev => {
       const newUser = { ...prev, ...updatedFields };
-      if (updatedFields.fullName) localStorage.setItem('fullname', updatedFields.fullName);
-      if (updatedFields.avatarUrl !== undefined) localStorage.setItem('avatarUrl', updatedFields.avatarUrl || '');
-      if (updatedFields.role) localStorage.setItem('role', updatedFields.role);
       return newUser;
     });
   };
