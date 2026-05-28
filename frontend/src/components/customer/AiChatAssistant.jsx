@@ -7,7 +7,7 @@ const WELCOME_MESSAGE = {
   content: '👋 Tôi là Trợ lý Sắc Màu, sẵn sàng giúp bạn chọn món ngon. Bạn muốn ăn gì hôm nay?'
 };
 
-const AiChatAssistant = () => {
+const AiChatAssistant = ({ hidden = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -34,7 +34,7 @@ const AiChatAssistant = () => {
 
   // Typewriter effect for the thought bubble
   useEffect(() => {
-    if (isOpen) return;
+    if (isOpen || hidden) return;
     const fullText = 'Tôi có thể hỗ trợ gì cho bạn?';
     const words = fullText.split(' ');
     let wordIndex = 0;
@@ -69,7 +69,14 @@ const AiChatAssistant = () => {
 
     timer = setTimeout(tick, 5000);
     return () => clearTimeout(timer);
-  }, [isOpen]);
+  }, [isOpen, hidden]);
+
+  useEffect(() => {
+    if (hidden && isOpen) {
+      setIsAnimating(false);
+      setIsOpen(false);
+    }
+  }, [hidden, isOpen]);
 
   const handleToggle = () => {
     if (!isOpen) {
@@ -90,8 +97,8 @@ const AiChatAssistant = () => {
       }));
   };
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const sendMessage = async (messageText) => {
+    const trimmed = messageText.trim();
     if (!trimmed || isLoading) return;
 
     const userMessage = { role: 'user', content: trimmed };
@@ -114,6 +121,10 @@ const AiChatAssistant = () => {
     }
   };
 
+  const handleSend = async () => {
+    await sendMessage(input);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -123,17 +134,15 @@ const AiChatAssistant = () => {
 
   const quickSuggestions = [
     'Gợi ý món ngon đi',
-    'Món nào dưới 50k?',
-    'Có đồ uống gì?',
+    'Có combo nào?',
+    'Có danh mục gì?',
   ];
 
   const handleQuickSuggestion = (text) => {
-    setInput(text);
-    setTimeout(() => {
-      const fakeEvent = { key: 'Enter', shiftKey: false, preventDefault: () => { } };
-      handleKeyDown(fakeEvent);
-    }, 50);
+    sendMessage(text);
   };
+
+  if (hidden) return null;
 
   return (
     <>
@@ -286,7 +295,7 @@ const AiChatAssistant = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Hỏi về món ăn..."
+                placeholder="Hỏi món, combo, danh mục..."
                 disabled={isLoading}
                 className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none py-2.5"
                 maxLength={300}

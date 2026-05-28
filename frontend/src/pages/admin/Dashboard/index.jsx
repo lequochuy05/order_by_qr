@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-    PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer
+    PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
+    LineChart, Line, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import {
-    TrendingUp, ShoppingBag, UtensilsCrossed, Clock, Loader2
+    TrendingUp, ShoppingBag, UtensilsCrossed, Clock, Loader2, Sparkles
 } from 'lucide-react';
 
 import { tableService } from '../../../services/admin/tableService';
 import { orderService } from '../../../services/admin/orderService';
+import { statisticsService } from '../../../services/admin/statisticsService';
 import { fmtVND, fmtTime, fmtStatus } from '../../../utils/formatters';
 
 const Dashboard = () => {
@@ -22,6 +24,13 @@ const Dashboard = () => {
     const [topDishes, setTopDishes] = useState([]);
     const [categoryShares, setCategoryShares] = useState([]);
     const [recentOrders, setRecentOrders] = useState([]);
+    const [revenueForecast, setRevenueForecast] = useState([]);
+    const [popularDishesForecast, setPopularDishesForecast] = useState([]);
+
+    const revenueForecastData = useMemo(
+        () => buildRevenueForecastData(revenueForecast),
+        [revenueForecast]
+    );
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -107,6 +116,25 @@ const Dashboard = () => {
                     value: catMap[k]
                 }));
                 setCategoryShares(pieData);
+
+                const [revenueForecastResult, dishForecastResult] = await Promise.allSettled([
+                    statisticsService.getRevenueForecast(),
+                    statisticsService.getPopularDishesForecast()
+                ]);
+
+                if (revenueForecastResult.status === 'fulfilled') {
+                    setRevenueForecast(revenueForecastResult.value);
+                } else {
+                    console.error("Lỗi khi tải dự báo doanh thu:", revenueForecastResult.reason);
+                    setRevenueForecast([]);
+                }
+
+                if (dishForecastResult.status === 'fulfilled') {
+                    setPopularDishesForecast(dishForecastResult.value);
+                } else {
+                    console.error("Lỗi khi tải dự báo món bán chạy:", dishForecastResult.reason);
+                    setPopularDishesForecast([]);
+                }
 
             } catch (error) {
                 console.error("Lỗi khi tải dữ liệu Dashboard:", error);
@@ -196,6 +224,95 @@ const Dashboard = () => {
                     </div>
                 </div>
 
+            </div>
+
+            {/* Forecasting Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <TrendingUp size={18} className="text-orange-500" /> Dự báo doanh thu
+                        </h3>
+                        <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+                            <span className="flex items-center gap-2"><span className="w-3 h-0.5 bg-emerald-500"></span> Thực tế</span>
+                            <span className="flex items-center gap-2"><span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500"></span> Dự báo</span>
+                        </div>
+                    </div>
+                    <div className="h-80">
+                        {revenueForecastData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={revenueForecastData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                    <XAxis
+                                        dataKey="label"
+                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        minTickGap={18}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <YAxis
+                                        tickFormatter={formatCompactVND}
+                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        width={72}
+                                    />
+                                    <Tooltip
+                                        formatter={(value, name) => [fmtVND(value), name === 'actual' ? 'Thực tế' : 'Dự báo']}
+                                        labelFormatter={(_, payload) => payload?.[0]?.payload?.date || ''}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="actual"
+                                        stroke="#10b981"
+                                        strokeWidth={3}
+                                        dot={false}
+                                        connectNulls={false}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="forecast"
+                                        stroke="#f59e0b"
+                                        strokeWidth={3}
+                                        strokeDasharray="6 6"
+                                        dot={{ r: 3 }}
+                                        connectNulls={false}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400">Chưa có dữ liệu dự báo doanh thu</div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <Sparkles size={18} className="text-amber-500" /> Món dự báo tuần tới
+                    </h3>
+                    <div className="flex flex-col gap-4">
+                        {popularDishesForecast.map((dish, idx) => (
+                            <div key={dish.id || idx} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent shadow-sm">
+                                <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 ${idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-orange-500' : idx === 2 ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                        {idx + 1}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="font-semibold text-slate-800 truncate" title={dish.name}>
+                                            {dish.name}
+                                        </p>
+                                        <p className="text-xs text-slate-500 truncate">{dish.category || 'Chưa phân loại'}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-sm font-bold text-slate-800">{dish.estimatedQty}</p>
+                                    <p className="text-xs text-slate-500">suất</p>
+                                </div>
+                            </div>
+                        ))}
+                        {popularDishesForecast.length === 0 && <p className="text-center text-slate-400 py-4">Chưa có dữ liệu dự báo món.</p>}
+                    </div>
+                </div>
             </div>
 
             {/* 2 & 4. Charts and Leaderboard Section */}
@@ -291,5 +408,37 @@ const Dashboard = () => {
 const DollarSignIcon = ({ size }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-banknote"><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg>
 );
+
+const buildRevenueForecastData = (points) => {
+    const rows = points.map((point) => ({
+        date: point.date,
+        label: formatChartDate(point.date),
+        actual: point.actual == null ? null : Number(point.actual),
+        forecast: point.forecast == null ? null : Number(point.forecast),
+        forecasted: point.forecasted
+    }));
+
+    const firstForecastIndex = rows.findIndex((row) => row.forecasted);
+    if (firstForecastIndex > 0 && rows[firstForecastIndex - 1].actual != null) {
+        rows[firstForecastIndex - 1] = {
+            ...rows[firstForecastIndex - 1],
+            forecast: rows[firstForecastIndex - 1].actual
+        };
+    }
+
+    return rows;
+};
+
+const formatChartDate = (date) => {
+    if (!date) return '';
+    const [, month, day] = date.split('-');
+    return `${day}/${month}`;
+};
+
+const formatCompactVND = (value) => {
+    if (value >= 1000000) return `${Math.round(value / 1000000)}tr`;
+    if (value >= 1000) return `${Math.round(value / 1000)}k`;
+    return value;
+};
 
 export default Dashboard;

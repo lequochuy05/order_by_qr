@@ -190,7 +190,7 @@ const TableManager = () => {
                     // Khi cập nhật món (bếp xong/hủy), cần reload lại order ngay trong modal
                     const res = await orderService.getCurrentOrder(detailModal.table.id);
                     setDetailModal(prev => ({ ...prev, order: res }));
-                    fetchTables();
+                    await fetchTables();
                 }}
             />
 

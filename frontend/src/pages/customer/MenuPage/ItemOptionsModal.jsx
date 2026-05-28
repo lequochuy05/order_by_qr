@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { fmtVND } from '../../../utils/formatters.js';
 
-const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
+const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
   const [selectedOptions, setSelectedOptions] = useState(() => {
     const defaultSelections = {};
     if (item?.itemOptions) {
@@ -30,7 +30,7 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
           return { ...prev, [optionId]: currentSelected.filter(id => id !== valueId) };
         } else {
           if (currentSelected.length >= maxSelection) {
-            alert(`Bạn chỉ được chọn tối đa ${maxSelection} mục cho phần này!`);
+            onError?.(`Bạn chỉ được chọn tối đa ${maxSelection} mục cho phần này.`, 'Vượt quá số lựa chọn');
             return prev;
           }
           return { ...prev, [optionId]: [...currentSelected, valueId] };
@@ -70,7 +70,7 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm }) => {
       const selection = selectedOptions[opt.id];
       const hasSelection = Array.isArray(selection) ? selection.length > 0 : !!selection;
       if (!hasSelection) {
-        alert(`Vui lòng chọn ${opt.name}!`);
+        onError?.(`Vui lòng chọn ${opt.name} trước khi thêm vào giỏ.`, 'Thiếu lựa chọn bắt buộc');
         return;
       }
     }

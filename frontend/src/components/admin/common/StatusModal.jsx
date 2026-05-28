@@ -21,7 +21,7 @@ const StatusModal = ({ isOpen, onClose, type = 'success', title, message }) => {
 
         {/* Content */}
         <div className="p-6 text-center">
-          <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+          <p className="text-gray-600 text-sm mb-6 leading-relaxed whitespace-pre-line">
             {message}
           </p>
 

@@ -30,5 +30,17 @@ export const statisticsService = {
     getDishTrend: async (from, to) => {
         const res = await api.get(`/stats/dish-trend?from=${fmtDate(from)}&to=${fmtDate(to)}`);
         return res || [];
+    },
+
+    // 6. Lấy doanh thu thực tế 30 ngày và dự báo 7 ngày tới
+    getRevenueForecast: async () => {
+        const res = await api.get('/stats/forecast/revenue');
+        return res || [];
+    },
+
+    // 7. Lấy top món dự báo bán chạy trong tuần tới
+    getPopularDishesForecast: async () => {
+        const res = await api.get('/stats/forecast/popular-dishes');
+        return res || [];
     }
 };

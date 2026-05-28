@@ -3,16 +3,16 @@ FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 
 # Chỉ copy file cấu hình để cache dependencies
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+COPY backend/pom.xml ./backend/
+RUN mvn -f backend/pom.xml dependency:go-offline -B
 
 # Copy mã nguồn và build jar
-COPY src ./src
-RUN mvn clean package -DskipTests -B
+COPY backend/src ./backend/src
+RUN mvn -f backend/pom.xml clean package -DskipTests -B
 
 # Sử dụng tính năng Layering của Spring Boot để tách jar thành các lớp
 # Giúp tối ưu hóa Docker Cache (khi code thay đổi, không cần tải lại các dependencies)
-RUN java -Djarmode=layertools -jar target/*.jar extract
+RUN java -Djarmode=layertools -jar backend/target/*.jar extract
 
 # Stage 2: Chạy ứng dụng (Runtime)
 FROM eclipse-temurin:21-jre-alpine 

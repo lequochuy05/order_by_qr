@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import { useWebSocket } from '../../../hooks/useWebSocket.js';
+import { useStatusModal } from '../../../hooks/useStatusModal.js';
 import { fmtVND } from '../../../utils/formatters.js';
 
 import { menuService } from '../../../services/customer/menuService.js';
@@ -13,6 +14,7 @@ import CategoryFilter from './CategoryFilter';
 import ShoppingCartButton from './ShoppingCart';
 import ItemOptionsModal from './ItemOptionsModal';
 import AiChatAssistant from '../../../components/customer/AiChatAssistant';
+import StatusModal from '../../../components/admin/common/StatusModal';
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
@@ -33,6 +35,7 @@ const MenuPage = () => {
   const hour = new Date().getHours();
   const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
   const [weather, setWeather] = useState("Trời mát");
+  const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
 
   // Trạng thái giỏ hàng
   const [cart, setCart] = useState({ items: {}, combos: {} });
@@ -165,6 +168,10 @@ const MenuPage = () => {
         }
       };
     });
+
+    menuService.getCrossSellRecommendations(product.id)
+      .then(res => setCrossSellItems(Array.isArray(res) ? res : []))
+      .catch(() => { });
   };
 
   const handleUpdateCartItemQty = (cartId, qty) => {
@@ -204,8 +211,16 @@ const MenuPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmitOrder = async () => {
-    if (!tableCode) return alert('Lỗi: Vui lòng quét mã bàn để đặt món!');
+    if (!tableCode) {
+      showError('Vui lòng quét mã QR trên bàn để đặt món.', 'Chưa xác định bàn');
+      return;
+    }
     if (isSubmitting) return;
+
+    if (Object.keys(cart.items).length === 0 && Object.keys(cart.combos).length === 0) {
+      showError('Giỏ hàng của bạn đang trống. Hãy chọn món trước khi đặt.', 'Chưa có món');
+      return;
+    }
 
     const orderData = {
       tableCode,
@@ -221,11 +236,11 @@ const MenuPage = () => {
     setIsSubmitting(true);
     try {
       await menuService.createOrder(orderData);
-      alert('Đơn hàng của bạn đã được gửi thành công!');
       setCart({ items: {}, combos: {} });
       setShowOrderModal(false);
-    } catch (_e) {
-      alert('Có lỗi xảy ra khi gửi đơn hàng. Vui lòng thử lại!');
+      showSuccess('Đơn hàng của bạn đã được gửi đến quán.', 'Đặt món thành công');
+    } catch (e) {
+      showError(e, 'Không thể gửi đơn hàng');
     } finally {
       setIsSubmitting(false);
     }
@@ -367,10 +382,19 @@ const MenuPage = () => {
             isOpen={!!selectedItemForOptions}
             onClose={() => setSelectedItemForOptions(null)}
             onConfirm={handleAddWithOptions}
+            onError={showError}
           />
 
           {/* AI Customer Assistant */}
-          <AiChatAssistant />
+          <AiChatAssistant hidden={showOrderModal} />
+
+          <StatusModal
+            isOpen={statusModal.isOpen}
+            onClose={closeStatusModal}
+            type={statusModal.type}
+            title={statusModal.title}
+            message={statusModal.message}
+          />
         </div>
       </div>
     </div>

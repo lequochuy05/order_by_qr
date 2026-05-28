@@ -11,6 +11,7 @@ const CartModal = ({
     crossSellItems,
     setCrossSellItems,
     handleAddToCart,
+    getCartItemQty,
     calculateTotal,
     isSubmitting,
     handleSubmitOrder

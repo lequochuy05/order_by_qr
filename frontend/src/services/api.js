@@ -100,8 +100,14 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response && error.response.data && error.response.data.message) {
-      return Promise.reject(new Error(error.response.data.message));
+    if (error.response && error.response.data) {
+      const data = error.response.data;
+      const message = data.detail || data.message || data.error || error.message || 'Đã xảy ra lỗi';
+      const apiError = new Error(message);
+      apiError.data = data;
+      apiError.response = error.response;
+      apiError.status = data.status || error.response.status;
+      return Promise.reject(apiError);
     }
     return Promise.reject(error);
   }

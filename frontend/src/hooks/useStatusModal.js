@@ -1,5 +1,55 @@
 import { useState, useCallback } from 'react';
 
+const tryParseJson = (value) => {
+  if (typeof value !== 'string') return value;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
+
+const getErrorPayload = (err) => {
+  if (!err) return {};
+  if (err.response?.data) return tryParseJson(err.response.data);
+  if (err.data) return tryParseJson(err.data);
+  if (typeof err === 'string') return tryParseJson(err);
+  return err;
+};
+
+const buildErrorMessage = (err) => {
+  const data = getErrorPayload(err);
+  let msg = 'Có lỗi xảy ra, vui lòng thử lại.';
+  const details = [];
+
+  if (data && typeof data === 'object') {
+    msg = data.detail || data.message || data.error || err?.message || msg;
+
+    if (data.data && typeof data.data === 'object') {
+      Object.entries(data.data).forEach(([field, message]) => {
+        details.push(`${field}: ${message}`);
+      });
+    }
+
+    const status = data.status || err?.status || err?.response?.status;
+    const title = data.title || err?.response?.statusText;
+    const instance = data.instance || err?.response?.config?.url;
+
+    if (status) details.push(`Mã lỗi: ${status}${title ? ` - ${title}` : ''}`);
+    if (instance) details.push(`Endpoint: ${instance}`);
+  } else if (typeof data === 'string' && data.trim()) {
+    msg = data;
+  } else if (err?.message) {
+    msg = err.message;
+  }
+
+  if (msg.includes('already exists')) msg = 'Dữ liệu này đã tồn tại trong hệ thống!';
+  if (msg === 'Network Error') msg = 'Không thể kết nối đến máy chủ!';
+
+  return details.length > 0 ? `${msg}\n\n${details.join('\n')}` : msg;
+};
+
 export const useStatusModal = () => {
   const [statusModal, setStatusModal] = useState({
     isOpen: false,
@@ -20,41 +70,11 @@ export const useStatusModal = () => {
 
   // Hàm hiển thị lỗi "thông minh"
   const showError = useCallback((err, title = 'Thao tác thất bại') => {
-    let msg = "Có lỗi xảy ra, vui lòng thử lại.";
-
-    // Logic bóc tách lỗi từ Backend (Spring Boot)
-    if (err && err.response && err.response.data) {
-      const data = err.response.data;
-
-      // Ưu tiên lấy thuộc tính 'error' (do GlobalExceptionHandler trả về)
-      if (data.error) {
-        msg = data.error;
-      } else if (data.message) {
-        msg = data.message;
-      } else if (data.detail) {
-        msg = data.detail;
-      } else if (typeof data === 'string') {
-        msg = data;
-      } else if (typeof data === 'object') {
-        // Xử lý lỗi từ @Valid (Backend trả về Map { "tên_trường": "Lỗi gì đó" })
-        // Sẽ lấy thông báo lỗi đầu tiên trong danh sách để hiển thị
-        const errors = Object.values(data);
-        if (errors.length > 0) {
-          msg = errors[0];
-        }
-      }
-    } else if (err && err.message) {
-      msg = err.message;
-    }
-
-    if (msg.includes("already exists")) msg = "Dữ liệu này đã tồn tại trong hệ thống!";
-    if (msg === "Network Error") msg = "Không thể kết nối đến máy chủ!";
-
     setStatusModal({
       isOpen: true,
       type: 'error',
       title: title,
-      message: msg
+      message: buildErrorMessage(err)
     });
   }, []);
 

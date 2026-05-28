@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react'; // 1. Đã thêm UtensilsCrossed
+import React, { useEffect, useState } from 'react';
+import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react';
 import { orderService } from '../../../services/admin/orderService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -12,13 +12,17 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     const { user } = useAuth();
     const isManager = user?.role === 'MANAGER';
 
+    useEffect(() => {
+        setItems(order?.orderItems || []);
+    }, [order]);    
+
     if (!isOpen || !table) return null;
 
     const handlePrepared = async (itemId) => {
         try {
             await orderService.markItemPrepared(itemId);
-            setItems(prev => prev.map(i => i.id === itemId ? { ...i, prepared: true } : i));
-            onOrderUpdate(); 
+            setItems(prev => prev.map(i => i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i));
+            await onOrderUpdate();
         } catch { alert("Lỗi cập nhật trạng thái"); }
     };
 
@@ -27,7 +31,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
         try {
             await orderService.deleteOrderItem(itemId);
             setItems(prev => prev.filter(i => i.id !== itemId));
-            onOrderUpdate();
+            await onOrderUpdate();
         } catch { alert("Lỗi hủy món"); }
     };
 
@@ -41,7 +45,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             await orderService.updateOrderItem(itemId, editVal);
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...editVal } : i));
             setEditingId(null);
-            onOrderUpdate();
+            await onOrderUpdate();
         } catch { alert("Lỗi cập nhật món"); }
     };
 
