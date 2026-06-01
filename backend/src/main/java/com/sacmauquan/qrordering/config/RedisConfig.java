@@ -81,6 +81,7 @@ public class RedisConfig {
         cacheConfigurations.put("stats_emp_performance", config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put("stats_top_dishes", config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put("stats_dish_trend", config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put("settings", config.entryTtl(Duration.ofHours(1)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

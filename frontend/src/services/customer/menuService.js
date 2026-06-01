@@ -5,6 +5,7 @@ export const menuService = {
   getAllMenuItems: () => api.get('/menu'),
   getMenuByCategory: (categoryId) => api.get(`/menu/category/${categoryId}`),
   getCombos: () => api.get('/combos'),
+  getSettings: () => api.get('/settings'),
   getTableByCode: (tableCode) => api.get(`/tables/code/${tableCode}`),
   createOrder: (orderData) => api.post('/orders', orderData),
   getRecommendations: (itemId) => api.get(`/recommendations/item/${itemId}`),

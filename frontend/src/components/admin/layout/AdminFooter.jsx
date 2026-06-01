@@ -4,11 +4,11 @@ const AdminFooter = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="h-16 bg-white border-t border-gray-100 px-8 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 shadow-[0_-1px_3px_rgba(0,0,0,0.02)]">
+    <footer className="h-16 bg-white border-t border-gray-100 px-8 flex flex-col md:flex-row items-center justify-between text-sm text-gray-500 shadow-[0_-1px_3px_rgba(0,0,0,0.02)] transition-colors dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400">
 
       <div className="flex items-center gap-1 font-medium">
         <span>© {currentYear}</span>
-        <span className="text-gray-800 font-bold"> - WucHuy</span>
+        <span className="text-gray-800 font-bold dark:text-slate-100"> - WucHuy</span>
       </div>
 
       {/* <div className="flex items-center gap-6">

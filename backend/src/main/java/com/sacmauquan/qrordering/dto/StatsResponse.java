@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * Dashboard Stats Response - Data transfer objects for reporting and
@@ -41,5 +42,19 @@ public class StatsResponse {
         public record DishTrend(
                         String bucket,
                         Long totalQty) {
+        }
+
+        public record RevenueForecast(
+                        LocalDate date,
+                        BigDecimal actual,
+                        BigDecimal forecast,
+                        boolean forecasted) {
+        }
+
+        public record PopularDishForecast(
+                        Long id,
+                        String name,
+                        String category,
+                        Long estimatedQty) {
         }
 }

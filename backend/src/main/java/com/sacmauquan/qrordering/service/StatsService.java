@@ -8,10 +8,15 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -110,6 +115,67 @@ public class StatsService {
                                 .map(r -> new StatsResponse.DishTrend(
                                                 r.getBucket(),
                                                 r.getTotalQty()))
+                                .collect(Collectors.toList());
+        }
+
+        /**
+         * Builds a simple 30-day actual revenue + 7-day forecast series for the dashboard.
+         */
+        public List<StatsResponse.RevenueForecast> getRevenueForecast() {
+                LocalDate today = LocalDate.now();
+                LocalDate from = today.minusDays(29);
+
+                Map<LocalDate, BigDecimal> actualByDate = new HashMap<>();
+                repo.revenueByDay(toStartOfInstant(from), toEndOfInstant(today)).forEach(row -> {
+                        if (row.getBucket() != null) {
+                                actualByDate.put(LocalDate.parse(row.getBucket()),
+                                                row.getRevenue() != null ? row.getRevenue() : BigDecimal.ZERO);
+                        }
+                });
+
+                BigDecimal total = actualByDate.values().stream()
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                BigDecimal average = total.divide(BigDecimal.valueOf(30), 2, RoundingMode.HALF_UP);
+
+                List<StatsResponse.RevenueForecast> result = new ArrayList<>();
+                for (int i = 0; i < 30; i++) {
+                        LocalDate date = from.plusDays(i);
+                        result.add(new StatsResponse.RevenueForecast(
+                                        date,
+                                        actualByDate.getOrDefault(date, BigDecimal.ZERO),
+                                        null,
+                                        false));
+                }
+
+                for (int i = 1; i <= 7; i++) {
+                        result.add(new StatsResponse.RevenueForecast(
+                                        today.plusDays(i),
+                                        null,
+                                        average,
+                                        true));
+                }
+
+                return result;
+        }
+
+        /**
+         * Estimates next-week popular dishes from the latest 30 days of completed orders.
+         */
+        public List<StatsResponse.PopularDishForecast> getPopularDishesForecast() {
+                LocalDate today = LocalDate.now();
+                LocalDate from = today.minusDays(29);
+
+                return repo.topDishes(toStartOfInstant(from), toEndOfInstant(today)).stream()
+                                .limit(5)
+                                .map(row -> {
+                                        long totalQty = row.getTotalQty() != null ? row.getTotalQty() : 0L;
+                                        long estimatedQty = Math.max(1L, Math.round(totalQty * 7.0 / 30.0));
+                                        return new StatsResponse.PopularDishForecast(
+                                                        row.getId(),
+                                                        row.getName(),
+                                                        row.getCategory(),
+                                                        estimatedQty);
+                                })
                                 .collect(Collectors.toList());
         }
 

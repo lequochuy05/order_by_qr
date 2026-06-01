@@ -16,6 +16,13 @@ import ItemOptionsModal from './ItemOptionsModal';
 import AiChatAssistant from '../../../components/customer/AiChatAssistant';
 import StatusModal from '../../../components/admin/common/StatusModal';
 
+const defaultRestaurantSettings = {
+  restaurantName: 'Sắc Màu Quán',
+  restaurantPhone: '',
+  restaurantLogoUrl: '',
+  enableAiAssistant: true
+};
+
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
   const tableCode = searchParams.get('tableCode');
@@ -32,9 +39,10 @@ const MenuPage = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
   const [crossSellItems, setCrossSellItems] = useState([]);
+  const [restaurantSettings, setRestaurantSettings] = useState(defaultRestaurantSettings);
   const hour = new Date().getHours();
   const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
-  const [weather, setWeather] = useState("Trời mát");
+  const weather = "Trời mát";
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
 
   // Trạng thái giỏ hàng
@@ -51,10 +59,11 @@ const MenuPage = () => {
   const loadData = useCallback(async (showLoading = false) => {
     try {
       if (showLoading) setLoading(true);
-      const [categoriesRes, menuRes, combosRes, tableRes] = await Promise.all([
+      const [categoriesRes, menuRes, combosRes, settingsRes, tableRes] = await Promise.all([
         menuService.getCategories(),
         menuService.getAllMenuItems(),
         menuService.getCombos(),
+        menuService.getSettings(),
         tableCode ? menuService.getTableByCode(tableCode) : Promise.resolve(null)
       ]);
 
@@ -64,6 +73,10 @@ const MenuPage = () => {
       // Chỉ hiện Combo đang Active
       const activeCombos = (Array.isArray(combosRes) ? combosRes : []).filter(c => c.active !== false);
       setCombos(activeCombos);
+      setRestaurantSettings({
+        ...defaultRestaurantSettings,
+        ...(settingsRes || {})
+      });
 
       setTableInfo(tableRes);
       // console.log(" Menu khách hàng đã được làm mới");
@@ -81,7 +94,7 @@ const MenuPage = () => {
         .catch(() => {
           menuService.getPopularItems().then(res => setRecommendations(Array.isArray(res) ? res : []));
         });
-    } catch (e) {
+    } catch {
       // suppress
     }
   }, [timeContext, weather]);
@@ -103,6 +116,7 @@ const MenuPage = () => {
   useWebSocket('/topic/menu', handleRealtimeUpdate);
   useWebSocket('/topic/combos', handleRealtimeUpdate);
   useWebSocket('/topic/categories', handleRealtimeUpdate);
+  useWebSocket('/topic/settings', handleRealtimeUpdate);
   const wsStatus = useWebSocket(); // Just to get the service reference for status check
   useEffect(() => {
     const checkInterval = setInterval(() => {
@@ -267,12 +281,28 @@ const MenuPage = () => {
           {/* Header Section */}
           <div className="bg-orange-500 text-white p-5 rounded-b-[2.5rem] shadow-lg">
             <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-tighter">Sắc Màu Quán</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
-                    Bàn số: {tableInfo?.tableNumber || 'NaN'}
-                  </span>
+              <div className="flex items-start gap-3 min-w-0">
+                {restaurantSettings.restaurantLogoUrl && (
+                  <img
+                    src={restaurantSettings.restaurantLogoUrl}
+                    alt={restaurantSettings.restaurantName}
+                    className="h-10 w-10 rounded-xl border border-white/30 bg-white/20 object-cover"
+                  />
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-xl font-black uppercase tracking-tighter truncate">
+                    {restaurantSettings.restaurantName || 'Sắc Màu Quán'}
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
+                      Bàn số: {tableInfo?.tableNumber || 'NaN'}
+                    </span>
+                    {/* {restaurantSettings.restaurantPhone && (    // Tạm thời ẩn số điện thoại
+                    <span className="hidden sm:inline bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30">
+                      {restaurantSettings.restaurantPhone}
+                    </span>
+                  )} */}
+                  </div>
                 </div>
               </div>
 
@@ -386,7 +416,9 @@ const MenuPage = () => {
           />
 
           {/* AI Customer Assistant */}
-          <AiChatAssistant hidden={showOrderModal} />
+          {restaurantSettings.enableAiAssistant !== false && (
+            <AiChatAssistant hidden={showOrderModal} />
+          )}
 
           <StatusModal
             isOpen={statusModal.isOpen}

@@ -8,7 +8,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !window.location.pathname.startsWith('/menu'));
   const timerRef = useRef(null);
 
   const logout = useCallback(() => {
@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Không tự động refresh ở trang khách hàng (Menu)
     if (window.location.pathname.startsWith('/menu')) {
-      setLoading(false);
       return;
     }
 
@@ -97,12 +96,12 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const updateUser = (updatedFields) => {
+  const updateUser = useCallback((updatedFields) => {
     setUser(prev => {
       const newUser = { ...prev, ...updatedFields };
       return newUser;
     });
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>

@@ -7,16 +7,13 @@ class WebSocketService {
         this.client = null;
         this.connected = false;
         this.onConnectCallbacks = [];
+        this.connectListeners = new Set();
         this.subscriptions = new Set();
     }
 
     connect() {
         if (this.client?.active) return;
-        const wsUrl = import.meta.env.VITE_WS_URL;
-        if (!wsUrl) {
-            console.warn('VITE_WS_URL is not configured');
-            return;
-        }
+        const wsUrl = import.meta.env.VITE_WS_URL || '/ws';
 
         this.client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
@@ -29,6 +26,7 @@ class WebSocketService {
                 const callbacks = [...this.onConnectCallbacks];
                 this.onConnectCallbacks = [];
                 callbacks.forEach(cb => cb());
+                this.connectListeners.forEach(listener => listener());
             },
             onDisconnect: () => {
                 this.connected = false;
@@ -41,6 +39,16 @@ class WebSocketService {
             }
         });
         this.client.activate();
+    }
+
+    isConnected() {
+        return this.connected && Boolean(this.client?.connected);
+    }
+
+    addConnectListener(listener) {
+        if (typeof listener !== 'function') return () => {};
+        this.connectListeners.add(listener);
+        return () => this.connectListeners.delete(listener);
     }
 
     getConnectHeaders() {
@@ -69,7 +77,7 @@ class WebSocketService {
             return subscription;
         };
 
-        if (this.connected && this.client?.connected) {
+        if (this.isConnected()) {
             return subscribeNow();
         }
 
@@ -91,6 +99,7 @@ class WebSocketService {
 
     disconnect() {
         this.onConnectCallbacks = [];
+        this.connectListeners.clear();
         this.subscriptions.forEach(subscription => subscription.unsubscribe());
         this.subscriptions.clear();
         this.connected = false;

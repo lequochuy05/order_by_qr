@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useAdminPreferences } from '../../../hooks/useAdminPreferences';
 import {
   LayoutDashboard,
   Layers,
@@ -10,11 +11,11 @@ import {
   Users,
   BarChart3,
   Package,
-  TicketPercent,
   TicketIcon,
-  ChevronDown, // Import thêm icon mũi tên
+  ChevronDown,
+  Settings,
   ChevronRight,
-  Circle // Dùng làm icon cho menu con
+  Circle
 } from 'lucide-react';
 
 const menuItems = [
@@ -89,11 +90,23 @@ const menuItems = [
       { title: 'Nhân viên', path: '/admin/statistics/staff' }
     ]
   },
+
+  {
+    title: 'Cài đặt',
+    icon: <Settings size={22} />,
+    roles: ['MANAGER', 'STAFF', 'CHEF'],
+    children: [
+      { title: 'Thông tin cá nhân', path: '/admin/profile' },
+      { title: 'Cài đặt', path: '/admin/settings' }
+    ]
+  }
 ];
 
 const AdminSidebar = ({ isOpen }) => {
   const location = useLocation();
   const { user } = useAuth();
+  const [preferences] = useAdminPreferences();
+  const label = (text) => getMenuLabel(text, preferences.language);
 
   // State để quản lý menu nào đang mở (lưu theo title)
   const [expandedMenu, setExpandedMenu] = useState(null);
@@ -121,13 +134,13 @@ const AdminSidebar = ({ isOpen }) => {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col
+      className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col dark:bg-slate-950
         ${isOpen
           ? 'translate-x-0 w-64'
           : '-translate-x-full lg:translate-x-0 w-0 lg:w-20 overflow-hidden lg:overflow-visible'}`}
     >
       {/* Header Sidebar */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0">
+      <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0 dark:border-slate-900">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold">
             S
@@ -172,7 +185,7 @@ const AdminSidebar = ({ isOpen }) => {
                   {isOpen && (
                     <>
                       <span className="font-medium whitespace-nowrap flex-1 text-sm">
-                        {item.title}
+                        {label(item.title)}
                       </span>
                       {/* Icon mũi tên xoay */}
                       <span className="text-slate-500">
@@ -184,7 +197,7 @@ const AdminSidebar = ({ isOpen }) => {
                   {/* Tooltip khi đóng sidebar */}
                   {!isOpen && (
                     <div className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700">
-                      {item.title}
+                      {label(item.title)}
                     </div>
                   )}
                 </div>
@@ -202,12 +215,12 @@ const AdminSidebar = ({ isOpen }) => {
                   </div>
                   {isOpen && (
                     <span className="font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 text-sm">
-                      {item.title}
+                      {label(item.title)}
                     </span>
                   )}
                   {!isOpen && (
                     <div className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700">
-                      {item.title}
+                      {label(item.title)}
                     </div>
                   )}
                 </Link>
@@ -217,6 +230,7 @@ const AdminSidebar = ({ isOpen }) => {
               {hasChildren && isOpen && isParentExpanded && (
                 <div className="mt-1 space-y-1 pl-11 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                   {item.children.map((child, childIndex) => {
+                    if (child.roles && user?.role && !child.roles.includes(user.role)) return null;
                     const isChildActive = location.pathname === child.path;
                     return (
                       <Link
@@ -229,7 +243,7 @@ const AdminSidebar = ({ isOpen }) => {
                       >
                         {/* Dấu chấm tròn nhỏ để trang trí */}
                         <Circle size={8} className={isChildActive ? 'fill-orange-500' : 'fill-transparent'} />
-                        <span className="whitespace-nowrap">{child.title}</span>
+                        <span className="whitespace-nowrap">{label(child.title)}</span>
                       </Link>
                     );
                   })}
@@ -241,6 +255,29 @@ const AdminSidebar = ({ isOpen }) => {
       </nav>
     </aside>
   );
+};
+
+const englishMenuLabels = {
+  'Bảng điều khiển': 'Dashboard',
+  'Quản lý bàn': 'Tables',
+  'Nhà bếp': 'Kitchen',
+  'Quản lý danh mục': 'Categories',
+  'Quản lý món ăn': 'Menu items',
+  'Quản lý combo': 'Combos',
+  'Quản lý voucher': 'Vouchers',
+  'Quản lý nhân viên': 'Staff',
+  'Lịch sử đơn hàng': 'Order history',
+  'Thống kê': 'Statistics',
+  'Doanh thu': 'Revenue',
+  'Món ăn bán chạy': 'Top dishes',
+  'Nhân viên': 'Staff',
+  'Cài đặt': 'Settings',
+  'Thông tin cá nhân': 'Profile'
+};
+
+const getMenuLabel = (text, language) => {
+  if (language !== 'en') return text;
+  return englishMenuLabels[text] || text;
 };
 
 export default AdminSidebar;

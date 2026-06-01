@@ -58,4 +58,9 @@ public interface NotificationService {
      * Notifies admin clients of changes in the user/staff list.
      */
     void notifyUserChange();
+
+    /**
+     * Notifies clients that restaurant/system settings changed.
+     */
+    void notifySettingsChange();
 }

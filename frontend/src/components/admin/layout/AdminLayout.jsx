@@ -12,7 +12,7 @@ const AdminLayout = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <div className="flex min-h-screen bg-slate-50 relative overflow-x-hidden">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 relative overflow-x-hidden transition-colors">
       {/* 1. Backdrop for Mobile Overlay */}
       {isSidebarOpen && (
         <div 
@@ -30,7 +30,7 @@ const AdminLayout = () => {
         
         <AdminHeader toggleSidebar={toggleSidebar} />
 
-        <main className="flex-1 p-8 overflow-x-hidden">
+        <main className="flex-1 p-8 overflow-x-hidden text-slate-900 transition-colors dark:text-slate-100">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

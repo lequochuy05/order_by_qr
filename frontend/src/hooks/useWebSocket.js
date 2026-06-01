@@ -24,10 +24,10 @@ export const useWebSocket = (topic, onMessage) => {
             });
         };
 
-        if (wsService.connected) {
+        const removeConnectListener = wsService.addConnectListener(doSubscribe);
+
+        if (wsService.isConnected()) {
             doSubscribe();
-        } else {
-            wsService.onConnectCallbacks.push(doSubscribe);
         }
 
         return () => {
@@ -35,7 +35,7 @@ export const useWebSocket = (topic, onMessage) => {
                 subscriptionRef.current.unsubscribe();
                 subscriptionRef.current = null;
             }
-            wsService.onConnectCallbacks = wsService.onConnectCallbacks.filter(cb => cb !== doSubscribe);
+            removeConnectListener();
         };
     }, [topic]); // Cập nhật khi topic đổi
 

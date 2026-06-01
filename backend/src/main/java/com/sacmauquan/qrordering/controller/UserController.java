@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.time.Duration;
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -72,6 +73,47 @@ public class UserController {
         }
         setRefreshCookie(response, "", Duration.ZERO);
         return ApiResponse.success("Logout successful", null);
+    }
+
+    /**
+     * Retrieves the authenticated user's own profile.
+     */
+    @GetMapping("/me")
+    public ApiResponse<UserResponse> getCurrentProfile(@NonNull Principal principal) {
+        return ApiResponse.success(userService.getCurrentProfile(principal.getName()));
+    }
+
+    /**
+     * Updates the authenticated user's editable profile fields.
+     */
+    @PatchMapping("/me")
+    public ApiResponse<UserResponse> updateCurrentProfile(
+            @NonNull Principal principal,
+            @Valid @RequestBody @NonNull ProfileUpdateRequest req) {
+        return ApiResponse.success("Profile updated successfully",
+                userService.updateCurrentProfile(principal.getName(), Objects.requireNonNull(req)));
+    }
+
+    /**
+     * Changes the authenticated user's own password.
+     */
+    @PatchMapping("/me/password")
+    public ApiResponse<Void> changeCurrentPassword(
+            @NonNull Principal principal,
+            @Valid @RequestBody @NonNull PasswordChangeRequest req) {
+        userService.changeCurrentPassword(principal.getName(), Objects.requireNonNull(req));
+        return ApiResponse.success("Password changed successfully", null);
+    }
+
+    /**
+     * Updates the authenticated user's own avatar.
+     */
+    @PostMapping("/me/avatar")
+    public ApiResponse<UserResponse> uploadCurrentAvatar(
+            @NonNull Principal principal,
+            @RequestParam("file") @NonNull MultipartFile file) {
+        UserResponse updated = userService.uploadCurrentAvatar(principal.getName(), Objects.requireNonNull(file));
+        return ApiResponse.success("Avatar updated successfully", updated);
     }
 
     /**

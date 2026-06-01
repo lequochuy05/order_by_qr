@@ -2,7 +2,12 @@ package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.AiChatRequest;
 import com.sacmauquan.qrordering.dto.AiChatResponse;
+import com.sacmauquan.qrordering.model.Category;
+import com.sacmauquan.qrordering.model.Combo;
+import com.sacmauquan.qrordering.model.ComboItem;
 import com.sacmauquan.qrordering.model.MenuItem;
+import com.sacmauquan.qrordering.repository.CategoryRepository;
+import com.sacmauquan.qrordering.repository.ComboRepository;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +35,8 @@ import java.util.stream.Collectors;
 public class AiAssistantService {
 
     private final MenuItemRepository menuItemRepository;
+    private final ComboRepository comboRepository;
+    private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
 
     @Value("${gemini.api-key}")
@@ -51,7 +58,9 @@ public class AiAssistantService {
      */
     public AiChatResponse chat(AiChatRequest request) {
         List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
-        String menuContext = buildMenuContext(activeMenu);
+        List<Combo> activeCombos = comboRepository.findAllActiveWithItems();
+        List<Category> activeCategories = categoryRepository.findByActiveTrue();
+        String menuContext = buildMenuContext(activeMenu, activeCombos, activeCategories);
         String geminiResponse = callGeminiApi(request, menuContext);
         return AiChatResponse.builder().reply(geminiResponse).build();
     }
@@ -60,27 +69,95 @@ public class AiAssistantService {
      * Builds a structured text representation of the current menu
      * for the AI to reference when making recommendations.
      */
-    private String buildMenuContext(List<MenuItem> items) {
-        if (items.isEmpty()) return "Hiện tại thực đơn đang trống.";
+    private String buildMenuContext(List<MenuItem> items, List<Combo> combos, List<Category> categories) {
+        if (items.isEmpty() && combos.isEmpty() && categories.isEmpty()) {
+            return "Hiện tại thực đơn đang trống.";
+        }
 
         Map<String, List<MenuItem>> grouped = items.stream()
-                .filter(i -> i.getCategory() != null)
+                .filter(i -> i.getCategory() != null && Boolean.TRUE.equals(i.getCategory().getActive()))
                 .collect(Collectors.groupingBy(
                         i -> i.getCategory().getName(),
                         LinkedHashMap::new,
                         Collectors.toList()));
 
         StringBuilder sb = new StringBuilder();
-        grouped.forEach((category, menuItems) -> {
-            sb.append("\n📂 ").append(category).append(":\n");
+        appendCategoryContext(sb, categories, grouped.keySet());
+        appendMenuItemContext(sb, grouped);
+        appendComboContext(sb, combos);
+
+        return sb.toString();
+    }
+
+    private void appendCategoryContext(StringBuilder sb, List<Category> categories, Set<String> categoryNamesFromMenu) {
+        Set<String> categoryNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        categories.stream()
+                .filter(category -> Boolean.TRUE.equals(category.getActive()))
+                .map(Category::getName)
+                .filter(Objects::nonNull)
+                .forEach(categoryNames::add);
+        categoryNames.addAll(categoryNamesFromMenu);
+
+        if (categoryNames.isEmpty()) {
+            return;
+        }
+
+        sb.append("\nDANH MỤC ĐANG CÓ:\n");
+        categoryNames.forEach(category -> sb.append("  - ").append(category).append("\n"));
+    }
+
+    private void appendMenuItemContext(StringBuilder sb, Map<String, List<MenuItem>> groupedItems) {
+        if (groupedItems.isEmpty()) {
+            sb.append("\nMÓN LẺ THEO DANH MỤC:\n  Hiện chưa có món lẻ đang bán.\n");
+            return;
+        }
+
+        sb.append("\nMÓN LẺ THEO DANH MỤC:\n");
+        groupedItems.forEach((category, menuItems) -> {
+            sb.append("📂 ").append(category).append(":\n");
             menuItems.forEach(item -> {
                 sb.append("  - ").append(item.getName())
                         .append(" | Giá: ").append(formatPrice(item.getPrice()))
                         .append("\n");
             });
         });
+    }
 
-        return sb.toString();
+    private void appendComboContext(StringBuilder sb, List<Combo> combos) {
+        List<Combo> activeCombos = combos.stream()
+                .filter(combo -> Boolean.TRUE.equals(combo.getActive()))
+                .toList();
+
+        if (activeCombos.isEmpty()) {
+            sb.append("\nCOMBO ĐANG BÁN:\n  Hiện chưa có combo đang bán.\n");
+            return;
+        }
+
+        sb.append("\nCOMBO ĐANG BÁN:\n");
+        activeCombos.forEach(combo -> {
+            sb.append("🎁 ").append(combo.getName())
+                    .append(" | Giá combo: ").append(formatPrice(combo.getPrice()));
+
+            String comboItems = formatComboItems(combo.getItems());
+            if (!comboItems.isBlank()) {
+                sb.append(" | Gồm: ").append(comboItems);
+            }
+            sb.append("\n");
+        });
+    }
+
+    private String formatComboItems(Set<ComboItem> comboItems) {
+        if (comboItems == null || comboItems.isEmpty()) {
+            return "";
+        }
+
+        return comboItems.stream()
+                .filter(comboItem -> comboItem.getMenuItem() != null)
+                .map(comboItem -> {
+                    Integer quantity = comboItem.getQuantity() != null ? comboItem.getQuantity() : 1;
+                    return quantity + " x " + comboItem.getMenuItem().getName();
+                })
+                .collect(Collectors.joining(", "));
     }
 
     /**
@@ -174,6 +251,9 @@ public class AiAssistantService {
                 6. Sử dụng emoji phù hợp để tạo cảm giác gần gũi nhưng không quá nhiều.
                 7. Trả lời bằng tiếng Việt.
                 8. Không sử dụng markdown phức tạp. Chỉ dùng text thuần.
+                9. Khi khách hỏi về combo, chỉ dùng mục COMBO ĐANG BÁN; nêu tên combo, giá combo và thành phần chính nếu có.
+                10. Khi khách hỏi về danh mục, liệt kê các danh mục trong mục DANH MỤC ĐANG CÓ và có thể gợi ý món tiêu biểu trong danh mục đó.
+                11. Phân biệt rõ "món lẻ" và "combo"; không tự ghép món lẻ thành combo nếu combo đó không có trong thực đơn.
 
                 ## THỰC ĐƠN HIỆN TẠI:
                 %s

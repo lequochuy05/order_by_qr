@@ -90,4 +90,20 @@ public class StatsController {
       @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
     return ApiResponse.success(statsService.getDishTrend(from, to));
   }
+
+  /**
+   * Retrieves recent revenue and a short-term forecast for the dashboard.
+   */
+  @GetMapping("/forecast/revenue")
+  public ApiResponse<List<StatsResponse.RevenueForecast>> getRevenueForecast() {
+    return ApiResponse.success(statsService.getRevenueForecast());
+  }
+
+  /**
+   * Retrieves dishes expected to sell best in the next week.
+   */
+  @GetMapping("/forecast/popular-dishes")
+  public ApiResponse<List<StatsResponse.PopularDishForecast>> getPopularDishesForecast() {
+    return ApiResponse.success(statsService.getPopularDishesForecast());
+  }
 }

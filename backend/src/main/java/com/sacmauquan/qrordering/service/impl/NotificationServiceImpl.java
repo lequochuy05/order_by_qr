@@ -28,6 +28,7 @@ public class NotificationServiceImpl implements NotificationService {
     private static final String TOPIC_COMBOS = "/topic/combos";
     private static final String TOPIC_VOUCHERS = "/topic/vouchers";
     private static final String TOPIC_USERS = "/topic/users";
+    private static final String TOPIC_SETTINGS = "/topic/settings";
 
     private static final String EVENT_UPDATED = "UPDATED";
 
@@ -101,6 +102,14 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void notifyUserChange() {
         publishInternalEvent(TOPIC_USERS, EVENT_UPDATED, "Internal user management list modified");
+    }
+
+    /**
+     * Notifies clients of restaurant/system settings changes.
+     */
+    @Override
+    public void notifySettingsChange() {
+        publishInternalEvent(TOPIC_SETTINGS, EVENT_UPDATED, "System settings updated");
     }
 
     /**

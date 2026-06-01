@@ -144,6 +144,18 @@ public class UserService {
     }
 
     /**
+     * Retrieves the authenticated user's own profile.
+     *
+     * @param email Authenticated user's email
+     * @return UserResponse DTO
+     */
+    public UserResponse getCurrentProfile(@NonNull String email) {
+        return userRepository.findByEmail(email)
+                .map(userMapper::toDto)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    /**
      * Registers a new user with encrypted password and default roles.
      * 
      * @param req Registration details
@@ -211,6 +223,33 @@ public class UserService {
     }
 
     /**
+     * Updates the authenticated user's editable profile fields only.
+     *
+     * @param email Authenticated user's email
+     * @param req   Profile update payload
+     * @return Updated user profile
+     */
+    @Transactional
+    public UserResponse updateCurrentProfile(@NonNull String email, @NonNull ProfileUpdateRequest req) {
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        String nextPhone = StringUtils.hasText(req.getPhone()) ? req.getPhone().trim() : null;
+        if (StringUtils.hasText(nextPhone) && !Objects.equals(u.getPhone(), nextPhone)
+                && userRepository.existsByPhoneIncludingDeleted(nextPhone)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+        }
+
+        u.setFullName(req.getFullName().trim());
+        u.setPhone(nextPhone);
+
+        userRepository.save(u);
+        log.info("User self-updated profile: {}", u.getEmail());
+        notificationService.notifyUserChange();
+        return userMapper.toDto(u);
+    }
+
+    /**
      * Soft deletes a user from the system.
      * 
      * @param id User ID
@@ -246,6 +285,26 @@ public class UserService {
     }
 
     /**
+     * Changes the authenticated user's password after verifying the current password.
+     *
+     * @param email Authenticated user's email
+     * @param req   Password change payload
+     */
+    @Transactional
+    public void changeCurrentPassword(@NonNull String email, @NonNull PasswordChangeRequest req) {
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (!passwordEncoder.matches(req.getCurrentPassword(), u.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+        }
+
+        u.setPassword(passwordEncoder.encode(req.getNewPassword()));
+        userRepository.save(u);
+        log.info("User changed own password: {}", u.getEmail());
+    }
+
+    /**
      * Uploads a new profile picture for the user and updates their avatar URL.
      * 
      * @param id User ID
@@ -274,6 +333,20 @@ public class UserService {
             log.error("Failed to upload avatar: {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload avatar");
         }
+    }
+
+    /**
+     * Uploads an avatar for the authenticated user only.
+     *
+     * @param email Authenticated user's email
+     * @param file  The image file
+     * @return Updated user profile
+     */
+    @Transactional
+    public UserResponse uploadCurrentAvatar(@NonNull String email, @NonNull MultipartFile file) {
+        User u = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return uploadAvatar(u.getId(), file);
     }
 
     /**

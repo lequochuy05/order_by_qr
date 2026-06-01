@@ -62,7 +62,8 @@ public class SecurityConfig {
                 "/api/orders/table/*/current",
                 "/api/combos/active",
                 "/api/combos/*/items",
-                "/api/recommendations/**")
+                "/api/recommendations/**",
+                "/api/settings")
             .permitAll()
 
             // Public Voucher Validation only
@@ -74,6 +75,11 @@ public class SecurityConfig {
 
             // PayOS webhook
             .requestMatchers(HttpMethod.POST, "/api/webhooks/**").permitAll()
+
+            // Authenticated self-service profile endpoints
+            .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/users/me", "/api/users/me/password").authenticated()
+            .requestMatchers(HttpMethod.POST, "/api/users/me/avatar").authenticated()
 
             .requestMatchers("/api/payments/**").hasAnyRole("MANAGER", "STAFF")
 
@@ -90,7 +96,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.PUT,
                 "/api/categories/**",
                 "/api/menu/**",
-                "/api/vouchers/**")
+                "/api/vouchers/**",
+                "/api/settings")
             .hasRole("MANAGER")
 
             // Kitchen

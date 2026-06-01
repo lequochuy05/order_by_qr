@@ -16,6 +16,8 @@ import StaffStats from './pages/admin/statistics/StaffStats.jsx';
 import KitchenManager from './pages/admin/KitchenManager';
 import Dashboard from './pages/admin/Dashboard';
 import OrderHistoryPage from './pages/admin/OrderHistoryPage';
+import ProfilePage from './pages/admin/ProfilePage';
+import SettingsPage from './pages/admin/SettingsPage';
 import { lazy, Suspense } from 'react';
 
 
@@ -49,6 +51,8 @@ function App() {
                 <Route path="/admin/statistics/revenue" element={<RevenueStats />} />
                 <Route path="/admin/statistics/top-dishes" element={<TopDishesStats />} />
                 <Route path="/admin/statistics/staff" element={<StaffStats />} />
+                <Route path="/admin/profile" element={<ProfilePage />} />
+                <Route path="/admin/settings" element={<SettingsPage />} />
               </Route>
             </Route>
 

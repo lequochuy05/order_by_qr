@@ -49,6 +49,13 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
   List<Category> findAllActiveWithItems();
 
   /**
+   * Retrieves active categories without loading menu item details.
+   *
+   * @return List of active categories
+   */
+  List<Category> findByActiveTrue();
+
+  /**
    * Searches for categories by name with pagination.
    * 
    * @param name The search keyword
