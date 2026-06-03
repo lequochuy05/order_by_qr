@@ -4,7 +4,7 @@ import { X, ImageIcon, Plus, Trash2, Sparkles, Loader2, AlertCircle } from 'luci
 const MenuItemModal = ({
   isOpen, onClose, onSubmit, categories, formData, setFormData,
   preview, handleFileChange, isSubmitting, aiScanning, initialFormData,
-  selectedFile, errors = {}, setErrors
+  selectedFile, errors = {}, setErrors, onAiScan
 }) => {
   const isChanged = React.useMemo(() => {
     if (!initialFormData) return true;
@@ -231,7 +231,7 @@ const MenuItemModal = ({
                     <button
                       type="button"
                       disabled={aiScanning}
-                      onClick={() => window.dispatchEvent(new CustomEvent('aiScan'))}
+                      onClick={() => onAiScan?.()}
                       className="px-5 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full text-[10px] font-black shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-60"
                     >
                       {aiScanning ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}

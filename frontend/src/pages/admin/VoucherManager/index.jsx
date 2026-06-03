@@ -2,10 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Ticket, Pencil, Trash2 } from 'lucide-react';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 import { voucherService } from '../../../services/admin/voucherService';
 import ManagementHeader from '../../../components/admin/common/ManagementHeader';
 import VoucherModal from './VoucherModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 import { fmtVND, fmtDate } from '../../../utils/formatters';
 
 const VoucherManager = () => {
@@ -17,6 +20,7 @@ const VoucherManager = () => {
 
   // === 1. State cho Status Modal ===
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+  const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
   const getStatusInfo = (v) => {
     const now = new Date();
@@ -39,8 +43,8 @@ const VoucherManager = () => {
   }, []);
 
   useWebSocket('/topic/vouchers', (message) => {
-    // message đã được JSON.parse bởi wsService.
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      playNotificationSound();
       fetchData();
     }
   });
@@ -81,9 +85,9 @@ const VoucherManager = () => {
     }
   };
 
-  // Hàm xóa cũng nên dùng Modal
   const handleDelete = async (id) => {
-    if (!window.confirm("Bạn chắc chắn muốn xóa voucher này?")) return;
+    const confirmed = await confirm('Xóa voucher', 'Bạn chắc chắn muốn xóa voucher này?');
+    if (!confirmed) return;
     try {
       await voucherService.delete(id);
       showSuccess("Đã xóa voucher thành công");
@@ -154,13 +158,19 @@ const VoucherManager = () => {
         initialData={editingVoucher} onSubmit={handleSubmit}
       />
 
-      {/* === 3. Component Status Modal Mới === */}
       <StatusModal
         isOpen={statusModal.isOpen}
         onClose={closeStatusModal}
         type={statusModal.type}
         title={statusModal.title}
         message={statusModal.message}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import { useWebSocket } from '../../../hooks/useWebSocket.js';
+import wsService from '../../../services/websocket.js';
 import { useStatusModal } from '../../../hooks/useStatusModal.js';
 import { fmtVND } from '../../../utils/formatters.js';
 
@@ -117,14 +118,15 @@ const MenuPage = () => {
   useWebSocket('/topic/combos', handleRealtimeUpdate);
   useWebSocket('/topic/categories', handleRealtimeUpdate);
   useWebSocket('/topic/settings', handleRealtimeUpdate);
-  const wsStatus = useWebSocket(); // Just to get the service reference for status check
+
+  // Instant WS status via listener (no polling)
   useEffect(() => {
-    const checkInterval = setInterval(() => {
-      // Kiểm tra xem socket có đang kết nối không
-      setWsConnected(wsStatus?.connected || false);
-    }, 2000);
-    return () => clearInterval(checkInterval);
-  }, [wsStatus]);
+    const wsRef = wsService;
+    setWsConnected(wsRef.isConnected());
+    return wsRef.addConnectListener((connected) => {
+      setWsConnected(connected);
+    });
+  }, []);
 
   const handleAddToCart = (product, qty, isCombo = false, needsOptions = false) => {
     if (needsOptions) {

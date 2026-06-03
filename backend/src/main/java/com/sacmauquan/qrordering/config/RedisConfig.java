@@ -61,9 +61,12 @@ public class RedisConfig implements CachingConfigurer {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // NON_FINAL is safer than EVERYTHING: it still serializes type info for
+        // polymorphic deserialization but limits it to non-final classes, avoiding
+        // deserialization attack vectors through final/critical JDK types.
         mapper.activateDefaultTyping(
                 mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.EVERYTHING,
+                ObjectMapper.DefaultTyping.NON_FINAL,
                 JsonTypeInfo.As.PROPERTY);
         return mapper;
     }
@@ -111,6 +114,11 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put("stats_top_dishes", config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put("stats_dish_trend", config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put("settings", config.entryTtl(Duration.ofHours(1)));
+
+        // New performance caches
+        cacheConfigurations.put("order_by_id", config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put("order_stats", config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put("stats_dashboard", config.entryTtl(Duration.ofMinutes(5)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

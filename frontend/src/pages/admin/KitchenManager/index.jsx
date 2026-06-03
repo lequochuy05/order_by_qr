@@ -6,6 +6,8 @@ import ManagementHeader from '../../../components/admin/common/ManagementHeader'
 import { useStatusModal } from '../../../hooks/useStatusModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
 import KitchenColumn from './KitchenColumn';
+import { playNotificationSound, playLoudSound } from '../../../utils/notificationSound';
+import { showBrowserNotification } from '../../../utils/browserNotification';
 
 const KitchenManager = () => {
     const [orders, setOrders] = useState([]);
@@ -29,22 +31,38 @@ const KitchenManager = () => {
         fetchKitchenOrders();
     }, [fetchKitchenOrders]);
 
-    // Lắng nghe WebSocket từ topic nhà bếp
+    // Lắng nghe WebSocket từ topic nhà bếp + phát âm thanh
     useWebSocket('/topic/kitchen', (message) => {
-        // message đã được JSON.parse bởi wsService.
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+            playNotificationSound();
+            playLoudSound();
+            showBrowserNotification('Đơn hàng nhà bếp', { body: 'Có cập nhật mới cho nhà bếp!' });
             fetchKitchenOrders();
         }
     });
 
+    // Optimistic UI: update local state immediately, then sync with server
     const handleUpdateStatus = async (itemId, newStatus) => {
         if (processingItems.has(itemId)) return;
         setProcessingItems(prev => new Set(prev).add(itemId));
+
+        // Optimistic: update local state
+        setOrders(prevOrders =>
+            prevOrders.map(order => ({
+                ...order,
+                orderItems: order.orderItems.map(item =>
+                    item.id === itemId ? { ...item, status: newStatus } : item
+                ),
+            }))
+        );
+
         try {
             await orderService.updateItemStatus(itemId, newStatus);
             // WebSocket sẽ tự trigger reload
         } catch {
+            // Rollback on failure
             showError("Không thể cập nhật trạng thái món");
+            fetchKitchenOrders();
         } finally {
             setProcessingItems(prev => {
                 const next = new Set(prev);

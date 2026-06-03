@@ -106,4 +106,19 @@ public class StatsController {
   public ApiResponse<List<StatsResponse.PopularDishForecast>> getPopularDishesForecast() {
     return ApiResponse.success(statsService.getPopularDishesForecast());
   }
+
+  /**
+   * Composite dashboard endpoint — returns ALL stats in a single response.
+   * Replaces 7 separate API calls with 1.
+   * 
+   * @param from Start date
+   * @param to End date
+   * @return DashboardSummary containing revenue, employees, orders, top dishes, trends, and forecasts
+   */
+  @GetMapping("/dashboard")
+  public ApiResponse<StatsResponse.DashboardSummary> getDashboardSummary(
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+      @RequestParam @NonNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+    return ApiResponse.success(statsService.getDashboardSummary(from, to));
+  }
 }

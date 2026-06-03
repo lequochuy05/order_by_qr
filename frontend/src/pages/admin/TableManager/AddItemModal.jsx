@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import { X, Search } from 'lucide-react';
 import { menuItemService } from '../../../services/admin/menuService';
 import { comboService } from '../../../services/admin/comboService';
@@ -85,7 +86,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     };
 
     const handleConfirm = () => {
-        if (cart.length === 0) return alert("Chưa chọn món nào");
+        if (cart.length === 0) return toast.error("Chưa chọn món nào");
         const payload = {
             tableId: table.id,
             items: cart.filter(x => x.type === 'ITEM').map(x => ({

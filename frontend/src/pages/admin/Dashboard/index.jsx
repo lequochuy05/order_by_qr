@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 
 import { tableService } from '../../../services/admin/tableService';
-import { orderService } from '../../../services/admin/orderService';
 import { statisticsService } from '../../../services/admin/statisticsService';
 import { fmtVND, fmtTime, fmtStatus } from '../../../utils/formatters';
 
@@ -47,92 +46,90 @@ const Dashboard = () => {
                 past7Start.setDate(todayStart.getDate() - 6);
                 past7Start.setHours(0, 0, 0, 0);
 
-                // 1. Fetch tables
-                const tables = await tableService.getAll();
-                const occupied = tables.filter(t => t.status !== 'AVAILABLE' && t.status !== 'Trống').length;
-                setTablesContext({ total: tables.length, occupied });
-
-                // 2. Fetch ALL Orders
-                const allOrders = await orderService.getAllOrders();
-
-                // Sort all by time desc
-                allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                // 3. Filter orders for Today
-                const ordersTodayList = allOrders.filter(o => {
-                    const d = new Date(o.createdAt);
-                    return d >= todayStart && d <= todayEnd;
-                });
-
-                // Calculate KPI for today
-                let rvToday = 0;
-                let completed = 0;
-
-                ordersTodayList.forEach(o => {
-                    if (o.status !== 'CANCELLED') rvToday += o.totalAmount || 0;
-                    if (o.status === 'PAID') completed++;
-                });
-
-                setTodayRevenue(rvToday);
-                setTodayOrders({ total: ordersTodayList.length, completed });
-                setRecentOrders(ordersTodayList.slice(0, 5)); // top 5 today
-
-                // 4. Filter orders for Past 7 Days (for Pie Chart & Top Dishes)
-                const ordersLast7Days = allOrders.filter(o => {
-                    const d = new Date(o.createdAt);
-                    return d >= past7Start && d <= todayEnd;
-                });
-
-                const dishMap = {};
-                const catMap = {};
-
-                ordersLast7Days.forEach(order => {
-                    if (order.status === 'CANCELLED') return;
-                    if (order.orderItems) {
-                        order.orderItems.forEach(item => {
-                            const name = item.menuItem ? item.menuItem.name : (item.combo ? `Combo ${item.combo.name}` : 'Món không tên');
-                            const qty = item.quantity || 0;
-                            const price = item.unitPrice || 0;
-
-                            if (!dishMap[name]) dishMap[name] = { name, quantity: 0, revenue: 0 };
-                            dishMap[name].quantity += qty;
-                            dishMap[name].revenue += (qty * price);
-
-                            const catName = item.menuItem?.category?.name || (item.combo ? 'Combo' : 'Khác');
-                            if (!catMap[catName]) catMap[catName] = 0;
-                            catMap[catName] += (qty * price);
-                        });
-                    }
-                });
-
-                const topDishesArr = Object.values(dishMap)
-                    .sort((a, b) => b.quantity - a.quantity)
-                    .slice(0, 5);
-
-                setTopDishes(topDishesArr);
-
-                const pieData = Object.keys(catMap).map(k => ({
-                    name: k,
-                    value: catMap[k]
-                }));
-                setCategoryShares(pieData);
-
-                const [revenueForecastResult, dishForecastResult] = await Promise.allSettled([
+                // Fetch all data in parallel using server-side filtered APIs
+                const [
+                    tables,
+                    todayRevenueData,
+                    todayOrdersData,
+                    topDishesData,
+                    past7OrdersData,
+                    revenueForecastResult,
+                    dishForecastResult
+                ] = await Promise.allSettled([
+                    tableService.getAll(),
+                    statisticsService.getRevenue(todayStart, todayEnd),
+                    statisticsService.getOrders(todayStart, todayEnd),
+                    statisticsService.getTopDishes(past7Start, todayEnd),
+                    statisticsService.getOrders(past7Start, todayEnd),
                     statisticsService.getRevenueForecast(),
                     statisticsService.getPopularDishesForecast()
                 ]);
 
+                // 1. Tables
+                if (tables.status === 'fulfilled') {
+                    const tableData = tables.value;
+                    const occupied = tableData.filter(t => t.status !== 'AVAILABLE' && t.status !== 'Trống').length;
+                    setTablesContext({ total: tableData.length, occupied });
+                }
+
+                // 2. Today Revenue (from server)
+                if (todayRevenueData.status === 'fulfilled') {
+                    const revenueArr = todayRevenueData.value;
+                    const rvToday = Array.isArray(revenueArr)
+                        ? revenueArr.reduce((sum, r) => sum + (r.revenue || r.totalRevenue || 0), 0)
+                        : (revenueArr?.totalRevenue || revenueArr?.revenue || 0);
+                    setTodayRevenue(rvToday);
+                }
+
+                // 3. Today Orders (from server)
+                if (todayOrdersData.status === 'fulfilled') {
+                    const ordersArr = todayOrdersData.value;
+                    if (Array.isArray(ordersArr)) {
+                        const completed = ordersArr.filter(o => o.status === 'PAID').length;
+                        setTodayOrders({ total: ordersArr.length, completed });
+                        const sorted = [...ordersArr].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        setRecentOrders(sorted.slice(0, 5));
+                    }
+                }
+
+                // 4. Top Dishes (server-side aggregation)
+                if (topDishesData.status === 'fulfilled') {
+                    const dishes = topDishesData.value;
+                    setTopDishes(Array.isArray(dishes) ? dishes.slice(0, 5) : []);
+                }
+
+                // 5. Category shares from 7-day orders
+                if (past7OrdersData.status === 'fulfilled') {
+                    const ordersLast7 = past7OrdersData.value;
+                    if (Array.isArray(ordersLast7)) {
+                        const catMap = {};
+                        ordersLast7.forEach(order => {
+                            if (order.status === 'CANCELLED') return;
+                            if (order.orderItems) {
+                                order.orderItems.forEach(item => {
+                                    const qty = item.quantity || 0;
+                                    const price = item.unitPrice || 0;
+                                    const catName = item.menuItem?.category?.name || (item.combo ? 'Combo' : 'Khác');
+                                    if (!catMap[catName]) catMap[catName] = 0;
+                                    catMap[catName] += (qty * price);
+                                });
+                            }
+                        });
+                        const pieData = Object.keys(catMap).map(k => ({ name: k, value: catMap[k] }));
+                        setCategoryShares(pieData);
+                    }
+                }
+
+                // 6. Forecasts
                 if (revenueForecastResult.status === 'fulfilled') {
                     setRevenueForecast(revenueForecastResult.value);
                 } else {
-                    console.error("Lỗi khi tải dự báo doanh thu:", revenueForecastResult.reason);
                     setRevenueForecast([]);
                 }
 
                 if (dishForecastResult.status === 'fulfilled') {
                     setPopularDishesForecast(dishForecastResult.value);
                 } else {
-                    console.error("Lỗi khi tải dự báo món bán chạy:", dishForecastResult.reason);
                     setPopularDishesForecast([]);
                 }
 
@@ -146,7 +143,7 @@ const Dashboard = () => {
         fetchDashboardData();
     }, []);
 
-    const COLORS_PIE = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#f59e0b'];
+    const COLORS_PIE = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#f59e0b'];
 
     if (loading) {
         return (
@@ -218,7 +215,7 @@ const Dashboard = () => {
                                 {todayOrders.total > 0 ? fmtVND(todayRevenue / todayOrders.total) : fmtVND(0)}
                             </h3>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
                             <DollarSignIcon size={20} />
                         </div>
                     </div>

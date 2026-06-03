@@ -47,10 +47,14 @@ public class RecommendationService {
         if (associatedIds == null || associatedIds.isEmpty())
             return getPopularItems(limit);
 
-        return menuItemRepository.findAllById(associatedIds).stream()
+        Map<Long, MenuItem> byId = menuItemRepository.findAllById(associatedIds).stream()
                 .filter(item -> Boolean.TRUE.equals(item.getActive()))
+                .collect(Collectors.toMap(MenuItem::getId, item -> item, (a, b) -> a));
+
+        return associatedIds.stream()
+                .filter(byId::containsKey)
                 .limit(limit)
-                .map(this::convertToResponse)
+                .map(id -> convertToResponse(byId.get(id)))
                 .collect(Collectors.toList());
     }
 
@@ -82,9 +86,15 @@ public class RecommendationService {
                     .limit(limit)
                     .collect(Collectors.toList());
         } else {
-            items = menuItemRepository.findAllById(topIds).stream()
+            // Re-sort by original SQL ordering to preserve popularity ranking
+            Map<Long, MenuItem> byId = menuItemRepository.findAllById(topIds).stream()
                     .filter(item -> Boolean.TRUE.equals(item.getActive()))
+                    .collect(Collectors.toMap(MenuItem::getId, item -> item, (a, b) -> a));
+
+            items = topIds.stream()
+                    .filter(byId::containsKey)
                     .limit(limit)
+                    .map(byId::get)
                     .collect(Collectors.toList());
         }
 

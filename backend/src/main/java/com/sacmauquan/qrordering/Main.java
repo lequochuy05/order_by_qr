@@ -6,6 +6,7 @@ import org.springframework.cache.annotation.EnableCaching;
 
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main - Main class for the application.
@@ -14,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableCaching
 @EnableJpaAuditing
 @EnableAsync
+@EnableScheduling
 public class Main {
     public static void main(String[] args) {
         SpringApplication.run(Main.class, args);

@@ -5,6 +5,9 @@ import { orderService } from '../../../services/admin/orderService';
 import { paymentService } from '../../../services/admin/paymentService';
 import { printInvoice } from '../../../utils/invoiceGenerator';
 import { useWebSocket } from '../../../hooks/useWebSocket';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { toast } from 'react-hot-toast';
 
 const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
     const [voucherCode, setVoucherCode] = useState('');
@@ -18,9 +21,9 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const [payosData, setPayosData] = useState(null);
     const [payosStatus, setPayosStatus] = useState('idle'); // 'idle', 'waiting', 'success', 'expired', 'error'
     const [timeLeft, setTimeLeft] = useState(0);
-    const pollingRef = useRef(null);
     const finishingRef = useRef(false);
     const draftKey = order?.id ? `payment_draft_${order.id}` : null;
+    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
     const savePaymentDraft = useCallback((code, preview) => {
         if (!draftKey || !code || !preview?.voucherValid) return;
@@ -60,7 +63,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                 if (remaining <= 0) {
                     setPayosStatus('expired');
                     clearInterval(timer);
-                    if (pollingRef.current) clearInterval(pollingRef.current);
                 }
             }, 1000);
         }
@@ -103,7 +105,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             if (!code) clearPaymentDraft();
             return res;
 
-        } catch (_e) {
+        } catch {
             setError("Lỗi tính toán hóa đơn");
             return null;
         } finally {
@@ -136,9 +138,8 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     }, [table?.id, order?.id, isOpen]); // Reload preview when data changes but don't reset method
 
     useEffect(() => {
-        return () => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-        };
+        // Cleanup if needed
+        return () => {};
     }, []);
 
     const handleInputChange = (e) => {
@@ -177,28 +178,13 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                 savePaymentDraft(data.voucherCode, nextPreview);
             }
 
-            // Bắt đầu polling kiểm tra trạng thái (fallback nếu WebSocket chậm)
-            startPolling(data.transactionId);
+            // Real-time payment success is handled naturally via WebSocket listener below
         } catch (e) {
             setError(e.response?.data?.message || "Không thể tạo mã QR thanh toán");
             setPayosStatus('error');
         } finally {
             setPayosLoading(false);
         }
-    };
-
-    const startPolling = (transactionId) => {
-        if (pollingRef.current) clearInterval(pollingRef.current);
-        pollingRef.current = setInterval(async () => {
-            try {
-                const status = await paymentService.syncPaymentStatus(transactionId);
-                if (status.status === 'PAID') {
-                    handlePaymentSuccess(status);
-                }
-            } catch (e) {
-                console.error("Polling error:", e);
-            }
-        }, 3000);
     };
 
     const buildInvoiceOrder = useCallback((latestOrder, method) => {
@@ -257,7 +243,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         onClose();
     }, [order?.id, table, currentUser, paymentMethod, onPaymentSuccess, onClose, buildInvoiceOrder]);
 
-    const handlePaymentSuccess = useCallback((transactionData) => {
+    const handlePaymentSuccess = useCallback(() => {
         if (pollingRef.current) clearInterval(pollingRef.current);
         setPayosStatus('success');
         setPaymentMethod('PAYOS');
@@ -283,14 +269,14 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             await paymentService.cancelPaymentLink(payosData.transactionId, "Customer changed payment method");
             setPayosStatus('idle');
             setPayosData(null);
-            if (pollingRef.current) clearInterval(pollingRef.current);
         } catch (e) {
-            alert("Không thể hủy giao dịch PayOS");
+            toast.error("Không thể hủy giao dịch PayOS: " + (e.message || ""));
         }
     };
 
     const handleConfirmCashPay = async () => {
-        if (!confirm(`Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`)) return;
+        const confirmed = await confirm('Xác nhận thanh toán', `Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`);
+        if (!confirmed) return;
         try {
             const userId = currentUser?.userId;
             if (!userId) throw new Error('Không xác định được nhân viên thanh toán');
@@ -298,7 +284,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             await orderService.payOrder(order.id, userId, finalVoucher);
             await finishPayment('CASH');
         } catch (e) {
-            alert("Thanh toán thất bại: " + (e.response?.data?.message || e.message));
+            toast.error("Thanh toán thất bại: " + (e.response?.data?.message || e.message));
         }
     };
 
@@ -501,6 +487,13 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                     )}
                 </div>
             </div>
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+            />
         </div>
     );
 };

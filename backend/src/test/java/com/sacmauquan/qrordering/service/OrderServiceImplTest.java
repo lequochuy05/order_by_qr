@@ -8,12 +8,16 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import com.sacmauquan.qrordering.dto.OrderRequest;
 import com.sacmauquan.qrordering.model.Category;
@@ -58,9 +62,16 @@ class OrderServiceImplTest {
     OrderStateFactory orderStateFactory;
     @Mock
     NotificationService notificationService;
+    @Spy
+    MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @InjectMocks
     OrderServiceImpl orderService;
+
+    @BeforeEach
+    void setUp() {
+        orderService.initCounters();
+    }
 
     @Test
     void createOrderMergesMatchingUnpreparedItemForSameTable() {

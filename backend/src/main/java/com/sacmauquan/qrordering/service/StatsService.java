@@ -37,7 +37,7 @@ public class StatsService {
          * @param to End date
          * @return List of daily revenue statistics
          */
-        @Cacheable(value = "stats_revenue", key = "#from.toString() + #to.toString()")
+        @Cacheable(value = "stats_revenue", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.Revenue> getRevenue(LocalDate from, LocalDate to) {
                 return repo.revenueByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.Revenue(
@@ -54,7 +54,7 @@ public class StatsService {
          * @param to End date
          * @return List of employee performance metrics
          */
-        @Cacheable(value = "stats_emp_performance", key = "#from.toString() + #to.toString()")
+        @Cacheable(value = "stats_emp_performance", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.EmpPerformance> getEmployeePerformance(LocalDate from, LocalDate to) {
                 return repo.empPerformance(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.EmpPerformance(
@@ -89,7 +89,7 @@ public class StatsService {
          * @param to End date
          * @return List of popular menu items
          */
-        @Cacheable(value = "stats_top_dishes", key = "#from.toString() + #to.toString()")
+        @Cacheable(value = "stats_top_dishes", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.TopDish> getTopDishes(LocalDate from, LocalDate to) {
                 return repo.topDishes(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.TopDish(
@@ -109,7 +109,7 @@ public class StatsService {
          * @param to End date
          * @return List of daily sales quantity trends
          */
-        @Cacheable(value = "stats_dish_trend", key = "#from.toString() + #to.toString()")
+        @Cacheable(value = "stats_dish_trend", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.DishTrend> getDishTrend(LocalDate from, LocalDate to) {
                 return repo.dishTrendByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
                                 .map(r -> new StatsResponse.DishTrend(
@@ -177,6 +177,27 @@ public class StatsService {
                                                         estimatedQty);
                                 })
                                 .collect(Collectors.toList());
+        }
+
+        /**
+         * Composite endpoint — aggregates all dashboard stats into a single response.
+         * Reduces 7 frontend HTTP round-trips to 1.
+         * 
+         * @param from Start date for date-range stats
+         * @param to End date for date-range stats
+         * @return DashboardSummary containing all dashboard data
+         */
+        @Cacheable(value = "stats_dashboard", key = "#from.toString() + '_' + #to.toString()")
+        public StatsResponse.DashboardSummary getDashboardSummary(LocalDate from, LocalDate to) {
+                return new StatsResponse.DashboardSummary(
+                        getRevenue(from, to),
+                        getEmployeePerformance(from, to),
+                        getOrderDetails(from, to),
+                        getTopDishes(from, to),
+                        getDishTrend(from, to),
+                        getRevenueForecast(),
+                        getPopularDishesForecast()
+                );
         }
 
         /**

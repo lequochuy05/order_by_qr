@@ -38,26 +38,39 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />}>
               <Route element={<AdminLayout />}>
                 <Route path="/admin/dashboard" element={<Dashboard />} />
-                <Route path="/admin/history" element={<OrderHistoryPage />} />
-                <Route path="/admin/kitchen" element={<KitchenManager />} />
-                <Route path="/admin/tables" element={<TableManager />} />
-                <Route path="/admin/categories" element={<CategoryManager />} />
-                <Route path="/admin/menu" element={<MenuManager />} />
-                <Route path="/admin/combo" element={<ComboManager />} />
-                <Route path="/admin/voucher" element={<VoucherManager />} />
-                {/* <Route path="/admin/promotions" element={<div>Quản lý khuyến mãi</div>} /> */}
-                <Route path="/admin/staffs" element={<StaffManager />} />
-                <Route path="/admin/statistics" element={<div>Thống kê</div>} />
-                <Route path="/admin/statistics/revenue" element={<RevenueStats />} />
-                <Route path="/admin/statistics/top-dishes" element={<TopDishesStats />} />
-                <Route path="/admin/statistics/staff" element={<StaffStats />} />
                 <Route path="/admin/profile" element={<ProfilePage />} />
                 <Route path="/admin/settings" element={<SettingsPage />} />
+
+                {/* Hạng mục chỉ dành cho Quản lý (MANAGER) */}
+                <Route element={<ProtectedRoute allowedRoles={['MANAGER']} />}>
+                  <Route path="/admin/categories" element={<CategoryManager />} />
+                  <Route path="/admin/menu" element={<MenuManager />} />
+                  <Route path="/admin/combo" element={<ComboManager />} />
+                  <Route path="/admin/voucher" element={<VoucherManager />} />
+                  <Route path="/admin/staffs" element={<StaffManager />} />
+                  <Route path="/admin/statistics/revenue" element={<RevenueStats />} />
+                  <Route path="/admin/statistics/top-dishes" element={<TopDishesStats />} />
+                  <Route path="/admin/statistics/staff" element={<StaffStats />} />
+                </Route>
+
+                {/* Hạng mục dành cho Quản lý & Nhân viên phục vụ (MANAGER, STAFF) */}
+                <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
+                  <Route path="/admin/tables" element={<TableManager />} />
+                  <Route path="/admin/history" element={<OrderHistoryPage />} />
+                </Route>
+
+                {/* Hạng mục dành cho Quản lý & Bếp (MANAGER, CHEF) */}
+                <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>
+                  <Route path="/admin/kitchen" element={<KitchenManager />} />
+                </Route>
               </Route>
             </Route>
 
             {/* Điều hướng mặc định khi khách vào trang chủ */}
             <Route path="/" element={<Navigate to="/menu?tableCode=c21edc13d371" replace />} />
+
+            {/* Trang báo lỗi phân quyền */}
+            <Route path="/unauthorized" element={<div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-800"><h1 className="text-4xl font-extrabold mb-2 text-red-500">403</h1><p className="text-lg">Bạn không có quyền truy cập trang này!</p><a href="/admin/dashboard" className="mt-4 px-4 py-2 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors">Về trang chủ</a></div>} />
 
             {/* Trang lỗi 404 */}
             <Route path="*" element={<div>Trang không tồn tại</div>} />

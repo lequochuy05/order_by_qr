@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.config;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -30,6 +32,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
   private final JwtAuthFilter jwtAuthFilter;
+
+  @Value("${app.cors.allowed-origins}")
+  private String allowedOrigins;
 
   /**
    * Configures the security filter chain.
@@ -49,6 +54,10 @@ public class SecurityConfig {
 
             // ws
             .requestMatchers("/api/auth/**", "/ws/**", "/error").permitAll()
+
+            // Actuator health + prometheus metrics
+            .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
+
             // login
             .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/refresh", "/api/users/logout")
             .permitAll()
@@ -161,20 +170,26 @@ public class SecurityConfig {
 
   /**
    * Creates and configures a CorsConfigurationSource bean.
-   * 
+   * Allowed origins are read from app.cors.allowed-origins (comma-separated).
+   *
    * @return CorsConfigurationSource object
    */
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     var c = new CorsConfiguration();
-    c.setAllowedOrigins(List.of(
-        "http://localhost:5173",
-        "https://order-by-qr.vercel.app"));
+    c.setAllowedOrigins(parseAllowedOrigins(allowedOrigins));
     c.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     c.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
     c.setAllowCredentials(true);
     var source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", c);
     return source;
+  }
+
+  private static List<String> parseAllowedOrigins(String origins) {
+    if (!StringUtils.hasText(origins)) {
+      return List.of("http://localhost:5173");
+    }
+    return List.of(origins.split("\\s*,\\s*"));
   }
 }

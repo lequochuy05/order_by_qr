@@ -34,7 +34,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
          * @param status Target status
          * @return List of orders
          */
-        @EntityGraph(attributePaths = { "table", "orderItems" })
+        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.menuItem.category",
+            "orderItems.combo", "orderItems.orderItemOptions", "orderItems.orderItemOptions.itemOptionValue" })
         List<Order> findByStatus(Order.OrderStatus status);
 
         /**
@@ -45,7 +46,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
          * @param statuses List of target statuses
          * @return Optional containing the most recent order
          */
-        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.orderItemOptions" })
+        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.menuItem.category",
+            "orderItems.combo", "orderItems.orderItemOptions", "orderItems.orderItemOptions.itemOptionValue" })
         Optional<Order> findFirstByTableIdAndStatusInOrderByCreatedAtDesc(Long tableId,
                         List<Order.OrderStatus> statuses);
 
@@ -55,7 +57,8 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
          * @param statuses List of target statuses
          * @return List of orders
          */
-        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.combo" })
+        @EntityGraph(attributePaths = { "table", "orderItems", "orderItems.menuItem", "orderItems.menuItem.category",
+            "orderItems.combo", "orderItems.orderItemOptions", "orderItems.orderItemOptions.itemOptionValue" })
         List<Order> findByStatusIn(List<Order.OrderStatus> statuses);
 
         /**

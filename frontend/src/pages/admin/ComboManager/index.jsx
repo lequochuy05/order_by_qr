@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 import { comboService } from '../../../services/admin/comboService';
 import { menuItemService } from '../../../services/admin/menuService';
 import ManagementHeader from '../../../components/admin/common/ManagementHeader';
@@ -9,6 +10,8 @@ import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 
 const ComboManager = () => {
     const [combos, setCombos] = useState([]);
@@ -22,6 +25,7 @@ const ComboManager = () => {
     const [errors, setErrors] = useState({});
 
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
     const fetchData = useCallback(async (showLoading = false) => {
         if (showLoading) setLoading(true);
@@ -41,6 +45,7 @@ const ComboManager = () => {
 
     useWebSocket('/topic/combos', (message) => {
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+            playNotificationSound();
             fetchData();
         }
     });
@@ -71,11 +76,11 @@ const ComboManager = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Xác nhận xóa combo này?")) return;
+        const confirmed = await confirm('Xóa combo', 'Bạn có chắc chắn muốn xóa combo này?');
+        if (!confirmed) return;
         try {
             await comboService.delete(id);
             showSuccess("Đã xóa Combo thành công!");
-
             fetchData();
         } catch (err) {
             showError(err);
@@ -173,6 +178,13 @@ const ComboManager = () => {
             <StatusModal
                 isOpen={statusModal.isOpen} onClose={closeStatusModal}
                 type={statusModal.type} title={statusModal.title} message={statusModal.message}
+            />
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
             />
         </div>
     );

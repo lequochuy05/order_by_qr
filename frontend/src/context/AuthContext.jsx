@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
       if (window.location.pathname.startsWith('/admin')) {
         window.location.href = '/login';
       }
-    }, 12000000); // 200 minutes or adjusted as needed
+    }, 1200000); // 20 phút = 20 * 60 * 1000
   }, [logout]);
 
   // Khởi tạo bộ đếm theo dõi hoạt động người dùng

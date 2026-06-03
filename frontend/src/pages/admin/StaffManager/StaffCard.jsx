@@ -17,7 +17,7 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
 
   const getRoleColor = () => {
     switch (staff.role) {
-      case 'MANAGER': return 'bg-purple-100 text-purple-600';
+      case 'MANAGER': return 'bg-emerald-100 text-emerald-600';
       case 'CHEF': return 'bg-orange-100 text-orange-600';
       default: return 'bg-blue-100 text-blue-600';
     }

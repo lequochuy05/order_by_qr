@@ -146,7 +146,7 @@ public class DiscountService {
         }
 
         String cleanCode = code.trim().toUpperCase();
-        Voucher v = voucherRepo.findByCodeIgnoreCase(cleanCode).orElse(null);
+        VoucherRepository.VoucherValidationProjection v = voucherRepo.findProjectedByCodeIgnoreCase(cleanCode).orElse(null);
 
         if (v == null) {
             return new VoucherValidateResponse(cleanCode, "NOT_FOUND", BigDecimal.ZERO, null, false);
@@ -244,6 +244,34 @@ public class DiscountService {
      * Core math logic for calculating discount values based on voucher type.
      */
     private BigDecimal calculateDiscount(Voucher v, BigDecimal orderTotal) {
+        if (v.getType() == Voucher.VoucherType.FIXED_AMOUNT) {
+            return v.getDiscountAmount() != null ? v.getDiscountAmount() : BigDecimal.ZERO;
+        } else if (v.getType() == Voucher.VoucherType.PERCENTAGE) {
+            if (v.getDiscountPercent() == null || orderTotal == null)
+                return BigDecimal.ZERO;
+            return orderTotal.multiply(BigDecimal.valueOf(v.getDiscountPercent()))
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private String getVoucherStatus(VoucherRepository.VoucherValidationProjection v) {
+        if (!Boolean.TRUE.equals(v.getActive()))
+            return "INACTIVE";
+
+        LocalDateTime now = LocalDateTime.now();
+        if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
+            return "UPCOMING";
+        if (v.getValidTo() != null && now.isAfter(v.getValidTo()))
+            return "EXPIRED";
+
+        if (v.getUsageLimit() != null && v.getUsedCount() >= v.getUsageLimit())
+            return "EXHAUSTED";
+
+        return "ACTIVE";
+    }
+
+    private BigDecimal calculateDiscount(VoucherRepository.VoucherValidationProjection v, BigDecimal orderTotal) {
         if (v.getType() == Voucher.VoucherType.FIXED_AMOUNT) {
             return v.getDiscountAmount() != null ? v.getDiscountAmount() : BigDecimal.ZERO;
         } else if (v.getType() == Voucher.VoucherType.PERCENTAGE) {

@@ -3,6 +3,7 @@ import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 
 import { menuItemService } from '../../../services/admin/menuService';
 import { categoryService } from '../../../services/admin/categoryService';
@@ -12,6 +13,8 @@ import ManagementHeader from '../../../components/admin/common/ManagementHeader'
 import MenuCard from './MenuCard';
 import MenuModal from './MenuModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 
 const MenuManager = () => {
   const [items, setItems] = useState([]);
@@ -30,6 +33,7 @@ const MenuManager = () => {
 
   // Hook Status Modal
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+  const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
   // Load Categories
   useEffect(() => {
@@ -56,6 +60,7 @@ const MenuManager = () => {
   // WebSocket
   useWebSocket('/topic/menu', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      playNotificationSound();
       fetchItems();
     }
   });
@@ -86,13 +91,7 @@ const MenuManager = () => {
     } finally {
       setAiScanning(false);
     }
-  }, [preview, categories, showSuccess, showError]);
-
-  useEffect(() => {
-    const handler = () => handleAiScan();
-    window.addEventListener('aiScan', handler);
-    return () => window.removeEventListener('aiScan', handler);
-  }, [handleAiScan]);
+  }, [preview, showSuccess, showError]);
 
   // SUBMIT 
   const handleSubmit = async (e) => {
@@ -138,7 +137,8 @@ const MenuManager = () => {
 
   // DELETE
   const handleDelete = async (id) => {
-    if (!window.confirm("Xóa món ăn này?")) return;
+    const confirmed = await confirm('Xóa món ăn', 'Bạn có chắc chắn muốn xóa món ăn này?');
+    if (!confirmed) return;
     try {
       await menuItemService.delete(id);
       showSuccess("Đã xóa món ăn thành công");
@@ -221,6 +221,7 @@ const MenuManager = () => {
           const f = e.target.files[0];
           if (f) { setSelectedFile(f); setPreview(URL.createObjectURL(f)); }
         }}
+        onAiScan={handleAiScan}
       />
 
       <StatusModal
@@ -229,6 +230,13 @@ const MenuManager = () => {
         type={statusModal.type}
         title={statusModal.title}
         message={statusModal.message}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
       />
     </div>
   );

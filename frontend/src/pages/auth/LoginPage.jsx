@@ -95,7 +95,7 @@ const LoginPage = () => {
               />
             </div>
                 <div className="flex justify-end">
-                    <a href="#" className="text-xs text-purple-600 hover:underline">
+                    <a href="#" className="text-xs text-emerald-600 hover:underline">
                     Quên mật khẩu?
                     </a>
                 </div>
@@ -135,7 +135,7 @@ const LoginPage = () => {
         </div>
 
         <p className="text-center mt-8 text-sm text-gray-500">
-          Chưa có tài khoản? <a href="#" className="text-purple-600 font-bold hover:underline">Đăng ký ngay</a>
+          Chưa có tài khoản? <a href="#" className="text-emerald-600 font-bold hover:underline">Đăng ký ngay</a>
         </p>
       </div>
     </div>

@@ -55,7 +55,7 @@ const StaffStats = () => {
     }, [employees]);
 
     // Màu sắc cho biểu đồ (Top 1 -> Top 5 -> Khác)
-    const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#9ca3af'];
+    const COLORS = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#9ca3af'];
 
     // Tìm max revenue cho progress bar
     const maxRev = employees.length > 0

@@ -1,71 +1,76 @@
-# 📱 QROS
-Providing a modern interface, optimized speed, and a smooth experience for both customers (scanning QR codes to order) and administrators (managing the dashboard).
+# 📱 Giao diện người dùng QROS (React & Vite)
 
-## ✨ Key Features
-- **Customer QR Menu:** Quickly order via QR code, intuitive shopping cart, professional mobile UI.
+Cung cấp giao diện hiện đại, tối ưu hóa cao và trải nghiệm mượt mà cho cả khách hàng (quét mã QR để đặt hàng) và quản trị viên (quản lý bảng điều khiển). Hoàn toàn dựa trên sự kiện, loại bỏ việc thăm dò API truyền thống.
 
-- **Admin Dashboard:** Comprehensive management of categories, dishes, and real-time order tracking.
+## ✨ Các tính năng chính
 
-- **Offline AI Assistant:** Integrates AI image recognition technology (using YOLOv8 architecture running on **TensorFlow.js**) to recognize dishes and automatically fill in the dish name, price, and category ID without incurring Cloud API costs.
+- **Thực đơn QR dành cho khách hàng:** Đặt hàng nhanh chóng qua mã QR, giỏ hàng trực quan và giao diện người dùng ưu tiên thiết bị di động.
 
-- **Real-time Server:** Instantly displays new orders via WebSocket.
+- **Bảng điều khiển quản trị & Phân tích:** Quản lý toàn diện các danh mục, món ăn và nhân viên. Có các biểu đồ tương tác phong phú được hỗ trợ bởi **Recharts**.
 
-## 💻 End-User Technology
-- **Framework:** [React 19](https://react.dev/) (Vite) - Extremely impressive rendering speed, super-fast build.
+- **Kiến trúc hướng sự kiện (Không thăm dò):** Loại bỏ hoàn toàn logic `setInterval`. Cập nhật thời gian thực về trạng thái Thanh toán (PayOS) và đơn đặt hàng của Bếp được đẩy ngay lập tức qua **STOMP WebSockets**.
 
-- **State Management:** [Zustand](https://zustand-demo.pmnd.rs/) - Lightweight state management, eliminating the clutter of Redux.
+- **Trợ lý AI đàm thoại (Gemini):** Tích hợp Trợ lý trò chuyện thông minh để đưa ra các đề xuất theo ngữ cảnh cho khách hàng (dựa trên thời tiết, dựa trên thời gian).
+- **Thị giác máy tính ngoại tuyến (TensorFlow.js):** Tích hợp nhận dạng hình ảnh AI (YOLOv8) để nhận diện món ăn và tự động điền vào biểu mẫu mà không phát sinh chi phí API đám mây.
 
-- **User Interface:** [Tailwind CSS v4](https://tailwindcss.com/) - Modern responsive design.
+- **Tuân thủ UX doanh nghiệp:** Tuân thủ nghiêm ngặt "Quy tắc thiết kế Maestro" đảm bảo khả năng truy cập tối ưu (độ tương phản AA) và sự hài hòa màu sắc (chủ đề Xanh ngọc/Xanh lục bảo, loại bỏ các sắc thái Tím thông thường).
 
-- **AI Module:** [TensorFlow.js](https://www.tensorflow.org/js) - Loads and runs Neural networks directly in the local browser (Client-side computation).
+## 💻 Công nghệ sử dụng
+- **Khung phần mềm:** [React 19](https://react.dev/) (Vite) - HMR cực nhanh và các bản dựng được tối ưu hóa.
 
-- **Networking:** [Axios](https://axios-http.com/) integrates JWT for all requests.
+- **Quản lý trạng thái:** [Zustand](https://zustand-demo.pmnd.rs/) - Quản lý trạng thái toàn cục nhẹ, giảm thiểu việc truy cập props.
 
-- **Connection:** [StompJS](https://stomp-js.github.io/stompjs/) & [SockJS](https://github.com/sockjs/sockjs-client) for stable bidirectional connection.
+- **Giao diện người dùng:** [Tailwind CSS v4](https://tailwindcss.com/) - Thiết kế đáp ứng hiện đại, ưu tiên tiện ích.
+- **Trí tuệ nhân tạo & Phân tích:** [TensorFlow.js](https://www.tensorflow.org/js) (cho thị giác máy tính) & [Recharts](https://recharts.org/) (cho phân tích bảng điều khiển).
+
+- **Mạng:** [Axios](https://axios-http.com/) với bộ chặn JWT.
+
+- **Kết nối thời gian thực:** [StompJS](https://stomp-js.github.io/stompjs/) & [SockJS](https://github.com/sockjs/sockjs-client) để kết nối socket hai chiều ổn định.
 
 ---
 
-## 🚀 Initial Installation and Run Guide
+## 🚀 Thiết lập & Thực thi
 
-### 1. System Requirements
-- Environment: Node.js (v18 LTS or higher recommended).
+### 1. Yêu cầu hệ thống
+- Môi trường: Node.js (khuyến nghị phiên bản 18 LTS trở lên).
 
-- Package Manager: npm or yarn.
+- Trình quản lý gói: npm hoặc yarn.
 
-### 2. Installing Libraries (Dependencies)
-Clone the source code, specify the `frontend` directory and install:
+### 2. Cài đặt các thư viện phụ thuộc
 ```bash
 cd frontend
 npm install
 ```
+### 3. Biến môi trường
+Đảm bảo `.env.development` và `.env.production` được cấu hình đúng với URL API backend và URL WS ​​của bạn.
 
-### 3. Configuring AI Dish Classifier
-The AI-powered automatic dish entry feature in the Admin Dashboard requires loading model weights. 1. Training for food image recognition: Read the detailed instructions in the root directory `AI/README.md`.
+### 4. Cấu hình AI Dish Classifier (Tùy chọn)
+Tính năng nhận dạng hình ảnh ngoại tuyến (YOLOv8) yêu cầu trọng số mô hình.
 
-2. Place the resulting files (e.g., `model.json` and `.bin`) after training the AI, along with the metadata file `labels.json`, into the exact directory:
+1. Huấn luyện mô hình bằng cách sử dụng các tập lệnh Colab được tìm thấy trong `../AI/README.md`.
+
+2. Đặt các tệp kết quả (`model.json`, `.bin` và `labels.json`) vào:
 
 `public/models/dish-classifier/`
 
-3. Ensure your `labels.json` is a JSON map format that provides sufficient fields for `name`, `categoryid`, and `price` for the AI ​​module to extract and populate the form. (See example in the `AI/README.md` documentation).
-
-### 4. Starting the Dev Environment
-After completing the AI ​​data, run the project:
+### 5. Khởi động môi trường phát triển
 ```bash
 npm run dev
 ```
-Access the Frontend application via the default port: `http://localhost:5173`.
+Truy cập ứng dụng qua: `http://localhost:5173`.
 
 ---
 
-## 📁 System Directory Structure
+## 📁 Cấu trúc thư mục
 
 ```text
 src/
-├── components/ # Shared Components (Layout, UI, Data-table...)
-├── context/ # AuthContext manages internal validation status throughout
-├── hooks/ # Shared utility hooks (useWebsocket, useApi...)
-├── pages/ # Permission-granting Views (Auth, Customer flow, Dashboard)
-├── services/ # Services that call external APIs, configure Axios, and especially aiLocalService logic
-├── utils/ # Utils that handle pricing, text, datetime formatting
-└── App.jsx # Routing defines the overall layout of routes
+├── components/ # Các thành phần giao diện người dùng dùng chung (AiChatAssistant, Skeleton, Modals)
+├── context/ # Các nhà cung cấp ngữ cảnh toàn cục (AuthContext)
+├── hooks/ # Các hook tùy chỉnh (useWebsocket, useAdminPreferences)
+├── pages/ # Các chế độ xem dựa trên tuyến đường (Bảng điều khiển quản trị, Menu khách hàng)
+├── services/ # Tích hợp API bên ngoài, cấu hình Axios, logic AI
+├── stores/ # Các kho lưu trữ trạng thái (settingsStore, categoryStore)
+├── utils/ # Các hàm tiện ích (invoiceGenerator, formatters)
+└── App.jsx # Bố cục định tuyến chính
 ```

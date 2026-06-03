@@ -13,6 +13,23 @@ import java.time.*;
  * Includes logic for validating discount codes and atomic usage tracking.
  */
 public interface VoucherRepository extends JpaRepository<Voucher, Long> {
+    
+    interface VoucherValidationProjection {
+        String getCode();
+        Voucher.VoucherType getType();
+        java.math.BigDecimal getDiscountAmount();
+        Double getDiscountPercent();
+        Integer getUsageLimit();
+        Integer getUsedCount();
+        LocalDateTime getValidFrom();
+        LocalDateTime getValidTo();
+        Boolean getActive();
+    }
+
+    /**
+     * Finds a lightweight projection of a voucher by code.
+     */
+    Optional<VoucherValidationProjection> findProjectedByCodeIgnoreCase(String code);
 
     /**
      * Finds a voucher by code that is currently active, within its validity period, and hasn't exceeded its usage limit.

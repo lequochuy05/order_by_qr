@@ -2,6 +2,8 @@ package com.sacmauquan.qrordering.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,7 @@ import java.util.Map;
  * JwtService - Service for handling JSON Web Tokens (JWT).
  * Responsible for token generation, validation, and claim extraction.
  */
+@Slf4j
 @Service
 public class JwtService {
 
@@ -33,6 +36,22 @@ public class JwtService {
     this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     this.expirationMs = expirationMs;
     this.refreshExpirationMs = refreshExpirationMs;
+  }
+
+  /**
+   * Validates the JWT secret key length at startup.
+   * HMAC-SHA256 requires a 256-bit (32-byte) key. A shorter key silently causes
+   * weaker security. This check logs a warning but won't crash the application
+   * for backward compatibility.
+   */
+  @PostConstruct
+  public void validateSecretStrength() {
+    byte[] keyBytes = key.getEncoded();
+    if (keyBytes.length < 32) {
+      log.warn("JWT secret is only {} bytes — HMAC-SHA256 requires at least 32 bytes (256 bits) for full strength. "
+              + "Consider using a longer secret via the JWT_SECRET environment variable.",
+              keyBytes.length);
+    }
   }
 
   /**

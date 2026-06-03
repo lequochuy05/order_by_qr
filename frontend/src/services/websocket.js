@@ -7,7 +7,7 @@ class WebSocketService {
         this.client = null;
         this.connected = false;
         this.onConnectCallbacks = [];
-        this.connectListeners = new Set();
+        this.statusListeners = new Set();
         this.subscriptions = new Set();
     }
 
@@ -17,22 +17,24 @@ class WebSocketService {
 
         this.client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
-            connectHeaders: this.getConnectHeaders(),
+            connectHeaders: () => this.getConnectHeaders(),
             reconnectDelay: 5000,
             heartbeatIncoming: 10000,
             heartbeatOutgoing: 10000,
             onConnect: () => {
                 this.connected = true;
+                this.notifyStatusChange();
                 const callbacks = [...this.onConnectCallbacks];
                 this.onConnectCallbacks = [];
                 callbacks.forEach(cb => cb());
-                this.connectListeners.forEach(listener => listener());
             },
             onDisconnect: () => {
                 this.connected = false;
+                this.notifyStatusChange();
             },
             onWebSocketClose: () => {
                 this.connected = false;
+                this.notifyStatusChange();
             },
             onStompError: (frame) => {
                 console.error('WebSocket broker error:', frame.headers?.message || frame.body);
@@ -45,10 +47,15 @@ class WebSocketService {
         return this.connected && Boolean(this.client?.connected);
     }
 
+    notifyStatusChange() {
+        const status = this.isConnected();
+        this.statusListeners.forEach(listener => listener(status));
+    }
+
     addConnectListener(listener) {
         if (typeof listener !== 'function') return () => {};
-        this.connectListeners.add(listener);
-        return () => this.connectListeners.delete(listener);
+        this.statusListeners.add(listener);
+        return () => this.statusListeners.delete(listener);
     }
 
     getConnectHeaders() {
@@ -99,7 +106,7 @@ class WebSocketService {
 
     disconnect() {
         this.onConnectCallbacks = [];
-        this.connectListeners.clear();
+        this.statusListeners.clear();
         this.subscriptions.forEach(subscription => subscription.unsubscribe());
         this.subscriptions.clear();
         this.connected = false;

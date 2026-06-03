@@ -1,20 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react';
 import { orderService } from '../../../services/admin/orderService';
 import { useAuth } from '../../../context/AuthContext';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { toast } from 'react-hot-toast';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     const [items, setItems] = useState(order?.orderItems || []);
+    const [prevOrder, setPrevOrder] = useState(order);
     const [editingId, setEditingId] = useState(null);
     const [editVal, setEditVal] = useState({ quantity: 1, notes: '' });
 
-    // 3. Lấy role từ Context
     const { user } = useAuth();
     const isManager = user?.role === 'MANAGER';
+    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
-    useEffect(() => {
+    // Adjust state when order prop changes (React recommended pattern)
+    if (order !== prevOrder) {
+        setPrevOrder(order);
         setItems(order?.orderItems || []);
-    }, [order]);    
+    }    
 
     if (!isOpen || !table) return null;
 
@@ -22,17 +28,20 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
         try {
             await orderService.markItemPrepared(itemId);
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i));
+            toast.success("Đã hoàn tất chuẩn bị món");
             await onOrderUpdate();
-        } catch { alert("Lỗi cập nhật trạng thái"); }
+        } catch { toast.error("Lỗi cập nhật trạng thái"); }
     };
 
     const handleDelete = async (itemId) => {
-        if (!confirm("Hủy món này khỏi đơn?")) return;
+        const confirmed = await confirm('Hủy món', 'Bạn có chắc chắn muốn hủy món này khỏi đơn hàng?');
+        if (!confirmed) return;
         try {
             await orderService.deleteOrderItem(itemId);
             setItems(prev => prev.filter(i => i.id !== itemId));
+            toast.success("Đã hủy món thành công");
             await onOrderUpdate();
-        } catch { alert("Lỗi hủy món"); }
+        } catch { toast.error("Lỗi hủy món"); }
     };
 
     const startEdit = (item) => {
@@ -45,8 +54,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             await orderService.updateOrderItem(itemId, editVal);
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, ...editVal } : i));
             setEditingId(null);
+            toast.success("Cập nhật món thành công");
             await onOrderUpdate();
-        } catch { alert("Lỗi cập nhật món"); }
+        } catch { toast.error("Lỗi cập nhật món"); }
     };
 
     return (
@@ -148,6 +158,13 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                     })}
                 </div>
             </div>
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+            />
         </div>
     );
 };

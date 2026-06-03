@@ -2,7 +2,9 @@ package com.sacmauquan.qrordering.config;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -13,6 +15,8 @@ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -35,6 +39,14 @@ import lombok.RequiredArgsConstructor;
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    /**
+     * Topics requiring authenticated subscriptions.
+     *
+     * NOTE: /topic/tables is intentionally NOT in this map — it is a public topic
+     * so customers scanning a QR code at their table can subscribe without
+     * authentication and receive real-time order status, table state, and payment
+     * confirmation updates. The payload is minimal (status flags, not sensitive data).
+     */
     private static final Map<String, Set<String>> PROTECTED_TOPICS = Map.of(
             "/topic/kitchen", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
             "/topic/users", Set.of("ROLE_MANAGER"),
@@ -42,6 +54,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     /**
      * Registers STOMP endpoints for WebSocket connections.
@@ -51,21 +66,42 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(
-                        "http://localhost:5173",
-                        "https://order-by-qr.vercel.app")
+                .setAllowedOrigins(parseAllowedOrigins(allowedOrigins))
                 .withSockJS();
     }
 
     /**
+     * Parses a comma-separated origin string into an array, trimming whitespace.
+     */
+    private static String[] parseAllowedOrigins(String origins) {
+        if (!org.springframework.util.StringUtils.hasText(origins)) {
+            return new String[]{"http://localhost:5173"};
+        }
+        return origins.split("\\s*,\\s*");
+    }
+
+    /**
      * Configures the message broker for routing messages.
-     * 
+     * Sets up STOMP heartbeats (10s each direction) so that dropped connections
+     * are detected promptly rather than waiting for the next message send.
+     *
      * @param registry Message broker registry
      */
     @Override
     public void configureMessageBroker(@NonNull MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/topic");
+        registry.enableSimpleBroker("/topic")
+                .setHeartbeatValue(new long[]{10000, 10000})
+                .setTaskScheduler(heartbeatScheduler());
         registry.setApplicationDestinationPrefixes("/app");
+    }
+
+    /**
+     * Dedicated scheduler for STOMP heartbeat frames so broker heartbeats
+     * run on their own thread and don't contend with application tasks.
+     */
+    @Bean
+    public TaskScheduler heartbeatScheduler() {
+        return new ConcurrentTaskScheduler(Executors.newSingleThreadScheduledExecutor());
     }
 
     /**

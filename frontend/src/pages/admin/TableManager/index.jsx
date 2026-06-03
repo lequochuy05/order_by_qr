@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 import { useAuth } from '../../../context/AuthContext';
 
 import { tableService } from '../../../services/admin/tableService';
@@ -14,6 +15,8 @@ import OrderDetailModal from './OrderDetailModal';
 import AddItemModal from './AddItemModal';
 import PaymentModal from './PaymentModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 
 const TableManager = () => {
     const [tables, setTables] = useState([]);
@@ -29,6 +32,7 @@ const TableManager = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
     const { user } = useAuth();
     const userRole = user?.role || 'STAFF';
@@ -42,7 +46,8 @@ const TableManager = () => {
     };
 
     // === 1. Fetch Data (ĐÃ TỐI ƯU TỐC ĐỘ & FIX LỖI TIỀN ẢO) ===
-    const fetchTables = useCallback(async () => {
+    const fetchTables = useCallback(async (showLoading = false) => {
+        if (showLoading) setLoading(true);
         try {
             // 1. Fetch tables and active orders in parallel to reduce sequential blocking
             const [tableData, activeOrders] = await Promise.all([
@@ -64,15 +69,15 @@ const TableManager = () => {
             setOrders(newOrdersMap);
 
         } catch (e) { console.error("Error fetching tables/orders:", e); }
+        finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetchTables(); }, [fetchTables]);
+    useEffect(() => { fetchTables(true); }, [fetchTables]);
 
     // === 2. Realtime Updates ===
     useWebSocket('/topic/tables', (message) => {
-        // message đã được JSON.parse bởi wsService.
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-            // console.log("[Realtime] Data changed -> Reloading...");
+            playNotificationSound();
             fetchTables();
         }
     });
@@ -121,7 +126,8 @@ const TableManager = () => {
     };
 
     const handleDeleteTable = async (id) => {
-        if (!confirm("Xóa bàn này?")) return;
+        const confirmed = await confirm('Xóa bàn', 'Bạn có chắc chắn muốn xóa bàn này?');
+        if (!confirmed) return;
         try {
             await tableService.delete(id);
             showSuccess("Đã xóa bàn");
@@ -206,6 +212,13 @@ const TableManager = () => {
             />
 
             <StatusModal isOpen={statusModal.isOpen} onClose={closeStatusModal} type={statusModal.type} title={statusModal.title} message={statusModal.message} />
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+            />
         </div>
     );
 };

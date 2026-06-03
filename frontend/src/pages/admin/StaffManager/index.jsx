@@ -3,6 +3,7 @@ import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 import { useAuth } from '../../../context/AuthContext';
 
 import { staffService } from '../../../services/admin/staffService';
@@ -11,6 +12,8 @@ import ManagementHeader from '../../../components/admin/common/ManagementHeader'
 import StaffCard from './StaffCard';
 import StaffModal from './StaffModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 
 const StaffManager = () => {
   const [staffs, setStaffs] = useState([]);
@@ -24,6 +27,7 @@ const StaffManager = () => {
 
   // Hook Status Modal
   const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+  const { confirmModal, confirm, closeConfirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
 
   // Tải dữ liệu 
@@ -42,6 +46,7 @@ const StaffManager = () => {
   // WebSocket Realtime 
   useWebSocket('/topic/users', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      playNotificationSound();
       fetchStaffs();
     }
   });
@@ -118,7 +123,8 @@ const StaffManager = () => {
   };
   //  Xóa 
   const handleDelete = async (id) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa nhân viên này?")) return;
+    const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
+    if (!confirmed) return;
     try {
       await staffService.delete(id);
       showSuccess("Đã xóa nhân viên thành công!");
@@ -189,6 +195,13 @@ const StaffManager = () => {
         type={statusModal.type}
         title={statusModal.title}
         message={statusModal.message}
+      />
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import './AiChatAssistant.css';
 import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
 import { menuService } from '../../services/customer/menuService';
 
@@ -321,44 +322,6 @@ const AiChatAssistant = ({ hidden = false }) => {
         </div>
       )}
 
-      {/* Custom Animations */}
-      <style>{`
-        @keyframes slide-up {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes slide-down {
-          from { transform: translateY(0); opacity: 1; }
-          to { transform: translateY(100%); opacity: 0; }
-        }
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes bounce-gentle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .animate-slide-down {
-          animation: slide-down 0.2s ease-in forwards;
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out forwards;
-        }
-        .animate-bounce-gentle {
-          animation: bounce-gentle 2s ease-in-out infinite;
-        }
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-        .animate-blink {
-          animation: blink 0.8s ease-in-out infinite;
-        }
-      `}</style>
     </>
   );
 };

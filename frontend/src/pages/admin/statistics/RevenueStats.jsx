@@ -76,7 +76,7 @@ const RevenueStats = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <KpiItem title="Tổng doanh thu" value={fmtVND(kpi.totalRev)} color="text-orange-600" />
                         <KpiItem title="Tổng đơn hàng" value={kpi.totalOrd} color="text-blue-600" />
-                        <KpiItem title="Giá trị TB/Đơn" value={fmtVND(kpi.avg)} color="text-purple-600" />
+                        <KpiItem title="Giá trị TB/Đơn" value={fmtVND(kpi.avg)} color="text-teal-600" />
                     </div>
 
                     {/* 2. Biểu đồ */}

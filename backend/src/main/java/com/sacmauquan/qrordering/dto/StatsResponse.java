@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * Dashboard Stats Response - Data transfer objects for reporting and
@@ -56,5 +57,19 @@ public class StatsResponse {
                         String name,
                         String category,
                         Long estimatedQty) {
+        }
+
+        /**
+         * Composite response for the admin dashboard — aggregates all stats into a single payload.
+         * Reduces frontend round-trips from 7 API calls to 1.
+         */
+        public record DashboardSummary(
+                        List<Revenue> revenue,
+                        List<EmpPerformance> employees,
+                        List<OrderDetail> orders,
+                        List<TopDish> topDishes,
+                        List<DishTrend> dishTrend,
+                        List<RevenueForecast> revenueForecast,
+                        List<PopularDishForecast> popularDishesForecast) {
         }
 }

@@ -1,13 +1,24 @@
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useAdminPreferences } from '../../../hooks/useAdminPreferences';
-import { Bell, Menu, User, LogOut } from 'lucide-react';
+import { Bell, Menu, User, LogOut, Wifi, WifiOff } from 'lucide-react';
 import { fmtRole } from '../../../utils/formatters';
+import wsService from '../../../services/websocket';
 
 const AdminHeader = ({ toggleSidebar }) => {
-    const { user, logout } = useAuth(); // Lấy data từ AuthResponse
+    const { user, logout } = useAuth();
     const [preferences] = useAdminPreferences();
     const location = useLocation();
+
+    // WebSocket status badge
+    const [wsConnected, setWsConnected] = useState(() => wsService.isConnected());
+
+    useEffect(() => {
+        return wsService.addConnectListener((connected) => {
+            setWsConnected(connected);
+        });
+    }, []);
 
     const getPageTitle = (path) => {
         const titles = preferences.language === 'en' ? englishPageTitles : vietnamesePageTitles;
@@ -31,6 +42,19 @@ const AdminHeader = ({ toggleSidebar }) => {
 
             {/* User Actions */}
             <div className="flex items-center gap-5">
+                {/* WebSocket Status Badge */}
+                <div
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
+                        wsConnected
+                            ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400'
+                            : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
+                    }`}
+                    title={wsConnected ? 'WebSocket connected' : 'WebSocket disconnected'}
+                >
+                    {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+                    {wsConnected ? 'LIVE' : 'OFFLINE'}
+                </div>
+
                 <button className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg relative transition-colors dark:text-slate-400 dark:hover:bg-slate-800">
                     <Bell size={20} />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-950"></span>

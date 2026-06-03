@@ -21,4 +21,5 @@ public class CategoryResponse {
     private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private java.util.List<MenuItemResponse> menuItems;
 }

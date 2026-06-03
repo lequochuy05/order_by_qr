@@ -69,6 +69,7 @@ yarn-error.log*
 
 # === Docker & AI ===
 .agent/
+.codegraph/
 *.tar
 backend.tar
 frontend.tar

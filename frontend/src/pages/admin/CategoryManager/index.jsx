@@ -4,6 +4,7 @@ import { Loader2, Layers } from 'lucide-react';
 // Import Hook
 import { useWebSocket } from '../../../hooks/useWebSocket';
 import { useStatusModal } from '../../../hooks/useStatusModal';
+import { useConfirmModal } from '../../../hooks/useConfirmModal';
 
 // Import Service
 import { categoryService } from '../../../services/admin/categoryService';
@@ -13,6 +14,8 @@ import ManagementHeader from '../../../components/admin/common/ManagementHeader'
 import CategoryCard from './CategoryCard';
 import CategoryModal from './CategoryModal';
 import StatusModal from '../../../components/admin/common/StatusModal';
+import ConfirmModal from '../../../components/admin/common/ConfirmModal';
+import { playNotificationSound } from '../../../utils/notificationSound';
 
 const CategoryManager = () => {
     const [categories, setCategories] = useState([]);
@@ -31,6 +34,7 @@ const CategoryManager = () => {
 
     // === Hook Status Modal ===
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
 
     // === Tải dữ liệu ===
     const fetchCategories = useCallback(async (showLoading = false) => {
@@ -48,6 +52,7 @@ const CategoryManager = () => {
     // === WebSocket ===
     useWebSocket('/topic/categories', (message) => {
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+            playNotificationSound();
             fetchCategories();
         }
     });
@@ -102,7 +107,8 @@ const CategoryManager = () => {
 
     // === Xóa ===
     const handleDelete = async (id) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.")) return;
+        const confirmed = await confirm('Xóa danh mục', 'Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.');
+        if (!confirmed) return;
 
         try {
             await categoryService.delete(id);
@@ -193,6 +199,13 @@ const CategoryManager = () => {
                 type={statusModal.type}
                 title={statusModal.title}
                 message={statusModal.message}
+            />
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={closeConfirm}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
             />
         </div>
     );

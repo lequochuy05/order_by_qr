@@ -78,7 +78,7 @@ const TopDishesStats = () => {
         URL.revokeObjectURL(url);
     };
 
-    const COLORS_TOP = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#e11d48', '#84cc16', '#6366f1'];
+    const COLORS_TOP = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#f59e0b', '#06b6d4', '#e11d48', '#84cc16', '#6366f1'];
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">

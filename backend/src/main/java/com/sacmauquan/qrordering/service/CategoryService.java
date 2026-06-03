@@ -173,6 +173,9 @@ public class CategoryService {
      * Mapping helper to convert Category entity to CategoryResponse DTO.
      */
     private CategoryResponse convertToResponse(Category category) {
+        com.sacmauquan.qrordering.dto.MenuItemResponse.CategorySummary catSummary = new com.sacmauquan.qrordering.dto.MenuItemResponse.CategorySummary(
+                category.getId(), category.getName());
+
         return CategoryResponse.builder()
                 .id(category.getId())
                 .name(category.getName())
@@ -180,6 +183,39 @@ public class CategoryService {
                 .active(category.getActive())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
+                .menuItems(
+                        (!org.hibernate.Hibernate.isInitialized(category.getMenuItems())
+                                || category.getMenuItems() == null)
+                                        ? java.util.Collections.emptyList()
+                                        : category.getMenuItems().stream()
+                                                .map(item -> new com.sacmauquan.qrordering.dto.MenuItemResponse(
+                                                        item.getId(),
+                                                        item.getName(),
+                                                        item.getImg(),
+                                                        item.getPrice(),
+                                                        item.getActive(),
+                                                        catSummary,
+                                                        item.getItemOptions() == null
+                                                                ? java.util.Collections.emptyList()
+                                                                : item.getItemOptions().stream().map(
+                                                                        o -> new com.sacmauquan.qrordering.dto.MenuItemResponse.ItemOptionResponse(
+                                                                                o.getId(),
+                                                                                o.getName(),
+                                                                                o.isRequired(),
+                                                                                o.getMaxSelection(),
+                                                                                o.getOptionValues() == null
+                                                                                        ? java.util.Collections
+                                                                                                .emptyList()
+                                                                                        : o.getOptionValues().stream()
+                                                                                                .map(v -> new com.sacmauquan.qrordering.dto.MenuItemResponse.ItemOptionValueResponse(
+                                                                                                        v.getId(),
+                                                                                                        v.getName(),
+                                                                                                        v.getExtraPrice()))
+                                                                                                .toList()))
+                                                                        .toList(),
+                                                        item.getCreatedAt(),
+                                                        item.getUpdatedAt()))
+                                                .toList())
                 .build();
     }
 }

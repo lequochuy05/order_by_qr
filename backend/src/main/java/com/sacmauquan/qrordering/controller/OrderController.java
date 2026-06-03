@@ -50,11 +50,17 @@ public class OrderController {
     }
 
     /**
-     * Get all orders
+     * Get all orders — DEPRECATED: Use /history (paginated) instead.
+     * This endpoint is unsafe at scale. Limited to 100 records as a safety net.
      */
+    @Deprecated
     @GetMapping
     public ApiResponse<List<OrderResponse>> getAllOrders() {
-        return ApiResponse.success(orderService.getAllOrders());
+        List<OrderResponse> orders = orderService.getAllOrders();
+        if (orders.size() > 100) {
+            orders = orders.subList(0, 100);
+        }
+        return ApiResponse.success(orders);
     }
 
     /**

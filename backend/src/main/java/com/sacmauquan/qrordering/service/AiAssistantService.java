@@ -11,12 +11,16 @@ import com.sacmauquan.qrordering.repository.ComboRepository;
 import com.sacmauquan.qrordering.repository.MenuItemRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -31,13 +35,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AiAssistantService {
 
     private final MenuItemRepository menuItemRepository;
     private final ComboRepository comboRepository;
     private final CategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
+    private final RestTemplate restTemplate;
+    private final Counter aiRequestsCounter;
 
     @Value("${gemini.api-key}")
     private String geminiApiKey;
@@ -45,7 +50,25 @@ public class AiAssistantService {
     @Value("${gemini.api-url}")
     private String geminiApiUrl;
 
-    private RestTemplate restTemplate = new RestTemplate();
+    @SuppressWarnings("deprecation")
+    public AiAssistantService(MenuItemRepository menuItemRepository,
+                              ComboRepository comboRepository,
+                              CategoryRepository categoryRepository,
+                              ObjectMapper objectMapper,
+                              RestTemplateBuilder restTemplateBuilder,
+                              MeterRegistry meterRegistry) {
+        this.menuItemRepository = menuItemRepository;
+        this.comboRepository = comboRepository;
+        this.categoryRepository = categoryRepository;
+        this.objectMapper = objectMapper;
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(5))
+                .setReadTimeout(Duration.ofSeconds(15))
+                .build();
+        this.aiRequestsCounter = Counter.builder("ai.requests.total")
+                .description("Total number of AI chat requests processed")
+                .register(meterRegistry);
+    }
 
     /**
      * Processes a customer chat message:
@@ -62,6 +85,7 @@ public class AiAssistantService {
         List<Category> activeCategories = categoryRepository.findByActiveTrue();
         String menuContext = buildMenuContext(activeMenu, activeCombos, activeCategories);
         String geminiResponse = callGeminiApi(request, menuContext);
+        aiRequestsCounter.increment();
         return AiChatResponse.builder().reply(geminiResponse).build();
     }
 

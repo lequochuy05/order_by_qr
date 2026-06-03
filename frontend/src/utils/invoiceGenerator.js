@@ -1,4 +1,5 @@
 import { fmtVND } from "./formatters"
+import useSettingsStore from "../stores/settingsStore"
 
 /**
  * Tạo chuỗi HTML hóa đơn chuyên nghiệp
@@ -6,6 +7,14 @@ import { fmtVND } from "./formatters"
  */
 export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   if (!order) return '';
+
+  // Fetch restaurant info from Zustand store (cached)
+  const { settings } = useSettingsStore.getState();
+  const storeName = settings.restaurantName || 'Nhà hàng';
+  const storeAddress = settings.restaurantAddress || '';
+  const storePhone = settings.restaurantPhone || '';
+  const wifiSsid = settings.wifiSsid || '';
+  const wifiPassword = settings.wifiPassword || '';
 
   const items = order.orderItems || [];
 
@@ -76,6 +85,11 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
 
   const timeStr = paidAt ? new Date(paidAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
 
+  // Wifi footer section (only if wifi configured)
+  const wifiHtml = wifiSsid
+    ? `<div style="font-size: 11px; margin-top: 5px;">Wifi: ${wifiSsid}${wifiPassword ? ` / Pass: ${wifiPassword}` : ''}</div>`
+    : '';
+
   // 4. Template HTML hoàn chỉnh
   return `
   <!DOCTYPE html>
@@ -107,9 +121,9 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   <body>
     <div class="container">
       <div class="header">
-        <div class="store-name">SẮC MÀU QUÁN</div>
-        <div class="info">Đ/C: V328+9QR, Đại Minh, Đại Lộc, Quảng Nam</div>
-        <div class="info">SĐT: 0706.163.387</div>
+        <div class="store-name">${storeName}</div>
+        ${storeAddress ? `<div class="info">Đ/C: ${storeAddress}</div>` : ''}
+        ${storePhone ? `<div class="info">SĐT: ${storePhone}</div>` : ''}
         <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">HÓA ĐƠN THANH TOÁN</div>
       </div>
 
@@ -159,7 +173,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       
       <div class="footer">
         <div style="font-weight: bold;">CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!</div>
-        <div style="font-size: 11px; margin-top: 5px;">Wifi: SacMauQuan / Pass: 12345678</div>
+        ${wifiHtml}
       </div>
     </div>
 

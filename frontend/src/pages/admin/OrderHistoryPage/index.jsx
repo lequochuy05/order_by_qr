@@ -174,7 +174,7 @@ export default function OrderHistoryPage() {
         fetchOrders(); // Reload data
       }
     } catch (error) {
-      toast.error('Lỗi khi tra soát đơn hàng');
+      toast.error('Lỗi khi tra soát đơn hàng: ' + (error.response?.data?.detail || error.message || ''));
     }
   };
 

@@ -28,6 +28,9 @@ import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 import com.sacmauquan.qrordering.service.DiscountService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -53,6 +56,16 @@ public class PayosServiceImpl implements PayosService {
     private final TransactionSideEffectService sideEffects;
     private final DiscountService discountService;
     private final UserRepository userRepository;
+    private final MeterRegistry meterRegistry;
+
+    private Counter paymentsCompletedCounter;
+
+    @PostConstruct
+    public void initCounters() {
+        paymentsCompletedCounter = Counter.builder("payments.completed")
+                .description("Total number of successful PayOS payment completions")
+                .register(meterRegistry);
+    }
 
     @Value("${app.frontend.base-url}")
     private String frontendUrl;
@@ -194,7 +207,7 @@ public class PayosServiceImpl implements PayosService {
     @Override
     @Transactional
     @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-            "stats_dish_trend" }, allEntries = true)
+            "stats_dish_trend", "stats_dashboard", "order_by_id", "order_stats" }, allEntries = true)
     public PaymentTransaction syncPaymentStatus(@NonNull Long transactionId) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
@@ -225,7 +238,7 @@ public class PayosServiceImpl implements PayosService {
     @Override
     @Transactional
     @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-            "stats_dish_trend" }, allEntries = true)
+            "stats_dish_trend", "stats_dashboard", "order_by_id", "order_stats" }, allEntries = true)
     public void processWebhook(Webhook webhook) {
         // Handle confirm URL test from PayOS dashboard
         if ("00".equals(webhook.getCode()) && webhook.getData() != null
@@ -311,6 +324,7 @@ public class PayosServiceImpl implements PayosService {
 
         // Notify frontend in real-time
         notificationService.notifyPaymentSuccess(order.getId(), transaction.getId());
+        paymentsCompletedCounter.increment();
     }
 
     private PayosCreateResponse convertToCreateResponse(PaymentTransaction tx) {

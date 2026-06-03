@@ -20,7 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -62,9 +67,23 @@ public class OrderServiceImpl implements OrderService {
     private final PayosService payosService;
     private final OrderStateFactory orderStateFactory;
     private final NotificationService notificationService;
+    private final MeterRegistry meterRegistry;
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    private Counter ordersCreatedCounter;
+    private Counter ordersCompletedCounter;
+
+    @PostConstruct
+    public void initCounters() {
+        ordersCreatedCounter = Counter.builder("orders.created")
+                .description("Total number of orders created (including merged sessions)")
+                .register(meterRegistry);
+        ordersCompletedCounter = Counter.builder("orders.completed")
+                .description("Total number of orders marked as COMPLETED")
+                .register(meterRegistry);
+    }
 
     /**
      * Fetches all orders with optimized details pre-fetching.
@@ -88,6 +107,11 @@ public class OrderServiceImpl implements OrderService {
 
             if (!isCountQuery) {
                 root.fetch("table", JoinType.LEFT);
+                var itemsFetch = root.fetch("orderItems", JoinType.LEFT);
+                itemsFetch.fetch("menuItem", JoinType.LEFT).fetch("category", JoinType.LEFT);
+                itemsFetch.fetch("combo", JoinType.LEFT);
+                var optionsFetch = itemsFetch.fetch("orderItemOptions", JoinType.LEFT);
+                optionsFetch.fetch("itemOptionValue", JoinType.LEFT);
             }
 
             List<Predicate> predicates = buildPredicates(root, query, cb, status, startDate, endDate, orderId,
@@ -146,6 +170,7 @@ public class OrderServiceImpl implements OrderService {
      * period.
      */
     @Override
+    @Cacheable(value = "order_stats", key = "T(String).valueOf(#status) + '_' + T(String).valueOf(#startDate) + '_' + T(String).valueOf(#endDate) + '_' + T(String).valueOf(#orderId) + '_' + T(String).valueOf(#tableNumber)")
     public Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
             String tableNumber) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -197,15 +222,37 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Updates order status by delegating to specialized OrderState handlers.
+     * Validates the transition against the state matrix before applying.
+     * <p>
+     * Only evicts the tables cache (status changes don't alter financial aggregates).
+     * Stats caches are evicted on payment completion (payOrder / confirmPaid).
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance", "stats_dish_trend" }, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = "tables", allEntries = true),
+        @CacheEvict(value = "order_by_id", key = "#id"),
+        @CacheEvict(value = "order_stats", allEntries = true)
+    })
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
-        OrderState state = orderStateFactory.getState(status.toUpperCase());
+        Order.OrderStatus targetStatus;
+        try {
+            targetStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order status: " + status);
+        }
+
+        // Validate transition via the state matrix
+        try {
+            orderStateFactory.validateTransition(order.getStatus(), targetStatus);
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+
+        OrderState state = orderStateFactory.getState(targetStatus);
         state.handleRequest(order);
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
@@ -229,7 +276,11 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = "tables", allEntries = true),
+        @CacheEvict(value = "order_by_id", allEntries = true),
+        @CacheEvict(value = "order_stats", allEntries = true)
+    })
     public OrderResponse createOrder(@NonNull OrderRequest req) {
         if ((req.getItems() == null || req.getItems().isEmpty()) &&
                 (req.getCombos() == null || req.getCombos().isEmpty())) {
@@ -267,6 +318,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
+        ordersCreatedCounter.increment();
         log.info("Order processed for Table {}: ID #{}", table.getTableNumber(), saved.getId());
         return convertToResponse(saved);
     }
@@ -404,8 +456,12 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-            "stats_dish_trend" }, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+                "stats_dish_trend", "stats_dashboard" }, allEntries = true),
+        @CacheEvict(value = "order_by_id", key = "#id"),
+        @CacheEvict(value = "order_stats", allEntries = true)
+    })
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -447,6 +503,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
+        ordersCompletedCounter.increment();
         log.info("Order #{} settled via CASH by Staff Member: {}", id, currentUser.getFullName());
 
         return "Order settled successfully";
@@ -521,8 +578,12 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-            "stats_dish_trend" }, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+                "stats_dish_trend", "stats_dashboard" }, allEntries = true),
+        @CacheEvict(value = "order_by_id", key = "#id"),
+        @CacheEvict(value = "order_stats", allEntries = true)
+    })
     public OrderResponse confirmPaid(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -541,6 +602,7 @@ public class OrderServiceImpl implements OrderService {
 
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
+        ordersCompletedCounter.increment();
         return convertToResponse(saved);
     }
 
@@ -549,8 +611,12 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     @Transactional
-    @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-            "stats_dish_trend" }, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
+                "stats_dish_trend", "stats_dashboard" }, allEntries = true),
+        @CacheEvict(value = "order_by_id", key = "#id"),
+        @CacheEvict(value = "order_stats", allEntries = true)
+    })
     public OrderResponse cancelOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -573,6 +639,7 @@ public class OrderServiceImpl implements OrderService {
      * Finds a detailed order view by ID.
      */
     @Override
+    @Cacheable(value = "order_by_id", key = "#id")
     public OrderResponse getOrderById(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));

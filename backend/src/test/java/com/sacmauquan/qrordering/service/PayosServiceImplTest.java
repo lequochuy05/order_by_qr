@@ -30,6 +30,8 @@ import com.sacmauquan.qrordering.repository.OrderRepository;
 import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
 import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.service.impl.PayosServiceImpl;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
@@ -56,13 +58,16 @@ class PayosServiceImplTest {
     @Mock
     UserRepository userRepository;
 
+    MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
     PayosServiceImpl payosService;
 
     @BeforeEach
     void setUp() {
         payosService = new PayosServiceImpl(payOS, orderRepository, transactionRepository, tableRepository,
-                notificationService, sideEffects, discountService, userRepository);
+                notificationService, sideEffects, discountService, userRepository, meterRegistry);
         ReflectionTestUtils.setField(payosService, "frontendUrl", "http://localhost:5173");
+        payosService.initCounters();
     }
 
     @Test
