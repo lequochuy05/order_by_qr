@@ -17,7 +17,10 @@ class WebSocketService {
 
         this.client = new Client({
             webSocketFactory: () => new SockJS(wsUrl),
-            connectHeaders: () => this.getConnectHeaders(),
+            connectHeaders: this.getConnectHeaders(),
+            beforeConnect: (client) => {
+                client.connectHeaders = this.getConnectHeaders();
+            },
             reconnectDelay: 5000,
             heartbeatIncoming: 10000,
             heartbeatOutgoing: 10000,

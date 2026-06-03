@@ -87,37 +87,31 @@ const Dashboard = () => {
                     if (Array.isArray(ordersArr)) {
                         const completed = ordersArr.filter(o => o.status === 'PAID').length;
                         setTodayOrders({ total: ordersArr.length, completed });
-                        const sorted = [...ordersArr].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                        const sorted = [...ordersArr].sort((a, b) => new Date(b.paymentTime || b.createdAt) - new Date(a.paymentTime || a.createdAt));
                         setRecentOrders(sorted.slice(0, 5));
                     }
                 }
 
-                // 4. Top Dishes (server-side aggregation)
+                // 4. Top Dishes & 5. Category shares (server-side aggregation)
                 if (topDishesData.status === 'fulfilled') {
                     const dishes = topDishesData.value;
                     setTopDishes(Array.isArray(dishes) ? dishes.slice(0, 5) : []);
-                }
 
-                // 5. Category shares from 7-day orders
-                if (past7OrdersData.status === 'fulfilled') {
-                    const ordersLast7 = past7OrdersData.value;
-                    if (Array.isArray(ordersLast7)) {
+                    if (Array.isArray(dishes)) {
                         const catMap = {};
-                        ordersLast7.forEach(order => {
-                            if (order.status === 'CANCELLED') return;
-                            if (order.orderItems) {
-                                order.orderItems.forEach(item => {
-                                    const qty = item.quantity || 0;
-                                    const price = item.unitPrice || 0;
-                                    const catName = item.menuItem?.category?.name || (item.combo ? 'Combo' : 'Khác');
-                                    if (!catMap[catName]) catMap[catName] = 0;
-                                    catMap[catName] += (qty * price);
-                                });
-                            }
+                        dishes.forEach(dish => {
+                            const catName = dish.category || 'Khác';
+                            if (!catMap[catName]) catMap[catName] = 0;
+                            catMap[catName] += (dish.totalRevenue || 0);
                         });
                         const pieData = Object.keys(catMap).map(k => ({ name: k, value: catMap[k] }));
                         setCategoryShares(pieData);
                     }
+                }
+
+                // 5. Category shares handled in step 4 now
+                if (past7OrdersData.status === 'fulfilled') {
+                    // Just keeping this block to avoid unused promise, but logic moved to step 4
                 }
 
                 // 6. Forecasts
@@ -361,11 +355,11 @@ const Dashboard = () => {
                                         <p className="font-semibold text-slate-800 line-clamp-1" title={dish.name}>
                                             {dish.name.length > 18 ? dish.name.substring(0, 18) + '...' : dish.name}
                                         </p>
-                                        <p className="text-xs text-slate-500">Đã bán: <span className="font-medium">{dish.quantity}</span></p>
+                                        <p className="text-xs text-slate-500">Đã bán: <span className="font-medium">{dish.totalQty}</span></p>
                                     </div>
                                 </div>
                                 <div className="text-right shrink-0">
-                                    <p className="text-sm font-bold text-slate-800">{fmtVND(dish.revenue)}</p>
+                                    <p className="text-sm font-bold text-slate-800">{fmtVND(dish.totalRevenue)}</p>
                                 </div>
                             </div>
                         ))}
@@ -383,7 +377,7 @@ const Dashboard = () => {
                             <div key={idx} className="flex justify-between items-start p-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-xl transition-colors">
                                 <div>
                                     <p className="text-sm font-semibold text-slate-700">Đơn #{order.id}</p>
-                                    <p className="text-xs text-slate-500">{order.table ? `Bàn ${order.table.tableNumber}` : 'Mang đi'} • {fmtTime(order.createdAt)}</p>
+                                    <p className="text-xs text-slate-500">{order.tableNumber ? `Bàn ${order.tableNumber}` : 'Mang đi'} • {fmtTime(order.paymentTime || order.createdAt)}</p>
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-1">
                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${fmtStatus('order', order.status).color}`}>

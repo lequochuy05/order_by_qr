@@ -188,7 +188,7 @@ public class SecurityConfig {
 
   private static List<String> parseAllowedOrigins(String origins) {
     if (!StringUtils.hasText(origins)) {
-      return List.of("http://localhost:5173");
+      return List.of("http://localhost:5173", "https://order-by-qr.vercel.app");
     }
     return List.of(origins.split("\\s*,\\s*"));
   }

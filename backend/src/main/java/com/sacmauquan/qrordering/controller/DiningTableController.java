@@ -90,4 +90,15 @@ public class DiningTableController {
         tableService.delete(id);
         return ApiResponse.success("Table deleted successfully", null);
     }
+
+    /**
+     * Regenerates the QR code for an existing table.
+     * 
+     * @param id Table ID
+     * @return Updated DiningTableResponse object
+     */
+    @PostMapping("/{id}/regenerate-qr")
+    public ApiResponse<DiningTableResponse> regenerateQrCode(@PathVariable @NonNull Long id) {
+        return ApiResponse.success("QR Code regenerated successfully", tableService.regenerateQrCode(id));
+    }
 }

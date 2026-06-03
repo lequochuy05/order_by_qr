@@ -18,7 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 /**
- * DiningTableService - Manages dining table lifecycle, availability status, and automated QR code generation.
+ * DiningTableService - Manages dining table lifecycle, availability status, and
+ * automated QR code generation.
  */
 @Slf4j
 @Service
@@ -107,7 +108,8 @@ public class DiningTableService {
     }
 
     /**
-     * Registers a new dining table and automatically generates its unique QR code and Cloudinary storage link.
+     * Registers a new dining table and automatically generates its unique QR code
+     * and Cloudinary storage link.
      * 
      * @param req Table creation request
      * @return Created table details
@@ -118,12 +120,12 @@ public class DiningTableService {
         if (repo.existsByTableNumber(req.getTableNumber())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
         }
-        
+
         String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
         Map<String, String> qrMedia = generateQRMedia(tableCode);
         sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
                 "delete rolled back table QR media " + tableCode);
-        
+
         DiningTable table = DiningTable.builder()
                 .tableNumber(req.getTableNumber())
                 .capacity(req.getCapacity())
@@ -132,18 +134,19 @@ public class DiningTableService {
                 .qrCodeUrl(qrMedia.get("url"))
                 .qrCodePublicId(qrMedia.get("publicId"))
                 .build();
-        
+
         DiningTable savedTable = repo.save(Objects.requireNonNull(table));
         notificationService.notifyTableChange();
         return convertToResponse(savedTable);
     }
 
     /**
-     * Internal helper to generate a QR code pointing to the ordering URL and upload it to cloud storage.
+     * Internal helper to generate a QR code pointing to the ordering URL and upload
+     * it to cloud storage.
      */
     private Map<String, String> generateQRMedia(String tableCode) {
         try {
-            String qrContent = frontendBaseUrl + "/order?tableCode=" + tableCode;
+            String qrContent = frontendBaseUrl + "/menu?tableCode=" + tableCode;
             byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
             String folder = "order_by_qr/tables";
             String publicId = "qr_" + tableCode;
@@ -160,7 +163,7 @@ public class DiningTableService {
     /**
      * Updates table configuration such as capacity or display number.
      * 
-     * @param id Table ID
+     * @param id  Table ID
      * @param req Update request
      * @return Updated table details
      */
@@ -180,6 +183,38 @@ public class DiningTableService {
         DiningTable saved = repo.save(table);
         notificationService.notifyTableChange();
         return convertToResponse(saved);
+    }
+
+    /**
+     * Regenerates the QR code for a specific table.
+     * Useful when the base URL or path changes.
+     *
+     * @param id Table ID
+     * @return Updated table details with new QR code
+     */
+    @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
+    public DiningTableResponse regenerateQrCode(@NonNull Long id) {
+        DiningTable table = getById(id);
+
+        if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
+            String oldPublicId = table.getQrCodePublicId();
+            sideEffects.afterCommit(() -> {
+                try {
+                    imageManagerService.delete(oldPublicId);
+                } catch (Exception e) {
+                    log.error("Failed to delete old QR code", e);
+                }
+            }, "delete old table QR media " + id);
+        }
+
+        Map<String, String> qrMedia = generateQRMedia(table.getTableCode());
+        table.setQrCodeUrl(qrMedia.get("url"));
+        table.setQrCodePublicId(qrMedia.get("publicId"));
+
+        DiningTable savedTable = repo.save(table);
+        notificationService.notifyTableChange();
+        return convertToResponse(savedTable);
     }
 
     /**

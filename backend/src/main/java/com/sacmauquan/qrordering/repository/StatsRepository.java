@@ -30,6 +30,7 @@ public interface StatsRepository extends Repository<Order, Long> {
   interface EmpPerformanceStats {
     Long getId();
     String getFullName();
+    String getAvatarUrl();
     Long getOrders();
     BigDecimal getRevenue();
   }
@@ -42,6 +43,7 @@ public interface StatsRepository extends Repository<Order, Long> {
     Instant getPaymentTime();
     String getEmpName();
     BigDecimal getTotalAmount();
+    String getTableNumber();
   }
 
   /**
@@ -91,14 +93,14 @@ public interface StatsRepository extends Repository<Order, Long> {
    * @return List of employee performance metrics
    */
   @Query(value = """
-      SELECT u.id AS id, u.full_name AS fullName,
+      SELECT u.id AS id, u.full_name AS fullName, u.avatar_url AS avatarUrl,
              COUNT(o.id) AS orders,
              SUM(o.total_amount) AS revenue
       FROM orders o
       JOIN users u ON u.id = o.paid_by
       WHERE o.status = 'COMPLETED'
         AND o.payment_time BETWEEN :from AND :to
-      GROUP BY u.id, u.full_name
+      GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY revenue DESC
       """, nativeQuery = true)
   List<EmpPerformanceStats> empPerformance(@Param("from") Instant from, @Param("to") Instant to);
@@ -112,9 +114,11 @@ public interface StatsRepository extends Repository<Order, Long> {
    */
   @Query(value = """
       SELECT o.id AS id, o.payment_time AS paymentTime,
-             COALESCE(u.full_name, '—') AS empName, o.total_amount AS totalAmount
+             COALESCE(u.full_name, '—') AS empName, o.total_amount AS totalAmount,
+             dt.table_number AS tableNumber
       FROM orders o
       LEFT JOIN users u ON u.id = o.paid_by
+      LEFT JOIN tables dt ON dt.id = o.table_id
       WHERE o.status = 'COMPLETED'
         AND o.payment_time BETWEEN :from AND :to
       ORDER BY o.payment_time DESC

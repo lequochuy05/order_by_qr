@@ -60,6 +60,7 @@ public class StatsService {
                                 .map(r -> new StatsResponse.EmpPerformance(
                                                 r.getId(),
                                                 r.getFullName(),
+                                                r.getAvatarUrl(),
                                                 r.getOrders(),
                                                 r.getRevenue()))
                                 .collect(Collectors.toList());
@@ -78,7 +79,8 @@ public class StatsService {
                                                 r.getId(),
                                                 r.getPaymentTime(),
                                                 r.getEmpName(),
-                                                r.getTotalAmount()))
+                                                r.getTotalAmount(),
+                                                r.getTableNumber()))
                                 .collect(Collectors.toList());
         }
 

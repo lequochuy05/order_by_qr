@@ -45,7 +45,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      * NOTE: /topic/tables is intentionally NOT in this map — it is a public topic
      * so customers scanning a QR code at their table can subscribe without
      * authentication and receive real-time order status, table state, and payment
-     * confirmation updates. The payload is minimal (status flags, not sensitive data).
+     * confirmation updates. The payload is minimal (status flags, not sensitive
+     * data).
      */
     private static final Map<String, Set<String>> PROTECTED_TOPICS = Map.of(
             "/topic/kitchen", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
@@ -75,7 +76,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     private static String[] parseAllowedOrigins(String origins) {
         if (!org.springframework.util.StringUtils.hasText(origins)) {
-            return new String[]{"http://localhost:5173"};
+            return new String[] { "http://localhost:5173", "https://order-by-qr.vercel.app" };
         }
         return origins.split("\\s*,\\s*");
     }
@@ -90,7 +91,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(@NonNull MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/topic")
-                .setHeartbeatValue(new long[]{10000, 10000})
+                .setHeartbeatValue(new long[] { 10000, 10000 })
                 .setTaskScheduler(heartbeatScheduler());
         registry.setApplicationDestinationPrefixes("/app");
     }

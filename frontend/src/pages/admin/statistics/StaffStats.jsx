@@ -131,13 +131,24 @@ const StaffStats = () => {
                                     )}
 
                                     <div className="flex items-center gap-4 mb-4">
-                                        {/* Avatar giả lập màu sắc theo thứ hạng */}
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-sm text-white
-                                            ${idx === 0 ? 'bg-yellow-500' :
-                                                idx === 1 ? 'bg-gray-400' :
-                                                    idx === 2 ? 'bg-orange-400' : 'bg-blue-100 text-blue-600'}`}>
-                                            {emp.fullName ? emp.fullName.charAt(0).toUpperCase() : '?'}
-                                        </div>
+                                        {/* Avatar */}
+                                        {emp.avatarUrl ? (
+                                            <img
+                                                src={emp.avatarUrl}
+                                                alt={emp.fullName}
+                                                className={`w-12 h-12 rounded-full object-cover shadow-sm ring-2
+                                                    ${idx === 0 ? 'ring-yellow-400' :
+                                                        idx === 1 ? 'ring-gray-300' :
+                                                            idx === 2 ? 'ring-orange-300' : 'ring-blue-100'}`}
+                                            />
+                                        ) : (
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold shadow-sm text-white
+                                                ${idx === 0 ? 'bg-yellow-500' :
+                                                    idx === 1 ? 'bg-gray-400' :
+                                                        idx === 2 ? 'bg-orange-400' : 'bg-blue-100 text-blue-600'}`}>
+                                                {emp.fullName ? emp.fullName.charAt(0).toUpperCase() : '?'}
+                                            </div>
+                                        )}
                                         <div>
                                             <h4 className="font-bold text-gray-800 text-lg line-clamp-1">{emp.fullName}</h4>
                                             <p className="text-sm text-gray-500">{emp.orders} đơn hàng</p>

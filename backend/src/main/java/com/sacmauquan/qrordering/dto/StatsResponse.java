@@ -20,6 +20,7 @@ public class StatsResponse {
         public record EmpPerformance(
                         Long id,
                         String fullName,
+                        String avatarUrl,
                         Long orders,
                         BigDecimal revenue) {
         }
@@ -28,7 +29,8 @@ public class StatsResponse {
                         Long id,
                         Instant paymentTime,
                         String empName,
-                        BigDecimal totalAmount) {
+                        BigDecimal totalAmount,
+                        String tableNumber) {
         }
 
         public record TopDish(

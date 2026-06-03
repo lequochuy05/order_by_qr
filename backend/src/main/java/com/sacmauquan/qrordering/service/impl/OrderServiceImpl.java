@@ -181,14 +181,18 @@ public class OrderServiceImpl implements OrderService {
 
         cq.multiselect(
                 cb.count(root),
-                cb.coalesce(cb.sum(root.get("totalAmount")), BigDecimal.ZERO))
-                .where(cb.and(predicates.toArray(new Predicate[0])));
+                cb.coalesce(cb.sum(root.get("totalAmount")), BigDecimal.ZERO));
+
+        if (!predicates.isEmpty()) {
+            cq.where(cb.and(predicates.toArray(new Predicate[0])));
+        }
 
         Object[] result = entityManager.createQuery(cq).getSingleResult();
 
-        return Map.of(
-                "totalOrders", result[0],
-                "totalRevenue", result[1]);
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalOrders", result[0]);
+        stats.put("totalRevenue", result[1]);
+        return stats;
     }
 
     @Override
