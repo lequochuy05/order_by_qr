@@ -1,23 +1,97 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import './AiChatAssistant.css';
-import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, User } from 'lucide-react';
 import { menuService } from '../../services/customer/menuService';
 
-const WELCOME_MESSAGE = {
-  role: 'assistant',
-  content: '👋 Tôi là Trợ lý Sắc Màu, sẵn sàng giúp bạn chọn món ngon. Bạn muốn ăn gì hôm nay?'
+const AI_COPY = {
+  vi: {
+    welcome: 'Xin chào! Tôi có thể giúp gì cho bạn?',
+    title: 'Trợ lý',
+    online: 'Online',
+    openLabel: 'Mở trợ lý AI',
+    openTitle: 'Kéo để đổi vị trí, chạm để mở trợ lý',
+    closeLabel: 'Đóng trò chuyện',
+    sendLabel: 'Gửi tin nhắn',
+    placeholder: 'Hỏi món, combo, danh mục...',
+    fallbackReply: 'Xin lỗi, tôi không thể trả lời lúc này.',
+    errorReply: 'Xin lỗi, đã có lỗi xảy ra. Bạn thử hỏi lại nhé!',
+    suggestions: ['Gợi ý món ngon đi', 'Có combo nào?', 'Có danh mục gì?']
+  },
+  en: {
+    welcome: 'Hi! How can I help you today?',
+    title: 'Assistant',
+    online: 'Online',
+    openLabel: 'Open AI assistant',
+    openTitle: 'Drag to move, tap to open assistant',
+    closeLabel: 'Close chat',
+    sendLabel: 'Send message',
+    placeholder: 'Ask about dishes, combos, categories...',
+    fallbackReply: 'Sorry, I cannot answer right now.',
+    errorReply: 'Sorry, something went wrong. Please try again.',
+    suggestions: ['Recommend something tasty', 'Any combos?', 'What categories are available?']
+  }
 };
 
-const AiChatAssistant = ({ hidden = false }) => {
+const LAUNCHER_SIZE = 64;
+const LAUNCHER_MARGIN = 12;
+const LAUNCHER_STORAGE_KEY = 'customer_ai_chat_launcher_position';
+
+const clampLauncherPosition = (position) => {
+  if (typeof window === 'undefined') return position;
+
+  return {
+    x: Math.min(
+      Math.max(LAUNCHER_MARGIN, position.x),
+      window.innerWidth - LAUNCHER_SIZE - LAUNCHER_MARGIN
+    ),
+    y: Math.min(
+      Math.max(LAUNCHER_MARGIN, position.y),
+      window.innerHeight - LAUNCHER_SIZE - LAUNCHER_MARGIN
+    )
+  };
+};
+
+const getInitialLauncherPosition = () => {
+  if (typeof window === 'undefined') {
+    return { x: 0, y: 0 };
+  }
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAUNCHER_STORAGE_KEY));
+    if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) {
+      return clampLauncherPosition(saved);
+    }
+  } catch {
+    // Ignore invalid persisted UI state.
+  }
+
+  return clampLauncherPosition({
+    x: window.innerWidth - LAUNCHER_SIZE - 20,
+    y: window.innerHeight - LAUNCHER_SIZE - 104
+  });
+};
+
+const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
+  const copy = useMemo(() => AI_COPY[language] || AI_COPY.vi, [language]);
+  const welcomeMessage = useMemo(() => ({ role: 'assistant', content: copy.welcome }), [copy.welcome]);
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [typedText, setTypedText] = useState('');
-  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [launcherPosition, setLauncherPosition] = useState(getInitialLauncherPosition);
+  const [isDraggingLauncher, setIsDraggingLauncher] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const ignoreBackdropClickUntilRef = useRef(0);
+  const dragStateRef = useRef({
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+    moved: false
+  });
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,44 +107,34 @@ const AiChatAssistant = ({ hidden = false }) => {
     }
   }, [isOpen]);
 
-  // Typewriter effect for the thought bubble
   useEffect(() => {
-    if (isOpen || hidden) return;
-    const fullText = 'Tôi có thể hỗ trợ gì cho bạn?';
-    const words = fullText.split(' ');
-    let wordIndex = 0;
-    let phase = 'typing'; // typing | pause | hiding | waiting
-    let timer;
-
-    const tick = () => {
-      if (phase === 'typing') {
-        wordIndex++;
-        setTypedText(words.slice(0, wordIndex).join(' '));
-        setBubbleVisible(true);
-        if (wordIndex >= words.length) {
-          phase = 'pause';
-          timer = setTimeout(tick, 5000);
-        } else {
-          timer = setTimeout(tick, 200);
-        }
-      } else if (phase === 'pause') {
-        phase = 'hiding';
-        setBubbleVisible(false);
-        timer = setTimeout(tick, 800);
-      } else if (phase === 'hiding') {
-        phase = 'waiting';
-        setTypedText('');
-        timer = setTimeout(tick, 2500);
-      } else if (phase === 'waiting') {
-        wordIndex = 0;
-        phase = 'typing';
-        tick();
+    const knownWelcomeMessages = Object.values(AI_COPY).map(value => value.welcome);
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0]?.role === 'assistant' && knownWelcomeMessages.includes(prev[0].content)) {
+        return [welcomeMessage];
       }
+      return prev;
+    });
+  }, [welcomeMessage]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setLauncherPosition(prev => clampLauncherPosition(prev));
     };
 
-    timer = setTimeout(tick, 5000);
-    return () => clearTimeout(timer);
-  }, [isOpen, hidden]);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(LAUNCHER_STORAGE_KEY, JSON.stringify(launcherPosition));
+  }, [launcherPosition]);
 
   useEffect(() => {
     if (hidden && isOpen) {
@@ -79,19 +143,84 @@ const AiChatAssistant = ({ hidden = false }) => {
     }
   }, [hidden, isOpen]);
 
+  const openChat = () => {
+    ignoreBackdropClickUntilRef.current = Date.now() + 250;
+    setIsAnimating(true);
+    setIsOpen(true);
+  };
+
+  const closeChat = () => {
+    setIsAnimating(false);
+    setTimeout(() => setIsOpen(false), 200);
+  };
+
   const handleToggle = () => {
     if (!isOpen) {
-      setIsAnimating(true);
-      setIsOpen(true);
+      openChat();
     } else {
-      setIsAnimating(false);
-      setTimeout(() => setIsOpen(false), 200);
+      closeChat();
+    }
+  };
+
+  const handleBackdropClick = () => {
+    if (Date.now() < ignoreBackdropClickUntilRef.current) return;
+    closeChat();
+  };
+
+  const handleLauncherPointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+
+    dragStateRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: launcherPosition.x,
+      originY: launcherPosition.y,
+      moved: false
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setIsDraggingLauncher(true);
+  };
+
+  const handleLauncherPointerMove = (e) => {
+    if (dragStateRef.current.pointerId !== e.pointerId) return;
+
+    const deltaX = e.clientX - dragStateRef.current.startX;
+    const deltaY = e.clientY - dragStateRef.current.startY;
+
+    if (Math.abs(deltaX) + Math.abs(deltaY) > 6) {
+      dragStateRef.current.moved = true;
+    }
+
+    setLauncherPosition(clampLauncherPosition({
+      x: dragStateRef.current.originX + deltaX,
+      y: dragStateRef.current.originY + deltaY
+    }));
+  };
+
+  const finishLauncherPointer = (e) => {
+    if (dragStateRef.current.pointerId !== e.pointerId) return;
+
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    setIsDraggingLauncher(false);
+
+    if (!dragStateRef.current.moved) {
+      openChat();
+    }
+
+    dragStateRef.current.pointerId = null;
+  };
+
+  const handleLauncherKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openChat();
     }
   };
 
   const buildHistory = () => {
     return messages
-      .filter(m => m !== WELCOME_MESSAGE)
+      .filter(m => !Object.values(AI_COPY).some(value => value.welcome === m.content))
       .map(m => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         content: m.content
@@ -110,12 +239,12 @@ const AiChatAssistant = ({ hidden = false }) => {
     try {
       const history = buildHistory();
       const res = await menuService.sendAiChat(trimmed, history);
-      const reply = res?.reply || 'Xin lỗi, tôi không thể trả lời lúc này.';
+      const reply = res?.reply || copy.fallbackReply;
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Xin lỗi, đã có lỗi xảy ra. Bạn thử hỏi lại nhé! 😊'
+        content: copy.errorReply
       }]);
     } finally {
       setIsLoading(false);
@@ -133,11 +262,7 @@ const AiChatAssistant = ({ hidden = false }) => {
     }
   };
 
-  const quickSuggestions = [
-    'Gợi ý món ngon đi',
-    'Có combo nào?',
-    'Có danh mục gì?',
-  ];
+  const quickSuggestions = copy.suggestions;
 
   const handleQuickSuggestion = (text) => {
     sendMessage(text);
@@ -147,35 +272,33 @@ const AiChatAssistant = ({ hidden = false }) => {
 
   return (
     <>
-      {/* Floating Chat Button + Thought Bubble - Only show when closed */}
+      {/* Draggable launcher - Only show when closed */}
       {!isOpen && (
-        <div className="fixed z-[60] bottom-24 right-5 flex flex-col items-end gap-2">
-          {/* Thought Bubble */}
-          {typedText && (
-            <div
-              className={`relative max-w-[200px] px-3 py-2 rounded-2xl rounded-br-md text-[11px] font-semibold text-gray-700 bg-white shadow-lg border border-gray-100/80 transition-all duration-300 ${bubbleVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-                }`}
-            >
-              {typedText}
-              <span className="animate-blink text-blue-500">|</span>
-              {/* Tail */}
-              <div className="absolute -bottom-1.5 right-4 w-3 h-3 bg-white border-r border-b border-gray-100/80 rotate-45"></div>
-            </div>
-          )}
-
-          {/* Button */}
+        <div
+          className="fixed z-[60]"
+          style={{
+            left: launcherPosition.x,
+            top: launcherPosition.y
+          }}
+        >
           <button
             id="ai-chat-toggle"
-            onClick={handleToggle}
-            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 active:scale-90 bg-gradient-to-br from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 animate-bounce-gentle"
-            aria-label="AI Chat Assistant"
-            style={{
-              boxShadow: '0 4px 25px rgba(59, 38, 218, 0.5), 0 0 40px rgba(249, 115, 22, 0.2)'
-            }}
+            type="button"
+            onPointerDown={handleLauncherPointerDown}
+            onPointerMove={handleLauncherPointerMove}
+            onPointerUp={finishLauncherPointer}
+            onPointerCancel={finishLauncherPointer}
+            onKeyDown={handleLauncherKeyDown}
+            className={`ai-chat-launcher ${isDraggingLauncher ? 'ai-chat-launcher-dragging' : ''}`}
+            aria-label={copy.openLabel}
+            title={copy.openTitle}
           >
-            <div className="relative">
-              <MessageCircle size={24} className="text-white" />
-              <Sparkles size={10} className="absolute -top-1 -right-1 text-yellow-300 animate-pulse" />
+            <span className="ai-chat-launcher-halo" />
+            <span className="ai-chat-launcher-face">
+              <MessageCircle size={26} />
+            </span>
+            <div className="ai-chat-launcher-status" aria-hidden="true">
+              <span />
             </div>
           </button>
         </div>
@@ -184,139 +307,145 @@ const AiChatAssistant = ({ hidden = false }) => {
       {/* Chat Window */}
       {isOpen && (
         <div
-          className={`fixed z-[55] bottom-0 right-0 w-full max-w-md h-[85vh] max-h-[700px] flex flex-col transition-all duration-300 ${isAnimating ? 'animate-slide-up' : 'animate-slide-down'
-            }`}
-          style={{
-            background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,248,240,0.98) 100%)',
-            backdropFilter: 'blur(20px)',
-            borderRadius: '1.5rem 1.5rem 0 0',
-            boxShadow: '0 -8px 60px rgba(0,0,0,0.15), 0 -2px 20px rgba(249,115,22,0.1)',
-            border: '1px solid rgba(255,255,255,0.6)',
-            borderBottom: 'none'
-          }}
+          className="fixed inset-0 z-[55] bg-black/20 backdrop-blur-[1px] ai-chat-fade-in"
+          onClick={handleBackdropClick}
         >
-          {/* Header */}
           <div
-            className="flex items-center gap-3 px-5 py-4 flex-shrink-0 relative"
+            className={`absolute bottom-0 right-0 w-full max-w-md h-[85vh] max-h-[700px] flex flex-col transition-all duration-300 ${isAnimating ? 'ai-chat-slide-up' : 'ai-chat-slide-down'
+              }`}
+            onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'linear-gradient(135deg, #0f126cff 0%, #7d80deff 100%)',
-              borderRadius: '1.5rem 1.5rem 0 0'
+              background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,248,240,0.98) 100%)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '1.5rem 1.5rem 0 0',
+              boxShadow: '0 -8px 60px rgba(0,0,0,0.15), 0 -2px 20px rgba(249,115,22,0.1)',
+              border: '1px solid rgba(255,255,255,0.6)',
+              borderBottom: 'none'
             }}
           >
-            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-inner">
-              <Bot size={20} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-white font-bold text-sm tracking-tight">Trợ lý Sắc Màu</h3>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                <span className="text-yellow-300 text-[10px]  font-bold uppercase tracking-wider">Online</span>
-              </div>
-            </div>
-
-            {/* Close Button in Header */}
-            <button
-              onClick={handleToggle}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20 shadow-sm"
-              aria-label="Close chat"
+            {/* Header */}
+            <div
+              className="flex items-center gap-3 px-5 py-4 flex-shrink-0 relative"
+              style={{
+                background: 'linear-gradient(135deg, #0f126cff 0%, #7d80deff 100%)',
+                borderRadius: '1.5rem 1.5rem 0 0'
+              }}
             >
-              <X size={18} />
-            </button>
-          </div>
+              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-inner">
+                <Bot size={20} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-white font-bold text-sm tracking-tight">{copy.title}</h3>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  <span className="text-yellow-300 text-[10px]  font-bold uppercase tracking-wider">{copy.online}</span>
+                </div>
+              </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth" id="ai-chat-messages">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+              {/* Close Button in Header */}
+              <button
+                onClick={handleToggle}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20 shadow-sm"
+                aria-label={copy.closeLabel}
               >
-                {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-md mt-0.5">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth" id="ai-chat-messages">
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} ai-chat-fade-in`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-md mt-0.5">
+                      <Bot size={14} className="text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[80%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
+                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-md shadow-md'
+                      : 'bg-white text-gray-700 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80'
+                      }`}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
+                      <User size={14} className="text-gray-500" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Typing indicator */}
+              {isLoading && (
+                <div className="flex gap-2 items-start ai-chat-fade-in">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-md">
                     <Bot size={14} className="text-white" />
                   </div>
-                )}
-                <div
-                  className={`max-w-[80%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
-                    ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-md shadow-md'
-                    : 'bg-white text-gray-700 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80'
+                  <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80">
+                    <div className="flex gap-1.5">
+                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick suggestions - only show when few messages */}
+              {messages.length <= 1 && !isLoading && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {quickSuggestions.map((text, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleQuickSuggestion(text)}
+                      className="px-3 py-1.5 text-[11px] font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-full border border-orange-200/60 transition-all duration-200 active:scale-95 shadow-sm"
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100/80 bg-white/80 backdrop-blur-sm" style={{ borderRadius: '0' }}>
+              <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-1 border border-gray-200/60 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all duration-200">
+                <input
+                  ref={inputRef}
+                  id="ai-chat-input"
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={copy.placeholder}
+                  disabled={isLoading}
+                  className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none py-2.5"
+                  maxLength={300}
+                />
+                <button
+                  id="ai-chat-send"
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0 ${input.trim() && !isLoading
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md active:scale-90'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                     }`}
+                  aria-label={copy.sendLabel}
                 >
-                  {msg.content}
-                </div>
-                {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
-                    <User size={14} className="text-gray-500" />
-                  </div>
-                )}
+                  {isLoading ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
               </div>
-            ))}
-
-            {/* Typing indicator */}
-            {isLoading && (
-              <div className="flex gap-2 items-start animate-fade-in">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center flex-shrink-0 shadow-md">
-                  <Bot size={14} className="text-white" />
-                </div>
-                <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80">
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Quick suggestions - only show when few messages */}
-            {messages.length <= 1 && !isLoading && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {quickSuggestions.map((text, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQuickSuggestion(text)}
-                    className="px-3 py-1.5 text-[11px] font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-full border border-orange-200/60 transition-all duration-200 active:scale-95 shadow-sm"
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100/80 bg-white/80 backdrop-blur-sm" style={{ borderRadius: '0' }}>
-            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-1 border border-gray-200/60 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all duration-200">
-              <input
-                ref={inputRef}
-                id="ai-chat-input"
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Hỏi món, combo, danh mục..."
-                disabled={isLoading}
-                className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none py-2.5"
-                maxLength={300}
-              />
-              <button
-                id="ai-chat-send"
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0 ${input.trim() && !isLoading
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md active:scale-90'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-                aria-label="Send message"
-              >
-                {isLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-              </button>
             </div>
           </div>
         </div>

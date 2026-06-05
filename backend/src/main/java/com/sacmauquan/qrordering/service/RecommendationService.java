@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 /**
  * RecommendationService - Intelligent item recommendation engine.
- * Uses historical order patterns and environmental context (time/weather) to suggest menu items.
+ * Uses historical order patterns and time-of-day context to suggest menu items.
  */
 import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,28 +105,25 @@ public class RecommendationService {
 
     /**
      * Provides personalized recommendations by scoring items against current time
-     * and weather conditions.
-     * Implements a Weighted Scoring algorithm (Time: 40%, Weather: 30%, Popularity:
-     * 30%).
+     * and historical sales popularity.
+     * Implements a Weighted Scoring algorithm (Time: 60%, Popularity: 40%).
      * 
-     * @param timeContext    Current time description (e.g., "morning", "dinner")
-     * @param weatherContext Current weather status (e.g., "hot", "rainy")
-     * @param limit          Maximum number of results
+     * @param timeContext Current time description (e.g., "morning", "dinner")
+     * @param limit       Maximum number of results
      * @return Ranked list of contextually appropriate menu items
      */
     @Transactional(readOnly = true)
-    public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, String weatherContext, int limit) {
+    public List<MenuItemResponse> getPersonalizedRecommendations(String timeContext, int limit) {
         List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrue();
         if (activeMenu.isEmpty())
             return List.of();
 
         Map<Long, Long> popularityMap = getPopularityMap(activeMenu);
         String tKey = normalize(timeContext);
-        String wKey = normalize(weatherContext);
 
         return activeMenu.stream()
                 .map(item -> {
-                    double score = calculateItemScore(item, tKey, wKey, popularityMap.getOrDefault(item.getId(), 0L));
+                    double score = calculateItemScore(item, tKey, popularityMap.getOrDefault(item.getId(), 0L));
                     return new AbstractMap.SimpleEntry<>(item, score);
                 })
                 .filter(entry -> entry.getValue() > 0)
@@ -139,18 +136,17 @@ public class RecommendationService {
     /**
      * Core scoring logic for contextual recommendations.
      */
-    private double calculateItemScore(MenuItem item, String tKey, String wKey, long soldCount) {
+    private double calculateItemScore(MenuItem item, String tKey, long soldCount) {
         if (item.getCategory() == null)
             return 0;
 
         String cateName = item.getCategory().getName().toLowerCase();
 
-        // Weighted attributes: Time alignment + Weather suitability + Sales popularity
-        double timeScore = calculateTimeMatch(cateName, tKey) * 40;
-        double weatherScore = calculateWeatherMatch(cateName, wKey) * 30;
-        double popularityScore = Math.min(soldCount / 50.0, 1.0) * 30;
+        // Weighted attributes: Time alignment + Sales popularity
+        double timeScore = calculateTimeMatch(cateName, tKey) * 60;
+        double popularityScore = Math.min(soldCount / 50.0, 1.0) * 40;
 
-        return timeScore + weatherScore + popularityScore;
+        return timeScore + popularityScore;
     }
 
     /**
@@ -165,23 +161,11 @@ public class RecommendationService {
         if (containsAny(tKey, "trưa", "lunch") &&
                 containsAny(cateName, "Ăn Vặt", "Trà Sữa", "Nước Ép"))
             return 1.0;
+        if (containsAny(tKey, "chiều", "afternoon") &&
+                containsAny(cateName, "Ăn Vặt", "Trà Sữa", "Nước Ép"))
+            return 1.0;
         if (containsAny(tKey, "tối", "dinner") &&
-                containsAny(cateName, "Ăn Vặt", "Giải Khát", "Mỳ cay"))
-            return 1.0;
-        return 0.1;
-    }
-
-    /**
-     * Matches category keywords against specific weather conditions.
-     */
-    private double calculateWeatherMatch(String cateName, String wKey) {
-        if (wKey.isBlank())
-            return 0.5;
-        if (containsAny(wKey, "nóng", "hot") &&
-                containsAny(cateName, "Trà", "Soda", "Nước Ép", "Giải Khát"))
-            return 1.0;
-        if (containsAny(wKey, "lạnh", "mưa", "cold") &&
-                containsAny(cateName, "Mỳ cay", "Ăn Vặt"))
+                containsAny(cateName, "Ăn Vặt", "Giải Khát", "Mỳ cay", "Trà Sữa", "Trà - Soda", "Nước Ép"))
             return 1.0;
         return 0.1;
     }
