@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.service;
 import com.sacmauquan.qrordering.dto.OrderPreviewResponse;
 import com.sacmauquan.qrordering.dto.OrderRequest;
 import com.sacmauquan.qrordering.dto.OrderResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -103,6 +104,8 @@ public interface OrderService {
      * Locates the active ordering session for a specific dining table.
      */
     Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId);
+
+    Optional<CustomerPublicDto.Order> getPublicCurrentOrderByTable(@NonNull Long tableId);
 
     /**
      * Updates line-item specifics like quantity or custom instructions.

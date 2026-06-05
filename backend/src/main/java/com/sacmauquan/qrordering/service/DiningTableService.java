@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.DiningTableRequest;
 import com.sacmauquan.qrordering.dto.DiningTableResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import com.sacmauquan.qrordering.model.DiningTable;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +80,13 @@ public class DiningTableService {
     public DiningTableResponse getByTableCode(@NonNull String tableCode) {
         return repo.findByTableCode(tableCode)
                 .map(this::convertToResponse)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid table code"));
+    }
+
+    @Cacheable(value = "tables", key = "'public_code_' + #tableCode")
+    public CustomerPublicDto.Table getPublicByTableCode(@NonNull String tableCode) {
+        return repo.findByTableCode(tableCode)
+                .map(table -> new CustomerPublicDto.Table(table.getId(), table.getTableNumber()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid table code"));
     }
 

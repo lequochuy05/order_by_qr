@@ -59,20 +59,14 @@ public class SecurityConfig {
             .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
 
             // login
-            .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/refresh", "/api/users/logout")
+            .requestMatchers(HttpMethod.POST,
+                "/api/auth/login",
+                "/api/auth/refresh",
+                "/api/auth/logout")
             .permitAll()
 
-            // Public GET
-            .requestMatchers(HttpMethod.GET,
-                "/api/categories/**",
-                "/api/menu/**",
-                "/api/tables/code/*",
-                "/api/combos/**",
-                "/api/orders/table/*/current",
-                "/api/combos/active",
-                "/api/combos/*/items",
-                "/api/recommendations/**",
-                "/api/settings")
+            // Customer/public API
+            .requestMatchers(HttpMethod.GET, "/api/public/**")
             .permitAll()
 
             // Public Voucher Validation only
@@ -92,10 +86,14 @@ public class SecurityConfig {
 
             .requestMatchers("/api/payments/**").hasAnyRole("MANAGER", "STAFF")
 
+            .requestMatchers(HttpMethod.GET, "/api/settings").hasRole("MANAGER")
+            .requestMatchers(HttpMethod.GET, "/api/categories/**", "/api/menu-items/**", "/api/combos/**")
+            .hasAnyRole("MANAGER", "STAFF")
+
             // admin
             .requestMatchers(HttpMethod.POST,
                 "/api/categories/**",
-                "/api/menu/**",
+                "/api/menu-items/**",
                 "/api/tables/**",
                 "/api/vouchers/**",
                 "/api/combos/*/items",
@@ -104,23 +102,24 @@ public class SecurityConfig {
 
             .requestMatchers(HttpMethod.PUT,
                 "/api/categories/**",
-                "/api/menu/**",
+                "/api/menu-items/**",
                 "/api/vouchers/**",
                 "/api/settings")
             .hasRole("MANAGER")
 
             // Kitchen
             .requestMatchers(HttpMethod.GET, "/api/orders").hasAnyRole("MANAGER", "STAFF")
-            .requestMatchers(HttpMethod.GET, "/api/tables/**").hasAnyRole("MANAGER", "STAFF")
-            .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF")
-            .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF")
+            .requestMatchers(HttpMethod.GET, "/api/orders/table/*/current").hasAnyRole("MANAGER", "STAFF", "CHEF")
+            .requestMatchers(HttpMethod.GET, "/api/tables/**").hasAnyRole("MANAGER", "STAFF", "CHEF")
+            .requestMatchers(HttpMethod.GET, "/api/orders/history").hasAnyRole("MANAGER", "STAFF", "CHEF")
+            .requestMatchers(HttpMethod.GET, "/api/orders/stats").hasAnyRole("MANAGER", "STAFF", "CHEF")
             .requestMatchers(HttpMethod.GET, "/api/orders/kitchen").hasAnyRole("MANAGER", "STAFF", "CHEF")
             .requestMatchers(HttpMethod.PATCH, "/api/orders/items/*/status").hasAnyRole("MANAGER", "STAFF", "CHEF")
             .requestMatchers(HttpMethod.PATCH, "/api/orders/items/*/prepared").hasAnyRole("MANAGER", "STAFF", "CHEF")
 
             .requestMatchers(HttpMethod.PATCH,
                 "/api/categories/**",
-                "/api/menu/**",
+                "/api/menu-items/**",
                 "/api/tables/**",
                 "/api/vouchers/**",
                 "/api/users/*/reset-password",
@@ -130,7 +129,7 @@ public class SecurityConfig {
 
             .requestMatchers(HttpMethod.DELETE,
                 "/api/categories/**",
-                "/api/menu/**",
+                "/api/menu-items/**",
                 "/api/tables/**",
                 "/api/vouchers/**",
                 "/api/combos/*/items")
@@ -138,7 +137,7 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.PATCH, "/api/combos/**").hasRole("MANAGER")
 
             // revenue / stats
-            .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER", "STAFF")
+            .requestMatchers(HttpMethod.GET, "/api/stats/**").hasAnyRole("MANAGER", "STAFF", "CHEF")
 
             // voucher management
             .requestMatchers(HttpMethod.GET, "/api/vouchers/**").hasAnyRole("MANAGER", "STAFF")

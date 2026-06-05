@@ -5,6 +5,7 @@ import com.sacmauquan.qrordering.dto.VoucherRequest;
 import com.sacmauquan.qrordering.dto.VoucherValidateResponse;
 import com.sacmauquan.qrordering.model.Voucher;
 import com.sacmauquan.qrordering.repository.VoucherRepository;
+import com.sacmauquan.qrordering.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -228,7 +229,7 @@ public class DiscountService {
         if (!Boolean.TRUE.equals(v.getActive()))
             return "INACTIVE";
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = AppTime.now();
         if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
             return "UPCOMING";
         if (v.getValidTo() != null && now.isAfter(v.getValidTo()))
@@ -259,7 +260,7 @@ public class DiscountService {
         if (!Boolean.TRUE.equals(v.getActive()))
             return "INACTIVE";
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = AppTime.now();
         if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
             return "UPCOMING";
         if (v.getValidTo() != null && now.isAfter(v.getValidTo()))

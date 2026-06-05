@@ -10,6 +10,7 @@ import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
 import com.sacmauquan.qrordering.repository.DiningTableRepository;
 import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.service.PayosService;
+import com.sacmauquan.qrordering.util.AppTime;
 import com.sacmauquan.qrordering.service.NotificationService;
 import com.sacmauquan.qrordering.service.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 
-import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.Optional;
 import java.math.BigDecimal;
@@ -113,7 +113,7 @@ public class PayosServiceImpl implements PayosService {
 
         if (existing.isPresent()) {
             PaymentTransaction oldTx = existing.get();
-            boolean isExpired = oldTx.getCreatedAt().plusMinutes(20).isBefore(LocalDateTime.now());
+            boolean isExpired = oldTx.getCreatedAt().plusMinutes(20).isBefore(AppTime.now());
             if (!isExpired && oldTx.getAmount().compareTo(payableAmount) == 0 && oldTx.getQrCode() != null) {
                 log.info("[PayOS Idempotency] Reusing pending transaction {} for order {}", oldTx.getId(),
                         order.getId());
@@ -298,7 +298,7 @@ public class PayosServiceImpl implements PayosService {
             if (order.getPaymentStatus() != Order.PaymentStatus.PAID) {
                 order.setPaymentStatus(Order.PaymentStatus.PAID);
                 order.setPaymentMethod(Order.PaymentMethod.PAYOS);
-                order.setPaymentTime(LocalDateTime.now());
+                order.setPaymentTime(AppTime.now());
                 order.setPaidBy(transaction.getCreatedBy());
                 order.setStatus(Order.OrderStatus.COMPLETED);
                 orderRepository.save(order);

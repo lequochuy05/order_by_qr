@@ -28,7 +28,7 @@ public class PaymentController {
      * @param request Data required to create a payment link
      * @return PayosCreateResponse containing the payment URL and details
      */
-    @PostMapping("/create")
+    @PostMapping
     public ApiResponse<PayosCreateResponse> createPaymentLink(@Valid @RequestBody @NonNull PayosCreateRequest request) {
         return ApiResponse.success("Payment link initialized successfully", payosService.createPaymentLink(request));
     }
@@ -40,7 +40,7 @@ public class PaymentController {
      * @param body Map containing the cancellation reason
      * @return Void success response
      */
-    @PostMapping("/{transactionId}/cancel")
+    @PostMapping("/{transactionId}/cancellation")
     public ApiResponse<Void> cancelPaymentLink(
             @PathVariable @NonNull Long transactionId,
             @RequestBody @NonNull Map<String, String> body) {
@@ -56,7 +56,7 @@ public class PaymentController {
      * @param transactionId ID of the local transaction
      * @return PaymentTransaction object with updated status
      */
-    @GetMapping("/{transactionId}/status")
+    @GetMapping("/{transactionId}")
     public ApiResponse<PaymentTransaction> syncPaymentStatus(@PathVariable @NonNull Long transactionId) {
         return ApiResponse.success(payosService.syncPaymentStatus(transactionId));
     }

@@ -1,34 +1,44 @@
 import api from '../api';
-const fmtDate = (d) => d instanceof Date ? d.toISOString().split('T')[0] : d;
+import { formatBusinessDate } from '../../utils/businessTime';
 
 export const statisticsService = {
     // 1. Chỉ lấy doanh thu
     getRevenue: async (from, to) => {
-        const res = await api.get(`/stats/revenue?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        const res = await api.get('/stats/revenue', {
+            params: { from: formatBusinessDate(from), to: formatBusinessDate(to) }
+        });
         return res || [];
     },
 
     // 2. Chỉ lấy hiệu suất nhân viên
     getEmployees: async (from, to) => {
-        const res = await api.get(`/stats/employees?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        const res = await api.get('/stats/employees', {
+            params: { from: formatBusinessDate(from), to: formatBusinessDate(to) }
+        });
         return res || [];
     },
 
     // 3. Lấy đơn hàng (để tính toán món bán chạy)
     getOrders: async (from, to) => {
-        const res = await api.get(`/stats/orders?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        const res = await api.get('/stats/orders', {
+            params: { from: formatBusinessDate(from), to: formatBusinessDate(to) }
+        });
         return res || [];
     },
 
     // 4. Lấy top món ăn bán chạy
     getTopDishes: async (from, to) => {
-        const res = await api.get(`/stats/top-dishes?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        const res = await api.get('/stats/top-dishes', {
+            params: { from: formatBusinessDate(from), to: formatBusinessDate(to) }
+        });
         return res || [];
     },
 
     // 5. Lấy xu hướng bán theo ngày
     getDishTrend: async (from, to) => {
-        const res = await api.get(`/stats/dish-trend?from=${fmtDate(from)}&to=${fmtDate(to)}`);
+        const res = await api.get('/stats/dish-trend', {
+            params: { from: formatBusinessDate(from), to: formatBusinessDate(to) }
+        });
         return res || [];
     },
 

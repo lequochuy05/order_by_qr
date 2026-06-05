@@ -24,9 +24,9 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
          * @return Optional containing the order if found
          */
         @Lock(LockModeType.PESSIMISTIC_WRITE)
-        @Query("SELECT o FROM Order o WHERE o.table.id = :tableId AND o.status = :status")
-        Optional<Order> findFirstByTableIdAndStatusForUpdate(@Param("tableId") Long tableId,
-                        @Param("status") OrderStatus status);
+        @Query("SELECT o FROM Order o WHERE o.table.id = :tableId AND o.status IN :statuses")
+        Optional<Order> findFirstByTableIdAndStatusInForUpdate(@Param("tableId") Long tableId,
+                        @Param("statuses") List<OrderStatus> statuses);
 
         /**
          * Finds orders by their status.

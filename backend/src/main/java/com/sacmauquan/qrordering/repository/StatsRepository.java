@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -40,7 +40,7 @@ public interface StatsRepository extends Repository<Order, Long> {
    */
   interface OrderDetailStats {
     Long getId();
-    Instant getPaymentTime();
+    LocalDateTime getPaymentTime();
     String getEmpName();
     BigDecimal getTotalAmount();
     String getTableNumber();
@@ -83,7 +83,7 @@ public interface StatsRepository extends Repository<Order, Long> {
       GROUP BY DATE(o.payment_time)
       ORDER BY DATE(o.payment_time)
       """, nativeQuery = true)
-  List<RevenueStats> revenueByDay(@Param("from") Instant from, @Param("to") Instant to);
+  List<RevenueStats> revenueByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
   /**
    * Aggregates completed orders and total revenue handled by each employee.
@@ -103,7 +103,7 @@ public interface StatsRepository extends Repository<Order, Long> {
       GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY revenue DESC
       """, nativeQuery = true)
-  List<EmpPerformanceStats> empPerformance(@Param("from") Instant from, @Param("to") Instant to);
+  List<EmpPerformanceStats> empPerformance(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
   /**
    * Retrieves a list of completed orders with basic details for reporting.
@@ -123,7 +123,7 @@ public interface StatsRepository extends Repository<Order, Long> {
         AND o.payment_time BETWEEN :from AND :to
       ORDER BY o.payment_time DESC
       """, nativeQuery = true)
-  List<OrderDetailStats> orderDetails(@Param("from") Instant from, @Param("to") Instant to);
+  List<OrderDetailStats> orderDetails(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
   /**
    * Identifies the most popular menu items based on quantity sold and total revenue.
@@ -145,7 +145,7 @@ public interface StatsRepository extends Repository<Order, Long> {
       GROUP BY mi.id, mi.name, c.name, mi.img
       ORDER BY totalQty DESC
       """, nativeQuery = true)
-  List<TopDishStats> topDishes(@Param("from") Instant from, @Param("to") Instant to);
+  List<TopDishStats> topDishes(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
   /**
    * Tracks daily sales trends of individual dishes across the menu.
@@ -164,5 +164,5 @@ public interface StatsRepository extends Repository<Order, Long> {
       GROUP BY DATE(o.payment_time)
       ORDER BY DATE(o.payment_time)
       """, nativeQuery = true)
-  List<DishTrendStats> dishTrendByDay(@Param("from") Instant from, @Param("to") Instant to);
+  List<DishTrendStats> dishTrendByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

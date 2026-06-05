@@ -4,6 +4,7 @@ import com.sacmauquan.qrordering.model.PasswordResetToken;
 import com.sacmauquan.qrordering.model.User;
 import com.sacmauquan.qrordering.repository.PasswordResetTokenRepository;
 import com.sacmauquan.qrordering.repository.UserRepository;
+import com.sacmauquan.qrordering.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -12,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -45,7 +45,7 @@ public class PasswordResetService {
         PasswordResetToken resetToken = new PasswordResetToken();
         resetToken.setUser(user);
         resetToken.setToken(token);
-        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(30));
+        resetToken.setExpiryDate(AppTime.now().plusMinutes(30));
         resetToken.setVia(PasswordResetToken.Via.EMAIL);
 
         tokenRepo.save(resetToken);
@@ -66,7 +66,7 @@ public class PasswordResetService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Token invalid or expired"));
 
-        if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(AppTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token expired or already used");
         }
 
@@ -97,7 +97,7 @@ public class PasswordResetService {
         PasswordResetToken otpToken = new PasswordResetToken();
         otpToken.setUser(user);
         otpToken.setOtpCode(otpCode);
-        otpToken.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        otpToken.setExpiryDate(AppTime.now().plusMinutes(5));
         otpToken.setVia(PasswordResetToken.Via.PHONE);
         otpToken.setToken(UUID.randomUUID().toString());
 

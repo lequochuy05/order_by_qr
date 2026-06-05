@@ -1,8 +1,8 @@
 package com.sacmauquan.qrordering.dto;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -27,7 +27,7 @@ public class StatsResponse {
 
         public record OrderDetail(
                         Long id,
-                        Instant paymentTime,
+                        LocalDateTime paymentTime,
                         String empName,
                         BigDecimal totalAmount,
                         String tableNumber) {

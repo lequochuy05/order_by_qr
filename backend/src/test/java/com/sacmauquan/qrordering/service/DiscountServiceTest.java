@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.sacmauquan.qrordering.model.Voucher;
 import com.sacmauquan.qrordering.repository.VoucherRepository;
+import com.sacmauquan.qrordering.util.AppTime;
 
 @ExtendWith(MockitoExtension.class)
 class DiscountServiceTest {
@@ -38,8 +38,8 @@ class DiscountServiceTest {
                 .active(true)
                 .usageLimit(1)
                 .usedCount(0)
-                .validFrom(LocalDateTime.now().minusDays(1))
-                .validTo(LocalDateTime.now().plusDays(1))
+                .validFrom(AppTime.now().minusDays(1))
+                .validTo(AppTime.now().plusDays(1))
                 .build();
 
         when(voucherRepository.findByCodeIgnoreCase("SAVE10")).thenReturn(Optional.of(voucher));

@@ -10,7 +10,7 @@ Cung cấp giao diện hiện đại, tối ưu hóa cao và trải nghiệm mư
 
 - **Kiến trúc hướng sự kiện (Không thăm dò):** Loại bỏ hoàn toàn logic `setInterval`. Cập nhật thời gian thực về trạng thái Thanh toán (PayOS) và đơn đặt hàng của Bếp được đẩy ngay lập tức qua **STOMP WebSockets**.
 
-- **Trợ lý AI đàm thoại (Gemini):** Tích hợp Trợ lý trò chuyện thông minh để đưa ra các đề xuất theo ngữ cảnh cho khách hàng (dựa trên thời tiết, dựa trên thời gian).
+- **Trợ lý AI đàm thoại (Gemini):** Tích hợp Trợ lý trò chuyện thông minh để đưa ra các đề xuất theo ngữ cảnh cho khách hàng dựa trên thời gian và độ phổ biến của món.
 - **Thị giác máy tính ngoại tuyến (TensorFlow.js):** Tích hợp nhận dạng hình ảnh AI (YOLOv8) để nhận diện món ăn và tự động điền vào biểu mẫu mà không phát sinh chi phí API đám mây.
 
 - **Tuân thủ UX doanh nghiệp:** Tuân thủ nghiêm ngặt "Quy tắc thiết kế Maestro" đảm bảo khả năng truy cập tối ưu (độ tương phản AA) và sự hài hòa màu sắc (chủ đề Xanh ngọc/Xanh lục bảo, loại bỏ các sắc thái Tím thông thường).

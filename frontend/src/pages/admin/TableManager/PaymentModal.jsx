@@ -244,7 +244,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     }, [order?.id, table, currentUser, paymentMethod, onPaymentSuccess, onClose, buildInvoiceOrder]);
 
     const handlePaymentSuccess = useCallback(() => {
-        if (pollingRef.current) clearInterval(pollingRef.current);
         setPayosStatus('success');
         setPaymentMethod('PAYOS');
         console.log("[PaymentModal] Payment success detected. Preparing to finish...");

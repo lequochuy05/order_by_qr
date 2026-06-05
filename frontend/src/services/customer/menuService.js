@@ -1,19 +1,20 @@
 import api from '../api';
 
 export const menuService = {
-  getCategories: () => api.get('/categories'),
-  getAllMenuItems: () => api.get('/menu'),
-  getMenuByCategory: (categoryId) => api.get(`/menu/category/${categoryId}`),
-  getCombos: () => api.get('/combos'),
-  getSettings: () => api.get('/settings'),
-  getTableByCode: (tableCode) => api.get(`/tables/code/${tableCode}`),
+  getCategories: () => api.get('/public/categories'),
+  getAllMenuItems: () => api.get('/public/menu-items'),
+  getMenuByCategory: (categoryId) => api.get('/public/menu-items', { params: { categoryId } }),
+  getCombos: () => api.get('/public/combos'),
+  getSettings: () => api.get('/public/settings'),
+  getTableByCode: (tableCode) => api.get(`/public/tables/by-code/${tableCode}`),
+  getCurrentOrderByTable: (tableId) => api.get(`/public/tables/${tableId}/current-order`),
   createOrder: (orderData) => api.post('/orders', orderData),
-  getRecommendations: (itemId) => api.get(`/recommendations/item/${itemId}`),
-  getPopularItems: () => api.get('/recommendations/popular'),
-  getPersonalizedRecommendations: (time, weather) =>
-    api.get(`/recommendations/personalized?timeContext=${time}&weatherContext=${weather}`),
+  getRecommendations: (itemId) => api.get(`/public/recommendations/items/${itemId}`),
+  getPopularItems: () => api.get('/public/recommendations/popular'),
+  getPersonalizedRecommendations: (time) =>
+    api.get('/public/recommendations/personalized', { params: { timeContext: time } }),
   getCrossSellRecommendations: (itemId) =>
-    api.get(`/recommendations/cross-sell/${itemId}`),
+    api.get(`/public/recommendations/cross-sell/${itemId}`),
   sendAiChat: (message, history = []) =>
     api.post('/ai/chat', { message, history }),
 };

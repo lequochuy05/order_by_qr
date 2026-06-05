@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     wsService.disconnect();
     setAccessToken(null);
-    authService.logout().catch(() => {});
+    authService.logout().catch(() => { });
     setUser(null);
   }, []);
 

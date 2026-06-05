@@ -105,6 +105,6 @@ public class OrderItem extends BaseEntity {
      * Enum for individual order item states.
      */
     public enum OrderItemStatus {
-        PENDING, COOKING, READY, SERVED, FINISHED, CANCELLED
+        PENDING, COOKING, FINISHED, CANCELLED
     }
 }

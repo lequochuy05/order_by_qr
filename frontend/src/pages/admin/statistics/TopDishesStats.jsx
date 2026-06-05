@@ -7,6 +7,7 @@ import { Loader2, UtensilsCrossed, ShoppingBag, TrendingUp, BarChart3, Award, Do
 import { statisticsService } from '../../../services/admin/statisticsService';
 import StatsToolbar from '../../../components/admin/common/StatsToolbar';
 import { fmtVND, fmtDate } from '../../../utils/formatters';
+import { formatBusinessDate } from '../../../utils/businessTime';
 
 const TopDishesStats = () => {
     const [dateRange, setDateRange] = useState({
@@ -73,7 +74,7 @@ const TopDishesStats = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `top-dishes-${dateRange.from.toISOString().split('T')[0]}_${dateRange.to.toISOString().split('T')[0]}.csv`;
+        a.download = `top-dishes-${formatBusinessDate(dateRange.from)}_${formatBusinessDate(dateRange.to)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };

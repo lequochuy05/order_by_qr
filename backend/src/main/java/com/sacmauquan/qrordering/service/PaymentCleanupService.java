@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.model.PaymentTransaction;
 import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
+import com.sacmauquan.qrordering.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,7 +39,7 @@ public class PaymentCleanupService {
     @Scheduled(fixedRate = 300_000) // 5 minutes
     @Transactional
     public void reconcileStaleTransactions() {
-        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(20);
+        LocalDateTime cutoff = AppTime.now().minusMinutes(20);
         List<PaymentTransaction> staleTransactions = transactionRepository.findPendingOlderThan(cutoff);
 
         if (staleTransactions.isEmpty()) {

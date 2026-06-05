@@ -8,7 +8,7 @@ Thư mục và tài liệu này bao gồm các mô-đun AI được tích hợp 
 Hệ thống tận dụng AI Gemini của Google để cung cấp năng lượng cho thành phần `AiChatAssistant` ở giao diện người dùng.
 
 ### Tính năng
-- **Đề xuất theo ngữ cảnh:** Đề xuất các món ăn dựa trên thời gian hiện tại trong ngày (ví dụ: Cà phê vào buổi sáng, Bia vào buổi tối) và điều kiện thời tiết theo thời gian thực.
+- **Đề xuất theo ngữ cảnh:** Đề xuất các món ăn dựa trên thời gian hiện tại trong ngày (ví dụ: Cà phê vào buổi sáng, Bia vào buổi tối) và độ phổ biến của món.
 
 - **Bán chéo:** Đề xuất thông minh các món ăn kèm hoặc món phụ khi người dùng thêm sản phẩm vào giỏ hàng.
 - **Kiểm tra xác thực phía máy chủ:** Hệ thống máy chủ sử dụng `RestTemplate` với thời gian chờ nghiêm ngặt để ngăn chặn tình trạng tắc nghẽn luồng nếu API của Google chậm hoặc không phản hồi.

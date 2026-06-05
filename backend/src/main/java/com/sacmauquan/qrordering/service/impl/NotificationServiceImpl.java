@@ -113,6 +113,18 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     /**
+     * Notifies clients of restaurant/system settings changes with a public snapshot
+     * so customer pages can update immediately without an extra GET round trip.
+     */
+    @Override
+    public void notifySettingsChange(Object publicSettings) {
+        Map<String, Object> payload = Map.of(
+                "event", "SETTINGS_UPDATED",
+                "settings", publicSettings);
+        publishInternalEvent(TOPIC_SETTINGS, payload, "System settings updated");
+    }
+
+    /**
      * Internal helper to wrap and publish events to the Spring Application Context.
      * These events are asynchronously broadcast via WebSockets.
      */

@@ -85,6 +85,11 @@ const SettingsPage = () => {
   }, [isManager]);
 
   useWebSocket('/topic/settings', (message) => {
+    if (message?.event === 'SETTINGS_UPDATED' && message.settings) {
+      loadSettings();
+      return;
+    }
+
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       loadSettings();
     }

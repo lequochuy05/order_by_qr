@@ -1,6 +1,7 @@
 package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.CategoryResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import com.sacmauquan.qrordering.model.Category;
 import com.sacmauquan.qrordering.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,13 @@ public class CategoryService {
     public List<CategoryResponse> getAllActive() {
         return categoryRepo.findAllActiveWithItems().stream()
                 .map(this::convertToResponse)
+                .toList();
+    }
+
+    @Cacheable(value = "categories", key = "'public_all_active'")
+    public List<CustomerPublicDto.CategoryItem> getPublicActive() {
+        return categoryRepo.findAllActiveWithItems().stream()
+                .map(CustomerPublicDto::fromCategory)
                 .toList();
     }
 

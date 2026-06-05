@@ -17,7 +17,7 @@ import java.util.Map;
  * MenuItemController - Manages the food and beverage menu items.
  */
 @RestController
-@RequestMapping("/api/menu")
+@RequestMapping("/api/menu-items")
 @RequiredArgsConstructor
 public class MenuItemController {
 
@@ -29,7 +29,10 @@ public class MenuItemController {
      * @return List of all MenuItemResponse objects
      */
     @GetMapping
-    public ApiResponse<List<MenuItemResponse>> getAllMenuItems() {
+    public ApiResponse<List<MenuItemResponse>> getAllMenuItems(@RequestParam(required = false) Integer categoryId) {
+        if (categoryId != null) {
+            return ApiResponse.success(menuItemService.getItemsByCategory(categoryId));
+        }
         return ApiResponse.success(menuItemService.getAllMenuItems());
     }
 

@@ -63,4 +63,12 @@ public interface NotificationService {
      * Notifies clients that restaurant/system settings changed.
      */
     void notifySettingsChange();
+
+    /**
+     * Notifies clients that restaurant/system settings changed and includes the
+     * public settings snapshot for immediate UI refresh.
+     *
+     * @param publicSettings Settings payload safe for guest/customer clients
+     */
+    void notifySettingsChange(Object publicSettings);
 }

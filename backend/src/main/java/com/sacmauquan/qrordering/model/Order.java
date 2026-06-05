@@ -39,7 +39,7 @@ public class Order extends BaseEntity {
      */
     @NotNull(message = "Order status cannot be empty")
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @Column(length = 30, nullable = false)
     @Builder.Default
     private OrderStatus status = OrderStatus.PENDING;
 
@@ -128,7 +128,7 @@ public class Order extends BaseEntity {
      * Enum for order workflow states.
      */
     public enum OrderStatus {
-        PENDING, SERVING, COMPLETED, CANCELLED
+        PENDING, SERVING, AWAITING_PAYMENT, COMPLETED, CANCELLED
     }
 
     /**

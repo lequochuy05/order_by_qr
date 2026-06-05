@@ -18,6 +18,7 @@ class SecurityConfigRegressionTest {
         assertThat(source).doesNotContain("\"/api/tables/**\",\n                \"/api/combos/**\"");
         assertThat(source).contains(".requestMatchers(HttpMethod.POST, \"/api/orders\", \"/api/orders/preview\").permitAll()");
         assertThat(source).contains(".requestMatchers(\"/api/payments/**\").hasAnyRole(\"MANAGER\", \"STAFF\")");
-        assertThat(source).contains("\"/api/tables/code/*\"");
+        assertThat(source).contains(".requestMatchers(HttpMethod.GET, \"/api/public/**\")");
+        assertThat(source).doesNotContain("\"/api/tables/code/*\"");
     }
 }

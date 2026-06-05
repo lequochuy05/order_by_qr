@@ -41,7 +41,9 @@ public record OrderResponse(
             String notes,
             boolean prepared,
             String status,
-            List<OrderItemOptionResponse> options) {
+            List<OrderItemOptionResponse> options,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
     }
 
     public record MenuItemSummary(Long id, String name, CategorySummary category) {

@@ -3,6 +3,7 @@ package com.sacmauquan.qrordering.service;
 import com.sacmauquan.qrordering.dto.ComboItemRequest;
 import com.sacmauquan.qrordering.dto.ComboRequest;
 import com.sacmauquan.qrordering.dto.ComboResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import com.sacmauquan.qrordering.model.Combo;
 import com.sacmauquan.qrordering.model.ComboItem;
 import com.sacmauquan.qrordering.model.MenuItem;
@@ -46,6 +47,13 @@ public class ComboService {
         public List<ComboResponse> getAllActive() {
                 return comboRepo.findAllActiveWithItems().stream()
                                 .map(this::convertToResponse)
+                                .toList();
+        }
+
+        @Cacheable(value = "combos", key = "'public_all_active'")
+        public List<CustomerPublicDto.ComboItem> getPublicActive() {
+                return comboRepo.findAllActiveWithItems().stream()
+                                .map(CustomerPublicDto::fromCombo)
                                 .toList();
         }
 

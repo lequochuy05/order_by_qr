@@ -1,6 +1,7 @@
 package com.sacmauquan.qrordering.service.impl;
 
 import com.sacmauquan.qrordering.dto.SystemSettingsDto;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import com.sacmauquan.qrordering.model.SystemSettings;
 import com.sacmauquan.qrordering.repository.SystemSettingsRepository;
 import com.sacmauquan.qrordering.service.NotificationService;
@@ -31,6 +32,13 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
 
     @Override
     @Transactional
+    @Cacheable(value = "settings", key = "'customer_public'")
+    public CustomerPublicDto.Settings getPublicSettings() {
+        return CustomerPublicDto.fromSettings(getOrCreateSettings());
+    }
+
+    @Override
+    @Transactional
     @CacheEvict(value = "settings", allEntries = true)
     public SystemSettingsDto update(@NonNull SystemSettingsDto request) {
         SystemSettings settings = getOrCreateSettings();
@@ -47,7 +55,7 @@ public class SystemSettingsServiceImpl implements SystemSettingsService {
         settings.setEnableCash(Boolean.TRUE.equals(request.getEnableCash()));
 
         SystemSettings saved = repository.save(settings);
-        notificationService.notifySettingsChange();
+        notificationService.notifySettingsChange(CustomerPublicDto.fromSettings(saved));
         return toDto(saved, true);
     }
 

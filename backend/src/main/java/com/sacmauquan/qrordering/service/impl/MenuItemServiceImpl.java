@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service.impl;
 
 import com.sacmauquan.qrordering.dto.MenuItemRequest;
 import com.sacmauquan.qrordering.dto.MenuItemResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import com.sacmauquan.qrordering.model.Category;
 import com.sacmauquan.qrordering.model.ItemOption;
 import com.sacmauquan.qrordering.model.ItemOptionValue;
@@ -53,6 +54,14 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .toList();
     }
 
+    @Override
+    @Cacheable(value = "menu", key = "'public_all'")
+    public List<CustomerPublicDto.MenuItemItem> getPublicMenuItems() {
+        return menuItemRepository.findAllByActiveTrue().stream()
+                .map(CustomerPublicDto::fromMenuItem)
+                .toList();
+    }
+
     /**
      * Get menu items by category
      */
@@ -61,6 +70,14 @@ public class MenuItemServiceImpl implements MenuItemService {
     public List<MenuItemResponse> getItemsByCategory(@NonNull Integer categoryId) {
         return menuItemRepository.findByCategoryIdAndActiveTrue(Objects.requireNonNull(categoryId)).stream()
                 .map(this::convertToResponse)
+                .toList();
+    }
+
+    @Override
+    @Cacheable(value = "menu", key = "'public_category_' + #categoryId")
+    public List<CustomerPublicDto.MenuItemItem> getPublicItemsByCategory(@NonNull Integer categoryId) {
+        return menuItemRepository.findByCategoryIdAndActiveTrue(Objects.requireNonNull(categoryId)).stream()
+                .map(CustomerPublicDto::fromMenuItem)
                 .toList();
     }
 

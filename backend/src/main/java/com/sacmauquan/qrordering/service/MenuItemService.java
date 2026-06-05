@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.MenuItemRequest;
 import com.sacmauquan.qrordering.dto.MenuItemResponse;
+import com.sacmauquan.qrordering.dto.CustomerPublicDto;
 import org.springframework.lang.NonNull;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,8 @@ public interface MenuItemService {
      */
     List<MenuItemResponse> getAllMenuItems();
 
+    List<CustomerPublicDto.MenuItemItem> getPublicMenuItems();
+
     /**
      * Retrieves active menu items belonging to a specific category.
      * 
@@ -28,6 +31,8 @@ public interface MenuItemService {
      * @return List of matching menu items
      */
     List<MenuItemResponse> getItemsByCategory(@NonNull Integer categoryId);
+
+    List<CustomerPublicDto.MenuItemItem> getPublicItemsByCategory(@NonNull Integer categoryId);
 
     /**
      * Locates a single menu item by its identifier.

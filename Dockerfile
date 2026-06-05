@@ -30,7 +30,8 @@ COPY --chown=spring:spring --from=builder /app/application/ .
 
 # Cấu hình tối ưu cho JVM trong container
 # -XX:MaxRAMPercentage: Tự động điều chỉnh memory theo RAM của container
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
+ENV TZ="Asia/Ho_Chi_Minh"
+ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
 
 EXPOSE 8080
 

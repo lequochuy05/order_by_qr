@@ -1,15 +1,16 @@
 import React from 'react';
 import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock } from 'lucide-react';
-import { fmtVND, fmtStatus } from '../../../utils/formatters';
+import { fmtVND } from '../../../utils/formatters';
+import { getTableStatusMeta } from '../../../utils/orderStatus';
 
 const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete, userRole }) => {
     const hasOrder = order && order.totalAmount > 0;
     const isManager = userRole === 'MANAGER'; // Kiểm tra quyền
 
-    const status = fmtStatus('table', table.status);
+    const status = getTableStatusMeta(table.status);
 
     return (
-        <div className={`relative p-4 rounded-2xl border-2 transition-all hover:shadow-lg ${status.color} group`}>
+        <div className={`relative p-4 rounded-2xl border-2 transition-all hover:shadow-lg ${status.classes} group`}>
             {/* Header và Nội dung chính giữ nguyên */}
             <div className="flex justify-between items-start mb-2">
                 <h3 className="text-xl font-bold text-gray-800">Bàn {table.tableNumber}</h3>

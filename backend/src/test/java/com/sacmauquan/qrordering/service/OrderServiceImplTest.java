@@ -6,6 +6,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.annotation.Cacheable;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -35,6 +38,7 @@ import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
 import com.sacmauquan.qrordering.repository.UserRepository;
 import com.sacmauquan.qrordering.service.impl.OrderServiceImpl;
 import com.sacmauquan.qrordering.state.OrderStateFactory;
+import com.sacmauquan.qrordering.util.AppTime;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceImplTest {
@@ -119,7 +123,8 @@ class OrderServiceImplTest {
         request.setItems(java.util.List.of(itemRequest));
 
         when(tableRepository.findByTableCode("table-code")).thenReturn(Optional.of(table));
-        when(orderRepository.findFirstByTableIdAndStatusForUpdate(10L, Order.OrderStatus.PENDING))
+        when(orderRepository.findFirstByTableIdAndStatusInForUpdate(10L, 
+                java.util.List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT)))
                 .thenReturn(Optional.of(existingOrder));
         when(menuItemRepository.findById(20L)).thenReturn(Optional.of(item));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -136,5 +141,57 @@ class OrderServiceImplTest {
         assertThat(saved.getOriginalTotal()).isEqualByComparingTo("150000");
         assertThat(saved.getTotalAmount()).isEqualByComparingTo("150000");
         assertThat(table.getStatus()).isEqualTo(DiningTable.TableStatus.OCCUPIED);
+    }
+
+    @Test
+    void orderStatsUsesNullSafeDefaultCacheKey() throws Exception {
+        Cacheable cacheable = OrderServiceImpl.class
+                .getMethod("getOrderStats", String.class, java.time.LocalDate.class, java.time.LocalDate.class,
+                        String.class, String.class)
+                .getAnnotation(Cacheable.class);
+
+        assertThat(cacheable).isNotNull();
+        assertThat(cacheable.value()).containsExactly("order_stats");
+        assertThat(cacheable.key()).isEmpty();
+    }
+
+    @Test
+    void kitchenOrdersIncludeRecentlyFinishedItemsButExcludeOldFinishedOnlyOrders() {
+        Order recentFinishedOrder = kitchenOrder(1L, OrderItem.OrderItemStatus.FINISHED, AppTime.now().minusMinutes(5));
+        Order oldFinishedOrder = kitchenOrder(2L, OrderItem.OrderItemStatus.FINISHED, AppTime.now().minusMinutes(20));
+        Order pendingOrder = kitchenOrder(3L, OrderItem.OrderItemStatus.PENDING, AppTime.now().minusMinutes(30));
+
+        when(orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT)))
+                .thenReturn(List.of(oldFinishedOrder, recentFinishedOrder, pendingOrder));
+
+        assertThat(orderService.getKitchenOrders())
+                .extracting(response -> response.id())
+                .containsExactly(1L, 3L);
+    }
+
+    private Order kitchenOrder(Long id, OrderItem.OrderItemStatus itemStatus, LocalDateTime itemUpdatedAt) {
+        Order order = Order.builder()
+                .id(id)
+                .status(Order.OrderStatus.PENDING)
+                .paymentStatus(Order.PaymentStatus.PENDING)
+                .orderType(Order.OrderType.DINE_IN)
+                .originalTotal(BigDecimal.ZERO)
+                .discountVoucher(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.ZERO)
+                .createdAt(AppTime.now().minusMinutes(40 - id))
+                .build();
+
+        order.getOrderItems().add(OrderItem.builder()
+                .id(id * 10)
+                .order(order)
+                .unitPrice(BigDecimal.ZERO)
+                .quantity(1)
+                .status(itemStatus)
+                .prepared(itemStatus == OrderItem.OrderItemStatus.FINISHED)
+                .createdAt(order.getCreatedAt())
+                .updatedAt(itemUpdatedAt)
+                .build());
+
+        return order;
     }
 }

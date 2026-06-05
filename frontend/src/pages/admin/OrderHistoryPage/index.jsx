@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
-import { fmtVND, fmtDateTime, fmtStatus } from '../../../utils/formatters';
+import { fmtVND, fmtDateTime } from '../../../utils/formatters';
+import { getOrderStatusMeta } from '../../../utils/orderStatus';
 import { orderService } from '../../../services/admin/orderService';
 import { printInvoice } from '../../../utils/invoiceGenerator';
 import OrderDetailsModal from './OrderDetailsModal';
@@ -306,8 +307,8 @@ export default function OrderHistoryPage() {
             className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none text-sm cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
-            {['PENDING', 'SERVING', 'COMPLETED', 'CANCELLED'].map(key => (
-              <option key={key} value={key}>{fmtStatus('order', key).label}</option>
+            {['PENDING', 'SERVING', 'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED'].map(key => (
+              <option key={key} value={key}>{getOrderStatusMeta(key).label}</option>
             ))}
           </select>
         </div>
@@ -372,8 +373,8 @@ export default function OrderHistoryPage() {
                       {fmtVND(order.totalAmount || 0)}
                     </td>
                     <td className="p-5">
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full border ${fmtStatus('order', order.status).color}`}>
-                        {fmtStatus('order', order.status).label}
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getOrderStatusMeta(order.status).classes}`}>
+                        {getOrderStatusMeta(order.status).label}
                       </span>
                     </td>
                     <td className="p-5 text-right flex justify-end gap-1">

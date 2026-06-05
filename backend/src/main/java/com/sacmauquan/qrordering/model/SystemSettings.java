@@ -1,5 +1,6 @@
 package com.sacmauquan.qrordering.model;
 
+import com.sacmauquan.qrordering.util.AppTime;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -68,6 +69,6 @@ public class SystemSettings {
     @PrePersist
     @PreUpdate
     void touchUpdatedAt() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = AppTime.now();
     }
 }

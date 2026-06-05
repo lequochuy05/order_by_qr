@@ -3,7 +3,7 @@ import { refreshAccessToken } from './api';
 
 export const authService = {
   login: async (email, password) => {
-    return await api.post('/users/login', { email, password });
+    return await api.post('/auth/login', { email, password });
   },
 
   refresh: async () => {
@@ -11,7 +11,7 @@ export const authService = {
   },
 
   logout: async () => {
-    return await api.post('/users/logout');
+    return await api.post('/auth/logout');
   },
 
   getProfile: async () => {

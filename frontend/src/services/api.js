@@ -60,7 +60,7 @@ const unwrapApiResponse = (response) => {
 
 export const refreshAccessToken = async () => {
   if (!refreshPromise) {
-    refreshPromise = authClient.post('/users/refresh')
+    refreshPromise = authClient.post('/auth/refresh')
       .then(unwrapApiResponse)
       .then((data) => {
         setAccessToken(data?.accessToken);
@@ -74,6 +74,9 @@ export const refreshAccessToken = async () => {
 };
 
 const isAuthEndpoint = (url = '') => (
+  url.includes('/auth/login') ||
+  url.includes('/auth/refresh') ||
+  url.includes('/auth/logout') ||
   url.includes('/users/login') ||
   url.includes('/users/refresh') ||
   url.includes('/users/logout')
