@@ -1,7 +1,7 @@
 import { ShoppingCart } from 'lucide-react';
 import { fmtVND } from '../../../utils/formatters.js';
 
-const ShoppingCartButton = ({ cart, onOpenCart }) => {
+const ShoppingCartButton = ({ cart, onOpenCart, label = 'Xem giỏ hàng' }) => {
   const totalItems = Object.values(cart.items || {}).reduce((sum, item) => sum + item.qty, 0) +
     Object.values(cart.combos || {}).reduce((sum, combo) => sum + combo.qty, 0);
 
@@ -23,7 +23,7 @@ const ShoppingCartButton = ({ cart, onOpenCart }) => {
               {totalItems}
             </span>
           </div>
-          <span className="font-bold">Xem giỏ hàng</span>
+          <span className="font-bold">{label}</span>
         </div>
         <span className="font-black text-lg">
           {fmtVND(totalAmount)}

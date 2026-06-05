@@ -14,18 +14,34 @@ const CartModal = ({
     getCartItemQty,
     calculateTotal,
     isSubmitting,
-    handleSubmitOrder
+    handleSubmitOrder,
+    labels = {
+        title: 'Giỏ hàng của bạn',
+        optionPrefix: 'Tùy chọn',
+        itemNote: 'Ghi chú thêm (cay, ít đá...)',
+        comboNote: 'Ghi chú cho combo...',
+        crossSell: 'Thêm vào cho đủ vị?',
+        total: 'Tổng cộng',
+        processing: 'ĐANG XỬ LÝ...',
+        submit: 'XÁC NHẬN ĐẶT MÓN'
+    }
 }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2rem] p-6 max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500 transition-colors">
+        <div
+            className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-300"
+            onClick={onClose}
+        >
+            <div
+                className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2rem] p-6 max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+            >
 
                 {/* Header Modal */}
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold flex items-center gap-2 text-gray-800 dark:text-white transition-colors">
-                        <ShoppingBasket className="text-orange-500" /> Giỏ hàng của bạn
+                        <ShoppingBasket className="text-orange-500" /> {labels.title}
                     </h3>
                     <button
                         onClick={onClose}
@@ -48,7 +64,7 @@ const CartModal = ({
                                     </span>
                                     {item.selectedOptionObjs?.length > 0 && (
                                         <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 leading-tight pr-4 transition-colors">
-                                            (Size: {item.selectedOptionObjs.map(o => o.valueName).join(', ')})
+                                            ({labels.optionPrefix}: {item.selectedOptionObjs.map(o => o.valueName).join(', ')})
                                         </span>
                                     )}
                                 </div>
@@ -73,7 +89,7 @@ const CartModal = ({
                             </div>
                             <input
                                 type="text"
-                                placeholder="Ghi chú thêm (cay, ít đá...)"
+                                placeholder={labels.itemNote}
                                 value={item.note || ""}
                                 onChange={(e) => handleUpdateNote(id, e.target.value, false)}
                                 className="mt-2 w-full p-3 bg-gray-50 dark:bg-slate-800 dark:text-white dark:placeholder-gray-500 rounded-xl text-xs outline-none focus:ring-1 ring-orange-400 border-none transition-colors"
@@ -92,7 +108,7 @@ const CartModal = ({
                             </div>
                             <input
                                 type="text"
-                                placeholder="Ghi chú cho combo..."
+                                placeholder={labels.comboNote}
                                 value={combo.note || ""}
                                 onChange={(e) => handleUpdateNote(id, e.target.value, true)}
                                 className="mt-2 w-full p-3 bg-white dark:bg-slate-800 dark:text-white dark:placeholder-gray-500 rounded-xl text-xs outline-none border-none shadow-sm transition-colors"
@@ -106,7 +122,7 @@ const CartModal = ({
                     <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800 transition-colors">
                         <div className="flex justify-between items-center mb-3">
                             <h4 className="text-[11px] font-bold text-orange-800 dark:text-orange-300 uppercase tracking-widest flex items-center gap-2 transition-colors">
-                                <Sparkles size={14} className="fill-orange-500 text-orange-500" /> Thêm vào cho đủ vị?
+                                <Sparkles size={14} className="fill-orange-500 text-orange-500" /> {labels.crossSell}
                             </h4>
                             <button
                                 onClick={() => setCrossSellItems([])}
@@ -138,7 +154,7 @@ const CartModal = ({
                 {/* Tổng tiền và Submit */}
                 <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700 transition-colors">
                     <div className="flex justify-between items-center mb-4">
-                        <span className="font-bold text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider transition-colors">Tổng cộng</span>
+                        <span className="font-bold text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider transition-colors">{labels.total}</span>
                         <span className="text-2xl font-black text-orange-600 dark:text-orange-400 transition-colors">
                             {fmtVND(calculateTotal())}
                         </span>
@@ -150,7 +166,7 @@ const CartModal = ({
               ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 shadow-orange-200 active:scale-95 text-white'}`}
                     >
                         {isSubmitting && <Loader2 className="animate-spin" size={20} />}
-                        {isSubmitting ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN ĐẶT MÓN'}
+                        {isSubmitting ? labels.processing : labels.submit}
                     </button>
                 </div>
 

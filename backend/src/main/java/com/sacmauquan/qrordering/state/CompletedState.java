@@ -13,8 +13,7 @@ import java.util.Set;
 public class CompletedState implements OrderState {
 
     private static final Set<Order.OrderStatus> ALLOWED_FROM = Set.of(
-            Order.OrderStatus.PENDING,
-            Order.OrderStatus.SERVING
+            Order.OrderStatus.AWAITING_PAYMENT
     );
 
     /**

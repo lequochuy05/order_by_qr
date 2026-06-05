@@ -2,7 +2,23 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { fmtVND } from '../../../utils/formatters.js';
 
-const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
+const ItemOptionsModal = ({
+  item,
+  isOpen,
+  onClose,
+  onConfirm,
+  onError,
+  labels = {
+    required: 'Bắt buộc',
+    basePrice: 'Giá gốc',
+    subtotal: 'Tạm tính',
+    addToCart: 'Thêm vào giỏ',
+    maxSelectionTitle: 'Vượt quá số lựa chọn',
+    maxSelection: (max) => `Bạn chỉ được chọn tối đa ${max} mục cho phần này.`,
+    requiredTitle: 'Thiếu lựa chọn bắt buộc',
+    requiredMessage: (name) => `Vui lòng chọn ${name} trước khi thêm vào giỏ.`
+  }
+}) => {
   const [selectedOptions, setSelectedOptions] = useState(() => {
     const defaultSelections = {};
     if (item?.itemOptions) {
@@ -18,8 +34,21 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
     }
     return defaultSelections;
   });
+  const [submitted, setSubmitted] = useState(false);
 
   if (!isOpen || !item) return null;
+
+  const isOptionSelected = (optionId, valueId, maxSelection) => {
+    const selection = selectedOptions[optionId];
+    return maxSelection > 1
+      ? (selection || []).includes(valueId)
+      : selection === valueId;
+  };
+
+  const hasRequiredSelection = (opt) => {
+    const selection = selectedOptions[opt.id];
+    return Array.isArray(selection) ? selection.length > 0 : !!selection;
+  };
 
   const handleOptionSelect = (optionId, valueId, maxSelection) => {
     setSelectedOptions(prev => {
@@ -30,7 +59,7 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
           return { ...prev, [optionId]: currentSelected.filter(id => id !== valueId) };
         } else {
           if (currentSelected.length >= maxSelection) {
-            onError?.(`Bạn chỉ được chọn tối đa ${maxSelection} mục cho phần này.`, 'Vượt quá số lựa chọn');
+            onError?.(labels.maxSelection(maxSelection), labels.maxSelectionTitle);
             return prev;
           }
           return { ...prev, [optionId]: [...currentSelected, valueId] };
@@ -65,12 +94,11 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
   };
 
   const handleConfirm = () => {
+    setSubmitted(true);
     const requiredOptions = item.itemOptions?.filter(o => o.isRequired) || [];
     for (const opt of requiredOptions) {
-      const selection = selectedOptions[opt.id];
-      const hasSelection = Array.isArray(selection) ? selection.length > 0 : !!selection;
-      if (!hasSelection) {
-        onError?.(`Vui lòng chọn ${opt.name} trước khi thêm vào giỏ.`, 'Thiếu lựa chọn bắt buộc');
+      if (!hasRequiredSelection(opt)) {
+        onError?.(labels.requiredMessage(opt.name), labels.requiredTitle);
         return;
       }
     }
@@ -101,52 +129,107 @@ const ItemOptionsModal = ({ item, isOpen, onClose, onConfirm, onError }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end z-50">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2rem] p-6 max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 transition-colors">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-black text-gray-800 dark:text-white tracking-tight transition-colors">{item.name}</h3>
-          <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-slate-800 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors">
-            <X size={20} />
-          </button>
+    <div
+      className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 transition-colors overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-5 pt-5 pb-4 border-b border-gray-100 dark:border-slate-800 transition-colors">
+          <div className="flex items-start gap-3">
+            {item.img && (
+              <img
+                src={item.img}
+                alt={item.name}
+                className="h-14 w-14 shrink-0 rounded-2xl object-cover bg-gray-100 dark:bg-slate-800"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-black text-gray-900 dark:text-white leading-tight line-clamp-2 transition-colors">
+                {item.name}
+              </h3>
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 transition-colors">
+                {labels.basePrice}
+              </p>
+              <p className="text-sm font-black text-orange-600 dark:text-orange-400 transition-colors">
+                {fmtVND(item.price)}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-          {item.itemOptions?.map(opt => (
-            <div key={opt.id} className="space-y-3">
-              <div className="flex justify-between">
-                <h4 className="text-sm font-bold text-gray-800 dark:text-white uppercase tracking-widest transition-colors">{opt.name}</h4>
-                {opt.isRequired && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 rounded-full uppercase transition-colors">Bắt buộc</span>}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {item.itemOptions?.map(opt => {
+            const invalid = submitted && opt.isRequired && !hasRequiredSelection(opt);
+            return (
+            <div
+              key={opt.id}
+              className={`space-y-3 rounded-2xl border p-3 transition-colors ${
+                invalid
+                  ? 'border-red-200 bg-red-50/70 dark:border-red-500/30 dark:bg-red-500/10'
+                  : 'border-gray-100 bg-gray-50/60 dark:border-slate-800 dark:bg-slate-950/40'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-widest transition-colors">{opt.name}</h4>
+                {opt.isRequired && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase transition-colors ${
+                    invalid
+                      ? 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300'
+                      : 'bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300'
+                  }`}>
+                    {labels.required}
+                  </span>
+                )}
               </div>
-              <div className="space-y-2">
+
+              <div className="grid grid-cols-2 gap-2">
                 {opt.optionValues?.map(val => (
-                  <label key={val.id} className="flex items-center justify-between p-3 rounded-2xl border border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-800/80 cursor-pointer hover:border-orange-200 dark:hover:border-orange-500 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type={opt.maxSelection > 1 ? "checkbox" : "radio"}
-                        name={`opt-${opt.id}`}
-                        checked={opt.maxSelection > 1 
-                          ? (selectedOptions[opt.id] || []).includes(val.id)
-                          : selectedOptions[opt.id] === val.id}
-                        onChange={() => handleOptionSelect(opt.id, val.id, opt.maxSelection)}
-                        className={`w-4 h-4 text-orange-500 border-gray-300 focus:ring-orange-500 ${opt.maxSelection > 1 ? 'rounded' : 'rounded-full'}`}
-                      />
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors">{val.name}</span>
-                    </div>
-                    {val.extraPrice > 0 && <span className="text-xs font-black text-orange-600 dark:text-orange-400 transition-colors">+{fmtVND(val.extraPrice)}</span>}
-                  </label>
+                  <button
+                    key={val.id}
+                    type="button"
+                    onClick={() => handleOptionSelect(opt.id, val.id, opt.maxSelection)}
+                    className={`min-h-14 rounded-2xl border px-3 py-2 text-left transition-all active:scale-[0.98] ${
+                      isOptionSelected(opt.id, val.id, opt.maxSelection)
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm dark:border-orange-400 dark:bg-orange-500/10 dark:text-orange-300'
+                        : 'border-gray-100 bg-white text-gray-700 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 dark:text-gray-200 dark:hover:border-orange-500/50'
+                    }`}
+                  >
+                    <span className="block text-xs font-black leading-tight line-clamp-2">{val.name}</span>
+                    {val.extraPrice > 0 && (
+                      <span className="mt-1 block text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                        +{fmtVND(val.extraPrice)}
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
-          ))}
+          )})}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800 transition-colors">
+        <div className="sticky bottom-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-5 py-4 border-t border-gray-100 dark:border-slate-800 transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {labels.subtotal}
+            </span>
+            <span className="text-xl font-black text-orange-600 dark:text-orange-400">
+              {fmtVND(calculateTotalPrice())}
+            </span>
+          </div>
           <button
             onClick={handleConfirm}
-            className="w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-200 active:scale-95 transition-all flex justify-between px-6"
+            className="w-full py-3.5 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center justify-center"
           >
-            <span>Thêm vào giỏ</span>
-            <span>{fmtVND(calculateTotalPrice())}</span>
+            <span>{labels.addToCart}</span>
           </button>
         </div>
       </div>

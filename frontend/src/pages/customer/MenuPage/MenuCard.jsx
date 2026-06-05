@@ -1,6 +1,6 @@
 import { Plus, Minus } from 'lucide-react';
 import { fmtVND } from '../../../utils/formatters.js';
-const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
+const MenuCard = ({ item, onAddToCart, quantity = 0, labels = { helper: 'Thơm ngon nồng hổi...', options: 'Tùy chọn' } }) => {
 
   const imageUrl = item.img;
 
@@ -23,7 +23,7 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
             {item.name}
           </h3>
           <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-1 transition-colors">
-            {"Thơm ngon nồng hổi..."}
+            {labels.helper}
           </p>
         </div>
 
@@ -39,7 +39,7 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
                  onClick={() => onAddToCart(item, quantity + 1, true)}
                  className="w-full h-7 bg-orange-500 hover:bg-orange-600 rounded-full shadow-sm flex items-center justify-center text-white font-black text-[10px] uppercase tracking-wider px-2 transition-colors"
                >
-                 Tùy chọn
+                 {labels.options}
                </button>
             ) : (
               <>

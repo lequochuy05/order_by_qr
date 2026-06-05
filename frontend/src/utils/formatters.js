@@ -1,3 +1,5 @@
+import { BUSINESS_TIME_ZONE } from './businessTime';
+
 /**
  * Định dạng số thành tiền Việt Nam (VND)
  */
@@ -15,6 +17,7 @@ export const fmtVND = (amount) => {
 export const fmtDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('vi-VN', {
+        timeZone: BUSINESS_TIME_ZONE,
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
@@ -27,6 +30,7 @@ export const fmtDate = (dateString) => {
 export const fmtDateTime = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString('vi-VN', {
+        timeZone: BUSINESS_TIME_ZONE,
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -41,6 +45,7 @@ export const fmtDateTime = (dateString) => {
 export const fmtTime = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleTimeString('vi-VN', {
+        timeZone: BUSINESS_TIME_ZONE,
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -60,21 +65,10 @@ export const fmtRole = (role) => {
 
 /**
  * Định dạng trạng thái
- * Hỗ trợ: Đơn hàng, Bàn, Combo/Món ăn, Bếp, Nhân viên
+ * Hỗ trợ: Combo/Món ăn (active), Nhân viên (staff)
  */
 export const fmtStatus = (type, status) => {
     const maps = {
-        order: {
-            'PENDING': { label: 'Chờ xử lý', color: 'bg-amber-100 text-amber-700' },
-            'SERVING': { label: 'Đang phục vụ', color: 'bg-blue-100 text-blue-700' },
-            'COMPLETED': { label: 'Hoàn tất', color: 'bg-emerald-100 text-emerald-700' },
-            'CANCELLED': { label: 'Đã hủy', color: 'bg-rose-100 text-rose-700' }
-        },
-        table: {
-            'AVAILABLE': { label: 'Bàn trống', color: 'border-slate-200 bg-white text-slate-400' },
-            'OCCUPIED': { label: 'Đang có khách', color: 'border-orange-400 bg-orange-50 text-orange-600' },
-            'WAITING_FOR_PAYMENT': { label: 'Chờ tính tiền', color: 'border-emerald-400 bg-emerald-50 text-emerald-600' },
-        },
         active: {
             true: { label: 'Đang kinh doanh', color: 'bg-green-100 text-green-700' },
             false: { label: 'Tạm ngưng', color: 'bg-gray-100 text-gray-500' }
@@ -82,14 +76,6 @@ export const fmtStatus = (type, status) => {
         staff: {
             true: { label: 'Hoạt động', color: 'bg-green-100 text-green-700' },
             false: { label: 'Đã khóa', color: 'bg-red-100 text-red-600' }
-        },
-        kitchen: {
-            'PENDING': { label: 'Chờ chế biến', color: 'bg-amber-50 text-amber-600' },
-            'COOKING': { label: 'Đang chế biến', color: 'bg-blue-50 text-blue-600' },
-            'READY': { label: 'Sẵn sàng', color: 'bg-indigo-50 text-indigo-600' },
-            'FINISHED': { label: 'Hoàn thành', color: 'bg-emerald-50 text-emerald-600' },
-            'SERVED': { label: 'Đã phục vụ', color: 'bg-slate-50 text-slate-500' },
-            'CANCELLED': { label: 'Đã hủy', color: 'bg-rose-50 text-rose-500' }
         }
     };
 

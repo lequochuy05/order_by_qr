@@ -9,6 +9,7 @@ import com.sacmauquan.qrordering.service.OrderService;
 import com.sacmauquan.qrordering.service.PayosService;
 import com.sacmauquan.qrordering.state.OrderState;
 import com.sacmauquan.qrordering.state.OrderStateFactory;
+import com.sacmauquan.qrordering.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -170,7 +171,7 @@ public class OrderServiceImpl implements OrderService {
      * period.
      */
     @Override
-    @Cacheable(value = "order_stats", key = "T(String).valueOf(#status) + '_' + T(String).valueOf(#startDate) + '_' + T(String).valueOf(#endDate) + '_' + T(String).valueOf(#orderId) + '_' + T(String).valueOf(#tableNumber)")
+    @Cacheable(value = "order_stats")
     public Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
             String tableNumber) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
@@ -293,9 +294,9 @@ public class OrderServiceImpl implements OrderService {
 
         DiningTable table = resolveTable(req);
 
-        // Find existing PENDING order to merge, ensuring session persistence for the
-        // same table
-        Order order = orderRepository.findFirstByTableIdAndStatusForUpdate(table.getId(), Order.OrderStatus.PENDING)
+        // Find existing active order to merge, ensuring session persistence for the same table
+        Order order = orderRepository.findFirstByTableIdAndStatusInForUpdate(table.getId(),
+                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT))
                 .orElse(null);
 
         if (order == null) {
@@ -314,8 +315,19 @@ public class OrderServiceImpl implements OrderService {
         processCombos(req, order);
 
         recalculateOrderTotals(order);
-
+        
+        // After merging new pending items, the order might need to be demoted from AWAITING_PAYMENT to SERVING
+        // or promoted from PENDING to SERVING if there are cooking items.
+        // Wait, tryAutoPromoteOrder will save the order and change its status.
+        // We should first save the order, then run tryAutoPromoteOrder because tryAutoPromoteOrder saves again.
+        // Actually, we can just call tryAutoPromoteOrder(order) before saving, and let tryAutoPromoteOrder do the save.
+        // But wait, tryAutoPromoteOrder saves the order and returns nothing. We need the saved order.
+        // Let's adapt tryAutoPromoteOrder to just mutate the status and return boolean, but for now we can just save it first.
         Order saved = orderRepository.save(Objects.requireNonNull(order));
+        
+        // Ensure status reflects the new items (will demote AWAITING_PAYMENT -> SERVING, etc)
+        tryAutoPromoteOrder(saved);
+
 
         table.setStatus(DiningTable.TableStatus.OCCUPIED);
         tableRepository.save(table);
@@ -363,6 +375,8 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Updates kitchen preparation status for a specific item.
+     * When all items in the order reach FINISHED/CANCELLED, auto-promotes
+     * the order to AWAITING_PAYMENT.
      */
     @Override
     @Transactional
@@ -374,11 +388,12 @@ public class OrderServiceImpl implements OrderService {
         try {
             OrderItem.OrderItemStatus status = OrderItem.OrderItemStatus.valueOf(newStatus.toUpperCase());
             item.setStatus(status);
-            item.setPrepared(status == OrderItem.OrderItemStatus.READY || status == OrderItem.OrderItemStatus.SERVED
-                    || status == OrderItem.OrderItemStatus.FINISHED);
+            item.setPrepared(status == OrderItem.OrderItemStatus.FINISHED);
             orderItemRepository.save(item);
 
-            recalcTableStatus(item.getOrder());
+            Order order = item.getOrder();
+            tryAutoPromoteOrder(order);
+            recalcTableStatus(order);
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item status code: " + newStatus);
@@ -386,12 +401,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * Shortcut to mark an item as READY for service.
+     * Shortcut to mark an item as FINISHED.
      */
     @Override
     @Transactional
     public void markItemPrepared(@NonNull Long itemId) {
-        updateItemStatus(itemId, "READY");
+        updateItemStatus(itemId, "FINISHED");
     }
 
     /**
@@ -399,13 +414,24 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public List<OrderResponse> getKitchenOrders() {
-        return orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING)).stream()
+        LocalDateTime recentlyFinishedCutoff = AppTime.now().minusMinutes(15);
+
+        return orderRepository.findByStatusIn(
+                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT)
+        ).stream()
                 .filter(o -> o.getOrderItems().stream()
                         .anyMatch(oi -> oi.getStatus() == OrderItem.OrderItemStatus.PENDING
-                                || oi.getStatus() == OrderItem.OrderItemStatus.COOKING))
+                                || oi.getStatus() == OrderItem.OrderItemStatus.COOKING
+                                || isRecentlyFinished(oi, recentlyFinishedCutoff)))
                 .sorted(Comparator.comparing(Order::getCreatedAt))
                 .map(this::convertToResponse)
                 .toList();
+    }
+
+    private boolean isRecentlyFinished(OrderItem item, LocalDateTime cutoff) {
+        return item.getStatus() == OrderItem.OrderItemStatus.FINISHED
+                && item.getUpdatedAt() != null
+                && !item.getUpdatedAt().isBefore(cutoff);
     }
 
     /**
@@ -413,7 +439,9 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public List<OrderResponse> getActiveOrders() {
-        return orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING)).stream()
+        return orderRepository.findByStatusIn(
+                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT)
+        ).stream()
                 .map(this::convertToResponse)
                 .toList();
     }
@@ -425,8 +453,16 @@ public class OrderServiceImpl implements OrderService {
     public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
         return orderRepository
                 .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId,
-                        List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING))
+                        List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT))
                 .map(this::convertToResponse);
+    }
+
+    @Override
+    public Optional<CustomerPublicDto.Order> getPublicCurrentOrderByTable(@NonNull Long tableId) {
+        return orderRepository
+                .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId,
+                        List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT))
+                .map(this::convertToPublicResponse);
     }
 
     /**
@@ -474,11 +510,9 @@ public class OrderServiceImpl implements OrderService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is already settled");
         }
 
-        // Integrity check: All items should be prepared before final settlement
-        boolean hasUnprepared = order.getOrderItems().stream().anyMatch(item -> !item.isPrepared());
-        if (hasUnprepared) {
+        if (order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Outstanding items in preparation. Complete kitchen tasks first.");
+                    "Order must be in AWAITING_PAYMENT status before payment. Current: " + order.getStatus());
         }
 
         User currentUser = userRepository.findById(userId)
@@ -495,7 +529,7 @@ public class OrderServiceImpl implements OrderService {
         order.setPaymentStatus(Order.PaymentStatus.PAID);
         order.setPaymentMethod(Order.PaymentMethod.CASH);
         order.setPaidBy(currentUser);
-        order.setPaymentTime(LocalDateTime.now());
+        order.setPaymentTime(AppTime.now());
 
         orderRepository.save(Objects.requireNonNull(order));
 
@@ -594,7 +628,7 @@ public class OrderServiceImpl implements OrderService {
 
         order.setStatus(Order.OrderStatus.COMPLETED);
         order.setPaymentStatus(Order.PaymentStatus.PAID);
-        order.setPaymentTime(LocalDateTime.now());
+        order.setPaymentTime(AppTime.now());
 
         Order saved = orderRepository.save(order);
 
@@ -656,7 +690,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId) {
         Order order = orderRepository.findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId,
-                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING))
+                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No active session for this table"));
 
@@ -857,16 +891,53 @@ public class OrderServiceImpl implements OrderService {
         if (order.getOrderItems().isEmpty() || order.getStatus() == Order.OrderStatus.CANCELLED
                 || order.getStatus() == Order.OrderStatus.COMPLETED) {
             table.setStatus(DiningTable.TableStatus.AVAILABLE);
+        } else if (order.getStatus() == Order.OrderStatus.AWAITING_PAYMENT) {
+            table.setStatus(DiningTable.TableStatus.WAITING_FOR_PAYMENT);
         } else {
-            // Determine if the table is ready for billing or still being served
-            boolean allServed = order.getOrderItems().stream()
-                    .allMatch(oi -> oi.getStatus() == OrderItem.OrderItemStatus.SERVED
-                            || oi.getStatus() == OrderItem.OrderItemStatus.READY
-                            || oi.getStatus() == OrderItem.OrderItemStatus.FINISHED);
-            table.setStatus(allServed ? DiningTable.TableStatus.WAITING_FOR_PAYMENT : DiningTable.TableStatus.OCCUPIED);
+            boolean allDone = order.getOrderItems().stream()
+                    .allMatch(oi -> oi.getStatus() == OrderItem.OrderItemStatus.FINISHED
+                            || oi.getStatus() == OrderItem.OrderItemStatus.CANCELLED);
+            table.setStatus(allDone ? DiningTable.TableStatus.WAITING_FOR_PAYMENT : DiningTable.TableStatus.OCCUPIED);
         }
         tableRepository.save(table);
         notificationService.notifyTableChange();
+    }
+
+    /**
+     * Auto-promotes order to AWAITING_PAYMENT when all items are FINISHED or CANCELLED.
+     */
+    private void tryAutoPromoteOrder(Order order) {
+        if (order.getStatus() != Order.OrderStatus.PENDING
+                && order.getStatus() != Order.OrderStatus.SERVING
+                && order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
+            return;
+        }
+
+        if (order.getOrderItems().isEmpty()) {
+            return;
+        }
+
+        boolean allDone = order.getOrderItems().stream()
+                .allMatch(i -> i.getStatus() == OrderItem.OrderItemStatus.FINISHED
+                        || i.getStatus() == OrderItem.OrderItemStatus.CANCELLED);
+                        
+        boolean anyCookingOrFinished = order.getOrderItems().stream()
+                .anyMatch(i -> i.getStatus() == OrderItem.OrderItemStatus.COOKING
+                        || i.getStatus() == OrderItem.OrderItemStatus.FINISHED);
+
+        if (allDone && order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
+            order.setStatus(Order.OrderStatus.AWAITING_PAYMENT);
+            orderRepository.save(order);
+            log.info("Order #{} auto-promoted to AWAITING_PAYMENT (all items done)", order.getId());
+        } else if (!allDone && order.getStatus() == Order.OrderStatus.AWAITING_PAYMENT) {
+            order.setStatus(Order.OrderStatus.SERVING);
+            orderRepository.save(order);
+            log.info("Order #{} auto-demoted to SERVING (items reverted to incomplete)", order.getId());
+        } else if (anyCookingOrFinished && order.getStatus() == Order.OrderStatus.PENDING) {
+            order.setStatus(Order.OrderStatus.SERVING);
+            orderRepository.save(order);
+            log.info("Order #{} auto-promoted to SERVING (kitchen started prep)", order.getId());
+        }
     }
 
     /**
@@ -911,6 +982,40 @@ public class OrderServiceImpl implements OrderService {
                         oi.getStatus().name(),
                         oi.getOrderItemOptions().stream().map(opt -> new OrderResponse.OrderItemOptionResponse(
                                 opt.getItemOptionValue() != null ? opt.getItemOptionValue().getId() : null,
+                                opt.getOptionName(), opt.getOptionValueName(), opt.getExtraPrice())).toList(),
+                        oi.getCreatedAt(),
+                        oi.getUpdatedAt()))
+                        .toList(),
+                o.getCreatedAt());
+    }
+
+    private CustomerPublicDto.Order convertToPublicResponse(Order o) {
+        return new CustomerPublicDto.Order(
+                o.getId(),
+                o.getStatus().name(),
+                o.getTotalAmount(),
+                o.getTable() != null
+                        ? new CustomerPublicDto.Table(o.getTable().getId(), o.getTable().getTableNumber())
+                        : null,
+                o.getOrderItems().stream().map(oi -> new CustomerPublicDto.OrderItem(
+                        oi.getId(),
+                        oi.getMenuItem() != null ? new CustomerPublicDto.MenuItemSummary(
+                                oi.getMenuItem().getId(),
+                                oi.getMenuItem().getName(),
+                                oi.getMenuItem().getCategory() != null
+                                        ? new CustomerPublicDto.CategoryName(
+                                                oi.getMenuItem().getCategory().getName())
+                                        : null)
+                                : null,
+                        oi.getCombo() != null ? new CustomerPublicDto.ComboSummary(
+                                oi.getCombo().getId(),
+                                oi.getCombo().getName(),
+                                oi.getCombo().getPrice()) : null,
+                        oi.getUnitPrice(),
+                        oi.getQuantity(),
+                        oi.getNotes(),
+                        oi.getStatus().name(),
+                        oi.getOrderItemOptions().stream().map(opt -> new CustomerPublicDto.OrderItemOption(
                                 opt.getOptionName(), opt.getOptionValueName(), opt.getExtraPrice())).toList()))
                         .toList(),
                 o.getCreatedAt());
