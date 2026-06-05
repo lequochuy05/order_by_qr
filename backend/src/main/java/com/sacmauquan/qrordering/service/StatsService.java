@@ -2,6 +2,7 @@ package com.sacmauquan.qrordering.service;
 
 import com.sacmauquan.qrordering.dto.StatsResponse;
 import com.sacmauquan.qrordering.repository.StatsRepository;
+import com.sacmauquan.qrordering.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -10,9 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +39,7 @@ public class StatsService {
          */
         @Cacheable(value = "stats_revenue", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.Revenue> getRevenue(LocalDate from, LocalDate to) {
-                return repo.revenueByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
+                return repo.revenueByDay(toStartOfDay(from), toEndOfDay(to)).stream()
                                 .map(r -> new StatsResponse.Revenue(
                                                 r.getBucket(),
                                                 r.getRevenue(),
@@ -56,7 +56,7 @@ public class StatsService {
          */
         @Cacheable(value = "stats_emp_performance", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.EmpPerformance> getEmployeePerformance(LocalDate from, LocalDate to) {
-                return repo.empPerformance(toStartOfInstant(from), toEndOfInstant(to)).stream()
+                return repo.empPerformance(toStartOfDay(from), toEndOfDay(to)).stream()
                                 .map(r -> new StatsResponse.EmpPerformance(
                                                 r.getId(),
                                                 r.getFullName(),
@@ -74,7 +74,7 @@ public class StatsService {
          * @return List of order summaries
          */
         public List<StatsResponse.OrderDetail> getOrderDetails(LocalDate from, LocalDate to) {
-                return repo.orderDetails(toStartOfInstant(from), toEndOfInstant(to)).stream()
+                return repo.orderDetails(toStartOfDay(from), toEndOfDay(to)).stream()
                                 .map(r -> new StatsResponse.OrderDetail(
                                                 r.getId(),
                                                 r.getPaymentTime(),
@@ -93,7 +93,7 @@ public class StatsService {
          */
         @Cacheable(value = "stats_top_dishes", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.TopDish> getTopDishes(LocalDate from, LocalDate to) {
-                return repo.topDishes(toStartOfInstant(from), toEndOfInstant(to)).stream()
+                return repo.topDishes(toStartOfDay(from), toEndOfDay(to)).stream()
                                 .map(r -> new StatsResponse.TopDish(
                                                 r.getId(),
                                                 r.getName(),
@@ -113,7 +113,7 @@ public class StatsService {
          */
         @Cacheable(value = "stats_dish_trend", key = "#from.toString() + '_' + #to.toString()")
         public List<StatsResponse.DishTrend> getDishTrend(LocalDate from, LocalDate to) {
-                return repo.dishTrendByDay(toStartOfInstant(from), toEndOfInstant(to)).stream()
+                return repo.dishTrendByDay(toStartOfDay(from), toEndOfDay(to)).stream()
                                 .map(r -> new StatsResponse.DishTrend(
                                                 r.getBucket(),
                                                 r.getTotalQty()))
@@ -124,11 +124,11 @@ public class StatsService {
          * Builds a simple 30-day actual revenue + 7-day forecast series for the dashboard.
          */
         public List<StatsResponse.RevenueForecast> getRevenueForecast() {
-                LocalDate today = LocalDate.now();
+                LocalDate today = AppTime.today();
                 LocalDate from = today.minusDays(29);
 
                 Map<LocalDate, BigDecimal> actualByDate = new HashMap<>();
-                repo.revenueByDay(toStartOfInstant(from), toEndOfInstant(today)).forEach(row -> {
+                repo.revenueByDay(toStartOfDay(from), toEndOfDay(today)).forEach(row -> {
                         if (row.getBucket() != null) {
                                 actualByDate.put(LocalDate.parse(row.getBucket()),
                                                 row.getRevenue() != null ? row.getRevenue() : BigDecimal.ZERO);
@@ -164,10 +164,10 @@ public class StatsService {
          * Estimates next-week popular dishes from the latest 30 days of completed orders.
          */
         public List<StatsResponse.PopularDishForecast> getPopularDishesForecast() {
-                LocalDate today = LocalDate.now();
+                LocalDate today = AppTime.today();
                 LocalDate from = today.minusDays(29);
 
-                return repo.topDishes(toStartOfInstant(from), toEndOfInstant(today)).stream()
+                return repo.topDishes(toStartOfDay(from), toEndOfDay(today)).stream()
                                 .limit(5)
                                 .map(row -> {
                                         long totalQty = row.getTotalQty() != null ? row.getTotalQty() : 0L;
@@ -203,16 +203,16 @@ public class StatsService {
         }
 
         /**
-         * Converts LocalDate to an Instant at the start of the day in system default timezone.
+         * Converts LocalDate to the start of the business day in Vietnam time.
          */
-        private Instant toStartOfInstant(LocalDate date) {
-                return date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        private LocalDateTime toStartOfDay(LocalDate date) {
+                return date.atStartOfDay();
         }
 
         /**
-         * Converts LocalDate to an Instant at the precise end of the day in system default timezone.
+         * Converts LocalDate to the precise end of the business day in Vietnam time.
          */
-        private Instant toEndOfInstant(LocalDate date) {
-                return date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().minusMillis(1);
+        private LocalDateTime toEndOfDay(LocalDate date) {
+                return date.plusDays(1).atStartOfDay().minusNanos(1);
         }
 }

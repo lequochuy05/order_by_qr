@@ -108,6 +108,7 @@ const AdminSidebar = ({ isOpen }) => {
   const [preferences] = useAdminPreferences();
   const label = (text) => getMenuLabel(text, preferences.language);
 
+
   // State để quản lý menu nào đang mở (lưu theo title)
   const [expandedMenu, setExpandedMenu] = useState(null);
 
@@ -170,7 +171,6 @@ const AdminSidebar = ({ isOpen }) => {
             <div key={index}>
               {/* === RENDER ITEM MENU === */}
               {hasChildren ? (
-                // --- TRƯỜNG HỢP CÓ MENU CON (Dạng Button Toggle) ---
                 <div
                   onClick={() => isOpen && toggleSubMenu(item.title)}
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative cursor-pointer select-none
@@ -202,7 +202,6 @@ const AdminSidebar = ({ isOpen }) => {
                   )}
                 </div>
               ) : (
-                // --- TRƯỜNG HỢP MENU THƯỜNG (Dạng Link) ---
                 <Link
                   to={item.path}
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative

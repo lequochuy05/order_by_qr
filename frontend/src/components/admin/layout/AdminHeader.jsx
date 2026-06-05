@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useAdminPreferences } from '../../../hooks/useAdminPreferences';
-import { Bell, Menu, User, LogOut, Wifi, WifiOff } from 'lucide-react';
+import { Bell, Menu, User, LogOut, Wifi, WifiOff, Maximize2, Minimize2 } from 'lucide-react';
 import { fmtRole } from '../../../utils/formatters';
 import wsService from '../../../services/websocket';
 
@@ -10,6 +10,13 @@ const AdminHeader = ({ toggleSidebar }) => {
     const { user, logout } = useAuth();
     const [preferences] = useAdminPreferences();
     const location = useLocation();
+    const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+    useEffect(() => {
+        const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
 
     // WebSocket status badge
     const [wsConnected, setWsConnected] = useState(() => wsService.isConnected());
@@ -23,6 +30,14 @@ const AdminHeader = ({ toggleSidebar }) => {
     const getPageTitle = (path) => {
         const titles = preferences.language === 'en' ? englishPageTitles : vietnamesePageTitles;
         return titles[path] || titles['/admin/dashboard'];
+    };
+
+    const toggleFullscreen = async () => {
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else {
+            await document.documentElement.requestFullscreen();
+        }
     };
 
     return (
@@ -44,11 +59,10 @@ const AdminHeader = ({ toggleSidebar }) => {
             <div className="flex items-center gap-5">
                 {/* WebSocket Status Badge */}
                 <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${
-                        wsConnected
-                            ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400'
-                            : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${wsConnected
+                        ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400'
+                        : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
+                        }`}
                     title={wsConnected ? 'WebSocket connected' : 'WebSocket disconnected'}
                 >
                     {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
@@ -86,6 +100,15 @@ const AdminHeader = ({ toggleSidebar }) => {
                     >
                         <LogOut size={20} />
                     </button>
+                    <button
+                        type="button"
+                        onClick={toggleFullscreen}
+                        className="p-2 text-gray-400 hover:text-blue-500 transition-colors dark:text-slate-500 dark:hover:text-blue-400"
+                        title={preferences.language === 'en' ? (isFullscreen ? 'Minimize' : 'Fullscreen') : (isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình')}
+                    >
+                        {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                    </button>
+
                 </div>
             </div>
         </header>

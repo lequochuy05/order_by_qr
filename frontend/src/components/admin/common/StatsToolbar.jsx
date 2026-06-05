@@ -1,4 +1,5 @@
 import { Calendar, Download } from 'lucide-react';
+import { formatBusinessDate } from '../../../utils/businessTime';
 
 const StatsToolbar = ({ dateRange, setDateRange, onExport, title }) => {
     // Helper đổi ngày
@@ -22,12 +23,12 @@ const StatsToolbar = ({ dateRange, setDateRange, onExport, title }) => {
                 <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
                     <Calendar size={18} className="text-gray-500" />
                     <input type="date" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
-                        value={dateRange.from.toISOString().split('T')[0]}
+                        value={formatBusinessDate(dateRange.from)}
                         onChange={(e) => handleDateChange('from', e.target.value)}
                     />
                     <span className="text-gray-400">-</span>
                     <input type="date" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
-                        value={dateRange.to.toISOString().split('T')[0]}
+                        value={formatBusinessDate(dateRange.to)}
                         onChange={(e) => handleDateChange('to', e.target.value)}
                     />
                 </div>

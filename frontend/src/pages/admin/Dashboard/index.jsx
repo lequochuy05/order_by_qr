@@ -9,10 +9,14 @@ import {
 
 import { tableService } from '../../../services/admin/tableService';
 import { statisticsService } from '../../../services/admin/statisticsService';
-import { fmtVND, fmtTime, fmtStatus } from '../../../utils/formatters';
+import { orderService } from '../../../services/admin/orderService';
+import { fmtVND, fmtTime } from '../../../utils/formatters';
+import { getOrderStatusMeta } from '../../../utils/orderStatus';
+import { addDaysToBusinessDate, getBusinessToday } from '../../../utils/businessTime';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
+    const [businessToday, setBusinessToday] = useState(getBusinessToday);
 
     // Kpi data
     const [todayRevenue, setTodayRevenue] = useState(0);
@@ -32,35 +36,45 @@ const Dashboard = () => {
     );
 
     useEffect(() => {
+        const syncBusinessDate = () => {
+            setBusinessToday(currentDate => {
+                const nextDate = getBusinessToday();
+                return currentDate === nextDate ? currentDate : nextDate;
+            });
+        };
+
+        const intervalId = window.setInterval(syncBusinessDate, 30_000);
+        document.addEventListener('visibilitychange', syncBusinessDate);
+
+        return () => {
+            window.clearInterval(intervalId);
+            document.removeEventListener('visibilitychange', syncBusinessDate);
+        };
+    }, []);
+
+    useEffect(() => {
         const fetchDashboardData = async () => {
             setLoading(true);
             try {
-                // Configure Date Bounds using browser local timezone
-                const todayStart = new Date();
-                todayStart.setHours(0, 0, 0, 0);
-
-                const todayEnd = new Date();
-                todayEnd.setHours(23, 59, 59, 999);
-
-                const past7Start = new Date();
-                past7Start.setDate(todayStart.getDate() - 6);
-                past7Start.setHours(0, 0, 0, 0);
+                const past7Start = addDaysToBusinessDate(businessToday, -6);
 
                 // Fetch all data in parallel using server-side filtered APIs
                 const [
                     tables,
                     todayRevenueData,
-                    todayOrdersData,
+                    todayOrderStatsData,
+                    completedOrderStatsData,
+                    recentOrdersData,
                     topDishesData,
-                    past7OrdersData,
                     revenueForecastResult,
                     dishForecastResult
                 ] = await Promise.allSettled([
                     tableService.getAll(),
-                    statisticsService.getRevenue(todayStart, todayEnd),
-                    statisticsService.getOrders(todayStart, todayEnd),
-                    statisticsService.getTopDishes(past7Start, todayEnd),
-                    statisticsService.getOrders(past7Start, todayEnd),
+                    statisticsService.getRevenue(businessToday, businessToday),
+                    orderService.getOrderStats({ startDate: businessToday, endDate: businessToday }),
+                    orderService.getOrderStats({ status: 'COMPLETED', startDate: businessToday, endDate: businessToday }),
+                    orderService.getOrderHistory({ startDate: businessToday, endDate: businessToday, page: 0, size: 5 }),
+                    statisticsService.getTopDishes(past7Start, businessToday),
                     statisticsService.getRevenueForecast(),
                     statisticsService.getPopularDishesForecast()
                 ]);
@@ -81,15 +95,24 @@ const Dashboard = () => {
                     setTodayRevenue(rvToday);
                 }
 
-                // 3. Today Orders (from server)
-                if (todayOrdersData.status === 'fulfilled') {
-                    const ordersArr = todayOrdersData.value;
-                    if (Array.isArray(ordersArr)) {
-                        const completed = ordersArr.filter(o => o.status === 'PAID').length;
-                        setTodayOrders({ total: ordersArr.length, completed });
-                        const sorted = [...ordersArr].sort((a, b) => new Date(b.paymentTime || b.createdAt) - new Date(a.paymentTime || a.createdAt));
-                        setRecentOrders(sorted.slice(0, 5));
-                    }
+                // 3. Today Orders: count all orders created today, not just paid/completed ones.
+                if (todayOrderStatsData.status === 'fulfilled') {
+                    setTodayOrders(current => ({
+                        ...current,
+                        total: Number(todayOrderStatsData.value?.totalOrders || 0)
+                    }));
+                }
+
+                if (completedOrderStatsData.status === 'fulfilled') {
+                    setTodayOrders(current => ({
+                        ...current,
+                        completed: Number(completedOrderStatsData.value?.totalOrders || 0)
+                    }));
+                }
+
+                if (recentOrdersData.status === 'fulfilled') {
+                    const ordersPage = recentOrdersData.value;
+                    setRecentOrders(Array.isArray(ordersPage?.content) ? ordersPage.content : []);
                 }
 
                 // 4. Top Dishes & 5. Category shares (server-side aggregation)
@@ -107,11 +130,6 @@ const Dashboard = () => {
                         const pieData = Object.keys(catMap).map(k => ({ name: k, value: catMap[k] }));
                         setCategoryShares(pieData);
                     }
-                }
-
-                // 5. Category shares handled in step 4 now
-                if (past7OrdersData.status === 'fulfilled') {
-                    // Just keeping this block to avoid unused promise, but logic moved to step 4
                 }
 
                 // 6. Forecasts
@@ -135,7 +153,7 @@ const Dashboard = () => {
         };
 
         fetchDashboardData();
-    }, []);
+    }, [businessToday]);
 
     const COLORS_PIE = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#f59e0b'];
 
@@ -206,7 +224,7 @@ const Dashboard = () => {
                         <div>
                             <p className="text-slate-500 text-sm font-medium mb-1">Giá trị trung bình đơn</p>
                             <h3 className="text-2xl font-bold text-slate-800">
-                                {todayOrders.total > 0 ? fmtVND(todayRevenue / todayOrders.total) : fmtVND(0)}
+                                {todayOrders.completed > 0 ? fmtVND(todayRevenue / todayOrders.completed) : fmtVND(0)}
                             </h3>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
@@ -377,11 +395,11 @@ const Dashboard = () => {
                             <div key={idx} className="flex justify-between items-start p-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-xl transition-colors">
                                 <div>
                                     <p className="text-sm font-semibold text-slate-700">Đơn #{order.id}</p>
-                                    <p className="text-xs text-slate-500">{order.tableNumber ? `Bàn ${order.tableNumber}` : 'Mang đi'} • {fmtTime(order.paymentTime || order.createdAt)}</p>
+                                    <p className="text-xs text-slate-500">{order.table?.tableNumber ? `Bàn ${order.table.tableNumber}` : 'Mang đi'} • {fmtTime(order.paymentTime || order.createdAt)}</p>
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-1">
-                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${fmtStatus('order', order.status).color}`}>
-                                        {fmtStatus('order', order.status).label}
+                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${getOrderStatusMeta(order.status).classes}`}>
+                                        {getOrderStatusMeta(order.status).label}
                                     </span>
                                     <span className="text-sm font-bold text-slate-800">{fmtVND(order.totalAmount)}</span>
                                 </div>
