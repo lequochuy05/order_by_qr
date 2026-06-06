@@ -14,11 +14,18 @@ import StaffModal from './StaffModal';
 import StatusModal from '@shared/ui/StatusModal.jsx';
 import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
+import { USER_STATUS } from '@shared/lib/formatters.js';
+
+const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) => ({
+  id,
+  name: meta.label
+}));
 
 const StaffManager = () => {
   const [staffs, setStaffs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,11 +141,18 @@ const StaffManager = () => {
     }
   };
 
-  const filteredStaffs = staffs.filter(s =>
-    (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.phone || '').includes(searchTerm)
-  );
+  const filteredStaffs = React.useMemo(() => {
+    const normalizedSearch = searchTerm.toLowerCase();
+    return staffs.filter(s => {
+      const matchesSearch =
+        (s.fullName || '').toLowerCase().includes(normalizedSearch) ||
+        (s.email || '').toLowerCase().includes(normalizedSearch) ||
+        (s.phone || '').includes(searchTerm);
+      const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [staffs, searchTerm, statusFilter]);
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
@@ -152,6 +166,11 @@ const StaffManager = () => {
           setIsModalOpen(true);
         }}
         addButtonText="Thêm Nhân viên"
+        showFilter
+        filterAllLabel="Tất cả trạng thái"
+        filterValue={statusFilter}
+        setFilterValue={setStatusFilter}
+        filterOptions={staffStatusFilterOptions}
       />
 
       {loading ? (

@@ -12,6 +12,7 @@ const ManagementHeader = ({
 
   // Phần mở rộng cho bộ lọc 
   showFilter = false,
+  filterAllLabel = "Tất cả danh mục",
   filterValue,
   setFilterValue,
   filterOptions = []
@@ -39,7 +40,7 @@ const ManagementHeader = ({
           value={filterValue}
           onChange={e => setFilterValue(e.target.value)}
         >
-          <option value="ALL">Tất cả danh mục</option>
+          <option value="ALL">{filterAllLabel}</option>
           {filterOptions.map(opt => (
             <option key={opt.id} value={opt.id}>{opt.name}</option>
           ))}

@@ -8,24 +8,40 @@ import { statisticsService } from '@modules/statistics/api/statisticsService.js'
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
 
+const ITEMS_PER_PAGE = 10;
+
+const getDefaultDateRange = () => {
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(to.getDate() - 6);
+    return { from, to };
+};
+
 const RevenueStats = () => {
     // Mặc định 7 ngày  
-    const [dateRange, setDateRange] = useState({
-        from: new Date(new Date().setDate(new Date().getDate() - 6)),
-        to: new Date()
-    });
+    const [dateRange, setDateRange] = useState(getDefaultDateRange);
+    const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
     const [revenueData, setRevenueData] = useState([]);
     const [orders, setOrders] = useState([]);
+    const [currentPage, setCurrentPage] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    // Gọi API khi thay đổi ngày
+    const handleApplyFilters = () => {
+        setCurrentPage(0);
+        setAppliedDateRange({
+            from: new Date(dateRange.from),
+            to: new Date(dateRange.to)
+        });
+    };
+
+    // Gọi API khi áp dụng khoảng ngày
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
                 const [rev, ods] = await Promise.all([
-                    statisticsService.getRevenue(dateRange.from, dateRange.to),
-                    statisticsService.getOrders(dateRange.from, dateRange.to)
+                    statisticsService.getRevenue(appliedDateRange.from, appliedDateRange.to),
+                    statisticsService.getOrders(appliedDateRange.from, appliedDateRange.to)
                 ]);
                 setRevenueData(rev);
                 // Sắp xếp đơn hàng mới nhất lên đầu để hiển thị trong bảng
@@ -34,7 +50,7 @@ const RevenueStats = () => {
             finally { setLoading(false); }
         };
         load();
-    }, [dateRange]);
+    }, [appliedDateRange]);
 
     // Format dữ liệu biểu đồ
     const chartData = useMemo(() => {
@@ -65,9 +81,21 @@ const RevenueStats = () => {
         return { totalRev, totalOrd, avg };
     }, [revenueData, orders]);
 
+    const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE);
+    const paginatedOrders = useMemo(() => {
+        const start = currentPage * ITEMS_PER_PAGE;
+        return orders.slice(start, start + ITEMS_PER_PAGE);
+    }, [currentPage, orders]);
+
+    useEffect(() => {
+        if (totalPages > 0 && currentPage >= totalPages) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [currentPage, totalPages]);
+
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
-            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} title="Thời gian" />
+            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} onApply={handleApplyFilters} title="Thời gian" />
 
             {loading ? <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div> : (
                 <div className="space-y-6">
@@ -151,7 +179,7 @@ const RevenueStats = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {orders.slice(0, 10).map((order) => ( // Chỉ hiện 10 đơn mới nhất để tránh quá dài
+                                    {paginatedOrders.map((order) => (
                                         <tr key={order.id} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
                                             <td className="p-4 font-medium text-blue-600">#{order.id}</td>
                                             <td className="p-4 text-gray-600">
@@ -179,10 +207,27 @@ const RevenueStats = () => {
                                     )}
                                 </tbody>
                             </table>
-                            {orders.length > 10 && (
-                                <div className="p-3 text-center border-t border-gray-100">
-                                    <button className="text-sm text-blue-600 font-medium hover:underline">
-                                        Xem tất cả đơn hàng
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100">
+                                    <button
+                                        type="button"
+                                        disabled={currentPage === 0}
+                                        onClick={() => setCurrentPage(prev => prev - 1)}
+                                        className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                                    >
+                                        Trước
+                                    </button>
+                                    <span className="text-gray-500 font-medium px-4">
+                                        Trang {currentPage + 1} / {totalPages}
+                                        <span className="text-gray-400 ml-2 text-sm">({orders.length} đơn)</span>
+                                    </span>
+                                    <button
+                                        type="button"
+                                        disabled={currentPage >= totalPages - 1}
+                                        onClick={() => setCurrentPage(prev => prev + 1)}
+                                        className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                                    >
+                                        Sau
                                     </button>
                                 </div>
                             )}

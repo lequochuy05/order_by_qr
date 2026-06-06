@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { X, QrCode, AlertCircle, Save, Loader2 } from 'lucide-react';
+import { X, QrCode, AlertCircle, Save, Loader2, RefreshCw } from 'lucide-react';
+import { TABLE_STATUS } from '@entities/order/lib/orderStatus.js';
 
-const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting }) => {
+const TABLE_STATUS_OPTIONS = Object.entries(TABLE_STATUS).map(([value, meta]) => ({
+    value,
+    label: meta.label
+}));
+
+const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting, onRegenerateQr, isRegeneratingQr }) => {
     const [formData, setFormData] = useState(initialData || { id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' });
     const [errors, setErrors] = useState({});
 
@@ -29,6 +35,14 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting }
         e.preventDefault();
         if (validateForm()) {
             onSubmit(formData);
+        }
+    };
+
+    const handleRegenerateQr = async () => {
+        if (!formData.id || !onRegenerateQr) return;
+        const updatedTable = await onRegenerateQr(formData.id);
+        if (updatedTable) {
+            setFormData(updatedTable);
         }
     };
 
@@ -99,9 +113,9 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting }
                                     value={formData.status}
                                     onChange={e => setFormData({ ...formData, status: e.target.value })}
                                 >
-                                    <option value="AVAILABLE">Sẵn sàng</option>
-                                    <option value="OCCUPIED">Đang ngồi</option>
-                                    <option value="WAITING_FOR_PAYMENT">Chờ trả tiền</option>
+                                    {TABLE_STATUS_OPTIONS.map(option => (
+                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                    ))}
                                 </select>
                             </div>
                         )}
@@ -118,6 +132,21 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting }
                                     <QrCode size={14} className="text-orange-500" />
                                     <span>Quét để đặt món</span>
                                 </div>
+                                {formData.id && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRegenerateQr}
+                                        disabled={isRegeneratingQr}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-[11px] font-black uppercase tracking-[0.12em] shadow-lg shadow-orange-100 hover:bg-orange-600 disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none transition-all active:scale-95"
+                                    >
+                                        {isRegeneratingQr ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                            <RefreshCw size={14} />
+                                        )}
+                                        <span>{isRegeneratingQr ? 'Đang tạo...' : 'Tạo lại QR'}</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}

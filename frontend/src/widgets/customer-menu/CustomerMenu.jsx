@@ -84,15 +84,15 @@ const MenuPage = () => {
       });
 
       setTableInfo(tableRes);
-      
+
       // Load current order if table is known
       if (tableRes && tableRes.id) {
-          try {
-             const orderRes = await menuService.getCurrentOrderByTable(tableRes.id);
-             setCurrentOrder(orderRes);
-          } catch {
-             setCurrentOrder(null);
-          }
+        try {
+          const orderRes = await menuService.getCurrentOrderByTable(tableRes.id);
+          setCurrentOrder(orderRes);
+        } catch {
+          setCurrentOrder(null);
+        }
       }
 
       // console.log(" Menu khách hàng đã được làm mới");
@@ -275,7 +275,12 @@ const MenuPage = () => {
       // Tải lại dữ liệu để lấy currentOrder mới
       loadData(false);
     } catch (e) {
-      showError(e, 'Không thể gửi đơn hàng');
+      const errorMessage = e?.data?.detail || e?.message || '';
+      if (e?.status === 404 && (errorMessage.includes('thông tin bàn') || errorMessage.includes('Table Code'))) {
+        showError(e, 'Không tìm thấy thông tin bàn');
+      } else {
+        showError(e, 'Không thể gửi đơn hàng');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -355,7 +360,7 @@ const MenuPage = () => {
           )}
 
           <div className="p-4 flex-1 overflow-y-auto pb-32">
-            
+
             {/* Component lọc danh mục */}
             <CategoryFilter categories={categories} selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
 
@@ -448,7 +453,7 @@ const MenuPage = () => {
 
           {/* AI Customer Assistant */}
           {restaurantSettings.enableAiAssistant !== false && (
-            <AiChatAssistant hidden={showOrderModal} />
+            <AiChatAssistant hidden={showOrderModal || showCurrentOrderSheet || statusModal.isOpen || selectedItemForOptions} />
           )}
 
           <StatusModal
@@ -458,11 +463,11 @@ const MenuPage = () => {
             title={statusModal.title}
             message={statusModal.message}
           />
-          
-          <CurrentOrderSheet 
-             isOpen={showCurrentOrderSheet} 
-             order={currentOrder} 
-             onClose={() => setShowCurrentOrderSheet(false)} 
+
+          <CurrentOrderSheet
+            isOpen={showCurrentOrderSheet}
+            order={currentOrder}
+            onClose={() => setShowCurrentOrderSheet(false)}
           />
         </div>
       </div>

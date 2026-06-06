@@ -8,28 +8,40 @@ import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 
 import { fmtVND } from '@shared/lib/formatters.js';
 
+const getDefaultDateRange = () => {
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(to.getDate() - 6);
+    return { from, to };
+};
+
 const StaffStats = () => {
     // State thời gian
-    const [dateRange, setDateRange] = useState({
-        from: new Date(new Date().setDate(new Date().getDate() - 6)),
-        to: new Date()
-    });
+    const [dateRange, setDateRange] = useState(getDefaultDateRange);
+    const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(false);
+
+    const handleApplyFilters = () => {
+        setAppliedDateRange({
+            from: new Date(dateRange.from),
+            to: new Date(dateRange.to)
+        });
+    };
 
     // Load data
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
-                const data = await statisticsService.getEmployees(dateRange.from, dateRange.to);
+                const data = await statisticsService.getEmployees(appliedDateRange.from, appliedDateRange.to);
                 // Sắp xếp giảm dần theo doanh thu
                 setEmployees(data.sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         load();
-    }, [dateRange]);
+    }, [appliedDateRange]);
 
     // === 1. TÍNH TOÁN DỮ LIỆU BIỂU ĐỒ ===
     const pieData = useMemo(() => {
@@ -64,7 +76,7 @@ const StaffStats = () => {
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
-            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} title="Thời gian" />
+            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} onApply={handleApplyFilters} title="Thời gian" />
 
             {loading ? (
                 <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div>

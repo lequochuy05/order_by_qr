@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
-import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { orderService } from '@modules/order-management/api/orderService.js';
 import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import OrderDetailsModal from './OrderDetailsModal';
@@ -307,7 +307,7 @@ export default function OrderHistoryPage() {
             className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none text-sm cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
-            {['PENDING', 'SERVING', 'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED'].map(key => (
+            {Object.keys(ORDER_STATUS).map(key => (
               <option key={key} value={key}>{getOrderStatusMeta(key).label}</option>
             ))}
           </select>

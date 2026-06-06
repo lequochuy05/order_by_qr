@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { USER_STATUS } from '@shared/lib/formatters.js';
+
+const USER_STATUS_OPTIONS = Object.entries(USER_STATUS).map(([value, meta]) => ({
+  value,
+  label: meta.label
+}));
 
 const StaffModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
   const [formData, setFormData] = useState(() => {
@@ -252,9 +258,9 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors })
                         value={formData.status}
                         onChange={e => setFormData({ ...formData, status: e.target.value })}
                       >
-                        <option value="ACTIVE">Hoạt động</option>
-                        <option value="INACTIVE">Ngừng hoạt động</option>
-                        <option value="BANNED">Khóa</option>
+                        {USER_STATUS_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
                       </select>
                     </div>
                   </div>

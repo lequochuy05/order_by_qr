@@ -3,28 +3,44 @@ import {
     BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
     ResponsiveContainer, Tooltip as RechartsTooltip
 } from 'recharts';
-import { Loader2, UtensilsCrossed, ShoppingBag, TrendingUp, BarChart3, Award, Download } from 'lucide-react';
+import { Loader2, UtensilsCrossed, ShoppingBag, TrendingUp, BarChart3, Award } from 'lucide-react';
 import { statisticsService } from '@modules/statistics/api/statisticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 import { formatBusinessDate } from '@shared/lib/businessTime.js';
 
+const ITEMS_PER_PAGE = 10;
+
+const getDefaultDateRange = () => {
+    const to = new Date();
+    const from = new Date(to);
+    from.setDate(to.getDate() - 6);
+    return { from, to };
+};
+
 const TopDishesStats = () => {
-    const [dateRange, setDateRange] = useState({
-        from: new Date(new Date().setDate(new Date().getDate() - 6)),
-        to: new Date()
-    });
+    const [dateRange, setDateRange] = useState(getDefaultDateRange);
+    const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
     const [dishes, setDishes] = useState([]);
     const [trend, setTrend] = useState([]);
+    const [currentPage, setCurrentPage] = useState(0);
     const [loading, setLoading] = useState(false);
+
+    const handleApplyFilters = () => {
+        setCurrentPage(0);
+        setAppliedDateRange({
+            from: new Date(dateRange.from),
+            to: new Date(dateRange.to)
+        });
+    };
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
                 const [d, t] = await Promise.all([
-                    statisticsService.getTopDishes(dateRange.from, dateRange.to),
-                    statisticsService.getDishTrend(dateRange.from, dateRange.to)
+                    statisticsService.getTopDishes(appliedDateRange.from, appliedDateRange.to),
+                    statisticsService.getDishTrend(appliedDateRange.from, appliedDateRange.to)
                 ]);
                 setDishes(d);
                 setTrend(t);
@@ -32,7 +48,7 @@ const TopDishesStats = () => {
             finally { setLoading(false); }
         };
         load();
-    }, [dateRange]);
+    }, [appliedDateRange]);
 
     // KPI
     const kpi = useMemo(() => {
@@ -64,17 +80,44 @@ const TopDishesStats = () => {
     // Max quantity for progress bars
     const maxQty = dishes.length > 0 ? dishes[0].totalQty : 1;
 
+    const totalPages = Math.ceil(dishes.length / ITEMS_PER_PAGE);
+    const paginatedDishes = useMemo(() => {
+        const start = currentPage * ITEMS_PER_PAGE;
+        return dishes.slice(start, start + ITEMS_PER_PAGE);
+    }, [currentPage, dishes]);
+
+    useEffect(() => {
+        if (totalPages > 0 && currentPage >= totalPages) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [currentPage, totalPages]);
+
     // Export CSV
     const handleExport = () => {
-        const header = 'Hạng,Tên món,Danh mục,SL bán,Doanh thu\n';
+        const header = 'Hạng,Tên món,Danh mục,SL bán,Doanh thu';
+        const escapeCsvValue = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
         const rows = dishes.map((d, i) =>
-            `${i + 1},"${d.name}","${d.categoryName || ''}",${d.totalQty},${d.totalRevenue}`
+            [
+                i + 1,
+                escapeCsvValue(d.name),
+                escapeCsvValue(d.categoryName || d.category || ''),
+                d.totalQty || 0,
+                d.totalRevenue || 0
+            ].join(',')
         ).join('\n');
-        const blob = new Blob(['\uFEFF' + header + rows], { type: 'text/csv;charset=utf-8;' });
+        const totalRow = [
+            '',
+            escapeCsvValue('Tổng số lượng món bán / Tổng doanh thu'),
+            '',
+            kpi.totalQty,
+            kpi.totalRev
+        ].join(',');
+        const content = ['\uFEFF' + header, rows, totalRow].filter(Boolean).join('\n');
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `top-dishes-${formatBusinessDate(dateRange.from)}_${formatBusinessDate(dateRange.to)}.csv`;
+        a.download = `top-dishes-${formatBusinessDate(appliedDateRange.from)}_${formatBusinessDate(appliedDateRange.to)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -83,7 +126,7 @@ const TopDishesStats = () => {
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
-            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} title="Thời gian" onExport={handleExport} />
+            <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} onApply={handleApplyFilters} title="Thời gian" onExport={handleExport} />
 
             {loading ? (
                 <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div>
@@ -185,64 +228,67 @@ const TopDishesStats = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {dishes.map((dish, idx) => (
-                                        <tr key={`dish-${dish.menuItemId || idx}`} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
-                                            {/* Rank */}
-                                            <td className="p-4 text-center">
-                                                {idx < 3 ? (
-                                                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold shadow-sm
-                                                        ${idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-gray-400' : 'bg-orange-400'}`}>
-                                                        {idx + 1}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 font-medium">{idx + 1}</span>
-                                                )}
-                                            </td>
-                                            {/* Thumbnail */}
-                                            <td className="p-4">
-                                                {dish.img ? (
-                                                    <img src={dish.img} alt={dish.name} className="w-10 h-10 rounded-lg object-cover shadow-sm" />
-                                                ) : (
-                                                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                        <UtensilsCrossed size={16} className="text-gray-300" />
-                                                    </div>
-                                                )}
-                                            </td>
-                                            {/* Name */}
-                                            <td className="p-4">
-                                                <p className="font-semibold text-gray-800 line-clamp-1" title={dish.name}>{dish.name}</p>
-                                            </td>
-                                            {/* Category */}
-                                            <td className="p-4">
-                                                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
-                                                    {dish.category || 'Khác'}
-                                                </span>
-                                            </td>
-                                            {/* Quantity */}
-                                            <td className="p-4 text-center">
-                                                <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold">
-                                                    {dish.totalQty}
-                                                </span>
-                                            </td>
-                                            {/* Revenue */}
-                                            <td className="p-4 text-right font-bold text-gray-800">
-                                                {fmtVND(dish.totalRevenue)}
-                                            </td>
-                                            {/* Progress bar */}
-                                            <td className="p-4 pr-6">
-                                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                                                    <div
-                                                        className="h-2 rounded-full transition-all duration-700 ease-out"
-                                                        style={{
-                                                            width: `${(dish.totalQty / maxQty) * 100}%`,
-                                                            backgroundColor: COLORS_TOP[idx % COLORS_TOP.length]
-                                                        }}
-                                                    />
-                                                </div>
-                                            </td>
+                                    {paginatedDishes.map((dish, idx) => {
+                                        const rank = currentPage * ITEMS_PER_PAGE + idx + 1;
 
-                                        </tr>
-                                    ))}
+                                        return (
+                                            <tr key={`dish-${dish.menuItemId || rank}`} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                                                {/* Rank */}
+                                                <td className="p-4 text-center">
+                                                    {rank <= 3 ? (
+                                                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold shadow-sm
+                                                        ${rank === 1 ? 'bg-yellow-500' : rank === 2 ? 'bg-gray-400' : 'bg-orange-400'}`}>
+                                                            {rank}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400 font-medium">{rank}</span>
+                                                    )}
+                                                </td>
+                                                {/* Thumbnail */}
+                                                <td className="p-4">
+                                                    {dish.img ? (
+                                                        <img src={dish.img} alt={dish.name} className="w-10 h-10 rounded-lg object-cover shadow-sm" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                            <UtensilsCrossed size={16} className="text-gray-300" />
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                {/* Name */}
+                                                <td className="p-4">
+                                                    <p className="font-semibold text-gray-800 line-clamp-1" title={dish.name}>{dish.name}</p>
+                                                </td>
+                                                {/* Category */}
+                                                <td className="p-4">
+                                                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                                                        {dish.categoryName || dish.category || 'Khác'}
+                                                    </span>
+                                                </td>
+                                                {/* Quantity */}
+                                                <td className="p-4 text-center">
+                                                    <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold">
+                                                        {dish.totalQty}
+                                                    </span>
+                                                </td>
+                                                {/* Revenue */}
+                                                <td className="p-4 text-right font-bold text-gray-800">
+                                                    {fmtVND(dish.totalRevenue)}
+                                                </td>
+                                                {/* Progress bar */}
+                                                <td className="p-4 pr-6">
+                                                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                                        <div
+                                                            className="h-2 rounded-full transition-all duration-700 ease-out"
+                                                            style={{
+                                                                width: `${(dish.totalQty / maxQty) * 100}%`,
+                                                                backgroundColor: COLORS_TOP[(rank - 1) % COLORS_TOP.length]
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
 
                                     {dishes.length === 0 && (
                                         <tr key="empty-row">
@@ -256,6 +302,30 @@ const TopDishesStats = () => {
                                 </tbody>
                             </table>
                         </div>
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    disabled={currentPage === 0}
+                                    onClick={() => setCurrentPage(prev => prev - 1)}
+                                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                                >
+                                    Trước
+                                </button>
+                                <span className="text-gray-500 font-medium px-4">
+                                    Trang {currentPage + 1} / {totalPages}
+                                    <span className="text-gray-400 ml-2 text-sm">({dishes.length} món)</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={currentPage >= totalPages - 1}
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                                >
+                                    Sau
+                                </button>
+                            </div>
+                        )}
 
                     </div>
 

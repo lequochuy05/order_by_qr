@@ -17,6 +17,12 @@ import PaymentModal from './PaymentModal.jsx';
 import StatusModal from '@shared/ui/StatusModal.jsx';
 import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
+import { TABLE_STATUS } from '@entities/order/lib/orderStatus.js';
+
+const tableStatusFilterOptions = Object.entries(TABLE_STATUS).map(([id, meta]) => ({
+    id,
+    name: meta.label
+}));
 
 const TableManager = () => {
     const [tables, setTables] = useState([]);
@@ -30,6 +36,7 @@ const TableManager = () => {
     const [addItemModal, setAddItemModal] = useState({ open: false, table: null });
     const [payModal, setPayModal] = useState({ open: false, table: null, order: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRegeneratingQr, setIsRegeneratingQr] = useState(false);
 
     const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
     const { confirmModal, confirm, closeConfirm } = useConfirmModal();
@@ -134,6 +141,29 @@ const TableManager = () => {
         } catch (e) { showError(e); }
     };
 
+    const handleRegenerateQr = async (id) => {
+        if (isRegeneratingQr) return null;
+        const confirmed = await confirm(
+            'Tạo lại mã QR',
+            'Mã QR cũ của bàn này sẽ không còn dùng được. Bạn có chắc chắn muốn xóa QR cũ và tạo mã QR mới?'
+        );
+        if (!confirmed) return null;
+
+        setIsRegeneratingQr(true);
+        try {
+            const updatedTable = await tableService.regenerateQr(id);
+            showSuccess("Đã tạo lại mã QR cho bàn");
+            setFormModal(prev => ({ ...prev, data: updatedTable }));
+            fetchTables();
+            return updatedTable;
+        } catch (e) {
+            showError(e);
+            return null;
+        } finally {
+            setIsRegeneratingQr(false);
+        }
+    };
+
     const handleSubmitItems = async (payload) => {
         if (isSubmitting) return;
         setIsSubmitting(true);
@@ -151,11 +181,7 @@ const TableManager = () => {
             <ManagementHeader
                 title="Quản lý bàn ăn"
                 showFilter={true}
-                filterOptions={[
-                    { id: 'AVAILABLE', name: 'Bàn Trống' },
-                    { id: 'OCCUPIED', name: 'Đang có khách' },
-                    { id: 'WAITING_FOR_PAYMENT', name: 'Chờ tính tiền' }
-                ]}
+                filterOptions={tableStatusFilterOptions}
                 filterValue={filter}
                 setFilterValue={setFilter}
 
@@ -182,7 +208,8 @@ const TableManager = () => {
             {/* Modals */}
             <TableFormModal
                 key={formModal.open ? (formModal.data?.id || 'new') : 'form-closed'}
-                isOpen={formModal.open} onClose={() => setFormModal({ open: false, data: null })} initialData={formModal.data} onSubmit={handleSaveTable} isSubmitting={isSubmitting} />
+                isOpen={formModal.open} onClose={() => setFormModal({ open: false, data: null })} initialData={formModal.data} onSubmit={handleSaveTable} isSubmitting={isSubmitting}
+                onRegenerateQr={handleRegenerateQr} isRegeneratingQr={isRegeneratingQr} />
             <AddItemModal
                 key={addItemModal.open ? (addItemModal.table?.id || 'new') : 'add-item-closed'}
                 isOpen={addItemModal.open} onClose={() => setAddItemModal({ open: false, table: null })} table={addItemModal.table} onSubmit={handleSubmitItems} isSubmitting={isSubmitting} />

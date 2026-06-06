@@ -18,6 +18,7 @@ const ComboManager = () => {
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCombo, setEditingCombo] = useState(null);
@@ -108,7 +109,11 @@ const ComboManager = () => {
             const detail = await comboService.getById(id);
             const formatted = {
                 ...detail,
-                items: detail.items.map(i => ({ id: i.id, menuItemId: i.menuItem.id, quantity: i.quantity }))
+                items: (detail.items || []).map(i => ({
+                    id: i.id,
+                    menuItemId: i.menuItemId ?? i.menuItem?.id,
+                    quantity: i.quantity
+                })).filter(i => i.menuItemId)
             };
             setEditingCombo(formatted);
             setErrors({});
@@ -119,8 +124,17 @@ const ComboManager = () => {
     };
 
     const filteredCombos = React.useMemo(() => {
-        return combos.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [combos, searchTerm]);
+        const normalizedSearch = searchTerm.toLowerCase();
+        return combos.filter(c => {
+            const matchesSearch = c.name.toLowerCase().includes(normalizedSearch);
+            const matchesStatus =
+                statusFilter === 'ALL' ||
+                (statusFilter === 'ACTIVE' && c.active) ||
+                (statusFilter === 'INACTIVE' && !c.active);
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [combos, searchTerm, statusFilter]);
 
     return (
         <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen font-sans">
@@ -134,6 +148,14 @@ const ComboManager = () => {
                     setIsModalOpen(true);
                 }}
                 addButtonText="Thêm mới"
+                showFilter
+                filterAllLabel="Tất cả trạng thái"
+                filterValue={statusFilter}
+                setFilterValue={setStatusFilter}
+                filterOptions={[
+                    { id: 'ACTIVE', name: 'Đang kinh doanh' },
+                    { id: 'INACTIVE', name: 'Tạm ngưng' }
+                ]}
             />
 
             {loading ? (

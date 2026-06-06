@@ -69,7 +69,7 @@ const AppRouter = () => (
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/menu?tableCode=c21edc13d371" replace />} />
+      <Route path="/" element={<Navigate to="/menu?tableCode=5c8006237e33" replace />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="*" element={<div>Trang không tồn tại</div>} />
     </Routes>

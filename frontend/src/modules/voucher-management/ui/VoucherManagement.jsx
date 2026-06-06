@@ -11,10 +11,23 @@ import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 
+const VOUCHER_STATUS = {
+  ACTIVE: { text: 'Đang dùng', color: 'bg-green-100 text-green-700' },
+  INACTIVE: { text: 'Ngừng', color: 'bg-gray-100 text-gray-500' },
+  EXPIRED: { text: 'Hết hạn', color: 'bg-red-100 text-red-600' },
+  EXHAUSTED: { text: 'Hết lượt', color: 'bg-amber-100 text-amber-700' }
+};
+
+const voucherStatusFilterOptions = Object.entries(VOUCHER_STATUS).map(([id, meta]) => ({
+  id,
+  name: meta.text
+}));
+
 const VoucherManager = () => {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
 
@@ -24,13 +37,19 @@ const VoucherManager = () => {
 
   const getStatusInfo = (v) => {
     const now = new Date();
+    const from = v.validFrom ? new Date(v.validFrom) : null;
     const to = v.validTo ? new Date(v.validTo) : null;
+    const isUpcoming = from && now < from;
     const isExpired = to && now > to;
     const isExhausted = v.usageLimit > 0 && v.usedCount >= v.usageLimit;
+    let value = 'ACTIVE';
 
-    if (!v.active) return { text: "Ngừng", color: "bg-gray-100 text-gray-500" };
-    if (isExpired || isExhausted) return { text: "Hết hạn", color: "bg-red-100 text-red-600" };
-    return { text: "Đang dùng", color: "bg-green-100 text-green-700" };
+    if (!v.active) value = 'INACTIVE';
+    else if (isUpcoming) value = 'INACTIVE';
+    else if (isExpired) value = 'EXPIRED';
+    else if (isExhausted) value = 'EXHAUSTED';
+
+    return { value, ...VOUCHER_STATUS[value] };
   };
 
   const fetchData = useCallback(async (showLoading = false) => {
@@ -96,7 +115,16 @@ const VoucherManager = () => {
     }
   };
 
-  const filteredVouchers = vouchers.filter(v => v.code.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredVouchers = React.useMemo(() => {
+    const normalizedSearch = searchTerm.toLowerCase();
+    return vouchers.filter(v => {
+      const status = getStatusInfo(v);
+      const matchesSearch = v.code.toLowerCase().includes(normalizedSearch);
+      const matchesStatus = statusFilter === 'ALL' || status.value === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [vouchers, searchTerm, statusFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -106,6 +134,11 @@ const VoucherManager = () => {
         setSearchTerm={setSearchTerm}
         onAddClick={() => { setEditingVoucher(null); setIsModalOpen(true); }}
         addButtonText="Thêm Voucher"
+        showFilter
+        filterAllLabel="Tất cả trạng thái"
+        filterValue={statusFilter}
+        setFilterValue={setStatusFilter}
+        filterOptions={voucherStatusFilterOptions}
       />
 
       {loading ? (

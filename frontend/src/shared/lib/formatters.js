@@ -63,6 +63,12 @@ export const fmtRole = (role) => {
     return roles[role] || role;
 };
 
+export const USER_STATUS = {
+    ACTIVE: { label: 'Hoạt động', color: 'bg-green-100 text-green-700' },
+    INACTIVE: { label: 'Ngừng hoạt động', color: 'bg-gray-100 text-gray-600' },
+    BANNED: { label: 'Đã khóa', color: 'bg-red-100 text-red-600' }
+};
+
 /**
  * Định dạng trạng thái
  * Hỗ trợ: Combo/Món ăn (active), Nhân viên (staff)
@@ -74,8 +80,9 @@ export const fmtStatus = (type, status) => {
             false: { label: 'Tạm ngưng', color: 'bg-gray-100 text-gray-500' }
         },
         staff: {
-            true: { label: 'Hoạt động', color: 'bg-green-100 text-green-700' },
-            false: { label: 'Đã khóa', color: 'bg-red-100 text-red-600' }
+            ...USER_STATUS,
+            true: USER_STATUS.ACTIVE,
+            false: USER_STATUS.BANNED
         }
     };
 

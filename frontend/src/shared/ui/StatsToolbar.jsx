@@ -1,7 +1,7 @@
-import { Calendar, Download } from 'lucide-react';
+import { Calendar, Download, Filter } from 'lucide-react';
 import { formatBusinessDate } from '../lib/businessTime';
 
-const StatsToolbar = ({ dateRange, setDateRange, onExport, title }) => {
+const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => {
     // Helper đổi ngày
     const handleDateChange = (type, value) => {
         const newDate = new Date(value);
@@ -33,12 +33,22 @@ const StatsToolbar = ({ dateRange, setDateRange, onExport, title }) => {
                     />
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setPreset(7)} className="px-3 py-2 text-xs font-bold bg-white border text-gray-600 hover:bg-gray-50 rounded-lg">7 ngày</button>
-                    <button onClick={() => setPreset(30)} className="px-3 py-2 text-xs font-bold bg-white border text-gray-600 hover:bg-gray-50 rounded-lg">30 ngày</button>
+                    <button type="button" onClick={() => setPreset(7)} className="px-3 py-2 text-xs font-bold bg-white hover:bg-gray-200 border text-gray-600 rounded-lg">7 ngày</button>
+                    <button type="button" onClick={() => setPreset(30)} className="px-3 py-2 text-xs font-bold bg-white hover:bg-gray-200 border text-gray-600 rounded-lg">30 ngày</button>
+                    {onApply && (
+                        <button
+                            type="button"
+                            onClick={onApply}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-indigo-500 border border-indigo-500 text-white hover:bg-indigo-600 rounded-lg shadow-sm shadow-indigo-100"
+                        >
+                            <Filter size={14} />
+                            Áp dụng
+                        </button>
+                    )}
                 </div>
             </div>
             {onExport && (
-                <button onClick={onExport} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 text-sm">
+                <button type="button" onClick={onExport} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 text-sm">
                     <Download size={16} /> Xuất CSV
                 </button>
             )}

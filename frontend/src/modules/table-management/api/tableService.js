@@ -20,6 +20,10 @@ export const tableService = {
         const res = await api.put(`/tables/${id}`, data);
         return res
     },
+    regenerateQr: async(id) => {
+        const res = await api.post(`/tables/${id}/regenerate-qr`);
+        return res;
+    },
     delete: async(id) => {
         await api.delete(`/tables/${id}`);
     },
