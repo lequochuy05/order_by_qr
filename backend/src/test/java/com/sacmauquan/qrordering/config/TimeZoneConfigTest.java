@@ -1,4 +1,4 @@
-package com.sacmauquan.qrordering.config;
+package com.qros.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,7 +9,7 @@ import java.util.TimeZone;
 
 import org.junit.jupiter.api.Test;
 
-import com.sacmauquan.qrordering.util.AppTime;
+import com.qros.shared.util.AppTime;
 
 class TimeZoneConfigTest {
 
