@@ -117,12 +117,13 @@ public class OrderCreationService {
     private DiningTable resolveTable(OrderRequest request) {
         if (request.getTableCode() != null && !request.getTableCode().isBlank()) {
             return tableRepository.findByTableCode(request.getTableCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Secure Table Code invalid"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
         } else if (request.getTableId() != null) {
             return tableRepository.findById(Objects.requireNonNull(request.getTableId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Table ID invalid"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông tin bàn."));
         }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table identification required for order creation");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng quét mã QR trên bàn để đặt món.");
     }
 
     private void buildOrderItems(OrderRequest request, Order order) {

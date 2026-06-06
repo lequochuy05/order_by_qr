@@ -12,6 +12,8 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
 
     boolean existsByTableNumberAndIdNot(String tableNumber, Long id);
 
+    boolean existsByTableCode(String tableCode);
+
     Optional<DiningTable> findByTableNumber(String tableNumber);
 
     Optional<DiningTable> findByTableCode(String tableCode);

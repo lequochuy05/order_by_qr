@@ -132,7 +132,7 @@ public class DiningTableService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
         }
 
-        String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String tableCode = generateUniqueTableCode();
         Map<String, String> qrMedia = generateQRMedia(tableCode);
         sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
                 "delete rolled back table QR media " + tableCode);
@@ -171,6 +171,17 @@ public class DiningTableService {
         }
     }
 
+    private String generateUniqueTableCode() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+            if (!repo.existsByTableCode(tableCode)) {
+                return tableCode;
+            }
+        }
+
+        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to generate unique table code");
+    }
+
     /**
      * Updates table configuration such as capacity or display number.
      * 
@@ -207,23 +218,30 @@ public class DiningTableService {
     @CacheEvict(value = "tables", allEntries = true)
     public DiningTableResponse regenerateQrCode(@NonNull Long id) {
         DiningTable table = getById(id);
+        String oldPublicId = table.getQrCodePublicId();
+        String oldTableCode = table.getTableCode();
 
-        if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
-            String oldPublicId = table.getQrCodePublicId();
+        String newTableCode = generateUniqueTableCode();
+        Map<String, String> qrMedia = generateQRMedia(newTableCode);
+        sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
+                "delete rolled back regenerated table QR media " + newTableCode);
+
+        table.setTableCode(newTableCode);
+        table.setQrCodeUrl(qrMedia.get("url"));
+        table.setQrCodePublicId(qrMedia.get("publicId"));
+
+        DiningTable savedTable = repo.save(table);
+
+        if (oldPublicId != null && !oldPublicId.equals("PENDING")) {
             sideEffects.afterCommit(() -> {
                 try {
                     imageManagerService.delete(oldPublicId);
                 } catch (Exception e) {
                     log.error("Failed to delete old QR code", e);
                 }
-            }, "delete old table QR media " + id);
+            }, "delete old table QR media " + oldTableCode);
         }
 
-        Map<String, String> qrMedia = generateQRMedia(table.getTableCode());
-        table.setQrCodeUrl(qrMedia.get("url"));
-        table.setQrCodePublicId(qrMedia.get("publicId"));
-
-        DiningTable savedTable = repo.save(table);
         notificationService.notifyTableChange();
         return convertToResponse(savedTable);
     }

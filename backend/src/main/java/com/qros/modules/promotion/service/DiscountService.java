@@ -232,7 +232,7 @@ public class DiscountService {
 
         LocalDateTime now = AppTime.now();
         if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
-            return "UPCOMING";
+            return "INACTIVE";
         if (v.getValidTo() != null && now.isAfter(v.getValidTo()))
             return "EXPIRED";
 
@@ -263,7 +263,7 @@ public class DiscountService {
 
         LocalDateTime now = AppTime.now();
         if (v.getValidFrom() != null && now.isBefore(v.getValidFrom()))
-            return "UPCOMING";
+            return "INACTIVE";
         if (v.getValidTo() != null && now.isAfter(v.getValidTo()))
             return "EXPIRED";
 
