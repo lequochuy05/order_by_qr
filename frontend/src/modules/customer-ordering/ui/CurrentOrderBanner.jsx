@@ -3,6 +3,7 @@ import { ChevronRight, Clock3, ReceiptText } from 'lucide-react';
 
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const countItems = (order) => (order?.orderItems || [])
   .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
@@ -43,7 +44,7 @@ const CurrentOrderBanner = ({ order, onClick }) => {
 
         <div className="shrink-0 text-right">
           <p className="text-[13px] font-black text-orange-600 dark:text-orange-300">
-            {fmtVND(order.totalAmount)}
+            {fmtVND(getOrderFinalAmount(order))}
           </p>
           <ChevronRight className="ml-auto mt-0.5 text-gray-300 dark:text-slate-600" size={15} />
         </div>

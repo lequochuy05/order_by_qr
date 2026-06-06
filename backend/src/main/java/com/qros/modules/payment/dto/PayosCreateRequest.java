@@ -23,4 +23,9 @@ public class PayosCreateRequest {
      * ID of the user who created the request.
      */
     private Long createdById;
+
+    /**
+     * Optional caller-supplied key to make payment-link creation idempotent.
+     */
+    private String idempotencyKey;
 }

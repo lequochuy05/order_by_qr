@@ -47,8 +47,9 @@ export const orderService = {
     },
 
     // Đánh dấu đã phục vụ (bếp xong)
-    markItemPrepared: async (itemId) => {
-        await api.patch(`/kitchen/items/${itemId}/prepared`);
+    markItemPrepared: async (itemId, userId = null) => {
+        const payload = userId ? { userId } : undefined;
+        await api.patch(`/kitchen/items/${itemId}/prepared`, payload);
     },
 
     // Xem trước hóa đơn (để tính Voucher)
@@ -75,8 +76,10 @@ export const orderService = {
     },
 
     // Cập nhật trạng thái món (PENDING, COOKING, FINISHED)
-    updateItemStatus: async (itemId, status) => {
-        const res = await api.patch(`/kitchen/items/${itemId}/status`, { status });
+    updateItemStatus: async (itemId, status, userId = null) => {
+        const payload = { status };
+        if (userId) payload.userId = userId;
+        const res = await api.patch(`/kitchen/items/${itemId}/status`, payload);
         return res;
     },
 

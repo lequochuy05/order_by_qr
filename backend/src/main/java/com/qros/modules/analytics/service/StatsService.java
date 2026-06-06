@@ -79,6 +79,7 @@ public class StatsService {
                                                 r.getId(),
                                                 r.getPaymentTime(),
                                                 r.getEmpName(),
+                                                r.getFinalAmount(),
                                                 r.getTotalAmount(),
                                                 r.getTableNumber()))
                                 .collect(Collectors.toList());

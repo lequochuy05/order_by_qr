@@ -102,7 +102,7 @@ public class OrderQueryService {
 
         cq.multiselect(
                 cb.count(root),
-                cb.coalesce(cb.sum(root.get("totalAmount")), BigDecimal.ZERO));
+                cb.coalesce(cb.sum(root.get("finalAmount")), BigDecimal.ZERO));
 
         if (!predicates.isEmpty()) {
             cq.where(cb.and(predicates.toArray(new Predicate[0])));
@@ -169,9 +169,12 @@ public class OrderQueryService {
                         "No active session for this table"));
 
         return OrderPreviewResponse.builder()
-                .originalTotal(order.getOriginalTotal())
-                .discountVoucher(order.getDiscountVoucher())
-                .finalTotal(order.getTotalAmount())
+                .subtotalAmount(order.getSubtotalAmount())
+                .discountAmount(order.getDiscountAmount())
+                .finalAmount(order.getFinalAmount())
+                .originalTotal(order.getSubtotalAmount())
+                .discountVoucher(order.getDiscountAmount())
+                .finalTotal(order.getFinalAmount())
                 .build();
     }
 

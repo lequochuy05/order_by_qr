@@ -12,6 +12,7 @@ import { statisticsService } from '@modules/statistics/api/statisticsService.js'
 import { orderService } from '@modules/order-management/api/orderService.js';
 import { fmtVND, fmtTime } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { addDaysToBusinessDate, getBusinessToday } from '@shared/lib/businessTime.js';
 
 const Dashboard = () => {
@@ -401,7 +402,7 @@ const Dashboard = () => {
                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${getOrderStatusMeta(order.status).classes}`}>
                                         {getOrderStatusMeta(order.status).label}
                                     </span>
-                                    <span className="text-sm font-bold text-slate-800">{fmtVND(order.totalAmount)}</span>
+                                    <span className="text-sm font-bold text-slate-800">{fmtVND(getOrderFinalAmount(order))}</span>
                                 </div>
                             </div>
                         ))}

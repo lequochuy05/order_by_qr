@@ -1,15 +1,19 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.notification.service.NotificationService;
+import com.qros.modules.analytics.service.ReportingSummaryService;
 import com.qros.modules.order.dto.OrderResponse;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.payment.model.PaymentTransaction;
+import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.order.repository.OrderItemRepository;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.promotion.dto.DiscountResult;
+import com.qros.modules.promotion.service.OrderDiscountService;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
@@ -29,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.Objects;
 
 @Slf4j
@@ -46,6 +51,10 @@ public class OrderStatusService {
     private final OrderPricingService orderPricingService;
     private final OrderMapper orderMapper;
     private final MeterRegistry meterRegistry;
+    private final PaymentTransactionRepository transactionRepository;
+    private final OrderAuditService orderAuditService;
+    private final OrderDiscountService orderDiscountService;
+    private final ReportingSummaryService reportingSummaryService;
 
     private Counter ordersCompletedCounter;
 
@@ -79,8 +88,10 @@ public class OrderStatusService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
 
+        Order.OrderStatus fromStatus = order.getStatus();
         OrderState state = orderStateFactory.getState(targetStatus);
         state.handleRequest(order);
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "manual-status-update");
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
         recalcTableStatus(order);
@@ -103,7 +114,9 @@ public class OrderStatusService {
         orderItemRepository.delete(item);
 
         if (order.getOrderItems().isEmpty()) {
+            Order.OrderStatus fromStatus = order.getStatus();
             order.setStatus(Order.OrderStatus.CANCELLED);
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "last-item-cancelled");
         } else {
             orderPricingService.recalculateOrderTotals(order);
         }
@@ -116,17 +129,27 @@ public class OrderStatusService {
     @Transactional
     @CacheEvict(value = "tables", allEntries = true)
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus) {
+        updateItemStatus(itemId, newStatus, null);
+    }
+
+    @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
+    public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus, Long userId) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
 
         try {
             OrderItem.OrderItemStatus status = OrderItem.OrderItemStatus.valueOf(newStatus.toUpperCase());
+            OrderItem.OrderItemStatus fromStatus = item.getStatus();
+            User changedBy = resolveUser(userId);
+            Long orderId = item.getOrder().getId();
             item.setStatus(status);
             item.setPrepared(status == OrderItem.OrderItemStatus.FINISHED);
-            orderItemRepository.save(item);
+            orderItemRepository.saveAndFlush(item);
+            orderAuditService.recordItemStatus(item, fromStatus, status, changedBy, "kitchen-status-update");
 
-            Order order = item.getOrder();
-            tryAutoPromoteOrder(order);
+            Order order = loadOrderWithItems(orderId, item.getOrder());
+            tryAutoPromoteOrder(order, changedBy);
             recalcTableStatus(order);
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
@@ -140,6 +163,11 @@ public class OrderStatusService {
     }
 
     @Transactional
+    public void markItemPrepared(@NonNull Long itemId, Long userId) {
+        updateItemStatus(itemId, "FINISHED", userId);
+    }
+
+    @Transactional
     public OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
@@ -150,6 +178,7 @@ public class OrderStatusService {
         }
 
         item.setQuantity(quantity);
+        orderPricingService.recalculateLineTotal(item);
         item.setNotes(notes);
         orderItemRepository.save(item);
 
@@ -185,17 +214,27 @@ public class OrderStatusService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Processing user not found"));
 
         if (voucherCode != null && !voucherCode.isBlank()) {
-            DiscountResult result = discountService.applyVoucher(voucherCode, order.getOriginalTotal());
+            BigDecimal subtotal = currentSubtotalAmount(order);
+            DiscountResult result = discountService.applyVoucher(voucherCode, subtotal);
             order.setVoucherCode(voucherCode);
-            order.setDiscountVoucher(result.discountValue());
-            order.setTotalAmount(result.finalTotal());
+            orderPricingService.setOrderMoney(order, subtotal, result.discountValue());
+            orderDiscountService.recordVoucherSnapshot(order, result.voucher(), result.discountValue());
         }
 
+        java.time.LocalDateTime paidAt = AppTime.now();
+        BigDecimal finalAmount = currentFinalAmount(order);
+
+        Order.OrderStatus fromStatus = order.getStatus();
         order.setStatus(Order.OrderStatus.COMPLETED);
         order.setPaymentStatus(Order.PaymentStatus.PAID);
         order.setPaymentMethod(Order.PaymentMethod.CASH);
         order.setPaidBy(currentUser);
-        order.setPaymentTime(AppTime.now());
+        order.setPaymentTime(paidAt);
+        order.setPaidAmount(finalAmount);
+        order.setBusinessDate(order.getPaymentTime().toLocalDate());
+        createPaidTransactionIfMissing(order, finalAmount, currentUser, paidAt, "cash:order:" + order.getId());
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), currentUser, "cash-payment");
+        reportingSummaryService.recordCompletedOrder(order);
 
         orderRepository.save(Objects.requireNonNull(order));
         recalcTableStatus(order);
@@ -218,9 +257,23 @@ public class OrderStatusService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
+        if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
+            return orderMapper.toResponse(order);
+        }
+
+        java.time.LocalDateTime paidAt = AppTime.now();
+        BigDecimal finalAmount = currentFinalAmount(order);
+
+        Order.OrderStatus fromStatus = order.getStatus();
         order.setStatus(Order.OrderStatus.COMPLETED);
         order.setPaymentStatus(Order.PaymentStatus.PAID);
-        order.setPaymentTime(AppTime.now());
+        order.setPaymentMethod(Order.PaymentMethod.CASH);
+        order.setPaymentTime(paidAt);
+        order.setPaidAmount(finalAmount);
+        order.setBusinessDate(order.getPaymentTime().toLocalDate());
+        createPaidTransactionIfMissing(order, finalAmount, null, paidAt, "manual-confirm:order:" + order.getId());
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "manual-confirm-paid");
+        reportingSummaryService.recordCompletedOrder(order);
 
         Order saved = orderRepository.save(order);
         recalcTableStatus(order);
@@ -241,7 +294,9 @@ public class OrderStatusService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
 
+        Order.OrderStatus fromStatus = order.getStatus();
         order.setStatus(Order.OrderStatus.CANCELLED);
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "order-cancelled");
         Order saved = orderRepository.save(order);
         recalcTableStatus(order);
         notificationService.notifyOrderChange();
@@ -268,6 +323,11 @@ public class OrderStatusService {
 
     @Transactional
     public void tryAutoPromoteOrder(Order order) {
+        tryAutoPromoteOrder(order, null);
+    }
+
+    @Transactional
+    public void tryAutoPromoteOrder(Order order, User changedBy) {
         if (order.getStatus() != Order.OrderStatus.PENDING
                 && order.getStatus() != Order.OrderStatus.SERVING
                 && order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
@@ -287,15 +347,21 @@ public class OrderStatusService {
                         || item.getStatus() == OrderItem.OrderItemStatus.FINISHED);
 
         if (allDone && order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
+            Order.OrderStatus fromStatus = order.getStatus();
             order.setStatus(Order.OrderStatus.AWAITING_PAYMENT);
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, "auto-all-items-done");
             orderRepository.save(order);
             log.info("Order #{} auto-promoted to AWAITING_PAYMENT (all items done)", order.getId());
         } else if (!allDone && order.getStatus() == Order.OrderStatus.AWAITING_PAYMENT) {
+            Order.OrderStatus fromStatus = order.getStatus();
             order.setStatus(Order.OrderStatus.SERVING);
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, "auto-items-reopened");
             orderRepository.save(order);
             log.info("Order #{} auto-demoted to SERVING (items reverted to incomplete)", order.getId());
         } else if (anyCookingOrFinished && order.getStatus() == Order.OrderStatus.PENDING) {
+            Order.OrderStatus fromStatus = order.getStatus();
             order.setStatus(Order.OrderStatus.SERVING);
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, "auto-kitchen-started");
             orderRepository.save(order);
             log.info("Order #{} auto-promoted to SERVING (kitchen started prep)", order.getId());
         }
@@ -320,5 +386,47 @@ public class OrderStatusService {
         }
         tableRepository.save(table);
         notificationService.notifyTableChange();
+    }
+
+    private BigDecimal currentFinalAmount(Order order) {
+        BigDecimal amount = order.getFinalAmount();
+        return amount != null ? amount : BigDecimal.ZERO;
+    }
+
+    private BigDecimal currentSubtotalAmount(Order order) {
+        return order.getSubtotalAmount() != null ? order.getSubtotalAmount() : BigDecimal.ZERO;
+    }
+
+    private User resolveUser(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    private Order loadOrderWithItems(Long orderId, Order fallback) {
+        return orderRepository.findDistinctByIdIn(java.util.List.of(orderId)).stream()
+                .findFirst()
+                .orElse(fallback);
+    }
+
+    private void createPaidTransactionIfMissing(Order order, BigDecimal amount, User createdBy,
+            java.time.LocalDateTime paidAt, String idempotencyKey) {
+        if (transactionRepository.findFirstByIdempotencyKey(idempotencyKey).isPresent()) {
+            return;
+        }
+
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .order(order)
+                .amount(amount)
+                .status(PaymentTransaction.TransactionStatus.PAID)
+                .paymentMethod(PaymentTransaction.PaymentMethod.CASH)
+                .createdBy(createdBy)
+                .paidAt(paidAt)
+                .businessDate(paidAt.toLocalDate())
+                .idempotencyKey(idempotencyKey)
+                .providerPayload("{\"provider\":\"CASH\",\"event\":\"MANUAL_PAYMENT\",\"reference\":\"\"}")
+                .build();
+        transactionRepository.save(tx);
     }
 }

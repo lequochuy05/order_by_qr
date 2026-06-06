@@ -1,6 +1,7 @@
 package com.qros.modules.kitchen.controller;
 
 import com.qros.modules.kitchen.dto.KitchenOrderDto;
+import com.qros.modules.kitchen.dto.KitchenMarkPreparedRequest;
 import com.qros.modules.kitchen.service.KitchenService;
 import com.qros.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,10 @@ public class KitchenController {
     }
 
     @PatchMapping("/items/{itemId}/prepared")
-    public ApiResponse<Void> markItemPrepared(@PathVariable @NonNull Long itemId) {
-        kitchenService.markItemPrepared(itemId);
+    public ApiResponse<Void> markItemPrepared(
+            @PathVariable @NonNull Long itemId,
+            @RequestBody(required = false) KitchenMarkPreparedRequest body) {
+        kitchenService.markItemPrepared(itemId, body != null ? body.getUserId() : null);
         return ApiResponse.success("Mark item as prepared successfully", null);
     }
 
@@ -40,7 +43,7 @@ public class KitchenController {
             @PathVariable @NonNull Long itemId,
             @Valid @RequestBody @NonNull KitchenItemStatusRequest body) {
         String status = body.getStatus();
-        kitchenService.updateItemStatus(itemId, Objects.requireNonNull(status));
+        kitchenService.updateItemStatus(itemId, Objects.requireNonNull(status), body.getUserId());
         return ApiResponse.success("Update item status successfully", null);
     }
 }

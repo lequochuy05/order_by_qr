@@ -14,12 +14,16 @@ import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * PaymentTransaction - Entity representing an individual payment attempt for an order.
@@ -87,10 +91,34 @@ public class PaymentTransaction extends BaseEntity {
     private String qrCode;
 
     /**
-     * Unique reference identifier returned by the PayOS system.
+     * Provider-neutral external reference for reconciliation and unique lookup.
      */
     @Column(length = 100)
-    private String payosReference;
+    private String externalReference;
+
+    /**
+     * Optional idempotency key supplied by the caller to prevent duplicate payment
+     * attempts.
+     */
+    @Column(length = 100)
+    private String idempotencyKey;
+
+    /**
+     * Time when this transaction was confirmed as paid.
+     */
+    private LocalDateTime paidAt;
+
+    /**
+     * Business date used for payment reporting.
+     */
+    private LocalDate businessDate;
+
+    /**
+     * Raw or summarized provider payload for audit/debugging.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String providerPayload;
 
     /**
      * The staff or manager who created this transaction link.
@@ -100,10 +128,10 @@ public class PaymentTransaction extends BaseEntity {
     private User createdBy;
 
     /**
-     * Descriptive reason if the transaction was cancelled or failed.
+     * Provider-neutral failure/cancellation reason.
      */
     @Column(length = 255)
-    private String cancelReason;
+    private String failureReason;
 
     /**
      * Enum for payment transaction states.

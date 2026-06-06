@@ -2,10 +2,13 @@ package com.qros.modules.payment.service.impl;
 
 import com.qros.modules.payment.dto.PayosCreateRequest;
 import com.qros.modules.payment.dto.PayosCreateResponse;
+import com.qros.modules.analytics.service.ReportingSummaryService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderAuditService;
+import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.user.repository.UserRepository;
@@ -29,6 +32,7 @@ import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
 import com.qros.modules.promotion.service.DiscountService;
+import com.qros.modules.promotion.service.OrderDiscountService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
@@ -55,6 +59,10 @@ public class PayosServiceImpl implements PayosService {
     private final NotificationService notificationService;
     private final TransactionSideEffectService sideEffects;
     private final DiscountService discountService;
+    private final OrderPricingService orderPricingService;
+    private final OrderAuditService orderAuditService;
+    private final OrderDiscountService orderDiscountService;
+    private final ReportingSummaryService reportingSummaryService;
     private final UserRepository userRepository;
     private final MeterRegistry meterRegistry;
 
@@ -83,7 +91,7 @@ public class PayosServiceImpl implements PayosService {
         Order order = orderRepository.findById(Objects.requireNonNull(request.getOrderId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Order not found: " + request.getOrderId()));
-        BigDecimal payableAmount = order.getTotalAmount();
+        BigDecimal payableAmount = currentFinalAmount(order);
         if (payableAmount == null || payableAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has no payable amount");
         }
@@ -91,15 +99,23 @@ public class PayosServiceImpl implements PayosService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
         }
 
+        String idempotencyKey = normalizeIdempotencyKey(request.getIdempotencyKey());
+        if (idempotencyKey != null) {
+            Optional<PaymentTransaction> existingByKey = transactionRepository.findFirstByIdempotencyKey(idempotencyKey);
+            if (existingByKey.isPresent()) {
+                return reuseIdempotentTransaction(existingByKey.get(), order, payableAmount);
+            }
+        }
+
         // Apply voucher if present in request
         if (request.getVoucherCode() != null && !request.getVoucherCode().isBlank()) {
-            var vr = discountService.validateCode(request.getVoucherCode(), order.getOriginalTotal());
+            BigDecimal subtotal = currentSubtotalAmount(order);
+            var vr = discountService.validateCode(request.getVoucherCode(), subtotal);
             if (vr.applicable()) {
                 order.setVoucherCode(vr.code());
-                order.setDiscountVoucher(vr.discountValue());
-                order.setTotalAmount(order.getOriginalTotal().subtract(vr.discountValue()).max(BigDecimal.ZERO));
+                orderPricingService.setOrderMoney(order, subtotal, vr.discountValue());
                 orderRepository.save(order);
-                payableAmount = order.getTotalAmount();
+                payableAmount = currentFinalAmount(order);
             } else {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher invalid: " + vr.status());
             }
@@ -127,6 +143,8 @@ public class PayosServiceImpl implements PayosService {
                 .amount(payableAmount)
                 .status(PaymentTransaction.TransactionStatus.PENDING)
                 .paymentMethod(PaymentTransaction.PaymentMethod.PAYOS)
+                .businessDate(order.getBusinessDate() != null ? order.getBusinessDate() : AppTime.today())
+                .idempotencyKey(idempotencyKey)
                 .createdBy(request.getCreatedById() != null ? userRepository.findById(request.getCreatedById()).orElse(null) : null)
                 .build();
 
@@ -149,7 +167,8 @@ public class PayosServiceImpl implements PayosService {
 
             transaction.setCheckoutUrl(response.getCheckoutUrl());
             transaction.setQrCode(response.getQrCode());
-            transaction.setPayosReference(response.getPaymentLinkId());
+            transaction.setExternalReference(response.getPaymentLinkId());
+            transaction.setProviderPayload(providerPayload("PAYOS", "CREATE_LINK", response.getPaymentLinkId()));
             transactionRepository.save(transaction);
             PaymentTransaction createdTransaction = transaction;
             sideEffects.afterRollback(() -> {
@@ -167,6 +186,8 @@ public class PayosServiceImpl implements PayosService {
         } catch (Exception e) {
             log.error("Failed to generate PayOS link for Order {}: {}", order.getId(), e.getMessage());
             transaction.setStatus(PaymentTransaction.TransactionStatus.FAILED);
+            transaction.setFailureReason(e.getMessage());
+            transaction.setProviderPayload(providerPayload("PAYOS", "CREATE_LINK_FAILED", null));
             transactionRepository.save(transaction);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "PayOS Gateway error: " + e.getMessage());
@@ -190,7 +211,8 @@ public class PayosServiceImpl implements PayosService {
             payOS.paymentRequests().cancel(transaction.getId(), reason);
 
             transaction.setStatus(PaymentTransaction.TransactionStatus.CANCELLED);
-            transaction.setCancelReason(reason);
+            transaction.setFailureReason(reason);
+            transaction.setProviderPayload(providerPayload("PAYOS", "CANCEL_LINK", transaction.getExternalReference()));
             transactionRepository.save(transaction);
 
             log.info("PayOS payment link cancelled for Transaction ID: {}", transactionId);
@@ -223,6 +245,8 @@ public class PayosServiceImpl implements PayosService {
                     handleSuccessfulPayment(transaction);
                 } else if ("CANCELLED".equalsIgnoreCase(remoteStatus) || "EXPIRED".equalsIgnoreCase(remoteStatus)) {
                     transaction.setStatus(PaymentTransaction.TransactionStatus.CANCELLED);
+                    transaction.setFailureReason(remoteStatus);
+                    transaction.setProviderPayload(providerPayload("PAYOS", remoteStatus.toUpperCase(), transaction.getExternalReference()));
                     transactionRepository.save(transaction);
                 }
             } catch (Exception e) {
@@ -274,7 +298,8 @@ public class PayosServiceImpl implements PayosService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Webhook amount does not match transaction");
         }
 
-        transaction.setPayosReference(webhookData.getPaymentLinkId());
+        transaction.setExternalReference(webhookData.getPaymentLinkId());
+        transaction.setProviderPayload(providerPayload("PAYOS", "WEBHOOK_PAID", webhookData.getPaymentLinkId()));
         handleSuccessfulPayment(transaction);
     }
 
@@ -283,25 +308,38 @@ public class PayosServiceImpl implements PayosService {
      */
     private void handleSuccessfulPayment(PaymentTransaction transaction) {
         transaction.setStatus(PaymentTransaction.TransactionStatus.PAID);
+        if (transaction.getPaidAt() == null) {
+            transaction.setPaidAt(AppTime.now());
+        }
+        if (transaction.getBusinessDate() == null) {
+            transaction.setBusinessDate(transaction.getPaidAt().toLocalDate());
+        }
         transactionRepository.save(transaction);
 
         Order order = transaction.getOrder();
 
         // Calculate if the sum of all successful transactions covers the order total
         BigDecimal totalPaid = transactionRepository.sumPaidAmountByOrderId(order.getId());
-        BigDecimal totalBill = order.getTotalAmount();
+        BigDecimal totalBill = currentFinalAmount(order);
 
         log.info("[Payment Validation] Order #{}: Total Paid: {} | Total Bill: {}", order.getId(), totalPaid,
                 totalBill);
 
         if (totalPaid.compareTo(totalBill) >= 0) {
             if (order.getPaymentStatus() != Order.PaymentStatus.PAID) {
+                Order.OrderStatus fromStatus = order.getStatus();
                 order.setPaymentStatus(Order.PaymentStatus.PAID);
                 order.setPaymentMethod(Order.PaymentMethod.PAYOS);
                 order.setPaymentTime(AppTime.now());
                 order.setPaidBy(transaction.getCreatedBy());
+                order.setPaidAmount(totalPaid);
+                order.setBusinessDate(order.getPaymentTime().toLocalDate());
                 order.setStatus(Order.OrderStatus.COMPLETED);
                 orderRepository.save(order);
+                orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), transaction.getCreatedBy(),
+                        "payos-payment");
+                orderDiscountService.recordVoucherSnapshot(order, order.getVoucherCode(), order.getDiscountAmount());
+                reportingSummaryService.recordCompletedOrder(order);
 
                 // Increment voucher usage if applied
                 if (order.getVoucherCode() != null) {
@@ -334,9 +372,49 @@ public class PayosServiceImpl implements PayosService {
                 .qrCode(tx.getQrCode())
                 .createdAt(tx.getCreatedAt())
                 .amount(tx.getAmount())
-                .originalTotal(tx.getOrder() != null ? tx.getOrder().getOriginalTotal() : null)
-                .discountVoucher(tx.getOrder() != null ? tx.getOrder().getDiscountVoucher() : null)
+                .subtotalAmount(tx.getOrder() != null ? tx.getOrder().getSubtotalAmount() : null)
+                .discountAmount(tx.getOrder() != null ? tx.getOrder().getDiscountAmount() : null)
+                .finalAmount(tx.getAmount())
+                .originalTotal(tx.getOrder() != null ? tx.getOrder().getSubtotalAmount() : null)
+                .discountVoucher(tx.getOrder() != null ? tx.getOrder().getDiscountAmount() : null)
                 .voucherCode(tx.getOrder() != null ? tx.getOrder().getVoucherCode() : null)
+                .idempotencyKey(tx.getIdempotencyKey())
+                .externalReference(tx.getExternalReference())
                 .build();
+    }
+
+    private PayosCreateResponse reuseIdempotentTransaction(PaymentTransaction tx, Order order, BigDecimal amount) {
+        if (!Objects.equals(tx.getOrder().getId(), order.getId()) || tx.getAmount().compareTo(amount) != 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Idempotency key is already associated with another payment request");
+        }
+        if (tx.getStatus() == PaymentTransaction.TransactionStatus.FAILED
+                || tx.getStatus() == PaymentTransaction.TransactionStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Idempotency key is already associated with an inactive payment transaction");
+        }
+        log.info("[PayOS Idempotency] Reusing transaction {} for key {}", tx.getId(), tx.getIdempotencyKey());
+        return convertToCreateResponse(tx);
+    }
+
+    private BigDecimal currentFinalAmount(Order order) {
+        return order.getFinalAmount();
+    }
+
+    private BigDecimal currentSubtotalAmount(Order order) {
+        return order.getSubtotalAmount();
+    }
+
+    private String normalizeIdempotencyKey(String key) {
+        if (key == null || key.isBlank()) {
+            return null;
+        }
+        return key.trim();
+    }
+
+    private String providerPayload(String provider, String event, String reference) {
+        String safeReference = reference != null ? reference.replace("\"", "") : "";
+        return "{\"provider\":\"" + provider + "\",\"event\":\"" + event + "\",\"reference\":\"" + safeReference
+                + "\"}";
     }
 }

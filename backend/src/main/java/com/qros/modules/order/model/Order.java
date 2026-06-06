@@ -10,6 +10,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -47,18 +48,18 @@ public class Order extends BaseEntity {
     private OrderStatus status = OrderStatus.PENDING;
 
     /**
-     * Total amount before applying any discounts.
+     * Subtotal before discounts.
      */
-    @Column(precision = 15, scale = 2)
+    @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
-    private BigDecimal originalTotal;
+    private BigDecimal subtotalAmount;
 
     /**
-     * Amount deducted from the original total via a voucher.
+     * Total discount applied to this order.
      */
-    @Column(precision = 15, scale = 2)
+    @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
-    private BigDecimal discountVoucher;
+    private BigDecimal discountAmount;
 
     /**
      * The voucher code applied to this order.
@@ -67,12 +68,24 @@ public class Order extends BaseEntity {
     private String voucherCode;
 
     /**
-     * Final amount the customer must pay after discounts.
+     * Final amount due after discounts.
      */
-    @NotNull(message = "Total amount cannot be empty")
     @Column(nullable = false, precision = 15, scale = 2)
     @Min(0)
-    private BigDecimal totalAmount;
+    private BigDecimal finalAmount;
+
+    /**
+     * Amount already paid against this order.
+     */
+    @Column(nullable = false, precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal paidAmount;
+
+    /**
+     * Business date used for restaurant reporting.
+     */
+    @Column(nullable = false)
+    private LocalDate businessDate;
 
     /**
      * Type of order (DINE_IN or TAKEAWAY).
@@ -126,6 +139,11 @@ public class Order extends BaseEntity {
     @JsonIgnoreProperties("order")
     @BatchSize(size = 20)
     private Set<OrderItem> orderItems = new LinkedHashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("order")
+    private Set<OrderBatch> orderBatches = new LinkedHashSet<>();
 
     /**
      * Enum for order workflow states.

@@ -14,6 +14,9 @@ import java.math.BigDecimal;
 public class OrderPreviewResponse {
     private BigDecimal subtotalItems;
     private BigDecimal subtotalCombos;
+    private BigDecimal subtotalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal finalAmount;
     private BigDecimal finalTotal;
 
     private boolean voucherValid;

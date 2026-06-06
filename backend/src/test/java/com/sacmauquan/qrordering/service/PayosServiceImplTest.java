@@ -8,8 +8,10 @@ import com.qros.modules.order.service.impl.OrderServiceImpl;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.payment.service.impl.PayosServiceImpl;
+import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
+import com.qros.modules.analytics.service.ReportingSummaryService;
 import com.qros.modules.recomendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
 import com.qros.modules.table.service.DiningTableService;
@@ -67,6 +69,9 @@ import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.modules.payment.service.impl.PayosServiceImpl;
+import com.qros.shared.util.AppTime;
+import com.qros.modules.order.service.OrderAuditService;
+import com.qros.modules.promotion.service.OrderDiscountService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
@@ -93,6 +98,14 @@ class PayosServiceImplTest {
     @Mock
     DiscountService discountService;
     @Mock
+    OrderPricingService orderPricingService;
+    @Mock
+    OrderAuditService orderAuditService;
+    @Mock
+    OrderDiscountService orderDiscountService;
+    @Mock
+    ReportingSummaryService reportingSummaryService;
+    @Mock
     UserRepository userRepository;
 
     MeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -102,7 +115,8 @@ class PayosServiceImplTest {
     @BeforeEach
     void setUp() {
         payosService = new PayosServiceImpl(payOS, orderRepository, transactionRepository, tableRepository,
-                notificationService, sideEffects, discountService, userRepository, meterRegistry);
+                notificationService, sideEffects, discountService, orderPricingService, orderAuditService,
+                orderDiscountService, reportingSummaryService, userRepository, meterRegistry);
         ReflectionTestUtils.setField(payosService, "frontendUrl", "http://localhost:5173");
         payosService.initCounters();
     }
@@ -111,7 +125,11 @@ class PayosServiceImplTest {
     void createPaymentLinkUsesOrderTotalInsteadOfClientAmount() throws Exception {
         Order order = Order.builder()
                 .id(1L)
-                .totalAmount(BigDecimal.valueOf(125000))
+                .subtotalAmount(BigDecimal.valueOf(125000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(125000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
                 .status(Order.OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .build();
@@ -137,6 +155,45 @@ class PayosServiceImplTest {
         ArgumentCaptor<PaymentTransaction> txCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
         verify(transactionRepository, org.mockito.Mockito.atLeastOnce()).save(txCaptor.capture());
         assertThat(txCaptor.getAllValues().get(0).getAmount()).isEqualByComparingTo("125000");
+        assertThat(txCaptor.getAllValues().get(0).getBusinessDate()).isEqualTo(AppTime.today());
+        assertThat(txCaptor.getAllValues().get(txCaptor.getAllValues().size() - 1).getExternalReference())
+                .isEqualTo("payos-ref");
+    }
+
+    @Test
+    void createPaymentLinkReusesTransactionByIdempotencyKey() {
+        Order order = Order.builder()
+                .id(1L)
+                .subtotalAmount(BigDecimal.valueOf(125000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(125000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .status(Order.OrderStatus.PENDING)
+                .paymentStatus(Order.PaymentStatus.PENDING)
+                .build();
+        PaymentTransaction existing = PaymentTransaction.builder()
+                .id(88L)
+                .order(order)
+                .amount(BigDecimal.valueOf(125000))
+                .status(PaymentTransaction.TransactionStatus.PENDING)
+                .paymentMethod(PaymentTransaction.PaymentMethod.PAYOS)
+                .idempotencyKey("idem-1")
+                .checkoutUrl("checkout")
+                .qrCode("qr")
+                .build();
+        PayosCreateRequest request = new PayosCreateRequest();
+        request.setOrderId(1L);
+        request.setIdempotencyKey(" idem-1 ");
+
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
+
+        PayosCreateResponse response = payosService.createPaymentLink(request);
+
+        assertThat(response.getTransactionId()).isEqualTo(88L);
+        assertThat(response.getIdempotencyKey()).isEqualTo("idem-1");
+        verify(transactionRepository, org.mockito.Mockito.never()).save(any(PaymentTransaction.class));
     }
 
     @Test
@@ -147,7 +204,14 @@ class PayosServiceImplTest {
                 .id(10L)
                 .amount(BigDecimal.valueOf(100000))
                 .status(PaymentTransaction.TransactionStatus.PENDING)
-                .order(Order.builder().id(1L).totalAmount(BigDecimal.valueOf(100000)).build())
+                .order(Order.builder()
+                        .id(1L)
+                        .subtotalAmount(BigDecimal.valueOf(100000))
+                        .discountAmount(BigDecimal.ZERO)
+                        .finalAmount(BigDecimal.valueOf(100000))
+                        .paidAmount(BigDecimal.ZERO)
+                        .businessDate(AppTime.today())
+                        .build())
                 .build();
 
         when(payOS.webhooks().verify(webhook)).thenReturn(webhookData);
@@ -168,7 +232,11 @@ class PayosServiceImplTest {
         Order order = Order.builder()
                 .id(1L)
                 .table(table)
-                .totalAmount(BigDecimal.valueOf(100000))
+                .subtotalAmount(BigDecimal.valueOf(100000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(100000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .status(Order.OrderStatus.PENDING)
                 .build();
@@ -189,8 +257,13 @@ class PayosServiceImplTest {
         payosService.processWebhook(webhook);
 
         assertThat(transaction.getStatus()).isEqualTo(PaymentTransaction.TransactionStatus.PAID);
+        assertThat(transaction.getPaidAt()).isNotNull();
+        assertThat(transaction.getBusinessDate()).isEqualTo(AppTime.today());
+        assertThat(transaction.getExternalReference()).isEqualTo("payos-ref");
         assertThat(order.getStatus()).isEqualTo(Order.OrderStatus.COMPLETED);
         assertThat(order.getPaymentStatus()).isEqualTo(Order.PaymentStatus.PAID);
+        assertThat(order.getPaidAmount()).isEqualByComparingTo("100000");
+        assertThat(order.getBusinessDate()).isEqualTo(AppTime.today());
         assertThat(table.getStatus()).isEqualTo(DiningTable.TableStatus.AVAILABLE);
     }
 }

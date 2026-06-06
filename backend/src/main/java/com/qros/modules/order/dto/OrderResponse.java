@@ -1,6 +1,7 @@
 package com.qros.modules.order.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -15,6 +16,11 @@ public record OrderResponse(
         BigDecimal discountVoucher,
         String voucherCode,
         BigDecimal totalAmount,
+        BigDecimal subtotalAmount,
+        BigDecimal discountAmount,
+        BigDecimal finalAmount,
+        BigDecimal paidAmount,
+        LocalDate businessDate,
         String orderType,
         String paymentStatus,
         String paymentMethod,
@@ -34,10 +40,14 @@ public record OrderResponse(
      */
     public record OrderItemResponse(
             Long id,
+            Long batchId,
             MenuItemSummary menuItem,
             ComboSummary combo,
+            String itemNameSnapshot,
+            String itemType,
             BigDecimal unitPrice,
             int quantity,
+            BigDecimal lineTotal,
             String notes,
             boolean prepared,
             String status,

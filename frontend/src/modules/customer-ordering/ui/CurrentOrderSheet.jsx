@@ -3,10 +3,12 @@ import { Clock3, ReceiptText, X } from 'lucide-react';
 
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta, getItemStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
-const getItemName = (item) => item.menuItem?.name || item.combo?.name || 'Món đã gọi';
+const getItemName = (item) => item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món đã gọi';
 
 const getLineTotal = (item) => {
+  if (item.lineTotal != null) return Number(item.lineTotal);
   if (item.combo?.price) return Number(item.combo.price) * Number(item.quantity || 0);
   return Number(item.unitPrice || 0) * Number(item.quantity || 0);
 };
@@ -109,7 +111,7 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
               Tạm tính
             </span>
             <span className="text-2xl font-black text-orange-600 dark:text-orange-300">
-              {fmtVND(order.totalAmount)}
+              {fmtVND(getOrderFinalAmount(order))}
             </span>
           </div>
         </div>

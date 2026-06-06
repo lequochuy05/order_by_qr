@@ -44,6 +44,14 @@ public class OrderItem extends BaseEntity {
     private Order order;
 
     /**
+     * The submission batch that introduced this line item.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "batch_id")
+    @JsonIgnoreProperties("orderItems")
+    private OrderBatch batch;
+
+    /**
      * The specific menu item being ordered (if applicable).
      */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -68,12 +76,32 @@ public class OrderItem extends BaseEntity {
     private BigDecimal unitPrice;
 
     /**
+     * Captured display name at the time of ordering.
+     */
+    @Column(length = 150)
+    private String itemNameSnapshot;
+
+    /**
+     * Captured product type at the time of ordering.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private OrderItemType itemType;
+
+    /**
      * Number of units ordered.
      */
     @NotNull(message = "Quantity cannot be empty")
     @Column(nullable = false)
     @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
+
+    /**
+     * Captured line total at the time of ordering.
+     */
+    @Column(precision = 15, scale = 2)
+    @Min(0)
+    private BigDecimal lineTotal;
 
     /**
      * Customer's special instructions for this item.
@@ -109,5 +137,12 @@ public class OrderItem extends BaseEntity {
      */
     public enum OrderItemStatus {
         PENDING, COOKING, FINISHED, CANCELLED
+    }
+
+    /**
+     * Enum for the kind of product captured by this order line.
+     */
+    public enum OrderItemType {
+        MENU_ITEM, COMBO
     }
 }

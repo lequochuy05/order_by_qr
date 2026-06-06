@@ -47,8 +47,19 @@ public class KitchenService {
     }
 
     @Transactional
+    @CacheEvict(value = "tables", allEntries = true)
+    public void updateItemStatus(@NonNull Long itemId, @NonNull String status, Long userId) {
+        orderStatusService.updateItemStatus(itemId, status, userId);
+    }
+
+    @Transactional
     public void markItemPrepared(@NonNull Long itemId) {
         orderStatusService.markItemPrepared(itemId);
+    }
+
+    @Transactional
+    public void markItemPrepared(@NonNull Long itemId, Long userId) {
+        orderStatusService.markItemPrepared(itemId, userId);
     }
 
     private boolean isRecentlyFinished(OrderItem item, LocalDateTime cutoff) {
@@ -61,7 +72,7 @@ public class KitchenService {
         return new KitchenOrderDto(
                 order.getId(),
                 order.getStatus().name(),
-                order.getTotalAmount(),
+                order.getFinalAmount(),
                 order.getTable() != null
                         ? new KitchenOrderDto.TableSummary(order.getTable().getId(), order.getTable().getTableNumber())
                         : null,
@@ -73,11 +84,17 @@ public class KitchenService {
                                 item.getMenuItem().getCategory() != null
                                         ? new KitchenOrderDto.CategorySummary(item.getMenuItem().getCategory().getName())
                                         : null)
+                                : item.getItemType() == OrderItem.OrderItemType.MENU_ITEM
+                                        ? new KitchenOrderDto.MenuItemSummary(null, item.getItemNameSnapshot(), null)
                                 : null,
                         item.getCombo() != null ? new KitchenOrderDto.ComboSummary(
                                 item.getCombo().getId(),
                                 item.getCombo().getName(),
-                                item.getCombo().getPrice()) : null,
+                                item.getCombo().getPrice())
+                                : item.getItemType() == OrderItem.OrderItemType.COMBO
+                                        ? new KitchenOrderDto.ComboSummary(null, item.getItemNameSnapshot(),
+                                                item.getUnitPrice())
+                                        : null,
                         item.getUnitPrice(),
                         item.getQuantity(),
                         item.getNotes(),

@@ -10,6 +10,7 @@ import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.payment.service.impl.PayosServiceImpl;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
+import com.qros.modules.analytics.service.ReportingSummaryService;
 import com.qros.modules.kitchen.service.KitchenService;
 import com.qros.modules.recomendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
@@ -82,7 +83,9 @@ import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.order.service.OrderQueryService;
 import com.qros.modules.order.service.OrderStatusService;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.promotion.service.OrderDiscountService;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.order.service.OrderAuditService;
 import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.shared.util.AppTime;
 
@@ -113,17 +116,24 @@ class OrderServiceImplTest {
     @Mock
     NotificationService notificationService;
     @Mock
+    OrderAuditService orderAuditService;
+    @Mock
+    OrderDiscountService orderDiscountService;
+    @Mock
+    ReportingSummaryService reportingSummaryService;
+    @Mock
     OrderStatusService orderStatusService;
     @Spy
     MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     OrderCreationService orderCreationService;
+    OrderPricingService orderPricingService;
     KitchenService kitchenService;
 
     @BeforeEach
     void setUp() {
         OrderMapper orderMapper = new OrderMapper();
-        OrderPricingService orderPricingService = new OrderPricingService(
+        orderPricingService = new OrderPricingService(
                 menuItemRepository,
                 comboRepository,
                 itemOptionValueRepository,
@@ -165,9 +175,11 @@ class OrderServiceImplTest {
                 .status(Order.OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .orderType(Order.OrderType.DINE_IN)
-                .originalTotal(BigDecimal.valueOf(60000))
-                .discountVoucher(BigDecimal.ZERO)
-                .totalAmount(BigDecimal.valueOf(60000))
+                .subtotalAmount(BigDecimal.valueOf(60000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(60000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
                 .build();
         existingOrder.getOrderItems().add(OrderItem.builder()
                 .id(40L)
@@ -204,8 +216,14 @@ class OrderServiceImplTest {
 
         assertThat(saved.getOrderItems()).hasSize(1);
         assertThat(savedItem.getQuantity()).isEqualTo(5);
-        assertThat(saved.getOriginalTotal()).isEqualByComparingTo("150000");
-        assertThat(saved.getTotalAmount()).isEqualByComparingTo("150000");
+        assertThat(savedItem.getItemNameSnapshot()).isEqualTo("Coffee");
+        assertThat(savedItem.getItemType()).isEqualTo(OrderItem.OrderItemType.MENU_ITEM);
+        assertThat(savedItem.getLineTotal()).isEqualByComparingTo("150000");
+        assertThat(saved.getSubtotalAmount()).isEqualByComparingTo("150000");
+        assertThat(saved.getFinalAmount()).isEqualByComparingTo("150000");
+        assertThat(saved.getDiscountAmount()).isEqualByComparingTo("0");
+        assertThat(saved.getPaidAmount()).isEqualByComparingTo("0");
+        assertThat(saved.getBusinessDate()).isEqualTo(AppTime.today());
         assertThat(table.getStatus()).isEqualTo(DiningTable.TableStatus.OCCUPIED);
     }
 
@@ -219,6 +237,131 @@ class OrderServiceImplTest {
         assertThat(cacheable).isNotNull();
         assertThat(cacheable.value()).containsExactly("order_stats");
         assertThat(cacheable.key()).isEmpty();
+    }
+
+    @Test
+    void payOrderCreatesCashPaymentTransaction() {
+        OrderStatusService statusService = new OrderStatusService(
+                orderRepository,
+                orderItemRepository,
+                tableRepository,
+                userRepository,
+                discountService,
+                orderStateFactory,
+                notificationService,
+                orderPricingService,
+                new OrderMapper(),
+                meterRegistry,
+                transactionRepository,
+                orderAuditService,
+                orderDiscountService,
+                reportingSummaryService);
+        statusService.initCounters();
+
+        User cashier = User.builder().id(7L).fullName("Cashier").build();
+        Order order = Order.builder()
+                .id(50L)
+                .status(Order.OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(Order.PaymentStatus.PENDING)
+                .orderType(Order.OrderType.DINE_IN)
+                .subtotalAmount(BigDecimal.valueOf(90000))
+                .finalAmount(BigDecimal.valueOf(90000))
+                .discountAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+
+        when(orderRepository.findById(50L)).thenReturn(Optional.of(order));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(cashier));
+        when(transactionRepository.findFirstByIdempotencyKey("cash:order:50")).thenReturn(Optional.empty());
+        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        String result = statusService.payOrder(50L, 7L, null);
+
+        ArgumentCaptor<PaymentTransaction> txCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
+        verify(transactionRepository).save(txCaptor.capture());
+        PaymentTransaction tx = txCaptor.getValue();
+
+        assertThat(result).isEqualTo("Order settled successfully");
+        assertThat(tx.getPaymentMethod()).isEqualTo(PaymentTransaction.PaymentMethod.CASH);
+        assertThat(tx.getStatus()).isEqualTo(PaymentTransaction.TransactionStatus.PAID);
+        assertThat(tx.getAmount()).isEqualByComparingTo("90000");
+        assertThat(tx.getCreatedBy()).isEqualTo(cashier);
+        assertThat(tx.getIdempotencyKey()).isEqualTo("cash:order:50");
+        assertThat(tx.getPaidAt()).isNotNull();
+        assertThat(tx.getBusinessDate()).isEqualTo(AppTime.today());
+        assertThat(order.getPaymentStatus()).isEqualTo(Order.PaymentStatus.PAID);
+        assertThat(order.getPaymentMethod()).isEqualTo(Order.PaymentMethod.CASH);
+        assertThat(order.getPaidAmount()).isEqualByComparingTo("90000");
+    }
+
+    @Test
+    void finishingLastKitchenItemPromotesOrderAndRecordsChangedBy() {
+        OrderStatusService statusService = new OrderStatusService(
+                orderRepository,
+                orderItemRepository,
+                tableRepository,
+                userRepository,
+                discountService,
+                orderStateFactory,
+                notificationService,
+                orderPricingService,
+                new OrderMapper(),
+                meterRegistry,
+                transactionRepository,
+                orderAuditService,
+                orderDiscountService,
+                reportingSummaryService);
+        statusService.initCounters();
+
+        User chef = User.builder().id(9L).fullName("Chef").build();
+        Order order = Order.builder()
+                .id(60L)
+                .status(Order.OrderStatus.SERVING)
+                .paymentStatus(Order.PaymentStatus.PENDING)
+                .orderType(Order.OrderType.DINE_IN)
+                .subtotalAmount(BigDecimal.valueOf(120000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(120000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+        OrderItem doneItem = OrderItem.builder()
+                .id(61L)
+                .order(order)
+                .status(OrderItem.OrderItemStatus.FINISHED)
+                .prepared(true)
+                .quantity(1)
+                .unitPrice(BigDecimal.valueOf(60000))
+                .lineTotal(BigDecimal.valueOf(60000))
+                .build();
+        OrderItem cookingItem = OrderItem.builder()
+                .id(62L)
+                .order(order)
+                .status(OrderItem.OrderItemStatus.COOKING)
+                .prepared(false)
+                .quantity(1)
+                .unitPrice(BigDecimal.valueOf(60000))
+                .lineTotal(BigDecimal.valueOf(60000))
+                .build();
+        order.getOrderItems().add(doneItem);
+        order.getOrderItems().add(cookingItem);
+
+        when(orderItemRepository.findById(62L)).thenReturn(Optional.of(cookingItem));
+        when(userRepository.findById(9L)).thenReturn(Optional.of(chef));
+        when(orderItemRepository.saveAndFlush(any(OrderItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.findDistinctByIdIn(List.of(60L))).thenReturn(List.of(order));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        statusService.updateItemStatus(62L, "FINISHED", 9L);
+
+        assertThat(cookingItem.getStatus()).isEqualTo(OrderItem.OrderItemStatus.FINISHED);
+        assertThat(order.getStatus()).isEqualTo(Order.OrderStatus.AWAITING_PAYMENT);
+        verify(orderAuditService).recordItemStatus(cookingItem, OrderItem.OrderItemStatus.COOKING,
+                OrderItem.OrderItemStatus.FINISHED, chef, "kitchen-status-update");
+        verify(orderAuditService).recordOrderStatus(order, Order.OrderStatus.SERVING,
+                Order.OrderStatus.AWAITING_PAYMENT, chef, "auto-all-items-done");
     }
 
     @Test
@@ -267,9 +410,11 @@ class OrderServiceImplTest {
                 .status(Order.OrderStatus.PENDING)
                 .paymentStatus(Order.PaymentStatus.PENDING)
                 .orderType(Order.OrderType.DINE_IN)
-                .originalTotal(BigDecimal.ZERO)
-                .discountVoucher(BigDecimal.ZERO)
-                .totalAmount(BigDecimal.ZERO)
+                .subtotalAmount(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
                 .createdAt(AppTime.now().minusMinutes(40 - id))
                 .build();
 
@@ -302,9 +447,11 @@ class OrderServiceImplTest {
                 .paymentStatus(Order.PaymentStatus.PAID)
                 .paymentMethod(Order.PaymentMethod.CASH)
                 .orderType(Order.OrderType.DINE_IN)
-                .originalTotal(BigDecimal.valueOf(100000))
-                .discountVoucher(BigDecimal.ZERO)
-                .totalAmount(BigDecimal.valueOf(100000))
+                .subtotalAmount(BigDecimal.valueOf(100000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(100000))
+                .paidAmount(BigDecimal.valueOf(100000))
+                .businessDate(AppTime.today())
                 .createdAt(AppTime.now())
                 .build();
 

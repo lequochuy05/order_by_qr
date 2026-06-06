@@ -24,7 +24,12 @@ public class PayosCreateResponse {
     private String qrCode;
     private LocalDateTime createdAt;
     private BigDecimal amount;
+    private BigDecimal subtotalAmount;
+    private BigDecimal discountAmount;
+    private BigDecimal finalAmount;
     private BigDecimal originalTotal;
     private BigDecimal discountVoucher;
     private String voucherCode;
+    private String idempotencyKey;
+    private String externalReference;
 }

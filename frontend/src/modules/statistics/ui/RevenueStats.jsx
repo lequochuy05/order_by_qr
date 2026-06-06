@@ -7,6 +7,7 @@ import { Loader2, Receipt } from 'lucide-react'; // Thêm icon Receipt
 import { statisticsService } from '@modules/statistics/api/statisticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -194,7 +195,7 @@ const RevenueStats = () => {
                                                 </span>
                                             </td>
                                             <td className="p-4 text-right font-bold text-gray-800">
-                                                {fmtVND(order.totalAmount)}
+                                                {fmtVND(getOrderFinalAmount(order))}
                                             </td>
                                         </tr>
                                     ))}

@@ -1,4 +1,5 @@
 import { fmtVND } from "./formatters"
+import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from "./orderMoney.js"
 import useSettingsStore from "@shared/model/settingsStore.js"
 
 /**
@@ -17,6 +18,9 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const wifiPassword = settings.wifiPassword || '';
 
   const items = order.orderItems || [];
+  const subtotalAmount = getOrderSubtotalAmount(order);
+  const discountAmount = getOrderDiscountAmount(order);
+  const finalAmount = getOrderFinalAmount(order);
 
   // 1. Phân loại Combo và Món lẻ
   const comboMap = {};
@@ -27,13 +31,15 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       const key = it.combo.id;
       if (!comboMap[key]) {
         comboMap[key] = {
-          name: it.combo.name,
+          name: it.itemNameSnapshot || it.combo?.name || 'Combo',
           qty: 0,
           price: it.unitPrice || it.combo.price || 0,
-          originalPrice: it.combo.price || 0
+          originalPrice: it.combo.price || 0,
+          lineTotal: 0
         };
       }
       comboMap[key].qty += (it.quantity || 1);
+      comboMap[key].lineTotal += Number(it.lineTotal ?? ((it.unitPrice || it.combo.price || 0) * (it.quantity || 1)));
     } else {
       normalItems.push(it);
     }
@@ -41,7 +47,6 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
 
   // 2. Render dòng Combo
   const rowsCombo = Object.values(comboMap).map(c => {
-    const lineTotal = c.price * c.qty;
     return `
       <tr>
         <td style="padding: 10px 0;">
@@ -49,20 +54,20 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
         </td>
         <td style="text-align: center; padding: 10px 0;">${c.qty}</td>
         <td style="text-align: right; padding: 10px 0;">${fmtVND(c.price)}</td>
-        <td style="text-align: right; padding: 10px 0; font-weight: bold;">${fmtVND(lineTotal)}</td>
+        <td style="text-align: right; padding: 10px 0; font-weight: bold;">${fmtVND(c.lineTotal)}</td>
       </tr>
     `;
   }).join('');
 
   // 3. Render dòng Món lẻ (Kèm Options)
   const rowsNormal = normalItems.map(it => {
-    const name = it.menuItem?.name || 'Món không tên';
+    const name = it.itemNameSnapshot || it.menuItem?.name || 'Món không tên';
     const price = it.unitPrice || 0;
     const qty = it.quantity || 0;
-    const lineTotal = price * qty;
+    const lineTotal = it.lineTotal ?? price * qty;
 
     // Xử lý Options (Topping/Lựa chọn)
-    const optionsHtml = (it.orderItemOptions || []).map(opt => {
+    const optionsHtml = (it.options || it.orderItemOptions || []).map(opt => {
       const extra = opt.extraPrice > 0 ? ` (+${fmtVND(opt.extraPrice)})` : '';
       return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${opt.optionName}: ${opt.optionValueName}${extra}</div>`;
     }).join('');
@@ -155,17 +160,17 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       <table>
         <tr>
           <td style="padding: 3px 0;">Tổng cộng món:</td>
-          <td style="text-align: right;">${fmtVND(order.originalTotal)}</td>
+          <td style="text-align: right;">${fmtVND(subtotalAmount)}</td>
         </tr>
-        ${order.discountVoucher > 0 ? `
+        ${discountAmount > 0 ? `
         <tr>
           <td style="padding: 3px 0;">Giảm giá (Voucher):</td>
-          <td style="text-align: right;">-${fmtVND(order.discountVoucher)}</td>
+          <td style="text-align: right;">-${fmtVND(discountAmount)}</td>
         </tr>
         ` : ''}
         <tr style="font-size: 16px; font-weight: bold;">
           <td style="padding: 10px 0;">TỔNG THANH TOÁN:</td>
-          <td style="text-align: right; padding: 10px 0;">${fmtVND(order.totalAmount)}</td>
+          <td style="text-align: right; padding: 10px 0;">${fmtVND(finalAmount)}</td>
         </tr>
       </table>
 

@@ -12,6 +12,7 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.VoucherValidateResponse;
 import com.qros.modules.promotion.service.DiscountService;
+import com.qros.shared.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
@@ -32,19 +33,48 @@ public class OrderPricingService {
     private final DiscountService discountService;
 
     public void recalculateOrderTotals(Order order) {
+        order.getOrderItems().forEach(this::recalculateLineTotal);
         BigDecimal subtotal = calculateSubtotal(order);
-        order.setOriginalTotal(subtotal);
-        order.setTotalAmount(calculateFinalTotal(subtotal, order.getDiscountVoucher()));
+        BigDecimal discount = safe(order.getDiscountAmount());
+        setOrderMoney(order, subtotal, discount);
+    }
+
+    public void setOrderMoney(Order order, BigDecimal subtotal, BigDecimal discount) {
+        BigDecimal safeSubtotal = safe(subtotal);
+        BigDecimal safeDiscount = safe(discount);
+        BigDecimal finalTotal = calculateFinalTotal(safeSubtotal, safeDiscount);
+
+        order.setSubtotalAmount(safeSubtotal);
+        order.setDiscountAmount(safeDiscount);
+        order.setFinalAmount(finalTotal);
+        if (order.getPaidAmount() == null) {
+            order.setPaidAmount(BigDecimal.ZERO);
+        }
+        if (order.getBusinessDate() == null) {
+            order.setBusinessDate(AppTime.today());
+        }
     }
 
     public BigDecimal calculateSubtotal(Order order) {
         return order.getOrderItems().stream()
-                .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(item -> safe(item.getLineTotal()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public BigDecimal calculateFinalTotal(BigDecimal subtotal, BigDecimal discount) {
-        return subtotal.subtract(discount != null ? discount : BigDecimal.ZERO).max(BigDecimal.ZERO);
+        return safe(subtotal).subtract(safe(discount)).max(BigDecimal.ZERO);
+    }
+
+    public void recalculateLineTotal(OrderItem item) {
+        item.setLineTotal(calculateLineTotal(item.getUnitPrice(), item.getQuantity()));
+    }
+
+    public BigDecimal calculateLineTotal(BigDecimal unitPrice, int quantity) {
+        return safe(unitPrice).multiply(BigDecimal.valueOf(quantity));
+    }
+
+    private BigDecimal safe(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +96,9 @@ public class OrderPricingService {
         return OrderPreviewResponse.builder()
                 .subtotalItems(subtotalItems)
                 .subtotalCombos(subtotalCombos)
+                .subtotalAmount(subtotal)
+                .discountAmount(discountVoucher)
+                .finalAmount(calculateFinalTotal(subtotal, discountVoucher))
                 .originalTotal(subtotal)
                 .discountVoucher(discountVoucher)
                 .finalTotal(calculateFinalTotal(subtotal, discountVoucher))

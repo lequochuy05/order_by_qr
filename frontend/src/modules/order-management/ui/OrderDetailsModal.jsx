@@ -1,9 +1,13 @@
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
+import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from '@entities/order/lib/orderMoney.js';
 import { X, Receipt, Clock, Utensils, Printer, RotateCw } from 'lucide-react';
 
 
 export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
   if (!isOpen || !order) return null;
+  const subtotalAmount = getOrderSubtotalAmount(order);
+  const discountAmount = getOrderDiscountAmount(order);
+  const finalAmount = getOrderFinalAmount(order);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end animate-in fade-in duration-200">
@@ -84,7 +88,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                 <div key={idx} className="flex justify-between items-start group">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-800 font-medium">{item.menuItem?.name || 'Combo ' + item.combo?.name}</span>
+                      <span className="text-gray-800 font-medium">{item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món không tên'}</span>
                       <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md font-medium">x{item.quantity}</span>
                     </div>
                     {item.notes && (
@@ -94,7 +98,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                       </p>
                     )}
                   </div>
-                  <span className="text-gray-700 font-medium whitespace-nowrap pl-4">{fmtVND(item.unitPrice * item.quantity)}</span>
+                  <span className="text-gray-700 font-medium whitespace-nowrap pl-4">{fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -104,17 +108,17 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
           <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-3">
             <div className="flex justify-between text-gray-600 text-sm">
               <span>Tổng tiền món</span>
-              <span className="font-medium text-gray-800">{fmtVND(order.originalTotal || 0)}</span>
+              <span className="font-medium text-gray-800">{fmtVND(subtotalAmount)}</span>
             </div>
-            {order.discountVoucher > 0 && (
+            {discountAmount > 0 && (
               <div className="flex justify-between text-emerald-600 text-sm">
                 <span>Khuyến mãi</span>
-                <span className="font-medium">-{fmtVND(order.discountVoucher)}</span>
+                <span className="font-medium">-{fmtVND(discountAmount)}</span>
               </div>
             )}
             <div className="pt-4 mt-2 border-t border-gray-200 flex justify-between items-center">
               <span className="text-gray-800 font-bold">THANH TOÁN</span>
-              <span className="text-xl font-bold text-orange-600">{fmtVND(order.totalAmount || 0)}</span>
+              <span className="text-xl font-bold text-orange-600">{fmtVND(finalAmount)}</span>
             </div>
           </div>
         </div>

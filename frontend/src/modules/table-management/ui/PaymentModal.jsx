@@ -6,6 +6,7 @@ import { paymentService } from '@modules/payment/api/paymentService.js';
 import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from '@entities/order/lib/orderMoney.js';
 import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { toast } from 'react-hot-toast';
 
@@ -175,9 +176,12 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             setPaymentMethod('PAYOS');
             const nextPreview = {
                 ...previewData,
-                originalTotal: data.originalTotal ?? previewData?.originalTotal ?? order.originalTotal,
-                discountVoucher: data.discountVoucher ?? previewData?.discountVoucher ?? order.discountVoucher ?? 0,
-                finalTotal: data.amount ?? data.finalTotal ?? previewData?.finalTotal ?? order.totalAmount,
+                subtotalAmount: data.subtotalAmount ?? previewData?.subtotalAmount ?? getOrderSubtotalAmount(order),
+                discountAmount: data.discountAmount ?? previewData?.discountAmount ?? getOrderDiscountAmount(order),
+                finalAmount: data.finalAmount ?? data.amount ?? data.finalTotal ?? previewData?.finalAmount ?? getOrderFinalAmount(order),
+                originalTotal: data.subtotalAmount ?? data.originalTotal ?? previewData?.originalTotal ?? getOrderSubtotalAmount(order),
+                discountVoucher: data.discountAmount ?? data.discountVoucher ?? previewData?.discountVoucher ?? getOrderDiscountAmount(order),
+                finalTotal: data.finalAmount ?? data.amount ?? data.finalTotal ?? previewData?.finalTotal ?? getOrderFinalAmount(order),
                 voucherValid: Boolean(data.voucherCode || previewData?.voucherValid),
                 voucherMessage: data.voucherCode ? 'ACTIVE' : previewData?.voucherMessage,
             };
@@ -199,22 +203,44 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const buildInvoiceOrder = useCallback((latestOrder, method) => {
         const effectiveMethod = method || latestOrder?.paymentMethod || paymentMethod;
         const sourceOrder = latestOrder || order;
+        const subtotalAmount = latestOrder?.subtotalAmount
+            ?? payosData?.subtotalAmount
+            ?? previewData?.subtotalAmount
+            ?? previewData?.originalTotal
+            ?? getOrderSubtotalAmount(order);
+        const discountAmount = latestOrder?.discountAmount
+            ?? payosData?.discountAmount
+            ?? previewData?.discountAmount
+            ?? previewData?.discountVoucher
+            ?? getOrderDiscountAmount(order);
+        const finalAmount = latestOrder?.finalAmount
+            ?? payosData?.finalAmount
+            ?? payosData?.amount
+            ?? previewData?.finalAmount
+            ?? previewData?.finalTotal
+            ?? getOrderFinalAmount(order);
         const originalTotal = latestOrder?.originalTotal
+            ?? subtotalAmount
             ?? payosData?.originalTotal
             ?? previewData?.originalTotal
-            ?? order?.originalTotal;
+            ?? getOrderSubtotalAmount(order);
         const discountVoucher = latestOrder?.discountVoucher
+            ?? discountAmount
             ?? payosData?.discountVoucher
             ?? previewData?.discountVoucher
-            ?? order?.discountVoucher
+            ?? getOrderDiscountAmount(order)
             ?? 0;
         const totalAmount = latestOrder?.totalAmount
+            ?? finalAmount
             ?? payosData?.amount
             ?? previewData?.finalTotal
-            ?? order?.totalAmount;
+            ?? getOrderFinalAmount(order);
 
         return {
             ...sourceOrder,
+            subtotalAmount,
+            discountAmount,
+            finalAmount,
             originalTotal,
             discountVoucher,
             voucherCode: latestOrder?.voucherCode ?? payosData?.voucherCode ?? order?.voucherCode,
@@ -298,13 +324,16 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
 
     if (!isOpen || !table) return null;
 
-    const subTotal = previewData?.originalTotal
-        || ((previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0))
-        || payosData?.originalTotal
-        || order?.originalTotal
-        || 0;
-    const discount = previewData?.discountVoucher ?? payosData?.discountVoucher ?? order?.discountVoucher ?? 0;
-    const finalTotal = previewData?.finalTotal ?? payosData?.amount ?? order?.totalAmount ?? 0;
+    const previewItemsSubtotal = (previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0);
+    const subTotal = previewData?.subtotalAmount
+        ?? previewData?.originalTotal
+        ?? (previewItemsSubtotal > 0 ? previewItemsSubtotal : null)
+        ?? payosData?.subtotalAmount
+        ?? payosData?.originalTotal
+        ?? getOrderSubtotalAmount(order)
+        ?? 0;
+    const discount = previewData?.discountAmount ?? previewData?.discountVoucher ?? payosData?.discountAmount ?? payosData?.discountVoucher ?? getOrderDiscountAmount(order) ?? 0;
+    const finalTotal = previewData?.finalAmount ?? previewData?.finalTotal ?? payosData?.finalAmount ?? payosData?.amount ?? getOrderFinalAmount(order) ?? 0;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">

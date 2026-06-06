@@ -26,7 +26,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
 
     const handlePrepared = async (itemId) => {
         try {
-            await orderService.markItemPrepared(itemId);
+            await orderService.markItemPrepared(itemId, user?.userId);
             setItems(prev => prev.map(i => i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i));
             toast.success("Đã hoàn tất chuẩn bị món");
             await onOrderUpdate();
@@ -96,7 +96,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
 
                     {items.map(item => {
                         const isCombo = !!item.combo;
-                        const name = isCombo ? `Combo ${item.combo.name}` : item.menuItem?.name;
+                        const name = item.itemNameSnapshot || (isCombo ? `Combo ${item.combo?.name || ''}` : item.menuItem?.name);
                         const isPrepared = item.prepared;
 
                         return (

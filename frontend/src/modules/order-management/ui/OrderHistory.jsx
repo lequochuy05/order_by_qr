@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { orderService } from '@modules/order-management/api/orderService.js';
 import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import OrderDetailsModal from './OrderDetailsModal';
@@ -370,7 +371,7 @@ export default function OrderHistoryPage() {
                       )}
                     </td>
                     <td className="p-5 text-gray-800 font-semibold">
-                      {fmtVND(order.totalAmount || 0)}
+                      {fmtVND(getOrderFinalAmount(order))}
                     </td>
                     <td className="p-5">
                       <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getOrderStatusMeta(order.status).classes}`}>

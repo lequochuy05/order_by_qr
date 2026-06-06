@@ -2,9 +2,11 @@ import React from 'react';
 import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getTableStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete, userRole }) => {
-    const hasOrder = order && order.totalAmount > 0;
+    const finalAmount = getOrderFinalAmount(order);
+    const hasOrder = order && finalAmount > 0;
     const isManager = userRole === 'MANAGER'; // Kiểm tra quyền
 
     const status = getTableStatusMeta(table.status);
@@ -26,7 +28,7 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
             <div className="mb-4">
                 <p className="text-sm text-gray-500">Tạm tính:</p>
                 <p className="text-2xl font-black text-orange-600">
-                    {hasOrder ? fmtVND(order.totalAmount) : fmtVND(0)}
+                    {hasOrder ? fmtVND(finalAmount) : fmtVND(0)}
                 </p>
             </div>
 

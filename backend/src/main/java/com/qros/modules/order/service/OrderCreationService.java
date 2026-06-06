@@ -12,11 +12,13 @@ import com.qros.modules.order.dto.OrderRequest;
 import com.qros.modules.order.dto.OrderResponse;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderBatch;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.OrderItemOption;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.shared.util.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
@@ -84,14 +86,23 @@ public class OrderCreationService {
                     .status(Order.OrderStatus.PENDING)
                     .paymentStatus(Order.PaymentStatus.PENDING)
                     .orderType(Order.OrderType.DINE_IN)
-                    .originalTotal(BigDecimal.ZERO)
-                    .totalAmount(BigDecimal.ZERO)
-                    .discountVoucher(BigDecimal.ZERO)
+                    .subtotalAmount(BigDecimal.ZERO)
+                    .finalAmount(BigDecimal.ZERO)
+                    .discountAmount(BigDecimal.ZERO)
+                    .paidAmount(BigDecimal.ZERO)
+                    .businessDate(AppTime.today())
                     .build();
         }
 
-        buildOrderItems(request, order);
-        buildOrderCombos(request, order);
+        OrderBatch batch = OrderBatch.builder()
+                .order(order)
+                .submittedAt(AppTime.now())
+                .source(resolveBatchSource(request))
+                .build();
+        order.getOrderBatches().add(batch);
+
+        buildOrderItems(request, order, batch);
+        buildOrderCombos(request, order, batch);
         orderPricingService.recalculateOrderTotals(order);
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
@@ -126,7 +137,13 @@ public class OrderCreationService {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng quét mã QR trên bàn để đặt món.");
     }
 
-    private void buildOrderItems(OrderRequest request, Order order) {
+    private OrderBatch.BatchSource resolveBatchSource(OrderRequest request) {
+        return request.getTableCode() != null && !request.getTableCode().isBlank()
+                ? OrderBatch.BatchSource.QR
+                : OrderBatch.BatchSource.STAFF;
+    }
+
+    private void buildOrderItems(OrderRequest request, Order order, OrderBatch batch) {
         if (request.getItems() == null) {
             return;
         }
@@ -156,13 +173,28 @@ public class OrderCreationService {
                     .findFirst();
 
             if (existing.isPresent()) {
-                existing.get().setQuantity(existing.get().getQuantity() + itemRequest.getQuantity());
+                OrderItem existingItem = existing.get();
+                if (existingItem.getItemNameSnapshot() == null) {
+                    existingItem.setItemNameSnapshot(menuItem.getName());
+                }
+                if (existingItem.getItemType() == null) {
+                    existingItem.setItemType(OrderItem.OrderItemType.MENU_ITEM);
+                }
+                if (existingItem.getBatch() == null) {
+                    existingItem.setBatch(batch);
+                }
+                existingItem.setQuantity(existingItem.getQuantity() + itemRequest.getQuantity());
+                orderPricingService.recalculateLineTotal(existingItem);
             } else {
                 OrderItem orderItem = OrderItem.builder()
                         .order(order)
+                        .batch(batch)
                         .menuItem(menuItem)
                         .unitPrice(unitPrice)
+                        .itemNameSnapshot(menuItem.getName())
+                        .itemType(OrderItem.OrderItemType.MENU_ITEM)
                         .quantity(itemRequest.getQuantity())
+                        .lineTotal(orderPricingService.calculateLineTotal(unitPrice, itemRequest.getQuantity()))
                         .notes(itemRequest.getNotes())
                         .status(OrderItem.OrderItemStatus.PENDING)
                         .build();
@@ -180,7 +212,7 @@ public class OrderCreationService {
         }
     }
 
-    private void buildOrderCombos(OrderRequest request, Order order) {
+    private void buildOrderCombos(OrderRequest request, Order order, OrderBatch batch) {
         if (request.getCombos() == null) {
             return;
         }
@@ -196,13 +228,28 @@ public class OrderCreationService {
                     .findFirst();
 
             if (existing.isPresent()) {
-                existing.get().setQuantity(existing.get().getQuantity() + comboRequest.getQuantity());
+                OrderItem existingItem = existing.get();
+                if (existingItem.getItemNameSnapshot() == null) {
+                    existingItem.setItemNameSnapshot(combo.getName());
+                }
+                if (existingItem.getItemType() == null) {
+                    existingItem.setItemType(OrderItem.OrderItemType.COMBO);
+                }
+                if (existingItem.getBatch() == null) {
+                    existingItem.setBatch(batch);
+                }
+                existingItem.setQuantity(existingItem.getQuantity() + comboRequest.getQuantity());
+                orderPricingService.recalculateLineTotal(existingItem);
             } else {
                 order.getOrderItems().add(OrderItem.builder()
                         .order(order)
+                        .batch(batch)
                         .combo(combo)
                         .unitPrice(combo.getPrice())
+                        .itemNameSnapshot(combo.getName())
+                        .itemType(OrderItem.OrderItemType.COMBO)
                         .quantity(comboRequest.getQuantity())
+                        .lineTotal(orderPricingService.calculateLineTotal(combo.getPrice(), comboRequest.getQuantity()))
                         .notes(comboRequest.getNotes())
                         .status(OrderItem.OrderItemStatus.PENDING)
                         .build());

@@ -20,6 +20,7 @@ import StatusModal from '@shared/ui/StatusModal.jsx';
 import KitchenColumn from './KitchenColumn';
 import { playNotificationSound, playLoudSound } from '@modules/notifications/lib/notificationSound.js';
 import { showBrowserNotification } from '@modules/notifications/lib/browserNotification.js';
+import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 
 const OVERDUE_MINUTES = 20;
 
@@ -33,6 +34,7 @@ const KitchenManager = () => {
     const [categoryFilter, setCategoryFilter] = useState('ALL');
     const [now, setNow] = useState(() => Date.now());
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+    const { user } = useAuth();
 
     const [preferences, setPreferences] = useAdminPreferences();
     const { statusModal, showError, closeStatusModal } = useStatusModal();
@@ -91,7 +93,7 @@ const KitchenManager = () => {
         );
 
         try {
-            await orderService.updateItemStatus(itemId, newStatus);
+            await orderService.updateItemStatus(itemId, newStatus, user?.userId);
         } catch {
             showError('Không thể cập nhật trạng thái món');
             fetchKitchenOrders({ silent: true });
@@ -113,7 +115,7 @@ const KitchenManager = () => {
                     const statusUpdatedAt = item.updatedAt || createdAt;
                     const waitMinutes = minutesSince(createdAt, now);
                     const stageMinutes = minutesSince(statusUpdatedAt, now);
-                    const itemName = item.menuItem?.name || item.combo?.name || 'Món chưa xác định';
+                    const itemName = item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món chưa xác định';
                     const category = item.menuItem?.category?.name || (item.combo ? 'Combo' : 'Khác');
 
                     return {
