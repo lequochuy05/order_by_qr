@@ -1,5 +1,44 @@
-package com.sacmauquan.qrordering.service;
+package com.qros.test;
 
+import com.qros.modules.menu.service.CategoryService;
+import com.qros.modules.menu.service.MenuItemService;
+import com.qros.modules.menu.service.ComboService;
+import com.qros.modules.order.service.OrderService;
+import com.qros.modules.order.service.impl.OrderServiceImpl;
+import com.qros.shared.transaction.TransactionSideEffectService;
+import com.qros.modules.payment.service.PayosService;
+import com.qros.modules.payment.service.impl.PayosServiceImpl;
+import com.qros.modules.promotion.service.DiscountService;
+import com.qros.modules.notification.service.NotificationService;
+import com.qros.modules.kitchen.service.KitchenService;
+import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.user.service.UserService;
+import com.qros.modules.table.service.DiningTableService;
+import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.OrderItemOption;
+import com.qros.modules.menu.model.Category;
+import com.qros.modules.menu.model.MenuItem;
+import com.qros.modules.menu.model.Combo;
+import com.qros.modules.menu.model.ItemOption;
+import com.qros.modules.menu.model.ItemOptionValue;
+import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.user.model.User;
+import com.qros.modules.payment.model.PaymentTransaction;
+import com.qros.modules.promotion.model.Voucher;
+import com.qros.modules.order.dto.OrderRequest;
+import com.qros.modules.order.dto.OrderResponse;
+import com.qros.modules.payment.dto.PayosCreateRequest;
+import com.qros.modules.payment.dto.PayosCreateResponse;
+import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.mapper.OrderMapper;
+import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.repository.CategoryRepository;
+import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.order.state.OrderState;
+import com.qros.modules.order.state.OrderStateFactory;
+import com.qros.shared.response.ApiResponse;
+import com.qros.shared.entity.BaseEntity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -19,26 +58,33 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
-import com.sacmauquan.qrordering.dto.OrderRequest;
-import com.sacmauquan.qrordering.model.Category;
-import com.sacmauquan.qrordering.model.DiningTable;
-import com.sacmauquan.qrordering.model.MenuItem;
-import com.sacmauquan.qrordering.model.Order;
-import com.sacmauquan.qrordering.model.OrderItem;
-import com.sacmauquan.qrordering.repository.ComboRepository;
-import com.sacmauquan.qrordering.repository.DiningTableRepository;
-import com.sacmauquan.qrordering.repository.ItemOptionValueRepository;
-import com.sacmauquan.qrordering.repository.MenuItemRepository;
-import com.sacmauquan.qrordering.repository.OrderItemRepository;
-import com.sacmauquan.qrordering.repository.OrderRepository;
-import com.sacmauquan.qrordering.repository.PaymentTransactionRepository;
-import com.sacmauquan.qrordering.repository.UserRepository;
-import com.sacmauquan.qrordering.service.impl.OrderServiceImpl;
-import com.sacmauquan.qrordering.state.OrderStateFactory;
-import com.sacmauquan.qrordering.util.AppTime;
+import com.qros.modules.order.dto.OrderRequest;
+import com.qros.modules.menu.model.Category;
+import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.menu.model.MenuItem;
+import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.menu.repository.ComboRepository;
+import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.menu.repository.ItemOptionValueRepository;
+import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.order.repository.OrderItemRepository;
+import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderCreationService;
+import com.qros.modules.order.service.OrderPricingService;
+import com.qros.modules.order.service.OrderQueryService;
+import com.qros.modules.order.service.OrderStatusService;
+import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.order.state.OrderStateFactory;
+import com.qros.shared.util.AppTime;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceImplTest {
@@ -66,15 +112,35 @@ class OrderServiceImplTest {
     OrderStateFactory orderStateFactory;
     @Mock
     NotificationService notificationService;
+    @Mock
+    OrderStatusService orderStatusService;
     @Spy
     MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-    @InjectMocks
-    OrderServiceImpl orderService;
+    OrderCreationService orderCreationService;
+    KitchenService kitchenService;
 
     @BeforeEach
     void setUp() {
-        orderService.initCounters();
+        OrderMapper orderMapper = new OrderMapper();
+        OrderPricingService orderPricingService = new OrderPricingService(
+                menuItemRepository,
+                comboRepository,
+                itemOptionValueRepository,
+                discountService);
+        orderCreationService = new OrderCreationService(
+                orderRepository,
+                menuItemRepository,
+                tableRepository,
+                comboRepository,
+                itemOptionValueRepository,
+                notificationService,
+                orderPricingService,
+                orderStatusService,
+                orderMapper,
+                meterRegistry);
+        orderCreationService.initCounters();
+        kitchenService = new KitchenService(orderRepository, orderStatusService);
     }
 
     @Test
@@ -129,7 +195,7 @@ class OrderServiceImplTest {
         when(menuItemRepository.findById(20L)).thenReturn(Optional.of(item));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        orderService.createOrder(request);
+        orderCreationService.createOrder(request);
 
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderRepository).save(orderCaptor.capture());
@@ -145,7 +211,7 @@ class OrderServiceImplTest {
 
     @Test
     void orderStatsUsesNullSafeDefaultCacheKey() throws Exception {
-        Cacheable cacheable = OrderServiceImpl.class
+        Cacheable cacheable = OrderQueryService.class
                 .getMethod("getOrderStats", String.class, java.time.LocalDate.class, java.time.LocalDate.class,
                         String.class, String.class)
                 .getAnnotation(Cacheable.class);
@@ -153,6 +219,32 @@ class OrderServiceImplTest {
         assertThat(cacheable).isNotNull();
         assertThat(cacheable.value()).containsExactly("order_stats");
         assertThat(cacheable.key()).isEmpty();
+    }
+
+    @Test
+    void orderHistoryFetchesPageIdsBeforeLoadingDetails() {
+        OrderQueryService queryService = new OrderQueryService(
+                orderRepository,
+                transactionRepository,
+                payosService,
+                new OrderMapper());
+        PageRequest pageable = PageRequest.of(0, 15);
+        Order pageOrderA = Order.builder().id(2L).build();
+        Order pageOrderB = Order.builder().id(1L).build();
+        Order detailOrderA = historyOrder(2L, "A2");
+        Order detailOrderB = historyOrder(1L, "A1");
+
+        when(orderRepository.findAll(org.mockito.ArgumentMatchers.<Specification<Order>>any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(pageOrderA, pageOrderB), pageable, 2));
+        when(orderRepository.findDistinctByIdIn(List.of(2L, 1L)))
+                .thenReturn(List.of(detailOrderB, detailOrderA));
+
+        var history = queryService.getOrderHistory("COMPLETED", null, null, null, null, pageable);
+
+        assertThat(history.getTotalElements()).isEqualTo(2);
+        assertThat(history.getContent())
+                .extracting(OrderResponse::id)
+                .containsExactly(2L, 1L);
     }
 
     @Test
@@ -164,7 +256,7 @@ class OrderServiceImplTest {
         when(orderRepository.findByStatusIn(List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT)))
                 .thenReturn(List.of(oldFinishedOrder, recentFinishedOrder, pendingOrder));
 
-        assertThat(orderService.getKitchenOrders())
+        assertThat(kitchenService.getKitchenOrders())
                 .extracting(response -> response.id())
                 .containsExactly(1L, 3L);
     }
@@ -190,6 +282,41 @@ class OrderServiceImplTest {
                 .prepared(itemStatus == OrderItem.OrderItemStatus.FINISHED)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(itemUpdatedAt)
+                .build());
+
+        return order;
+    }
+
+    private Order historyOrder(Long id, String tableNumber) {
+        DiningTable table = DiningTable.builder()
+                .id(id)
+                .tableNumber(tableNumber)
+                .tableCode("table-" + id)
+                .capacity(4)
+                .build();
+
+        Order order = Order.builder()
+                .id(id)
+                .table(table)
+                .status(Order.OrderStatus.COMPLETED)
+                .paymentStatus(Order.PaymentStatus.PAID)
+                .paymentMethod(Order.PaymentMethod.CASH)
+                .orderType(Order.OrderType.DINE_IN)
+                .originalTotal(BigDecimal.valueOf(100000))
+                .discountVoucher(BigDecimal.ZERO)
+                .totalAmount(BigDecimal.valueOf(100000))
+                .createdAt(AppTime.now())
+                .build();
+
+        order.getOrderItems().add(OrderItem.builder()
+                .id(id * 10)
+                .order(order)
+                .unitPrice(BigDecimal.valueOf(100000))
+                .quantity(1)
+                .status(OrderItem.OrderItemStatus.FINISHED)
+                .prepared(true)
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getCreatedAt())
                 .build());
 
         return order;

@@ -1,4 +1,4 @@
-package com.sacmauquan.qrordering.config;
+package com.qros.config;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,7 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import com.sacmauquan.qrordering.security.JwtService;
+import com.qros.shared.security.JwtService;
 
 class WebSocketConfigTest {
     private final WebSocketConfig config = new WebSocketConfig(mock(JwtService.class), mock(UserDetailsService.class));
