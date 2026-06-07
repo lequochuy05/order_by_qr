@@ -12,9 +12,6 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    @Query(value = "SELECT COUNT(*) > 0 FROM combos WHERE LOWER(name) = LOWER(:name)", nativeQuery = true)
-    boolean existsByNameIncludingDeleted(String name);
-
     @Override
     @EntityGraph(attributePaths = { "items.menuItem.category" })
     @NonNull

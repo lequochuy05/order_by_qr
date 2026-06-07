@@ -8,6 +8,7 @@ import com.qros.modules.menu.dto.CategoryResponse;
 import com.qros.modules.menu.dto.PublicMenuResponse;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.repository.CategoryRepository;
+import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import java.util.Map;
 @org.springframework.transaction.annotation.Transactional(readOnly = true)
 public class CategoryService {
     private final CategoryRepository categoryRepo;
+    private final MenuItemRepository menuItemRepository;
     private final NotificationService notificationService;
     private final CloudinaryStorageService cloudinaryStorageService;
     private final TransactionSideEffectService sideEffects;
@@ -85,7 +87,7 @@ public class CategoryService {
     @Transactional
     @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public CategoryResponse create(@NonNull CategoryRequest input) {
-        if (categoryRepo.existsByNameIncludingDeleted(input.getName())) {
+        if (categoryRepo.existsByNameIgnoreCase(input.getName())) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
@@ -115,7 +117,7 @@ public class CategoryService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         if (!exist.getName().equalsIgnoreCase(input.getName())
-                && categoryRepo.existsByNameIncludingDeleted(input.getName())) {
+                && categoryRepo.existsByNameIgnoreCaseAndIdNot(input.getName(), id)) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
@@ -143,6 +145,11 @@ public class CategoryService {
     public void delete(@NonNull Integer id) {
         Category cat = categoryRepo.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+
+        if (menuItemRepository.countByCategoryIdAndActiveTrue(id) > 0) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+                    "Cannot delete category that still contains active menu items");
+        }
 
         if (cat.getImg() != null && !cat.getImg().isBlank()) {
             String oldImg = cat.getImg();

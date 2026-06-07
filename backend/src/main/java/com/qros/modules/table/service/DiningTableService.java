@@ -128,7 +128,7 @@ public class DiningTableService {
     @Transactional
     @CacheEvict(value = "tables", allEntries = true)
     public DiningTableResponse create(DiningTableRequest req) {
-        if (repo.existsByTableNumber(req.getTableNumber())) {
+        if (repo.existsByTableNumberIgnoreCase(req.getTableNumber())) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 
@@ -194,7 +194,7 @@ public class DiningTableService {
     public DiningTableResponse update(@NonNull Long id, DiningTableRequest req) {
         DiningTable table = getById(id);
 
-        if (repo.existsByTableNumberAndIdNot(req.getTableNumber(), id)) {
+        if (repo.existsByTableNumberIgnoreCaseAndIdNot(req.getTableNumber(), id)) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 

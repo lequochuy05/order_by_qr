@@ -92,7 +92,7 @@ public class ComboService {
         @Transactional
         @CacheEvict(value = "combos", allEntries = true)
         public ComboResponse create(ComboRequest req) {
-                if (comboRepo.existsByNameIncludingDeleted(req.getName())) {
+                if (comboRepo.existsByNameIgnoreCase(req.getName())) {
                         throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
                 }
 
@@ -146,7 +146,7 @@ public class ComboService {
                                 .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
 
                 if (!combo.getName().equalsIgnoreCase(req.getName())
-                                && comboRepo.existsByNameIncludingDeleted(req.getName())) {
+                                && comboRepo.existsByNameIgnoreCaseAndIdNot(req.getName(), id)) {
                         throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
                 }
 

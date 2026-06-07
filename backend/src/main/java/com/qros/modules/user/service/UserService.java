@@ -174,11 +174,11 @@ public class UserService {
      */
     @Transactional
     public UserResponse create(@NonNull UserUpsertRequest req) {
-        if (userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
+        if (userRepository.existsByEmailIgnoreCase(req.getEmail())) {
             throw new BusinessException(ErrorCode.EMAIL_EXISTS);
         }
 
-        if (StringUtils.hasText(req.getPhone()) && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
+        if (StringUtils.hasText(req.getPhone()) && userRepository.existsByPhone(req.getPhone())) {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
@@ -205,12 +205,13 @@ public class UserService {
         User u = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!u.getEmail().equals(req.getEmail()) && userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
+        if (!u.getEmail().equalsIgnoreCase(req.getEmail())
+                && userRepository.existsByEmailIgnoreCaseAndIdNot(req.getEmail(), id)) {
             throw new BusinessException(ErrorCode.EMAIL_EXISTS);
         }
 
         if (StringUtils.hasText(req.getPhone()) && !Objects.equals(u.getPhone(), req.getPhone())
-                && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
+                && userRepository.existsByPhoneAndIdNot(req.getPhone(), id)) {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
@@ -246,7 +247,7 @@ public class UserService {
 
         String nextPhone = StringUtils.hasText(req.getPhone()) ? req.getPhone().trim() : null;
         if (StringUtils.hasText(nextPhone) && !Objects.equals(u.getPhone(), nextPhone)
-                && userRepository.existsByPhoneIncludingDeleted(nextPhone)) {
+                && userRepository.existsByPhoneAndIdNot(nextPhone, u.getId())) {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 

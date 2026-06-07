@@ -30,15 +30,6 @@ public interface CategoryRepository extends JpaRepository<Category, Integer> {
   boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
 
   /**
-   * Checks if a name was ever used for a category, including soft-deleted ones.
-   * 
-   * @param name The name to check
-   * @return true if the name exists in the database
-   */
-  @Query(value = "SELECT COUNT(*) > 0 FROM category WHERE LOWER(name) = LOWER(:name)", nativeQuery = true)
-  boolean existsByNameIncludingDeleted(String name);
-
-  /**
    * Retrieves all active categories along with their active menu items and
    * options using a single query.
    * 

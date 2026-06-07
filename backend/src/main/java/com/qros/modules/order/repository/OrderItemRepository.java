@@ -16,7 +16,14 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       SELECT oi2.menu_item_id
       FROM order_item oi1
       JOIN order_item oi2 ON oi1.order_id = oi2.order_id
-      WHERE oi1.menu_item_id = :itemId AND oi2.menu_item_id != :itemId
+      JOIN orders o ON o.id = oi1.order_id
+      JOIN menu_item mi2 ON mi2.id = oi2.menu_item_id
+      WHERE oi1.menu_item_id = :itemId
+        AND oi2.menu_item_id != :itemId
+        AND oi1.is_deleted = false
+        AND oi2.is_deleted = false
+        AND o.is_deleted = false
+        AND mi2.is_deleted = false
       GROUP BY oi2.menu_item_id
       ORDER BY COUNT(oi2.menu_item_id) DESC
       """, nativeQuery = true)
@@ -26,7 +33,11 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       SELECT oi.menu_item_id
       FROM order_item oi
       JOIN orders o ON oi.order_id = o.id
+      JOIN menu_item mi ON mi.id = oi.menu_item_id
       WHERE o.status = 'COMPLETED'
+        AND oi.is_deleted = false
+        AND o.is_deleted = false
+        AND mi.is_deleted = false
       GROUP BY oi.menu_item_id
       ORDER BY SUM(oi.quantity) DESC
       """, nativeQuery = true)
@@ -36,7 +47,12 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       SELECT COALESCE(SUM(oi.quantity), 0)
       FROM order_item oi
       JOIN orders o ON oi.order_id = o.id
-      WHERE oi.menu_item_id = :itemId AND o.status = 'COMPLETED'
+      JOIN menu_item mi ON mi.id = oi.menu_item_id
+      WHERE oi.menu_item_id = :itemId
+        AND o.status = 'COMPLETED'
+        AND oi.is_deleted = false
+        AND o.is_deleted = false
+        AND mi.is_deleted = false
       """, nativeQuery = true)
   long countTotalSoldByItemId(@Param("itemId") Long itemId);
 
@@ -44,7 +60,12 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
       SELECT oi.menu_item_id, COALESCE(SUM(oi.quantity), 0)
       FROM order_item oi
       JOIN orders o ON oi.order_id = o.id
-      WHERE oi.menu_item_id IN :ids AND o.status = 'COMPLETED'
+      JOIN menu_item mi ON mi.id = oi.menu_item_id
+      WHERE oi.menu_item_id IN :ids
+        AND o.status = 'COMPLETED'
+        AND oi.is_deleted = false
+        AND o.is_deleted = false
+        AND mi.is_deleted = false
       GROUP BY oi.menu_item_id
       """, nativeQuery = true)
   List<Object[]> countTotalSoldBatch(@Param("ids") List<Long> ids);

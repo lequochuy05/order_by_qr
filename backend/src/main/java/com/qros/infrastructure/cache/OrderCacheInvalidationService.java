@@ -25,7 +25,11 @@ public class OrderCacheInvalidationService {
         evict("order_by_id", orderId);
         clear("tables");
         clear("order_stats");
-        // Also clear any other caching layers related to orders in the future (e.g., revenue_stats)
+        clear("stats_revenue");
+        clear("stats_emp_performance");
+        clear("stats_top_dishes");
+        clear("stats_dish_trend");
+        clear("stats_dashboard");
     }
 
     private void evict(String cacheName, Object key) {

@@ -25,6 +25,8 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     @EntityGraph(attributePaths = { "category", "itemOptions", "itemOptions.optionValues" })
     List<MenuItem> findByCategoryIdAndActiveTrue(Integer cateId);
 
+    long countByCategoryIdAndActiveTrue(Integer cateId);
+
     /**
      * Checks if a menu item with the exact name already exists (case-insensitive).
      * 
