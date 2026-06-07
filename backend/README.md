@@ -1,117 +1,327 @@
-# ⚙️ QROS Backend (Spring Boot Core)
+# QROS Backend
 
-Đây là phân hệ Backend (Máy chủ) cốt lõi của **Hệ thống Đặt hàng QR Sắc Màu Quán**, được xây dựng với kiến trúc hướng sự kiện (Event-driven), tối ưu hóa thời gian thực (Real-time) và đạt chuẩn Enterprise.
+Backend QROS là ứng dụng Spring Boot cung cấp REST API, WebSocket realtime, tích hợp thanh toán và các tác vụ nền cho hệ thống đặt món bằng QR.
 
-Được phát triển trên nền tảng **Java 21** và **Spring Boot 3**.
+- Java: `21`
+- Spring Boot: `3.4.1`
+- Database: PostgreSQL, quản lý schema bằng Flyway
+- Cache: Redis
+- Auth: JWT access token + HTTP-only refresh cookie
 
----
-
-## 🏗️ Cấu trúc Thư mục Hệ thống
+## Kiến Trúc
 
 ```text
-backend/src/main/java/com/sacmauquan/qrordering/
-├── config/         # Cấu hình hệ thống (Security, WebSockets, CORS, Redis, PayOS)
-├── controller/     # Các API Endpoints RESTful xử lý request từ Frontend
-├── dto/            # Data Transfer Objects (Request/Response payload)
-├── exception/      # Quản lý lỗi tập trung (@RestControllerAdvice)
-├── mapper/         # Các interface MapStruct tự động chuyển đổi Entity <-> DTO
-├── model/          # Các thực thể JPA (Users, Orders, Tables, Menu...)
-├── repository/     # Lớp truy cập cơ sở dữ liệu (Spring Data JPA)
-├── security/       # Bộ lọc bảo mật JWT, Rate Limiting, XSS Protection
-├── service/        # Chứa logic nghiệp vụ (Business logic)
-└── state/          # Quản lý State Machine (Quy trình chuyển đổi trạng thái đơn hàng)
+src/main/java/com/qros/
+├── QrosApplication.java
+├── core/
+│   └── config/              # App config, CORS, Security, Redis, WebSocket, timezone, seed dev
+├── infrastructure/
+│   ├── cache/               # Cache abstraction + Redis implementation
+│   ├── mail/                # SMTP email service
+│   └── storage/             # Cloudinary upload service
+├── modules/
+│   ├── ai/                  # Gemini chat assistant
+│   ├── analytics/           # Revenue, employee, dish stats and forecasts
+│   ├── auth/                # Login, refresh, logout, password reset
+│   ├── kitchen/             # Kitchen board and item status updates
+│   ├── menu/                # Categories, menu items, combos, public menu
+│   ├── notification/        # Application events -> WebSocket topics
+│   ├── order/               # Order lifecycle, pricing, audit, state machine
+│   ├── payment/             # PayOS payment links, webhook, cleanup job
+│   ├── promotion/           # Voucher validation and usage tracking
+│   ├── recommendation/      # Popular, similar, cross-sell recommendations
+│   ├── settings/            # Restaurant/system settings
+│   ├── table/               # Dining tables and QR generation
+│   └── user/                # Staff account and profile management
+└── shared/
+    ├── entity/              # BaseEntity auditing
+    ├── exception/           # Global exception handling
+    ├── response/            # ApiResponse / ErrorResponse
+    ├── security/            # JWT filter, JwtService, rate limiting
+    ├── transaction/         # Side effects after transaction commit
+    └── util/                # AppTime and shared utilities
 ```
 
----
+`QrosApplication` bật `@EnableCaching`, `@EnableJpaAuditing`, `@EnableAsync` và `@EnableScheduling`.
 
-## 🗄️ Kiến trúc Dữ liệu & Công nghệ
+## Công Nghệ Chính
 
-### 1. Database (PostgreSQL)
-Hệ thống sử dụng PostgreSQL làm CSDL chính. Các Entity được thiết kế tối ưu với:
-- **Lombok `@SuperBuilder`**: Kế thừa chuẩn mực từ `BaseEntity`, tự động quản lý các trường Audit (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`).
-- **Entity Relationships**: Quản lý vòng đời dữ liệu bằng JPA Cascade, tối ưu hóa các lệnh fetch (`FetchType.LAZY`) chống lỗi N+1 Query.
+| Nhóm | Thư viện/Công nghệ |
+| --- | --- |
+| Web/API | Spring Boot Web, Validation |
+| Persistence | Spring Data JPA, PostgreSQL driver, Flyway |
+| Security | Spring Security, JJWT |
+| Mapping/Boilerplate | MapStruct, Lombok |
+| Realtime | Spring WebSocket, STOMP, SockJS |
+| Cache | Spring Data Redis |
+| Payment | `vn.payos:payos-java` |
+| Storage | Cloudinary |
+| Mail | Spring Boot Mail |
+| Metrics | Spring Actuator, Micrometer Prometheus |
+| Test | JUnit 5, Mockito, Spring Boot Test, ArchUnit |
 
-### 2. Bộ đệm & Session (Redis Cloud)
-- **Tối ưu tốc độ (Caching)**: Dữ liệu tĩnh như danh sách bàn (`tables`), thống kê doanh thu (`stats_revenue`) được cache vào Redis và tự động xóa bỏ (`@CacheEvict`) khi có giao dịch mới.
-- **Bảo mật RCE**: Jackson Deserialization được cấu hình cứng `DefaultTyping.NON_FINAL` để chặn đứng các cuộc tấn công nhúng mã độc qua Redis.
+## Cấu Hình Môi Trường
 
----
+Backend đọc biến môi trường qua Spring và `spring-dotenv`. Trong repo hiện tại, `backend/.env` là symlink trỏ tới `../.env`.
 
-## 🌟 Các Tính năng Kỹ thuật Cốt lõi
+Tạo file `.env` ở root. Nếu đang đứng trong thư mục `backend/`:
 
-### 1. Hướng sự kiện thời gian thực (Real-time Event-Driven)
-- Thay thế hoàn toàn cơ chế Polling (gọi liên tục API) bằng **STOMP WebSockets**.
-- Hệ thống duy trì kết nối cực kỳ bền bỉ với tính năng **Heartbeats (10s)** do `ConcurrentTaskScheduler` quản lý.
-- Mọi trạng thái thanh toán thành công (`PAYMENT_SUCCESS`) hoặc đổi bàn đều được phát qua `@Async` Event Listeners với cơ chế Exponential Backoff để chống nghẽn luồng.
-
-### 2. Cổng Thanh toán Tự động (PayOS)
-- Tích hợp sâu Webhooks để lắng nghe và xác nhận giao dịch chuyển khoản 100% tự động.
-- Có cơ chế **Cron Job (Scheduled)**: `PaymentCleanupService` tự động chạy ngầm mỗi 5 phút để dọn dẹp, kiểm tra lại và đóng các giao dịch `PENDING` bị treo mạng.
-
-### 3. Trí tuệ nhân tạo Đàm thoại (Gemini AI)
-- Tích hợp Gemini API trực tiếp trong Backend qua `RestTemplate`.
-- Phân tích thời tiết, thời gian thực và lịch sử đơn hàng để gợi ý món ăn thông minh.
-- Thiết lập Timeout chặt chẽ (5s Connect, 15s Read) đảm bảo Server không bao giờ bị đứng (Thread Starvation) nếu máy chủ Google chậm phản hồi.
-
-### 4. Quản lý trạng thái (Enterprise State Machine)
-- Loại bỏ hoàn toàn vòng lặp if/else rườm rà.
-- Các trạng thái của đơn hàng (`PENDING` -> `PREPARING` -> `SERVED` -> `COMPLETED`) bị kiểm soát chặt chẽ bởi `OrderStateFactory`, cấm tuyệt đối các thao tác đảo ngược trạng thái trái phép.
-
-### 5. DDoS Protection & JWT
-- Hệ thống In-memory Rate Limiting tự phát triển bằng **Thuật toán Sliding Window** để chống Spam/DDoS vào các API public và API AI.
-- Xác thực JWT siêu tốc, kèm bước kiểm tra độ dài an toàn của Chuỗi bí mật (`SECRET_KEY`) ngay lúc Server mới khởi động.
-
----
-
-## 🚀 Hướng dẫn Cài đặt & Vận hành
-
-### Yêu cầu Hệ thống
-- JDK 21 trở lên.
-- Maven 3.9+.
-- PostgreSQL 15+ đang chạy.
-- Redis (Local hoặc Cloud) đang chạy.
-
-### 1. Thiết lập Biến môi trường
-Copy file `.env.exemple` (từ thư mục gốc) thành file `.env` và đặt chung tại thư mục gốc của dự án. Đảm bảo bạn đã điền các cấu hình quan trọng sau:
-```env
-# Cấu hình Database
-DB_URL=jdbc:postgresql://localhost:5432/order_by_qr
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-
-# Cấu hình Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# JWT & AI
-JWT_SECRET=mot_chuoi_bi_mat_rat_dai_va_an_toan_hon_32_ky_tu
-GEMINI_API_KEY=your_gemini_key
-
-# Cổng thanh toán
-PAYOS_CLIENT_ID=your_id
-PAYOS_API_KEY=your_api_key
-PAYOS_CHECKSUM_KEY=your_checksum
-```
-
-### 2. Chạy ứng dụng
-Mở Terminal tại thư mục `backend` và chạy các lệnh:
 ```bash
-# Xóa bản build cũ và biên dịch lại code
-mvn clean compile
+cp ../.env.example ../.env
+```
 
-# Chạy Server
+Nếu đang đứng ở root dự án:
+
+```bash
+cp .env.example .env
+```
+
+Các biến bắt buộc/quan trọng:
+
+| Biến | Mô tả |
+| --- | --- |
+| `PORT` | Cổng backend, mặc định `8080` |
+| `DB_URL` | JDBC URL PostgreSQL, ví dụ `jdbc:postgresql://localhost:5432/order_by_qr` |
+| `DB_USERNAME`, `DB_PASSWORD` | Tài khoản database |
+| `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` | Redis cache |
+| `JWT_SECRET` | Secret ký JWT, nên dài và ngẫu nhiên |
+| `JWT_EXPIRATION_MS` | Thời gian sống access token |
+| `JWT_REFRESH_EXPIRATION_MS` | Thời gian sống refresh token |
+| `JWT_REFRESH_COOKIE_NAME` | Tên cookie refresh token |
+| `JWT_REFRESH_COOKIE_SECURE` | `true` cho production HTTPS, `false` cho local HTTP |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD` | SMTP gửi email reset mật khẩu |
+| `MAIL_SMTP_AUTH`, `MAIL_STARTTLS` | Cấu hình SMTP |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Upload ảnh |
+| `APP_BASE_URL` | Public backend URL |
+| `APP_FRONTEND_BASE_URL` | Public frontend URL |
+| `APP_CORS_ALLOWED_ORIGINS` | Origin được phép, cách nhau bằng dấu phẩy |
+| `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` | Thanh toán PayOS |
+| `GEMINI_API_KEY`, `GEMINI_API_URL` | Gemini chat assistant |
+
+## Chạy Local
+
+Từ thư mục `backend/`:
+
+```bash
 mvn spring-boot:run
 ```
 
-Server sẽ khởi động mặc định tại port `8080` (hoặc tuỳ theo biến `PORT` trong file `.env`).
+Chạy với profile `dev` để seed tài khoản quản lý khi bảng `users` đang rỗng:
 
----
-
-## 🧪 Testing
-Backend được bao phủ bởi các Unit Test chặt chẽ sử dụng **JUnit 5** và **Mockito**.
-- Chạy toàn bộ Test Suite:
 ```bash
-mvn clean test
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
-- Các bài test đã bao gồm việc cô lập Metric (Sử dụng `SimpleMeterRegistry` thay vì Mock) giúp chống lỗi NullPointerException ở môi trường ảo hóa.
+
+Tài khoản seed chỉ tạo khi profile `dev` được bật:
+
+```text
+Email: admin@gmail.com
+Password: admin123
+Role: MANAGER
+```
+
+Ứng dụng chạy mặc định tại `http://localhost:8080`.
+
+## Database Và Migration
+
+Flyway migrations nằm tại:
+
+```text
+src/main/resources/db/migration/
+```
+
+Cấu hình hiện tại:
+
+- `spring.jpa.hibernate.ddl-auto=validate`
+- `spring.flyway.baseline-on-migrate=true`
+- `spring.flyway.baseline-version=1`
+- JDBC/Hibernate timezone: `Asia/Ho_Chi_Minh`
+
+Vì Hibernate chỉ validate schema, hãy tạo database PostgreSQL trước khi chạy app. Flyway sẽ áp migration khi app khởi động.
+
+## Auth Và Phân Quyền
+
+Backend dùng access token JWT trong header:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+Refresh token được lưu trong HTTP-only cookie, path `/api`. Cookie có `SameSite=None` khi `JWT_REFRESH_COOKIE_SECURE=true`, ngược lại dùng `Lax`.
+
+Roles hiện có:
+
+| Role | Quyền chính |
+| --- | --- |
+| `MANAGER` | Toàn quyền quản trị menu, bàn, voucher, nhân viên, thống kê, bếp, thanh toán |
+| `STAFF` | Vận hành bàn, đơn, thanh toán, lịch sử, một số báo cáo |
+| `CHEF` | Xem/cập nhật bếp và một số dữ liệu phục vụ vận hành |
+
+## API Map
+
+| Nhóm | Endpoint chính | Mô tả |
+| --- | --- | --- |
+| Auth | `/api/auth/*` | Login, refresh, logout, reset mật khẩu email/phone |
+| Public customer | `/api/public/*` | Menu public, table by code, current order, recommendations |
+| AI | `POST /api/ai/chat` | Chat gợi ý món qua Gemini |
+| Categories | `/api/categories` | CRUD danh mục, search, upload ảnh |
+| Menu items | `/api/menu-items` | CRUD món, lọc theo danh mục, upload ảnh |
+| Combos | `/api/combos` | CRUD combo, active combos, toggle active |
+| Tables | `/api/tables` | CRUD bàn, lấy theo code, regenerate QR |
+| Orders | `/api/orders` | Tạo đơn, history, stats, active, current order, preview, pay, reconcile |
+| Kitchen | `/api/kitchen` | Danh sách món bếp, update item status/prepared |
+| Payments | `/api/payments/payos` | Tạo link PayOS, hủy link, đồng bộ trạng thái |
+| Webhooks | `/api/webhooks/payos` | PayOS callback |
+| Vouchers | `/api/vouchers` | CRUD voucher, validate code |
+| Stats | `/api/stats` | Doanh thu, nhân viên, đơn, top món, trend, forecast, dashboard |
+| Settings | `/api/settings` | Xem/cập nhật cấu hình nhà hàng |
+| Users | `/api/users` | Hồ sơ cá nhân, avatar, nhân viên, reset password |
+| Recommendations | `/api/recommendations` | API recommendation nội bộ/admin |
+
+Mọi response chuẩn được bọc bởi `ApiResponse<T>` trừ webhook PayOS trả `ResponseEntity<Map<...>>`.
+
+## WebSocket Realtime
+
+Endpoint SockJS/STOMP:
+
+```text
+/ws
+```
+
+Broker prefix:
+
+```text
+/topic
+```
+
+Application prefix:
+
+```text
+/app
+```
+
+Heartbeat được cấu hình 10 giây mỗi chiều.
+
+Topics đang được frontend subscribe:
+
+| Topic | Mục đích | Bảo vệ |
+| --- | --- | --- |
+| `/topic/tables` | Trạng thái bàn, đơn, thanh toán tối thiểu cho admin/khách | Public |
+| `/topic/kitchen` | Cập nhật bảng bếp | `MANAGER`, `STAFF`, `CHEF` |
+| `/topic/users` | Cập nhật nhân viên | `MANAGER` |
+| `/topic/vouchers` | Cập nhật voucher | `MANAGER`, `STAFF` |
+| `/topic/menu` | Cập nhật món ăn | Public subscribe |
+| `/topic/categories` | Cập nhật danh mục | Public subscribe |
+| `/topic/combos` | Cập nhật combo | Public subscribe |
+| `/topic/settings` | Cập nhật settings public | Public subscribe |
+
+Client có thể gửi header STOMP:
+
+```text
+Authorization: Bearer <access-token>
+```
+
+Các protected topic sẽ từ chối subscribe nếu thiếu token hoặc role không phù hợp.
+
+## Thanh Toán
+
+PayOS flow chính:
+
+- `POST /api/payments/payos`: tạo payment link cho order.
+- `GET /api/payments/payos/{transactionId}`: đồng bộ trạng thái từ PayOS.
+- `POST /api/payments/payos/{transactionId}/cancellation`: hủy link thanh toán.
+- `POST /api/webhooks/payos`: nhận webhook PayOS.
+- `PaymentCleanupService`: chạy mỗi 5 phút để xử lý giao dịch `PENDING` bị treo.
+
+Thanh toán tiền mặt dùng:
+
+```text
+POST /api/orders/{orderId}/pay
+```
+
+## Trạng Thái Đơn Và Món
+
+Order status:
+
+```text
+PENDING -> SERVING -> AWAITING_PAYMENT -> COMPLETED
+```
+
+Nhánh hủy:
+
+```text
+PENDING | SERVING | AWAITING_PAYMENT -> CANCELLED
+```
+
+Order item status:
+
+```text
+PENDING -> COOKING -> FINISHED
+PENDING | COOKING | FINISHED -> CANCELLED
+```
+
+Logic chuyển trạng thái được gom trong `modules/order/state` và `OrderStatusService`. Lịch sử thay đổi được ghi vào các bảng audit tương ứng.
+
+## Cache Và Metrics
+
+Redis cache đang dùng cho:
+
+- Tables/QR codes
+- Menu, categories, combos
+- Recommendations/popular items
+- Vouchers
+- Settings
+- Order detail/stats
+- Revenue/top dishes/employee performance/dashboard stats
+
+Metrics:
+
+- Health: `GET /actuator/health`
+- Prometheus: `GET /actuator/prometheus`
+
+## Test Và Build
+
+Chạy test:
+
+```bash
+mvn test
+```
+
+Build jar:
+
+```bash
+mvn clean package
+```
+
+Build không chạy test:
+
+```bash
+mvn clean package -DskipTests
+```
+
+Test hiện có:
+
+- `BackendDependencyRulesTest`
+- `SecurityConfigRegressionTest`
+- `TimeZoneConfigTest`
+- `WebSocketConfigTest`
+- `DiscountServiceTest`
+- `OrderServiceImplTest`
+- `PayosServiceImplTest`
+- `RecommendationServiceTest`
+
+## Docker
+
+Backend image được build từ `Dockerfile` ở root dự án, không phải từ thư mục `backend/`:
+
+```bash
+docker build -t order-by-qr-backend:latest ..
+```
+
+Nếu đang đứng ở root dự án:
+
+```bash
+docker build -t order-by-qr-backend:latest .
+```
+
+Container expose cổng `8080`, chạy bằng Spring Boot layered jar và JVM timezone `Asia/Ho_Chi_Minh`.

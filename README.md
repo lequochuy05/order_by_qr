@@ -1,100 +1,288 @@
-# 🧾 Sắc Màu Quán - QR Ordering System (QROS)
+# QROS - Hệ thống Gọi Món Bằng Mã QR
 
-**QROS** is an enterprise-grade, event-driven ordering system using QR codes, designed to optimize the service process in restaurants and eateries. Customers can easily scan the QR code at their table to view the menu, receive smart food recommendations via AI, and order directly without waiting for staff.
+QROS là hệ thống gọi món bằng mã QR dành cho nhà hàng và quán ăn. Khách hàng chỉ cần quét mã QR tại bàn để xem thực đơn, thêm món ăn hoặc combo vào giỏ hàng, gửi đơn đặt món và theo dõi trạng thái phục vụ theo thời gian thực.
 
----
+Nhân viên và quản lý vận hành hệ thống thông qua trang quản trị (Admin Dashboard), nơi hỗ trợ quản lý bàn ăn, thực đơn, bếp, thanh toán, voucher, nhân sự, cấu hình hệ thống và báo cáo doanh thu.
 
-## 🚀 Key Features
+## Kiến Trúc Dự Án
 
-### 1. 📱 Customer Experience (Customer's Perspective)
-- **Instant QR Code Scanning:** Automatically identifies the table number and displays the customized menu.
-- **Smart Menu:** Clearly categorizes dishes, supports searching and filtering by category.
-- **AI Recommendations (Powered by Gemini AI):**
-  - Personalized food recommendations based on the time of day and real-time weather conditions.
-  - Interactive AI Assistant that can answer questions and suggest cross-selling items (drinks, toppings).
-- **Shopping Cart & Checkout:** Fast checkout process integrated seamlessly with modern UI.
+Dự án bao gồm hai ứng dụng chính:
 
-### 2. 👔 Store Management (Admin Side)
-- **Menu Management:** Add, edit, and delete food combos, categories, and product bundles.
-- **Event-Driven Order Management:** Track order statuses in absolute real-time without polling lag, driven by WebSockets.
-- **Automated Payment Processing:** Integrated with PayOS for automatic banking reconciliation. Features background cron jobs to auto-clear hanging transactions.
-- **Statistics & Reports:** Revenue charts, employee performance, and trending dishes visualization using Recharts.
-- **Staff Control:** Granular permission system for Managers and Chefs.
-
-### 3. 🤖 AI & Deep Integrations
-- **Computer Vision (Roboflow):** Analyzes food images to automatically fill in information (name, estimated price) for menu management.
-- **Conversational AI (Gemini):** Embedded in the customer journey to provide a premium ordering experience.
-- **Enterprise-Grade State Machine:** Rigid validation matrices for Order Status transitions to ensure 100% data integrity.
+* **backend/**: Spring Boot REST API sử dụng PostgreSQL, Redis, WebSocket, PayOS, Cloudinary và Gemini AI.
+* **frontend/**: React/Vite Single Page Application dành cho khách hàng và nhân viên quản lý.
 
 ---
 
-## 🛠️ Technologies Used
+## Chức Năng Chính
 
-| Layer | Technology |
-|-----------|-----------|
-| **Backend Core** | Spring Boot 3, Java 21, Spring Security, MapStruct, Lombok `@SuperBuilder` |
-| **Database & Cache** | PostgreSQL, Redis Cloud (High-performance caching & session management) |
-| **Frontend** | React 19, Vite, Tailwind CSS 4, Recharts |
-| **Realtime Infrastructure**| WebSocket (STOMP & SockJS) with Async Listeners & Heartbeats |
-| **State Management** | Zustand (Optimized Global State) |
-| **Integrations** | PayOS, Gemini AI, Roboflow, Cloudinary, JavaMailSender |
-| **Monitoring** | Micrometer |
+### Khách Hàng
+
+* Quét mã QR theo `tableCode` để truy cập thực đơn.
+* Xem danh mục món ăn, combo và các gợi ý món.
+* Thêm món vào giỏ hàng và gửi đơn trực tiếp tới nhà bếp.
+* Theo dõi trạng thái đơn hàng theo thời gian thực.
+* Thanh toán bằng tiền mặt hoặc PayOS.
+
+### Nhân Viên & Quản Lý
+
+* Quản lý danh mục món ăn và combo.
+* Quản lý bàn ăn và mã QR.
+* Quản lý voucher khuyến mãi.
+* Quản lý nhân viên và phân quyền.
+* Quản lý thông tin nhà hàng.
+* Theo dõi hoạt động bếp theo thời gian thực.
+* Xem báo cáo doanh thu và thống kê kinh doanh.
+
+### Bếp
+
+* Nhận đơn hàng theo thời gian thực.
+* Cập nhật trạng thái món ăn:
+
+  * `PENDING`
+  * `COOKING`
+  * `FINISHED`
+  * `CANCELLED`
+
+### Hệ Thống
+
+* Hỗ trợ WebSocket STOMP/SockJS cho các tác vụ realtime.
+* Tích hợp Gemini AI để hỗ trợ tư vấn và gợi ý món ăn.
+* Hỗ trợ nhận diện món ăn bằng TensorFlow.js trên frontend.
+* Tích hợp PayOS cho thanh toán trực tuyến.
+* Hỗ trợ Redis Cache.
+* Hỗ trợ Prometheus Metrics và Spring Actuator.
+* Hỗ trợ Flyway Migration để quản lý cơ sở dữ liệu.
 
 ---
 
-## 💻 Installation Guide
+## Công Nghệ Sử Dụng
 
-### System Requirements
-- Java 21+
-- React 19+
-- Maven 3.9+
+| Thành phần       | Công nghệ                                                                |
+| ---------------- | ------------------------------------------------------------------------ |
+| Backend          | Java 21, Spring Boot 3.4.1, Spring Security, Spring Data JPA, Validation |
+| Database         | PostgreSQL, Flyway, Hibernate                                            |
+| Cache & Realtime | Redis, STOMP WebSocket, SockJS                                           |
+| Authentication   | JWT Access Token, Refresh Token Cookie                                   |
+| AI & Tích hợp    | Gemini AI, PayOS, Cloudinary, SMTP                                       |
+| Monitoring       | Spring Actuator, Micrometer Prometheus                                   |
+| Frontend         | React 19, Vite 7, Tailwind CSS 4                                         |
+| Frontend Data    | Axios, Zustand, Recharts, TensorFlow.js                                  |
+| Triển khai       | Docker, Nginx, Vercel                                                    |
 
-### 1. Backend Configuration
-Create a `.env` file in the root directory and configure the environment variables as defined in `.env.exemple`:
+---
 
-```env
-# Database & Cache
-DB_URL=jdbc:postgresql://your-db-url
-DB_USERNAME=your-username
-DB_PASSWORD=your-password
-REDIS_HOST=your-host
-REDIS_PORT=your-port
-REDIS_PASSWORD=your-password
+## Cấu Trúc Thư Mục
 
-# Security
-JWT_SECRET=your-secret-key-must-be-very-long
-JWT_EXPIRATION_MS=86400000
-
-# Third-Party Integrations
-CLOUDINARY_CLOUD_NAME=your-name
-CLOUDINARY_API_KEY=your-key
-CLOUDINARY_API_SECRET=your-secret
-
-PAYOS_CLIENT_ID=your-payos-client-id
-PAYOS_API_KEY=your-payos-api-key
-PAYOS_CHECKSUM_KEY=your-payos-checksum
-
-GEMINI_API_KEY=your-gemini-key
-GEMINI_API_URL=your-gemini-url
+```text
+.
+├── backend/
+│   ├── pom.xml
+│   └── src/main/java/com/qros/
+│       ├── core/             # Cấu hình hệ thống
+│       ├── infrastructure/   # Các thành phần hạ tầng
+│       ├── modules/          # Các module nghiệp vụ
+│       └── shared/           # Thành phần dùng chung
+│
+├── frontend/
+│   ├── package.json
+│   └── src/
+│       ├── app/
+│       ├── pages/
+│       ├── modules/
+│       ├── entities/
+│       ├── shared/
+│       └── widgets/
+│
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
-Run the application:
+---
+
+## Yêu Cầu Môi Trường
+
+* JDK 21 trở lên
+* Maven 3.9 trở lên
+* Node.js 20 trở lên
+* npm 10 trở lên
+* PostgreSQL
+* Redis
+
+Ngoài ra cần cấu hình các dịch vụ bên thứ ba nếu muốn sử dụng đầy đủ chức năng:
+
+* PayOS
+* Cloudinary
+* Gemini AI
+* SMTP Mail
+
+---
+
+## Cấu Hình Backend
+
+Tạo file `.env` từ file mẫu:
+
+```bash
+cp .env.example .env
+```
+
+Backend hiện sử dụng symlink:
+
+```text
+backend/.env -> ../.env
+```
+
+Nếu hệ điều hành không hỗ trợ symlink, hãy sao chép file `.env` vào thư mục `backend`.
+
+### Một số biến môi trường quan trọng
+
+| Biến           | Mô tả                    |
+| -------------- | ------------------------ |
+| PORT           | Cổng chạy ứng dụng       |
+| DB_URL         | URL kết nối PostgreSQL   |
+| DB_USERNAME    | Tài khoản PostgreSQL     |
+| DB_PASSWORD    | Mật khẩu PostgreSQL      |
+| REDIS_HOST     | Địa chỉ Redis            |
+| JWT_SECRET     | Khóa ký JWT              |
+| PAYOS_*        | Thông tin tích hợp PayOS |
+| CLOUDINARY_*   | Cấu hình Cloudinary      |
+| GEMINI_API_KEY | API Key của Gemini       |
+| MAIL_*         | Cấu hình SMTP            |
+
+---
+
+## Chạy Dự Án Local
+
+### Backend
+
 ```bash
 cd backend
-mvn clean compile
 mvn spring-boot:run
 ```
 
-### 2. Frontend Configuration
+Chạy với profile `dev` để tự động tạo tài khoản quản trị mặc định:
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+Tài khoản mặc định:
+
+```text
+Email: admin@gmail.com
+Password: admin123
+Role: MANAGER
+```
+
+### Frontend
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+### Địa Chỉ Mặc Định
+
+| Thành phần     | Địa chỉ                                       |
+| -------------- | --------------------------------------------- |
+| Backend API    | http://localhost:8080                         |
+| Frontend       | http://localhost:5173                         |
+| WebSocket      | http://localhost:8080/ws                      |
+| Trang khách    | http://localhost:5173/menu?tableCode=<ma-ban> |
+| Trang quản trị | http://localhost:5173/login                   |
+
 ---
 
-## 📧 Contact & Support
+## Cơ Sở Dữ Liệu
 
-**Author**: Wuchuy  
-**Email**: [wuchuy05.dev@gmail.com](mailto:wuchuy.dev@gmail.com)
+Hệ thống sử dụng Flyway Migration tại:
+
+```text
+backend/src/main/resources/db/migration
+```
+
+Hibernate được cấu hình:
+
+```properties
+spring.jpa.hibernate.ddl-auto=validate
+```
+
+Do đó mọi thay đổi cơ sở dữ liệu phải được thực hiện thông qua Flyway trước khi ứng dụng khởi động.
+
+Toàn bộ hệ thống sử dụng múi giờ:
+
+```text
+Asia/Ho_Chi_Minh
+```
+
+---
+
+## Kiểm Thử
+
+### Backend
+
+```bash
+cd backend
+mvn test
+```
+
+### Frontend
+
+```bash
+npm run lint
+npm run build
+```
+
+Hiện tại frontend chưa tích hợp bộ kiểm thử tự động.
+
+---
+
+## Docker
+
+Build image:
+
+```bash
+docker build -t qros-backend:latest .
+docker build -t qros-frontend:latest frontend
+```
+
+Khởi động:
+
+```bash
+docker compose up
+```
+
+Sau khi chạy:
+
+* Frontend: `http://localhost`
+* Backend: `http://localhost:8080`
+
+Nginx sẽ tự động proxy các request `/api` và `/ws` tới backend.
+
+---
+
+## Tài Liệu Chi Tiết
+
+* `backend/README.md`
+* `frontend/README.md`
+
+---
+
+## Lưu Ý Bảo Mật
+
+* Không commit file `.env`.
+* Không công khai JWT Secret.
+* Không công khai API Key hoặc Secret Key của các dịch vụ bên thứ ba.
+* Chỉ trả về các dữ liệu cần thiết cho các API công khai.
+
+---
+
+## Tác Giả
+
+**Lê Quốc Huy**
+
+* Email: [wuchuy05.dev@gmail.com](mailto:wuchuy05.dev@gmail.com)
+* GitHub: github.com/wuchuy05

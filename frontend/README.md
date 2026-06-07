@@ -1,76 +1,341 @@
-# 📱 Giao diện người dùng QROS (React & Vite)
+# QROS Frontend
 
-Cung cấp giao diện hiện đại, tối ưu hóa cao và trải nghiệm mượt mà cho cả khách hàng (quét mã QR để đặt hàng) và quản trị viên (quản lý bảng điều khiển). Hoàn toàn dựa trên sự kiện, loại bỏ việc thăm dò API truyền thống.
+Frontend QROS là React SPA cho 2 nhóm người dùng:
 
-## ✨ Các tính năng chính
+- Khách hàng: quét QR, xem menu, chọn món/combo, dùng voucher, gửi đơn và theo dõi trạng thái hiện tại của bàn.
+- Nhân sự nhà hàng: đăng nhập admin để quản lý dashboard, bàn, bếp, menu, combo, voucher, nhân viên, lịch sử đơn, thống kê, profile và settings.
 
-- **Thực đơn QR dành cho khách hàng:** Đặt hàng nhanh chóng qua mã QR, giỏ hàng trực quan và giao diện người dùng ưu tiên thiết bị di động.
+Ứng dụng được xây bằng Vite, dùng WebSocket STOMP/SockJS để cập nhật realtime
 
-- **Bảng điều khiển quản trị & Phân tích:** Quản lý toàn diện các danh mục, món ăn và nhân viên. Có các biểu đồ tương tác phong phú được hỗ trợ bởi **Recharts**.
+## Công Nghệ
 
-- **Kiến trúc hướng sự kiện (Không thăm dò):** Loại bỏ hoàn toàn logic `setInterval`. Cập nhật thời gian thực về trạng thái Thanh toán (PayOS) và đơn đặt hàng của Bếp được đẩy ngay lập tức qua **STOMP WebSockets**.
+| Nhóm | Công nghệ |
+| --- | --- |
+| Core | React 19, React DOM 19, Vite 7 |
+| Routing | React Router DOM 7 |
+| UI | Tailwind CSS 4, lucide-react, react-icons, react-hot-toast |
+| Data | Axios, Zustand |
+| Realtime | `@stomp/stompjs`, SockJS |
+| Chart | Recharts |
+| QR | qrcode.react |
+| AI local | TensorFlow.js, optional dish classifier model |
+| Tooling | ESLint 9, Vite manual chunks |
 
-- **Trợ lý AI đàm thoại (Gemini):** Tích hợp Trợ lý trò chuyện thông minh để đưa ra các đề xuất theo ngữ cảnh cho khách hàng (dựa trên thời tiết, dựa trên thời gian).
-- **Thị giác máy tính ngoại tuyến (TensorFlow.js):** Tích hợp nhận dạng hình ảnh AI (YOLOv8) để nhận diện món ăn và tự động điền vào biểu mẫu mà không phát sinh chi phí API đám mây.
-
-- **Tuân thủ UX doanh nghiệp:** Tuân thủ nghiêm ngặt "Quy tắc thiết kế Maestro" đảm bảo khả năng truy cập tối ưu (độ tương phản AA) và sự hài hòa màu sắc (chủ đề Xanh ngọc/Xanh lục bảo, loại bỏ các sắc thái Tím thông thường).
-
-## 💻 Công nghệ sử dụng
-- **Khung phần mềm:** [React 19](https://react.dev/) (Vite) - HMR cực nhanh và các bản dựng được tối ưu hóa.
-
-- **Quản lý trạng thái:** [Zustand](https://zustand-demo.pmnd.rs/) - Quản lý trạng thái toàn cục nhẹ, giảm thiểu việc truy cập props.
-
-- **Giao diện người dùng:** [Tailwind CSS v4](https://tailwindcss.com/) - Thiết kế đáp ứng hiện đại, ưu tiên tiện ích.
-- **Trí tuệ nhân tạo & Phân tích:** [TensorFlow.js](https://www.tensorflow.org/js) (cho thị giác máy tính) & [Recharts](https://recharts.org/) (cho phân tích bảng điều khiển).
-
-- **Mạng:** [Axios](https://axios-http.com/) với bộ chặn JWT.
-
-- **Kết nối thời gian thực:** [StompJS](https://stomp-js.github.io/stompjs/) & [SockJS](https://github.com/sockjs/sockjs-client) để kết nối socket hai chiều ổn định.
-
----
-
-## 🚀 Thiết lập & Thực thi
-
-### 1. Yêu cầu hệ thống
-- Môi trường: Node.js (khuyến nghị phiên bản 18 LTS trở lên).
-
-- Trình quản lý gói: npm hoặc yarn.
-
-### 2. Cài đặt các thư viện phụ thuộc
-```bash
-cd frontend
-npm install
-```
-### 3. Biến môi trường
-Đảm bảo `.env.development` và `.env.production` được cấu hình đúng với URL API backend và URL WS ​​của bạn.
-
-### 4. Cấu hình AI Dish Classifier (Tùy chọn)
-Tính năng nhận dạng hình ảnh ngoại tuyến (YOLOv8) yêu cầu trọng số mô hình.
-
-1. Huấn luyện mô hình bằng cách sử dụng các tập lệnh Colab được tìm thấy trong `../AI/README.md`.
-
-2. Đặt các tệp kết quả (`model.json`, `.bin` và `labels.json`) vào:
-
-`public/models/dish-classifier/`
-
-### 5. Khởi động môi trường phát triển
-```bash
-npm run dev
-```
-Truy cập ứng dụng qua: `http://localhost:5173`.
-
----
-
-## 📁 Cấu trúc thư mục
+## Cấu Trúc
 
 ```text
 src/
-├── components/ # Các thành phần giao diện người dùng dùng chung (AiChatAssistant, Skeleton, Modals)
-├── context/ # Các nhà cung cấp ngữ cảnh toàn cục (AuthContext)
-├── hooks/ # Các hook tùy chỉnh (useWebsocket, useAdminPreferences)
-├── pages/ # Các chế độ xem dựa trên tuyến đường (Bảng điều khiển quản trị, Menu khách hàng)
-├── services/ # Tích hợp API bên ngoài, cấu hình Axios, logic AI
-├── stores/ # Các kho lưu trữ trạng thái (settingsStore, categoryStore)
-├── utils/ # Các hàm tiện ích (invoiceGenerator, formatters)
-└── App.jsx # Bố cục định tuyến chính
+├── app/
+│   ├── App.jsx
+│   ├── main.jsx
+│   ├── providers.jsx
+│   ├── router.jsx
+│   └── styles/
+├── pages/
+│   ├── admin/
+│   ├── auth/
+│   └── customer/
+├── modules/
+│   ├── ai-assistant/
+│   ├── auth/
+│   ├── category-management/
+│   ├── combo-management/
+│   ├── customer-ordering/
+│   ├── menu-management/
+│   ├── order-management/
+│   ├── payment/
+│   ├── profile-management/
+│   ├── settings-management/
+│   ├── staff-management/
+│   ├── statistics/
+│   ├── table-management/
+│   └── voucher-management/
+├── entities/
+│   ├── category/
+│   ├── combo/
+│   ├── menu-item/
+│   ├── notification/
+│   ├── order/
+│   ├── payment/
+│   ├── table/
+│   ├── user/
+│   └── voucher/
+├── shared/
+│   ├── api/
+│   ├── assets/
+│   ├── constants/
+│   ├── hooks/
+│   ├── lib/
+│   ├── model/
+│   └── ui/
+└── widgets/
+    ├── admin-layout/
+    ├── customer-layout/
+    ├── customer-menu/
+    ├── dashboard-overview/
+    ├── kitchen-board/
+    └── order-summary/
 ```
+
+Alias trong `vite.config.js`:
+
+```text
+@        -> src
+@app     -> src/app
+@pages   -> src/pages
+@widgets -> src/widgets
+@modules -> src/modules
+@entities-> src/entities
+@shared  -> src/shared
+```
+
+## Biến Môi Trường
+
+Frontend dùng biến Vite:
+
+| Biến | Mô tả |
+| --- | --- |
+| `VITE_API_URL` | Base URL backend, ví dụ `http://localhost:8080` |
+| `VITE_WS_URL` | SockJS endpoint, ví dụ `http://localhost:8080/ws` |
+
+Local development hiện đang dùng:
+
+```text
+VITE_API_URL=http://localhost:8080
+VITE_WS_URL=http://localhost:8080/ws
+```
+
+Production hiện đang trỏ:
+
+```text
+VITE_API_URL=https://order-by-qr.onrender.com
+VITE_WS_URL=https://order-by-qr.onrender.com/ws
+```
+
+Nếu không đặt `VITE_API_URL`, Axios sẽ gọi relative path `/api/...`; Vite dev server đã có proxy `/api` và `/ws` sang `http://localhost:8080`.
+
+## Cài Đặt Và Chạy Local
+
+```bash
+npm install
+npm run dev
+```
+
+Ứng dụng chạy mặc định tại:
+
+```text
+http://localhost:5173
+```
+
+Backend local mặc định:
+
+```text
+http://localhost:8080
+```
+
+Trang thường dùng:
+
+| URL | Mục đích |
+| --- | --- |
+| `/menu?tableCode=<ma-ban>` | Giao diện khách hàng |
+| `/login` | Đăng nhập admin |
+| `/admin/dashboard` | Dashboard |
+| `/admin/tables` | Sơ đồ bàn và thanh toán |
+| `/admin/kitchen` | Bảng bếp |
+
+Route `/` hiện redirect về `/menu?tableCode=5c8006237e33`. Đây là mã bàn mẫu trong router, nên đổi khi triển khai thực tế nếu cần.
+
+## Scripts
+
+| Lệnh | Mô tả |
+| --- | --- |
+| `npm run dev` | Chạy Vite dev server |
+| `npm run build` | Build production vào `dist/` |
+| `npm run preview` | Preview bản build |
+| `npm run lint` | Chạy ESLint |
+
+Hiện `package.json` chưa có script test tự động.
+
+## Routing Và Role
+
+Routes chính lấy từ `src/app/router.jsx`:
+
+| Route | Role |
+| --- | --- |
+| `/menu` | Public |
+| `/login` | Public |
+| `/admin/dashboard` | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/profile` | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/settings` | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/categories` | `MANAGER` |
+| `/admin/menu` | `MANAGER` |
+| `/admin/combo` | `MANAGER` |
+| `/admin/voucher` | `MANAGER` |
+| `/admin/staffs` | `MANAGER` |
+| `/admin/statistics/revenue` | `MANAGER` |
+| `/admin/statistics/top-dishes` | `MANAGER` |
+| `/admin/statistics/staff` | `MANAGER` |
+| `/admin/tables` | `MANAGER`, `STAFF` |
+| `/admin/history` | `MANAGER`, `STAFF` |
+| `/admin/kitchen` | `MANAGER`, `CHEF` |
+
+`ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển đến `/unauthorized`.
+
+## Auth Và API Client
+
+HTTP client nằm ở:
+
+```text
+src/shared/api/httpClient.js
+```
+
+Đặc điểm:
+
+- Dùng Axios với `withCredentials: true`.
+- Tự thêm prefix `/api` cho URL nội bộ chưa có `/api`.
+- Lưu access token trong memory qua `setAccessToken`.
+- Gửi `Authorization: Bearer <token>` khi có access token.
+- Tự unwrap backend `ApiResponse<T>`: trả về `data` khi `success=true`.
+- Tự refresh access token khi admin route nhận `401`, dùng refresh cookie từ backend.
+
+Auth context nằm ở:
+
+```text
+src/modules/auth/model/AuthContext.jsx
+```
+
+Ghi chú:
+
+- Trang khách `/menu` không tự gọi refresh token.
+- Admin session tự logout sau 20 phút không hoạt động.
+- Logout sẽ disconnect WebSocket và xóa access token trong memory.
+
+## Realtime
+
+WebSocket service:
+
+```text
+src/shared/lib/websocket.js
+src/shared/hooks/useWebSocket.js
+```
+
+Cấu hình:
+
+- SockJS endpoint: `VITE_WS_URL` hoặc fallback `/ws`.
+- STOMP reconnect delay: 5 giây.
+- Heartbeat incoming/outgoing: 10 giây.
+- Header `Authorization` được gửi khi có access token.
+
+Topics frontend đang dùng:
+
+| Topic | Nơi dùng |
+| --- | --- |
+| `/topic/tables` | Sơ đồ bàn, payment modal, menu khách |
+| `/topic/kitchen` | Bảng bếp |
+| `/topic/menu` | Quản lý menu, menu khách |
+| `/topic/categories` | Quản lý danh mục, menu khách |
+| `/topic/combos` | Quản lý combo, menu khách |
+| `/topic/vouchers` | Quản lý voucher |
+| `/topic/users` | Quản lý nhân viên |
+| `/topic/settings` | Settings và menu khách |
+| `/topic/orders` | Menu khách/current order updates |
+
+## State Management
+
+Zustand đang được dùng cho:
+
+- `modules/customer-ordering/model/cartStore.js`: giỏ hàng khách.
+- `shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
+- `entities/category/model/categoryStore.js`: danh mục và invalidate/refetch.
+
+Auth user state dùng React Context thay vì Zustand.
+
+## Các Module Chức Năng
+
+| Module | Mô tả |
+| --- | --- |
+| `customer-ordering` | Menu khách, cart, tạo đơn, đơn hiện tại |
+| `ai-assistant` | Chat Gemini qua backend và classifier local tùy chọn |
+| `auth` | Login, refresh session, protected route |
+| `table-management` | Sơ đồ bàn, modal thanh toán, in hóa đơn, QR |
+| `kitchen-board` | Board bếp realtime |
+| `menu-management` | CRUD món và upload ảnh |
+| `category-management` | CRUD/search danh mục và upload ảnh |
+| `combo-management` | CRUD combo |
+| `voucher-management` | CRUD voucher |
+| `staff-management` | CRUD nhân viên và avatar |
+| `profile-management` | Hồ sơ cá nhân, đổi mật khẩu, avatar |
+| `settings-management` | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI |
+| `statistics` | Doanh thu, top món, hiệu suất nhân viên, forecast |
+
+## AI Dish Classifier Tùy Chọn
+
+Classifier local được load bởi:
+
+```text
+src/modules/ai-assistant/api/aiLocalService.js
+```
+
+Các file cần đặt tại:
+
+```text
+public/models/dish-classifier/model.json
+public/models/dish-classifier/*.bin
+public/models/dish-classifier/labels.json
+```
+
+`labels.json` nên map class index sang dữ liệu món, ví dụ:
+
+```json
+{
+  "0": {
+    "name": "Cơm gà",
+    "categoryid": 1,
+    "price": 45000
+  }
+}
+```
+
+Nếu thiếu model, tính năng classifier sẽ báo lỗi khi gọi `loadModel`; các phần còn lại của app vẫn chạy bình thường.
+
+## Build Và Preview
+
+```bash
+npm run build
+npm run preview
+```
+
+Vite đang tách chunk vendor cho React, TensorFlow, icon, QR và data libs để giảm cảnh báo chunk lớn.
+
+## Docker
+
+Build frontend image từ thư mục `frontend/`:
+
+```bash
+docker build -t order-by-qr-frontend:latest \
+  --build-arg VITE_API_URL=http://localhost:8080 \
+  --build-arg VITE_WS_URL=http://localhost:8080/ws \
+  .
+```
+
+Runtime dùng Nginx:
+
+- Serve SPA từ `/usr/share/nginx/html`.
+- Rewrite route về `index.html`.
+- Proxy `/api` và `/ws` sang service `backend:8080`.
+- Bật cache static asset và gzip.
+
+Nếu build từ root dự án:
+
+```bash
+docker build -t order-by-qr-frontend:latest \
+  --build-arg VITE_API_URL=http://localhost:8080 \
+  --build-arg VITE_WS_URL=http://localhost:8080/ws \
+  frontend
+```
+
+## Deploy Gợi Ý
+
+- Vercel: `vercel.json` rewrite mọi route về `/index.html`.
+- Nginx container: dùng `frontend/nginx.conf`.
+- Khi deploy khác domain backend, cập nhật `VITE_API_URL`, `VITE_WS_URL` và backend `APP_CORS_ALLOWED_ORIGINS`.
