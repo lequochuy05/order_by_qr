@@ -1,5 +1,7 @@
 package com.qros.modules.auth.controller;
 
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
 import com.qros.modules.auth.dto.AuthRequest;
 import com.qros.modules.auth.dto.AuthResponse;
@@ -67,15 +69,13 @@ public class AuthController {
 
     private String extractRefreshToken(HttpServletRequest request) {
         if (request.getCookies() == null) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token missing");
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing");
         }
         return Arrays.stream(request.getCookies())
                 .filter(cookie -> refreshCookieName.equals(cookie.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
-                        org.springframework.http.HttpStatus.UNAUTHORIZED, "Refresh token missing"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing"));
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token, Duration maxAge) {

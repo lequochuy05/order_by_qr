@@ -30,7 +30,6 @@ public class StatsResponse {
                         LocalDateTime paymentTime,
                         String empName,
                         BigDecimal finalAmount,
-                        BigDecimal totalAmount,
                         String tableNumber) {
         }
 

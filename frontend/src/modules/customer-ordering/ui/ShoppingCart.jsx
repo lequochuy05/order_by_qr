@@ -5,7 +5,7 @@ const ShoppingCartButton = ({ cart, onOpenCart }) => {
   const totalItems = Object.values(cart.items || {}).reduce((sum, item) => sum + item.qty, 0) +
     Object.values(cart.combos || {}).reduce((sum, combo) => sum + combo.qty, 0);
 
-  const totalAmount = Object.values(cart.items || {}).reduce((sum, item) => sum + (item.qty * item.price), 0) +
+  const cartAmount = Object.values(cart.items || {}).reduce((sum, item) => sum + (item.qty * item.price), 0) +
     Object.values(cart.combos || {}).reduce((sum, combo) => sum + (combo.qty * combo.price), 0);
 
   if (totalItems === 0) return null;
@@ -26,7 +26,7 @@ const ShoppingCartButton = ({ cart, onOpenCart }) => {
           <span className="font-bold">Xem giỏ hàng</span>
         </div>
         <span className="font-black text-lg">
-          {fmtVND(totalAmount)}
+          {fmtVND(cartAmount)}
         </span>
       </button>
     </div>

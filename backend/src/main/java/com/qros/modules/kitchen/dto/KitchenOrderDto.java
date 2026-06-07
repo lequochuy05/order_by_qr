@@ -7,7 +7,7 @@ import java.util.List;
 public record KitchenOrderDto(
         Long id,
         String status,
-        BigDecimal totalAmount,
+        BigDecimal finalAmount,
         TableSummary table,
         List<KitchenOrderItemDto> orderItems,
         LocalDateTime createdAt) {

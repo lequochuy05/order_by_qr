@@ -1,8 +1,8 @@
-package com.qros.modules.recomendation.controller;
+package com.qros.modules.recommendation.controller;
 
 import com.qros.shared.response.ApiResponse;
 import com.qros.modules.menu.dto.PublicMenuResponse;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;

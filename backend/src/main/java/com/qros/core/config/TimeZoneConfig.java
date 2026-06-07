@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.core.config;
 
 import com.qros.shared.util.AppTime;
 import jakarta.annotation.PostConstruct;

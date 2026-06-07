@@ -111,7 +111,7 @@ const StaffManager = () => {
 
     } catch (err) {
       console.error('Error saving staff:', err);
-      const errorMsg = err.response?.data?.detail || err.message || '';
+      const errorMsg = err.message || '';
 
       const newErrors = {};
       if (errorMsg.includes("Email already exists")) {

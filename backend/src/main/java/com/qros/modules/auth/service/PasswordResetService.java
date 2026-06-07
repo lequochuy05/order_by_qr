@@ -5,14 +5,14 @@ import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.user.model.User;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -39,7 +39,7 @@ public class PasswordResetService {
     @Transactional
     public void createPasswordResetToken(String email) {
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Email not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_NOT_FOUND));
 
         String token = UUID.randomUUID().toString();
 
@@ -64,11 +64,11 @@ public class PasswordResetService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepo.findByToken(token)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID,
                         "Token invalid or expired"));
 
         if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(AppTime.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token expired or already used");
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "Token expired or already used");
         }
 
         User user = resetToken.getUser();
@@ -91,7 +91,7 @@ public class PasswordResetService {
         String normalizedPhone = normalizePhone(phone);
 
         User user = userRepo.findByPhone(normalizedPhone)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Phone number not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PHONE_NOT_FOUND));
 
         String otpCode = String.format("%06d", (int) (Math.random() * 1_000_000));
 
@@ -121,7 +121,7 @@ public class PasswordResetService {
         String normalizedPhone = normalizePhone(phone);
 
         PasswordResetToken otpToken = tokenRepo.findValidOtp(otpCode, normalizedPhone)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID,
                         "OTP invalid or expired"));
 
         User user = otpToken.getUser();

@@ -19,6 +19,8 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -27,11 +29,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -73,19 +73,19 @@ public class OrderStatusService {
     })
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         Order.OrderStatus targetStatus;
         try {
             targetStatus = Order.OrderStatus.valueOf(status.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid order status: " + status);
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATUS, "Invalid order status: " + status);
         }
 
         try {
             orderStateFactory.validateTransition(order.getStatus(), targetStatus);
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, e.getMessage());
         }
 
         Order.OrderStatus fromStatus = order.getStatus();
@@ -103,10 +103,11 @@ public class OrderStatusService {
     @CacheEvict(value = "tables", allEntries = true)
     public void cancelOrderItem(@NonNull Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot cancel items that are already prepared");
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE,
+                    "Cannot cancel items that are already prepared");
         }
 
         Order order = item.getOrder();
@@ -136,7 +137,7 @@ public class OrderStatusService {
     @CacheEvict(value = "tables", allEntries = true)
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus, Long userId) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         try {
             OrderItem.OrderItemStatus status = OrderItem.OrderItemStatus.valueOf(newStatus.toUpperCase());
@@ -153,7 +154,7 @@ public class OrderStatusService {
             recalcTableStatus(order);
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid item status code: " + newStatus);
+            throw new BusinessException(ErrorCode.ORDER_INVALID_ITEM_STATUS, "Invalid item status code: " + newStatus);
         }
     }
 
@@ -170,10 +171,10 @@ public class OrderStatusService {
     @Transactional
     public OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes) {
         OrderItem item = orderItemRepository.findById(itemId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order item not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         if (item.isPrepared()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE,
                     "Cannot update items that have already been prepared");
         }
 
@@ -199,19 +200,19 @@ public class OrderStatusService {
     })
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getStatus() == Order.OrderStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This order is already settled");
+            throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "This order is already settled");
         }
 
         if (order.getStatus() != Order.OrderStatus.AWAITING_PAYMENT) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID,
                     "Order must be in AWAITING_PAYMENT status before payment. Current: " + order.getStatus());
         }
 
         User currentUser = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Processing user not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND, "Processing user not found"));
 
         if (voucherCode != null && !voucherCode.isBlank()) {
             BigDecimal subtotal = currentSubtotalAmount(order);
@@ -255,7 +256,7 @@ public class OrderStatusService {
     })
     public OrderResponse confirmPaid(@NonNull Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getPaymentStatus() == Order.PaymentStatus.PAID) {
             return orderMapper.toResponse(order);
@@ -292,7 +293,7 @@ public class OrderStatusService {
     })
     public OrderResponse cancelOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         Order.OrderStatus fromStatus = order.getStatus();
         order.setStatus(Order.OrderStatus.CANCELLED);
@@ -308,7 +309,7 @@ public class OrderStatusService {
     @CacheEvict(value = "tables", allEntries = true)
     public void deleteOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         DiningTable table = order.getTable();
         if (table != null) {

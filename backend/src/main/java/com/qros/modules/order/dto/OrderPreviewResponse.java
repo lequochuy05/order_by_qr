@@ -17,12 +17,8 @@ public class OrderPreviewResponse {
     private BigDecimal subtotalAmount;
     private BigDecimal discountAmount;
     private BigDecimal finalAmount;
-    private BigDecimal finalTotal;
 
     private boolean voucherValid;
     private String voucherMessage;
-    private BigDecimal discountVoucher;
     private BigDecimal discountPromotion;
-
-    private BigDecimal originalTotal;
 }

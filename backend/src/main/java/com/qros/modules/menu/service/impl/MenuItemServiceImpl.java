@@ -1,6 +1,6 @@
 package com.qros.modules.menu.service.impl;
 
-import com.qros.infrastructure.storage.ImageManagerService;
+import com.qros.infrastructure.storage.CloudinaryStorageService;
 import com.qros.modules.menu.dto.MenuItemRequest;
 import com.qros.modules.menu.dto.MenuItemResponse;
 import com.qros.modules.menu.dto.PublicMenuResponse;
@@ -12,17 +12,17 @@ import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.menu.service.MenuItemService;
 import com.qros.modules.notification.service.NotificationService;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.*;
@@ -40,7 +40,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     private final MenuItemRepository menuItemRepository;
     private final CategoryRepository categoryRepository;
     private final NotificationService notificationService;
-    private final ImageManagerService imageManager;
+    private final CloudinaryStorageService cloudinaryStorageService;
     private final TransactionSideEffectService sideEffects;
 
     /**
@@ -88,7 +88,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     @Cacheable(value = "menu", key = "'item_' + #id", unless = "#result == null")
     public MenuItemResponse getItemById(@NonNull Long id) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND, "Not found item"));
 
         return convertToResponse(item);
     }
@@ -101,11 +101,11 @@ public class MenuItemServiceImpl implements MenuItemService {
     @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public MenuItemResponse createItem(@NonNull MenuItemRequest req) {
         if (menuItemRepository.existsByNameIgnoreCase(req.getName())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Item name already exists");
+            throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS);
         }
 
         Category category = categoryRepository.findById(Objects.requireNonNull(req.getCategoryId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         MenuItem.MenuItemBuilder<?, ?> itemBuilder = MenuItem.builder()
                 .name(req.getName())
@@ -139,14 +139,14 @@ public class MenuItemServiceImpl implements MenuItemService {
     @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public MenuItemResponse updateItem(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND, "Not found item"));
 
         if (menuItemRepository.existsByNameIgnoreCaseAndIdNot(req.getName(), id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Item name already exists");
+            throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS);
         }
 
         Category category = categoryRepository.findById(Objects.requireNonNull(req.getCategoryId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         item.setName(req.getName());
         item.setPrice(req.getPrice());
@@ -170,11 +170,11 @@ public class MenuItemServiceImpl implements MenuItemService {
     @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public void deleteItem(@NonNull Long id) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND, "Not found item"));
 
         String oldImg = item.getImg();
         menuItemRepository.delete(item);
-        sideEffects.afterCommit(() -> imageManager.delete(oldImg),
+        sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldImg),
                 "delete menu item image after item delete " + id);
         notificationService.notifyMenuChange("delete", id);
     }
@@ -187,15 +187,15 @@ public class MenuItemServiceImpl implements MenuItemService {
     @CacheEvict(value = { "menu", "combos", "recommendations", "popularItems" }, allEntries = true)
     public Map<String, Object> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         MenuItem item = menuItemRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Not found item"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND, "Not found item"));
 
         try {
             String oldUrl = item.getImg();
-            String newUrl = imageManager.upload(file, "order_by_qr/menu_items");
-            sideEffects.afterRollback(() -> imageManager.delete(newUrl),
+            String newUrl = cloudinaryStorageService.upload(file, "order_by_qr/menu_items");
+            sideEffects.afterRollback(() -> cloudinaryStorageService.delete(newUrl),
                     "delete rolled back menu item image " + id);
             if (oldUrl != null) {
-                sideEffects.afterCommit(() -> imageManager.delete(oldUrl),
+                sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldUrl),
                         "delete replaced menu item image " + id);
             }
             item.setImg(newUrl);
@@ -204,7 +204,7 @@ public class MenuItemServiceImpl implements MenuItemService {
             return Map.of("img", newUrl);
         } catch (IOException e) {
             log.error("Error uploading image for item {}: {}", id, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error system when upload image");
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Error system when upload image", e);
         }
     }
 

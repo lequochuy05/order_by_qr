@@ -10,6 +10,8 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -25,11 +27,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -119,7 +119,7 @@ public class OrderQueryService {
     @Transactional
     public OrderResponse reconcileOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getStatus() == Order.OrderStatus.COMPLETED || order.getStatus() == Order.OrderStatus.CANCELLED) {
             return orderMapper.toResponse(order);
@@ -159,22 +159,19 @@ public class OrderQueryService {
     @Cacheable(value = "order_by_id", key = "#id")
     public OrderResponse getOrderById(@NonNull Long id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
         return orderMapper.toResponse(order);
     }
 
     public OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId) {
         Order order = orderRepository.findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND,
                         "No active session for this table"));
 
         return OrderPreviewResponse.builder()
                 .subtotalAmount(order.getSubtotalAmount())
                 .discountAmount(order.getDiscountAmount())
                 .finalAmount(order.getFinalAmount())
-                .originalTotal(order.getSubtotalAmount())
-                .discountVoucher(order.getDiscountAmount())
-                .finalTotal(order.getFinalAmount())
                 .build();
     }
 

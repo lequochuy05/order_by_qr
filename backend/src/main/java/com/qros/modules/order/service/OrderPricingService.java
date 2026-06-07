@@ -12,13 +12,13 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.VoucherValidateResponse;
 import com.qros.modules.promotion.service.DiscountService;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -42,11 +42,11 @@ public class OrderPricingService {
     public void setOrderMoney(Order order, BigDecimal subtotal, BigDecimal discount) {
         BigDecimal safeSubtotal = safe(subtotal);
         BigDecimal safeDiscount = safe(discount);
-        BigDecimal finalTotal = calculateFinalTotal(safeSubtotal, safeDiscount);
+        BigDecimal finalAmount = calculateFinalTotal(safeSubtotal, safeDiscount);
 
         order.setSubtotalAmount(safeSubtotal);
         order.setDiscountAmount(safeDiscount);
-        order.setFinalAmount(finalTotal);
+        order.setFinalAmount(finalAmount);
         if (order.getPaidAmount() == null) {
             order.setPaidAmount(BigDecimal.ZERO);
         }
@@ -82,7 +82,7 @@ public class OrderPricingService {
         BigDecimal subtotalItems = calculateItemSubtotal(request);
         BigDecimal subtotalCombos = calculateComboSubtotal(request);
         BigDecimal subtotal = subtotalItems.add(subtotalCombos);
-        BigDecimal discountVoucher = BigDecimal.ZERO;
+        BigDecimal discountAmount = BigDecimal.ZERO;
         boolean voucherValid = false;
         String voucherMessage = "";
 
@@ -90,18 +90,15 @@ public class OrderPricingService {
             VoucherValidateResponse voucher = discountService.validateCode(request.getVoucherCode(), subtotal);
             voucherValid = voucher.applicable();
             voucherMessage = voucher.status();
-            discountVoucher = voucher.discountValue();
+            discountAmount = voucher.discountValue();
         }
 
         return OrderPreviewResponse.builder()
                 .subtotalItems(subtotalItems)
                 .subtotalCombos(subtotalCombos)
                 .subtotalAmount(subtotal)
-                .discountAmount(discountVoucher)
-                .finalAmount(calculateFinalTotal(subtotal, discountVoucher))
-                .originalTotal(subtotal)
-                .discountVoucher(discountVoucher)
-                .finalTotal(calculateFinalTotal(subtotal, discountVoucher))
+                .discountAmount(discountAmount)
+                .finalAmount(calculateFinalTotal(subtotal, discountAmount))
                 .voucherValid(voucherValid)
                 .voucherMessage(voucherMessage)
                 .build();
@@ -115,7 +112,7 @@ public class OrderPricingService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
             MenuItem menuItem = menuItemRepository.findById(Objects.requireNonNull(itemRequest.getMenuItemId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND,
                             "Menu item not found: " + itemRequest.getMenuItemId()));
 
             BigDecimal optionsPrice = BigDecimal.ZERO;
@@ -141,7 +138,7 @@ public class OrderPricingService {
         BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderRequest.OrderComboRequest comboRequest : request.getCombos()) {
             Combo combo = comboRepository.findById(Objects.requireNonNull(comboRequest.getComboId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND,
                             "Combo not found: " + comboRequest.getComboId()));
             subtotal = subtotal.add(combo.getPrice().multiply(BigDecimal.valueOf(comboRequest.getQuantity())));
         }

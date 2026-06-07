@@ -1,6 +1,6 @@
 package com.qros.modules.menu.service;
 
-import com.qros.infrastructure.storage.ImageManagerService;
+import com.qros.infrastructure.storage.CloudinaryStorageService;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.modules.menu.dto.CategoryRequest;
@@ -8,6 +8,8 @@ import com.qros.modules.menu.dto.CategoryResponse;
 import com.qros.modules.menu.dto.PublicMenuResponse;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.repository.CategoryRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,8 +20,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +35,7 @@ import java.util.Map;
 public class CategoryService {
     private final CategoryRepository categoryRepo;
     private final NotificationService notificationService;
-    private final ImageManagerService imageManager;
+    private final CloudinaryStorageService cloudinaryStorageService;
     private final TransactionSideEffectService sideEffects;
 
     /**
@@ -80,13 +80,13 @@ public class CategoryService {
      * 
      * @param c Category entity to create
      * @return Saved CategoryResponse DTO
-     * @throws ResponseStatusException if category name already exists
+     * @throws BusinessException if category name already exists
      */
     @Transactional
     @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public CategoryResponse create(@NonNull CategoryRequest input) {
         if (categoryRepo.existsByNameIncludingDeleted(input.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
         Category c = new Category();
@@ -112,11 +112,11 @@ public class CategoryService {
     @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public CategoryResponse update(@NonNull Integer id, @NonNull CategoryRequest input) {
         Category exist = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         if (!exist.getName().equalsIgnoreCase(input.getName())
                 && categoryRepo.existsByNameIncludingDeleted(input.getName())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category name already exists");
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
         exist.setName(input.getName());
@@ -142,11 +142,11 @@ public class CategoryService {
     @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public void delete(@NonNull Integer id) {
         Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         if (cat.getImg() != null && !cat.getImg().isBlank()) {
             String oldImg = cat.getImg();
-            sideEffects.afterCommit(() -> imageManager.delete(oldImg),
+            sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldImg),
                     "delete category image after category delete " + id);
         }
 
@@ -165,19 +165,19 @@ public class CategoryService {
     @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
     public Map<String, String> uploadImage(@NonNull Integer id, @NonNull MultipartFile file) {
         Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Category not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         if (file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid file");
+            throw new BusinessException(ErrorCode.FILE_INVALID);
         }
 
         try {
             String oldUrl = cat.getImg();
-            String newUrl = imageManager.upload(file, "order_by_qr/categories");
-            sideEffects.afterRollback(() -> imageManager.delete(newUrl),
+            String newUrl = cloudinaryStorageService.upload(file, "order_by_qr/categories");
+            sideEffects.afterRollback(() -> cloudinaryStorageService.delete(newUrl),
                     "delete rolled back category image " + id);
             if (oldUrl != null && !oldUrl.isBlank()) {
-                sideEffects.afterCommit(() -> imageManager.delete(oldUrl),
+                sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldUrl),
                         "delete replaced category image " + id);
             }
             cat.setImg(newUrl);
@@ -186,7 +186,7 @@ public class CategoryService {
             return Map.of("img", newUrl);
         } catch (Exception e) {
             log.error("Error uploading category image ID {}: {}", id, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload image");
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload image", e);
         }
     }
 

@@ -1,4 +1,3 @@
-// src/main/java/com/sacmauquan/qrordering/core/config/SecurityConfig.java
 package com.qros.core.config;
 
 import lombok.RequiredArgsConstructor;

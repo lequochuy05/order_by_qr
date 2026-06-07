@@ -12,10 +12,7 @@ import java.util.List;
 public record OrderResponse(
         Long id,
         String status,
-        BigDecimal originalTotal,
-        BigDecimal discountVoucher,
         String voucherCode,
-        BigDecimal totalAmount,
         BigDecimal subtotalAmount,
         BigDecimal discountAmount,
         BigDecimal finalAmount,

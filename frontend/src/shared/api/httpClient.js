@@ -52,10 +52,44 @@ const unwrapApiResponse = (response) => {
         if (apiResponse.success) {
             return apiResponse.data;
         }
-        return Promise.reject(new Error(apiResponse.message || 'Đã xảy ra lỗi nghiệp vụ'));
+        return Promise.reject(createApiError(apiResponse, response));
     }
 
     return response;
+};
+
+const isBackendErrorPayload = (value) => (
+    value &&
+    typeof value === 'object' &&
+    (Object.prototype.hasOwnProperty.call(value, 'code') ||
+        Object.prototype.hasOwnProperty.call(value, 'details'))
+);
+
+const normalizeErrorData = (data, fallbackStatus) => {
+    const embeddedError = data?.data;
+    const payload = isBackendErrorPayload(embeddedError) ? embeddedError : data;
+    const message = payload?.message || data?.message || 'Đã xảy ra lỗi';
+
+    return {
+        ...payload,
+        success: data?.success,
+        status: data?.status || fallbackStatus,
+        code: payload?.code || data?.code,
+        message,
+        details: payload?.details || data?.details || {},
+        raw: data,
+    };
+};
+
+const createApiError = (data, response) => {
+    const normalized = normalizeErrorData(data, response?.status);
+    const apiError = new Error(normalized.message);
+    apiError.data = normalized;
+    apiError.response = response ? { ...response, data: normalized } : undefined;
+    apiError.status = normalized.status || response?.status;
+    apiError.code = normalized.code;
+    apiError.details = normalized.details;
+    return apiError;
 };
 
 export const refreshAccessToken = async () => {
@@ -104,13 +138,7 @@ api.interceptors.response.use(
         }
 
         if (error.response && error.response.data) {
-            const data = error.response.data;
-            const message = data.detail || data.message || data.error || error.message || 'Đã xảy ra lỗi';
-            const apiError = new Error(message);
-            apiError.data = data;
-            apiError.response = error.response;
-            apiError.status = data.status || error.response.status;
-            return Promise.reject(apiError);
+            return Promise.reject(createApiError(error.response.data, error.response));
         }
         return Promise.reject(error);
     }

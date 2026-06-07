@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.core.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;

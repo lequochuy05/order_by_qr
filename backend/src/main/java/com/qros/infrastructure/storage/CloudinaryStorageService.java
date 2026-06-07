@@ -13,19 +13,19 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * ImageManagerService - Wrapper for Cloudinary API to manage cloud-based image storage.
+ * CloudinaryStorageService - Wrapper for Cloudinary API to manage cloud-based image storage.
  * Handles uploading, deleting, and replacing images for menu items, categories, and user profiles.
  */
 @Slf4j
 @Service
-public class ImageManagerService {
+public class CloudinaryStorageService {
 
     private final Cloudinary cloudinary;
 
     /**
      * Initializes the Cloudinary client with credentials from application properties.
      */
-    public ImageManagerService(
+    public CloudinaryStorageService(
             @Value("${cloudinary.cloud_name}") String cloudName,
             @Value("${cloudinary.api_key}") String apiKey,
             @Value("${cloudinary.api_secret}") String apiSecret) {

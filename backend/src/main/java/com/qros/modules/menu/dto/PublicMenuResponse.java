@@ -65,7 +65,7 @@ public final class PublicMenuResponse {
         public record Order(
                         Long id,
                         String status,
-                        BigDecimal totalAmount,
+                        BigDecimal finalAmount,
                         Table table,
                         List<OrderItem> orderItems,
                         LocalDateTime createdAt) {

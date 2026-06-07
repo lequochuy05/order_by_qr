@@ -43,7 +43,6 @@ public interface StatsRepository extends Repository<Order, Long> {
     LocalDateTime getPaymentTime();
     String getEmpName();
     BigDecimal getFinalAmount();
-    BigDecimal getTotalAmount();
     String getTableNumber();
   }
 
@@ -116,10 +115,9 @@ public interface StatsRepository extends Repository<Order, Long> {
    * @return List of order details
    */
   @Query(value = """
-      SELECT o.id AS id, o.payment_time AS paymentTime,
+             SELECT o.id AS id, o.payment_time AS paymentTime,
              COALESCE(u.full_name, '—') AS empName,
              o.final_amount AS finalAmount,
-             o.final_amount AS totalAmount,
              dt.table_number AS tableNumber
       FROM orders o
       LEFT JOIN users u ON u.id = o.paid_by

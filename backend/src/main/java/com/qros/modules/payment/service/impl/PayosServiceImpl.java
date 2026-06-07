@@ -13,6 +13,8 @@ import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.modules.payment.service.PayosService;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.shared.transaction.TransactionSideEffectService;
@@ -20,11 +22,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
@@ -89,14 +89,14 @@ public class PayosServiceImpl implements PayosService {
     @Transactional
     public PayosCreateResponse createPaymentLink(@NonNull PayosCreateRequest request) {
         Order order = orderRepository.findById(Objects.requireNonNull(request.getOrderId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND,
                         "Order not found: " + request.getOrderId()));
         BigDecimal payableAmount = currentFinalAmount(order);
         if (payableAmount == null || payableAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has no payable amount");
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Order has no payable amount");
         }
         if (order.getPaymentStatus() == Order.PaymentStatus.PAID || order.getStatus() == Order.OrderStatus.COMPLETED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is already paid");
+            throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID);
         }
 
         String idempotencyKey = normalizeIdempotencyKey(request.getIdempotencyKey());
@@ -117,7 +117,10 @@ public class PayosServiceImpl implements PayosService {
                 orderRepository.save(order);
                 payableAmount = currentFinalAmount(order);
             } else {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher invalid: " + vr.status());
+                ErrorCode voucherErrorCode = "EXPIRED".equals(vr.status())
+                        ? ErrorCode.VOUCHER_EXPIRED
+                        : ErrorCode.VOUCHER_INVALID;
+                throw new BusinessException(voucherErrorCode, "Voucher invalid: " + vr.status());
             }
         }
 
@@ -189,8 +192,8 @@ public class PayosServiceImpl implements PayosService {
             transaction.setFailureReason(e.getMessage());
             transaction.setProviderPayload(providerPayload("PAYOS", "CREATE_LINK_FAILED", null));
             transactionRepository.save(transaction);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "PayOS Gateway error: " + e.getMessage());
+            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR,
+                    "PayOS Gateway error: " + e.getMessage(), e);
         }
     }
 
@@ -201,10 +204,11 @@ public class PayosServiceImpl implements PayosService {
     @Transactional
     public void cancelPaymentLink(@NonNull Long transactionId, String reason) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
 
         if (transaction.getStatus() != PaymentTransaction.TransactionStatus.PENDING) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PENDING transactions can be cancelled");
+            throw new BusinessException(ErrorCode.PAYMENT_TRANSACTION_INVALID_STATE,
+                    "Only PENDING transactions can be cancelled");
         }
 
         try {
@@ -218,8 +222,8 @@ public class PayosServiceImpl implements PayosService {
             log.info("PayOS payment link cancelled for Transaction ID: {}", transactionId);
         } catch (Exception e) {
             log.error("Failed to cancel PayOS link {}: {}", transactionId, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "PayOS Cancellation error: " + e.getMessage());
+            throw new BusinessException(ErrorCode.PAYMENT_CANCELLATION_FAILED,
+                    "PayOS Cancellation error: " + e.getMessage(), e);
         }
     }
 
@@ -232,7 +236,7 @@ public class PayosServiceImpl implements PayosService {
             "stats_dish_trend", "stats_dashboard", "order_by_id", "order_stats" }, allEntries = true)
     public PaymentTransaction syncPaymentStatus(@NonNull Long transactionId) {
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
 
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PENDING) {
             try {
@@ -277,14 +281,14 @@ public class PayosServiceImpl implements PayosService {
             webhookData = payOS.webhooks().verify(webhook);
         } catch (Exception e) {
             log.error("[PayOS Webhook] Signature verification failed: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid webhook signature");
+            throw new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID, "Invalid webhook signature", e);
         }
 
         long transactionId = webhookData.getOrderCode();
         log.info("[PayOS Webhook] Verified transaction: {} | Amount: {}", transactionId, webhookData.getAmount());
 
         PaymentTransaction transaction = transactionRepository.findWithOrderById(transactionId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND,
                         "Transaction not found: " + transactionId));
 
         if (transaction.getStatus() == PaymentTransaction.TransactionStatus.PAID) {
@@ -295,7 +299,8 @@ public class PayosServiceImpl implements PayosService {
         if (transaction.getAmount().compareTo(webhookAmount) != 0) {
             log.error("[PayOS Webhook] Amount mismatch for transaction {}. Expected {}, got {}",
                     transactionId, transaction.getAmount(), webhookAmount);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Webhook amount does not match transaction");
+            throw new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID,
+                    "Webhook amount does not match transaction");
         }
 
         transaction.setExternalReference(webhookData.getPaymentLinkId());
@@ -375,8 +380,6 @@ public class PayosServiceImpl implements PayosService {
                 .subtotalAmount(tx.getOrder() != null ? tx.getOrder().getSubtotalAmount() : null)
                 .discountAmount(tx.getOrder() != null ? tx.getOrder().getDiscountAmount() : null)
                 .finalAmount(tx.getAmount())
-                .originalTotal(tx.getOrder() != null ? tx.getOrder().getSubtotalAmount() : null)
-                .discountVoucher(tx.getOrder() != null ? tx.getOrder().getDiscountAmount() : null)
                 .voucherCode(tx.getOrder() != null ? tx.getOrder().getVoucherCode() : null)
                 .idempotencyKey(tx.getIdempotencyKey())
                 .externalReference(tx.getExternalReference())
@@ -385,12 +388,12 @@ public class PayosServiceImpl implements PayosService {
 
     private PayosCreateResponse reuseIdempotentTransaction(PaymentTransaction tx, Order order, BigDecimal amount) {
         if (!Objects.equals(tx.getOrder().getId(), order.getId()) || tx.getAmount().compareTo(amount) != 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new BusinessException(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
                     "Idempotency key is already associated with another payment request");
         }
         if (tx.getStatus() == PaymentTransaction.TransactionStatus.FAILED
                 || tx.getStatus() == PaymentTransaction.TransactionStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
+            throw new BusinessException(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
                     "Idempotency key is already associated with an inactive payment transaction");
         }
         log.info("[PayOS Idempotency] Reusing transaction {} for key {}", tx.getId(), tx.getIdempotencyKey());

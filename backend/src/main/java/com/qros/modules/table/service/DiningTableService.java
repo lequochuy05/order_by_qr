@@ -1,6 +1,6 @@
 package com.qros.modules.table.service;
 
-import com.qros.infrastructure.storage.ImageManagerService;
+import com.qros.infrastructure.storage.CloudinaryStorageService;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.modules.table.dto.DiningTableRequest;
@@ -8,16 +8,16 @@ import com.qros.modules.table.dto.DiningTableResponse;
 import com.qros.modules.menu.dto.PublicMenuResponse;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -32,7 +32,7 @@ public class DiningTableService {
 
     private final DiningTableRepository repo;
     private final QRCodeService qrCodeService;
-    private final ImageManagerService imageManagerService;
+    private final CloudinaryStorageService cloudinaryStorageService;
     private final NotificationService notificationService;
     private final TransactionSideEffectService sideEffects;
 
@@ -56,11 +56,11 @@ public class DiningTableService {
      * 
      * @param id Table ID
      * @return DiningTable entity
-     * @throws ResponseStatusException if table is not found
+     * @throws BusinessException if table is not found
      */
     public DiningTable getById(@NonNull Long id) {
         return repo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Table not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
     }
 
     /**
@@ -83,14 +83,14 @@ public class DiningTableService {
     public DiningTableResponse getByTableCode(@NonNull String tableCode) {
         return repo.findByTableCode(tableCode)
                 .map(this::convertToResponse)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid table code"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
     @Cacheable(value = "tables", key = "'public_code_' + #tableCode")
     public PublicMenuResponse.Table getPublicByTableCode(@NonNull String tableCode) {
         return repo.findByTableCode(tableCode)
                 .map(table -> new PublicMenuResponse.Table(table.getId(), table.getTableNumber()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid table code"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
     /**
@@ -102,7 +102,7 @@ public class DiningTableService {
     public DiningTableResponse getByTableNumber(@NonNull String tableNumber) {
         return repo.findByTableNumber(tableNumber)
                 .map(this::convertToResponse)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND,
                         "Table number not found: " + tableNumber));
     }
 
@@ -129,12 +129,12 @@ public class DiningTableService {
     @CacheEvict(value = "tables", allEntries = true)
     public DiningTableResponse create(DiningTableRequest req) {
         if (repo.existsByTableNumber(req.getTableNumber())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
+            throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 
         String tableCode = generateUniqueTableCode();
         Map<String, String> qrMedia = generateQRMedia(tableCode);
-        sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
+        sideEffects.afterRollback(() -> cloudinaryStorageService.delete(qrMedia.get("publicId")),
                 "delete rolled back table QR media " + tableCode);
 
         DiningTable table = DiningTable.builder()
@@ -161,13 +161,13 @@ public class DiningTableService {
             byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
             String folder = "order_by_qr/tables";
             String publicId = "qr_" + tableCode;
-            Map<String, Object> result = imageManagerService.uploadBytes(qrBytes, folder, publicId);
+            Map<String, Object> result = cloudinaryStorageService.uploadBytes(qrBytes, folder, publicId);
             return Map.of(
                     "url", result.get("secure_url").toString(),
                     "publicId", result.get("public_id").toString());
         } catch (Exception e) {
             log.error("Error generating QR code: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "System error generating QR code");
+            throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "System error generating QR code", e);
         }
     }
 
@@ -179,7 +179,7 @@ public class DiningTableService {
             }
         }
 
-        throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to generate unique table code");
+        throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "Unable to generate unique table code");
     }
 
     /**
@@ -195,7 +195,7 @@ public class DiningTableService {
         DiningTable table = getById(id);
 
         if (repo.existsByTableNumberAndIdNot(req.getTableNumber(), id)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Table number already exists");
+            throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 
         table.setTableNumber(req.getTableNumber());
@@ -223,7 +223,7 @@ public class DiningTableService {
 
         String newTableCode = generateUniqueTableCode();
         Map<String, String> qrMedia = generateQRMedia(newTableCode);
-        sideEffects.afterRollback(() -> imageManagerService.delete(qrMedia.get("publicId")),
+        sideEffects.afterRollback(() -> cloudinaryStorageService.delete(qrMedia.get("publicId")),
                 "delete rolled back regenerated table QR media " + newTableCode);
 
         table.setTableCode(newTableCode);
@@ -235,7 +235,7 @@ public class DiningTableService {
         if (oldPublicId != null && !oldPublicId.equals("PENDING")) {
             sideEffects.afterCommit(() -> {
                 try {
-                    imageManagerService.delete(oldPublicId);
+                    cloudinaryStorageService.delete(oldPublicId);
                 } catch (Exception e) {
                     log.error("Failed to delete old QR code", e);
                 }
@@ -258,7 +258,7 @@ public class DiningTableService {
 
         if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
             String publicId = table.getQrCodePublicId();
-            sideEffects.afterCommit(() -> imageManagerService.delete(publicId),
+            sideEffects.afterCommit(() -> cloudinaryStorageService.delete(publicId),
                     "delete table QR media after table delete " + id);
         }
 

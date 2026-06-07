@@ -1,6 +1,5 @@
-package com.qros.infrastructure.cache.impl;
+package com.qros.infrastructure.cache;
 
-import com.qros.infrastructure.cache.CacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,12 +9,12 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.TimeUnit;
 
 /**
- * CacheServiceImpl - Implementation of CacheService using RedisTemplate.
+ * RedisCache - Implementation of CacheService using RedisTemplate.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class CacheServiceImpl implements CacheService {
+public class RedisCache implements CacheService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 

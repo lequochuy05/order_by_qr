@@ -94,7 +94,7 @@ const CategoryManager = () => {
 
             setIsModalOpen(false);
         } catch (err) {
-            const errorMsg = err.response?.data?.detail || err.message || '';
+            const errorMsg = err.message || '';
             if (errorMsg.toLowerCase().includes('category name already exists')) {
                 setErrors({ ...errors, name: "Tên danh mục này đã tồn tại" });
             } else {

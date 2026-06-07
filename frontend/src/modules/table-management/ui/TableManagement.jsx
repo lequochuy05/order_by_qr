@@ -121,7 +121,7 @@ const TableManager = () => {
             setFormModal({ open: false, data: null });
             fetchTables(); // Refresh immediately
         } catch (e) {
-            const errorMsg = e.response?.data?.detail || e.message || '';
+            const errorMsg = e.message || '';
             if (errorMsg.includes("Table number already exists")) {
                 showError("Số bàn này đã tồn tại");
             } else {

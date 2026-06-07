@@ -55,21 +55,25 @@ const buildErrorMessage = (err) => {
   const details = [];
 
   if (data && typeof data === 'object') {
-    msg = data.detail || data.message || data.error || err?.message || msg;
+    const payload = data;
 
-    if (data.data && typeof data.data === 'object') {
-      Object.entries(data.data).forEach(([field, message]) => {
+    msg = payload.message || data.message || err?.message || msg;
+
+    const validationDetails = payload.details;
+    if (validationDetails && typeof validationDetails === 'object') {
+      Object.entries(validationDetails).forEach(([field, message]) => {
         details.push(`${field}: ${message}`);
       });
     }
 
     const status = data.status || err?.status || err?.response?.status;
+    const code = payload.code || data.code || err?.code;
     const title = data.title || err?.response?.statusText;
     const translatedTitle = translateHttpTitle(title);
     msg = translateErrorMessage(msg);
 
     if (status && !msg.includes('Không tìm thấy thông tin bàn')) {
-      details.push(`Mã lỗi: ${status}${translatedTitle ? ` - ${translatedTitle}` : ''}`);
+      details.push(`Mã lỗi: ${code || status}${translatedTitle ? ` - ${translatedTitle}` : ''}`);
     }
   } else if (typeof data === 'string' && data.trim()) {
     msg = data;

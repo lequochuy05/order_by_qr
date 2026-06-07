@@ -12,7 +12,7 @@ import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.modules.analytics.service.ReportingSummaryService;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.order.model.Order;
@@ -58,7 +58,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.quality.Strictness;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.qros.modules.payment.dto.PayosCreateRequest;
 import com.qros.modules.table.model.DiningTable;
@@ -220,8 +219,9 @@ class PayosServiceImplTest {
         when(transactionRepository.findWithOrderById(10L)).thenReturn(Optional.of(transaction));
 
         assertThatThrownBy(() -> payosService.processWebhook(webhook))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Webhook amount does not match transaction");
+                .isInstanceOf(com.qros.shared.exception.BusinessException.class)
+                .extracting(ex -> ((com.qros.shared.exception.BusinessException) ex).getErrorCode())
+                .isEqualTo(com.qros.shared.exception.ErrorCode.PAYMENT_WEBHOOK_INVALID);
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.core.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

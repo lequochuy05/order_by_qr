@@ -11,15 +11,15 @@ import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -74,12 +74,11 @@ public class ComboService {
          * 
          * @param id Combo ID
          * @return ComboResponse DTO
-         * @throws ResponseStatusException if combo not found
+         * @throws BusinessException if combo not found
          */
         public ComboResponse getById(@NonNull Long id) {
                 Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Combo not found"));
+                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
                 return convertToResponse(combo);
         }
 
@@ -94,7 +93,7 @@ public class ComboService {
         @CacheEvict(value = "combos", allEntries = true)
         public ComboResponse create(ComboRequest req) {
                 if (comboRepo.existsByNameIncludingDeleted(req.getName())) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Combo name already exists");
+                        throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
                 }
 
                 Combo combo = Combo.builder()
@@ -116,7 +115,7 @@ public class ComboService {
                         for (ComboItemRequest itemReq : req.getItems()) {
                                 MenuItem menuItem = menuMap.get(itemReq.getMenuItemId());
                                 if (menuItem == null) {
-                                        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                        throw new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND,
                                                         "Menu item not found: " + itemReq.getMenuItemId());
                                 }
 
@@ -144,12 +143,11 @@ public class ComboService {
         @CacheEvict(value = "combos", allEntries = true)
         public ComboResponse update(@NonNull Long id, ComboRequest req) {
                 Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Combo not found"));
+                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
 
                 if (!combo.getName().equalsIgnoreCase(req.getName())
                                 && comboRepo.existsByNameIncludingDeleted(req.getName())) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Combo name already exists");
+                        throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
                 }
 
                 combo.setName(req.getName());
@@ -202,7 +200,7 @@ public class ComboService {
                         } else if (itemReq.getId() == null) {
                                 MenuItem menuItem = menuMap.get(itemReq.getMenuItemId());
                                 if (menuItem == null) {
-                                        throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                        throw new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND,
                                                         "Menu item not found: " + itemReq.getMenuItemId());
                                 }
                                 combo.getItems().add(ComboItem.builder()
@@ -223,8 +221,7 @@ public class ComboService {
         @CacheEvict(value = "combos", allEntries = true)
         public void delete(@NonNull Long id) {
                 Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Combo not found"));
+                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
 
                 comboItemRepo.softDeleteByComboId(id);
                 comboRepo.delete(Objects.requireNonNull(combo));
@@ -242,8 +239,7 @@ public class ComboService {
         @CacheEvict(value = "combos", allEntries = true)
         public ComboResponse toggleActive(@NonNull Long id) {
                 Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                                                "Combo not found"));
+                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
                 combo.setActive(!Boolean.TRUE.equals(combo.getActive()));
 
                 notificationService.notifyComboChange("status_updated", id);

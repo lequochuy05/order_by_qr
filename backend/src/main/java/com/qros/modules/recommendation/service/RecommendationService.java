@@ -1,4 +1,4 @@
-package com.qros.modules.recomendation.service;
+package com.qros.modules.recommendation.service;
 
 import com.qros.modules.menu.dto.MenuItemResponse;
 import com.qros.modules.menu.model.MenuItem;

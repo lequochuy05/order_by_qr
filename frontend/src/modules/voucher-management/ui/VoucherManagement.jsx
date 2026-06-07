@@ -95,7 +95,7 @@ const VoucherManager = () => {
       }
       setIsModalOpen(false);
     } catch (err) {
-      const errorMsg = err.response?.data?.detail || err.message || '';
+      const errorMsg = err.message || '';
       if (errorMsg.includes("Voucher code already exists")) {
         showError("Mã voucher này đã tồn tại trên hệ thống");
       } else {

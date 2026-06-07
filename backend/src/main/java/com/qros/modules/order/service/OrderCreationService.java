@@ -18,6 +18,8 @@ import com.qros.modules.order.model.OrderItemOption;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -26,11 +28,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -121,20 +121,21 @@ public class OrderCreationService {
     private void validateOrderItems(OrderRequest request) {
         if ((request.getItems() == null || request.getItems().isEmpty())
                 && (request.getCombos() == null || request.getCombos().isEmpty())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order content cannot be empty");
+            throw new BusinessException(ErrorCode.ORDER_CONTENT_EMPTY);
         }
     }
 
     private DiningTable resolveTable(OrderRequest request) {
         if (request.getTableCode() != null && !request.getTableCode().isBlank()) {
             return tableRepository.findByTableCode(request.getTableCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID,
                             "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
         } else if (request.getTableId() != null) {
             return tableRepository.findById(Objects.requireNonNull(request.getTableId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy thông tin bàn."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND,
+                            "Không tìm thấy thông tin bàn."));
         }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Vui lòng quét mã QR trên bàn để đặt món.");
+        throw new BusinessException(ErrorCode.INVALID_REQUEST, "Vui lòng quét mã QR trên bàn để đặt món.");
     }
 
     private OrderBatch.BatchSource resolveBatchSource(OrderRequest request) {
@@ -150,7 +151,7 @@ public class OrderCreationService {
 
         for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
             MenuItem menuItem = menuItemRepository.findById(Objects.requireNonNull(itemRequest.getMenuItemId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Menu item not found"));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
 
             validateRequiredOptions(menuItem, itemRequest.getSelectedOptionValueIds());
 
@@ -219,7 +220,7 @@ public class OrderCreationService {
 
         for (OrderRequest.OrderComboRequest comboRequest : request.getCombos()) {
             Combo combo = comboRepository.findById(Objects.requireNonNull(comboRequest.getComboId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Combo not found"));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(item -> item.getCombo() != null && item.getCombo().getId().equals(combo.getId()))
@@ -265,7 +266,7 @@ public class OrderCreationService {
                     boolean selected = option.getOptionValues().stream()
                             .anyMatch(value -> selectedIds.contains(value.getId()));
                     if (!selected) {
-                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        throw new BusinessException(ErrorCode.INVALID_REQUEST,
                                 "Required option selection missing: " + option.getName());
                     }
                 });

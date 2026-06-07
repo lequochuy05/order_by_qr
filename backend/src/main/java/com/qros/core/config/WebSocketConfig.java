@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.core.config;
 
 import java.util.Map;
 import java.util.Set;

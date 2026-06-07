@@ -67,7 +67,7 @@ const ComboManager = () => {
 
         } catch (err) {
             console.error('Error saving combo:', err)
-            const errorMsg = err.response?.data?.detail || err.message || '';
+            const errorMsg = err.message || '';
             if (errorMsg.toLowerCase().includes('combo name already exists')) {
                 setErrors({ ...errors, name: "Tên Combo này đã tồn tại" });
             } else {

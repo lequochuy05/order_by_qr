@@ -10,7 +10,7 @@ import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.payment.service.impl.PayosServiceImpl;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.order.model.Order;

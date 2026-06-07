@@ -8,7 +8,7 @@ import java.math.BigDecimal;
  * calculation.
  */
 public record DiscountResult(
-        BigDecimal finalTotal,
+        BigDecimal finalAmount,
         BigDecimal discountValue,
         Voucher voucher) {
 }

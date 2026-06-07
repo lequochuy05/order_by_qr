@@ -6,7 +6,7 @@ import com.qros.modules.menu.service.CategoryService;
 import com.qros.modules.menu.service.ComboService;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.menu.service.MenuItemService;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.settings.service.SystemSettingsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;

@@ -6,16 +6,16 @@ import com.qros.modules.promotion.dto.VoucherRequest;
 import com.qros.modules.promotion.dto.VoucherValidateResponse;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.VoucherRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
@@ -51,11 +51,11 @@ public class DiscountService {
      * 
      * @param id Voucher ID
      * @return Voucher entity
-     * @throws ResponseStatusException if voucher not found
+     * @throws BusinessException if voucher not found
      */
     public Voucher findById(@NonNull Long id) {
         return voucherRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Voucher not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
     }
 
     /**
@@ -63,13 +63,13 @@ public class DiscountService {
      * 
      * @param req Voucher details
      * @return Created Voucher entity
-     * @throws ResponseStatusException if the code already exists
+     * @throws BusinessException if the code already exists
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
     public Voucher create(VoucherRequest req) {
         if (voucherRepo.existsByCodeIgnoreCase(req.getCode())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
+            throw new BusinessException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
 
         Voucher v = Voucher.builder()
@@ -103,7 +103,7 @@ public class DiscountService {
         Voucher v = findById(id);
 
         if (voucherRepo.existsByCodeIgnoreCaseAndIdNot(req.getCode(), id)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Voucher code already exists");
+            throw new BusinessException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
 
         v.setCode(req.getCode().trim().toUpperCase());
@@ -170,7 +170,7 @@ public class DiscountService {
      * 
      * @param code The voucher code to apply
      * @param subtotal The order subtotal
-     * @return DiscountResult containing final total and applied discount value
+     * @return DiscountResult containing final amount and applied discount value
      */
     @Transactional
     @CacheEvict(value = "vouchers", allEntries = true)
@@ -196,14 +196,14 @@ public class DiscountService {
         // Attempt to increment usage count atomically to prevent race conditions
         int updatedRows = voucherRepo.incrementUsedCountAtomically(v.getId());
         if (updatedRows == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voucher usage limit reached");
+            throw new BusinessException(ErrorCode.VOUCHER_USAGE_LIMIT_REACHED);
         }
 
-        BigDecimal finalTotal = subtotal.subtract(discountValue).setScale(2, RoundingMode.HALF_UP);
-        if (finalTotal.compareTo(BigDecimal.ZERO) < 0)
-            finalTotal = BigDecimal.ZERO;
+        BigDecimal finalAmount = subtotal.subtract(discountValue).setScale(2, RoundingMode.HALF_UP);
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0)
+            finalAmount = BigDecimal.ZERO;
 
-        return new DiscountResult(finalTotal, discountValue, v);
+        return new DiscountResult(finalAmount, discountValue, v);
     }
 
     /**

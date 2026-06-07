@@ -1,7 +1,6 @@
 package com.qros.modules.user.service;
 
-import org.springframework.security.crypto.password.PasswordEncoder;
-import com.qros.infrastructure.storage.ImageManagerService;
+import com.qros.infrastructure.storage.CloudinaryStorageService;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.infrastructure.cache.CacheService;
@@ -14,16 +13,16 @@ import com.qros.shared.response.ApiResponse;
 import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -45,7 +44,7 @@ import org.springframework.beans.factory.annotation.Value;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ImageManagerService imageManagerService;
+    private final CloudinaryStorageService cloudinaryStorageService;
     private final JwtService jwtService;
     private final NotificationService notificationService;
     private final UserMapper userMapper;
@@ -60,23 +59,23 @@ public class UserService {
      * 
      * @param req Login credentials
      * @return AuthResponse containing user details and JWT
-     * @throws ResponseStatusException if authentication fails or account is inactive
+     * @throws BusinessException if authentication fails or account is inactive
      */
     public AuthResponse login(@NonNull AuthRequest req) {
         User u = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> {
                     log.warn("Login failed: Email {} not found", req.getEmail());
-                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login credentials");
+                    return new BusinessException(ErrorCode.INVALID_CREDENTIALS);
                 });
 
         if (u.getStatus() != User.UserStatus.ACTIVE) {
             log.warn("Login blocked: Account {} is {}", u.getEmail(), u.getStatus());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked or not activated");
+            throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
         if (!passwordEncoder.matches(req.getPassword(), u.getPassword())) {
             log.warn("Login failed: Wrong password for user {}", req.getEmail());
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login credentials");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         log.info("User {} logged in successfully", u.getEmail());
@@ -85,7 +84,7 @@ public class UserService {
 
     public AuthResponse refreshAccessToken(@NonNull String refreshToken) {
         if (!jwtService.isRefreshToken(refreshToken)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         String email = jwtService.extractSubject(refreshToken);
@@ -94,15 +93,15 @@ public class UserService {
         String cacheKey = refreshTokenCacheKey(userId, jti);
 
         if (jti.isBlank() || !cacheService.hasKey(cacheKey)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token has expired or was revoked");
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
         cacheService.delete(cacheKey);
 
         User u = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
 
         if (u.getStatus() != User.UserStatus.ACTIVE || !u.isEnabled()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked or not activated");
+            throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
         return buildAuthResponse(u);
@@ -145,12 +144,12 @@ public class UserService {
      * 
      * @param id User ID
      * @return UserResponse DTO
-     * @throws ResponseStatusException if user not found
+     * @throws BusinessException if user not found
      */
     public UserResponse getOne(@NonNull Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
     /**
@@ -162,7 +161,7 @@ public class UserService {
     public UserResponse getCurrentProfile(@NonNull String email) {
         return userRepository.findByEmail(email)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
     /**
@@ -170,16 +169,16 @@ public class UserService {
      * 
      * @param req Registration details
      * @return Created user details
-     * @throws ResponseStatusException if email or phone is already registered
+     * @throws BusinessException if email or phone is already registered
      */
     @Transactional
     public UserResponse create(@NonNull UserUpsertRequest req) {
         if (userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+            throw new BusinessException(ErrorCode.EMAIL_EXISTS);
         }
 
         if (StringUtils.hasText(req.getPhone()) && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+            throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
         User u = userMapper.toEntity(req);
@@ -203,15 +202,15 @@ public class UserService {
     @Transactional
     public UserResponse update(@NonNull Long id, @NonNull UserUpsertRequest req) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (!u.getEmail().equals(req.getEmail()) && userRepository.existsByEmailIncludingDeleted(req.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+            throw new BusinessException(ErrorCode.EMAIL_EXISTS);
         }
 
         if (StringUtils.hasText(req.getPhone()) && !Objects.equals(u.getPhone(), req.getPhone())
                 && userRepository.existsByPhoneIncludingDeleted(req.getPhone())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+            throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
         userMapper.updateEntity(u, req);
@@ -242,12 +241,12 @@ public class UserService {
     @Transactional
     public UserResponse updateCurrentProfile(@NonNull String email, @NonNull ProfileUpdateRequest req) {
         User u = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         String nextPhone = StringUtils.hasText(req.getPhone()) ? req.getPhone().trim() : null;
         if (StringUtils.hasText(nextPhone) && !Objects.equals(u.getPhone(), nextPhone)
                 && userRepository.existsByPhoneIncludingDeleted(nextPhone)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already exists");
+            throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
         u.setFullName(req.getFullName().trim());
@@ -267,7 +266,7 @@ public class UserService {
     @Transactional
     public void delete(@NonNull Long id) {
         if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
         userRepository.deleteById(id);
         log.info("User with id {} deleted", id);
@@ -283,10 +282,10 @@ public class UserService {
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (!StringUtils.hasText(newPassword)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password cannot be empty");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "New password cannot be empty");
         }
 
         u.setPassword(passwordEncoder.encode(newPassword));
@@ -303,10 +302,10 @@ public class UserService {
     @Transactional
     public void changeCurrentPassword(@NonNull String email, @NonNull PasswordChangeRequest req) {
         User u = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (!passwordEncoder.matches(req.getCurrentPassword(), u.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+            throw new BusinessException(ErrorCode.PASSWORD_INVALID);
         }
 
         u.setPassword(passwordEncoder.encode(req.getNewPassword()));
@@ -324,16 +323,16 @@ public class UserService {
     @Transactional
     public UserResponse uploadAvatar(@NonNull Long id, @NonNull MultipartFile file) {
         User u = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         try {
-            String newUrl = imageManagerService.upload(file, "order_by_qr/avatars");
+            String newUrl = cloudinaryStorageService.upload(file, "order_by_qr/avatars");
             if (StringUtils.hasText(u.getAvatarUrl())) {
                 String oldUrl = u.getAvatarUrl();
-                sideEffects.afterCommit(() -> imageManagerService.delete(oldUrl),
+                sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldUrl),
                         "delete replaced avatar image for user " + id);
             }
-            sideEffects.afterRollback(() -> imageManagerService.delete(newUrl),
+            sideEffects.afterRollback(() -> cloudinaryStorageService.delete(newUrl),
                     "delete rolled back avatar image for user " + id);
             u.setAvatarUrl(newUrl);
             userRepository.save(u);
@@ -341,7 +340,7 @@ public class UserService {
             return userMapper.toDto(u);
         } catch (IOException e) {
             log.error("Failed to upload avatar: {}", e.getMessage());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload avatar");
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload avatar", e);
         }
     }
 
@@ -355,7 +354,7 @@ public class UserService {
     @Transactional
     public UserResponse uploadCurrentAvatar(@NonNull String email, @NonNull MultipartFile file) {
         User u = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         return uploadAvatar(u.getId(), file);
     }
 

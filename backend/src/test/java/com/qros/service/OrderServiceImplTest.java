@@ -12,7 +12,7 @@ import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
 import com.qros.modules.analytics.service.ReportingSummaryService;
 import com.qros.modules.kitchen.service.KitchenService;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.order.model.Order;

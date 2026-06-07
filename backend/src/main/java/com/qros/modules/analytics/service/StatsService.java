@@ -80,7 +80,6 @@ public class StatsService {
                                                 r.getPaymentTime(),
                                                 r.getEmpName(),
                                                 r.getFinalAmount(),
-                                                r.getTotalAmount(),
                                                 r.getTableNumber()))
                                 .collect(Collectors.toList());
         }

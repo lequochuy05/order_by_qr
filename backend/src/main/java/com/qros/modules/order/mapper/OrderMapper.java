@@ -13,10 +13,7 @@ public class OrderMapper {
         return new OrderResponse(
                 order.getId(),
                 order.getStatus().name(),
-                order.getSubtotalAmount(),
-                order.getDiscountAmount(),
                 order.getVoucherCode(),
-                order.getFinalAmount(),
                 order.getSubtotalAmount(),
                 order.getDiscountAmount(),
                 order.getFinalAmount(),

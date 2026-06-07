@@ -123,7 +123,7 @@ const MenuManager = () => {
       setIsModalOpen(false);
     } catch (err) {
       console.error('Error saving menu item:', err);
-      const errorMsg = err.response?.data?.detail || err.message || '';
+      const errorMsg = err.message || '';
 
       if (errorMsg.toLowerCase().includes('item name already exists')) {
         setErrors({ ...errors, name: "Tên món ăn này đã tồn tại" });

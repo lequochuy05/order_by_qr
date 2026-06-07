@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.core.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;

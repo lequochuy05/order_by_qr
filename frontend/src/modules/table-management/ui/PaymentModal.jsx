@@ -23,6 +23,8 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const [payosStatus, setPayosStatus] = useState('idle'); // 'idle', 'waiting', 'success', 'expired', 'error'
     const [timeLeft, setTimeLeft] = useState(0);
     const finishingRef = useRef(false);
+    const paymentSuccessHandledRef = useRef(false);
+    const payosSyncingRef = useRef(false);
     const voucherCodeRef = useRef('');
     const draftKey = order?.id ? `payment_draft_${order.id}` : null;
     const { confirmModal, confirm, closeConfirm } = useConfirmModal();
@@ -134,6 +136,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         setPayosData(null);
         setError('');
         finishingRef.current = false;
+        paymentSuccessHandledRef.current = false;
     }, [loadPreview, order?.voucherCode, readPaymentDraft]);
 
     useEffect(() => {
@@ -178,10 +181,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                 ...previewData,
                 subtotalAmount: data.subtotalAmount ?? previewData?.subtotalAmount ?? getOrderSubtotalAmount(order),
                 discountAmount: data.discountAmount ?? previewData?.discountAmount ?? getOrderDiscountAmount(order),
-                finalAmount: data.finalAmount ?? data.amount ?? data.finalTotal ?? previewData?.finalAmount ?? getOrderFinalAmount(order),
-                originalTotal: data.subtotalAmount ?? data.originalTotal ?? previewData?.originalTotal ?? getOrderSubtotalAmount(order),
-                discountVoucher: data.discountAmount ?? data.discountVoucher ?? previewData?.discountVoucher ?? getOrderDiscountAmount(order),
-                finalTotal: data.finalAmount ?? data.amount ?? data.finalTotal ?? previewData?.finalTotal ?? getOrderFinalAmount(order),
+                finalAmount: data.finalAmount ?? data.amount ?? previewData?.finalAmount ?? getOrderFinalAmount(order),
                 voucherValid: Boolean(data.voucherCode || previewData?.voucherValid),
                 voucherMessage: data.voucherCode ? 'ACTIVE' : previewData?.voucherMessage,
             };
@@ -206,34 +206,15 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         const subtotalAmount = latestOrder?.subtotalAmount
             ?? payosData?.subtotalAmount
             ?? previewData?.subtotalAmount
-            ?? previewData?.originalTotal
             ?? getOrderSubtotalAmount(order);
         const discountAmount = latestOrder?.discountAmount
             ?? payosData?.discountAmount
             ?? previewData?.discountAmount
-            ?? previewData?.discountVoucher
             ?? getOrderDiscountAmount(order);
         const finalAmount = latestOrder?.finalAmount
             ?? payosData?.finalAmount
             ?? payosData?.amount
             ?? previewData?.finalAmount
-            ?? previewData?.finalTotal
-            ?? getOrderFinalAmount(order);
-        const originalTotal = latestOrder?.originalTotal
-            ?? subtotalAmount
-            ?? payosData?.originalTotal
-            ?? previewData?.originalTotal
-            ?? getOrderSubtotalAmount(order);
-        const discountVoucher = latestOrder?.discountVoucher
-            ?? discountAmount
-            ?? payosData?.discountVoucher
-            ?? previewData?.discountVoucher
-            ?? getOrderDiscountAmount(order)
-            ?? 0;
-        const totalAmount = latestOrder?.totalAmount
-            ?? finalAmount
-            ?? payosData?.amount
-            ?? previewData?.finalTotal
             ?? getOrderFinalAmount(order);
 
         return {
@@ -241,10 +222,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             subtotalAmount,
             discountAmount,
             finalAmount,
-            originalTotal,
-            discountVoucher,
             voucherCode: latestOrder?.voucherCode ?? payosData?.voucherCode ?? order?.voucherCode,
-            totalAmount,
             paymentMethod: effectiveMethod,
             paymentStatus: latestOrder?.paymentStatus ?? 'PAID',
             paymentTime: latestOrder?.paymentTime ?? new Date().toISOString(),
@@ -279,6 +257,9 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     }, [order?.id, table, currentUser, paymentMethod, onPaymentSuccess, onClose, buildInvoiceOrder, clearPaymentDraft]);
 
     const handlePaymentSuccess = useCallback(() => {
+        if (paymentSuccessHandledRef.current) return;
+        paymentSuccessHandledRef.current = true;
+
         setPayosStatus('success');
         setPaymentMethod('PAYOS');
         console.log("[PaymentModal] Payment success detected. Preparing to finish...");
@@ -288,6 +269,40 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
             finishPayment('PAYOS');
         }, 1500);
     }, [finishPayment]);
+
+    useEffect(() => {
+        if (payosStatus !== 'waiting' || !payosData?.transactionId || !order?.id) return;
+
+        let stopped = false;
+
+        const syncPaymentStatus = async () => {
+            if (payosSyncingRef.current || finishingRef.current) return;
+            payosSyncingRef.current = true;
+
+            try {
+                const latestOrder = await orderService.reconcileOrder(order.id);
+                if (
+                    !stopped &&
+                    (latestOrder?.paymentStatus === 'PAID' || latestOrder?.status === 'COMPLETED')
+                ) {
+                    handlePaymentSuccess();
+                }
+            } catch (e) {
+                console.warn("Could not sync PayOS payment status:", e);
+            } finally {
+                payosSyncingRef.current = false;
+            }
+        };
+
+        const firstSync = setTimeout(syncPaymentStatus, 1500);
+        const interval = setInterval(syncPaymentStatus, 3000);
+
+        return () => {
+            stopped = true;
+            clearTimeout(firstSync);
+            clearInterval(interval);
+        };
+    }, [payosStatus, payosData?.transactionId, order?.id, handlePaymentSuccess]);
 
     // WebSocket listener for real-time payment success
     useWebSocket('/topic/tables', (msg) => {
@@ -325,15 +340,13 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     if (!isOpen || !table) return null;
 
     const previewItemsSubtotal = (previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0);
-    const subTotal = previewData?.subtotalAmount
-        ?? previewData?.originalTotal
+    const subtotalAmount = previewData?.subtotalAmount
         ?? (previewItemsSubtotal > 0 ? previewItemsSubtotal : null)
         ?? payosData?.subtotalAmount
-        ?? payosData?.originalTotal
         ?? getOrderSubtotalAmount(order)
         ?? 0;
-    const discount = previewData?.discountAmount ?? previewData?.discountVoucher ?? payosData?.discountAmount ?? payosData?.discountVoucher ?? getOrderDiscountAmount(order) ?? 0;
-    const finalTotal = previewData?.finalAmount ?? previewData?.finalTotal ?? payosData?.finalAmount ?? payosData?.amount ?? getOrderFinalAmount(order) ?? 0;
+    const discountAmount = previewData?.discountAmount ?? payosData?.discountAmount ?? getOrderDiscountAmount(order) ?? 0;
+    const finalAmount = previewData?.finalAmount ?? payosData?.finalAmount ?? payosData?.amount ?? getOrderFinalAmount(order) ?? 0;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
@@ -475,7 +488,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                                 {error && <p className="text-red-500 text-xs font-medium ml-1">{error}</p>}
                                 {previewData?.voucherValid && voucherCode && (
                                     <p className="text-green-600 text-xs font-bold ml-1 flex items-center gap-1">
-                                        <CheckCircle2 size={12} /> Voucher hợp lệ: -{discount.toLocaleString()}đ
+                                        <CheckCircle2 size={12} /> Voucher hợp lệ: -{discountAmount.toLocaleString()}đ
                                     </p>
                                 )}
                             </div>
@@ -488,17 +501,17 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                         <div className="bg-gray-50 p-5 rounded-2xl space-y-3 border">
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-500">Tạm tính:</span>
-                                <span className="font-semibold text-gray-700">{subTotal.toLocaleString()}đ</span>
+                                <span className="font-semibold text-gray-700">{subtotalAmount.toLocaleString()}đ</span>
                             </div>
-                            {discount > 0 && (
+                            {discountAmount > 0 && (
                                 <div className="flex justify-between text-sm">
                                     <span className="text-green-600 font-medium">Giảm giá voucher:</span>
-                                    <span className="font-bold text-green-600">-{discount.toLocaleString()}đ</span>
+                                    <span className="font-bold text-green-600">-{discountAmount.toLocaleString()}đ</span>
                                 </div>
                             )}
                             <div className="border-t border-dashed pt-3 mt-1 flex justify-between items-center">
                                 <span className="font-bold text-gray-800">Cần thanh toán:</span>
-                                <span className="text-2xl font-black text-orange-600">{finalTotal.toLocaleString()}đ</span>
+                                <span className="text-2xl font-black text-orange-600">{finalAmount.toLocaleString()}đ</span>
                             </div>
                         </div>
                     </div>

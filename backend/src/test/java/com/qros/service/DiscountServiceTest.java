@@ -10,7 +10,7 @@ import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.payment.service.impl.PayosServiceImpl;
 import com.qros.modules.promotion.service.DiscountService;
 import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.recomendation.service.RecommendationService;
+import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.user.service.UserService;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.order.model.Order;
@@ -37,6 +37,8 @@ import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.entity.BaseEntity;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
@@ -48,8 +50,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.VoucherRepository;
@@ -83,8 +83,8 @@ class DiscountServiceTest {
         when(voucherRepository.incrementUsedCountAtomically(1L)).thenReturn(0);
 
         assertThatThrownBy(() -> discountService.applyVoucher("SAVE10", BigDecimal.valueOf(100)))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.VOUCHER_USAGE_LIMIT_REACHED);
     }
 }

@@ -275,7 +275,7 @@ const MenuPage = () => {
       // Tải lại dữ liệu để lấy currentOrder mới
       loadData(false);
     } catch (e) {
-      const errorMessage = e?.data?.detail || e?.message || '';
+      const errorMessage = e?.message || '';
       if (e?.status === 404 && (errorMessage.includes('thông tin bàn') || errorMessage.includes('Table Code'))) {
         showError(e, 'Không tìm thấy thông tin bàn');
       } else {
