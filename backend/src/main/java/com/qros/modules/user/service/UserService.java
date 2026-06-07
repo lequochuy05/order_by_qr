@@ -35,7 +35,8 @@ import org.springframework.lang.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 
 /**
- * UserService - Core service for user management, authentication, and security operations.
+ * UserService - Core service for user management, authentication, and security
+ * operations.
  * Handles user lifecycle, JWT issuance, and profile management.
  */
 @Slf4j
@@ -195,7 +196,7 @@ public class UserService {
     /**
      * Updates an existing user's profile and credentials.
      * 
-     * @param id User ID
+     * @param id  User ID
      * @param req Update details
      * @return Updated user details
      */
@@ -265,10 +266,10 @@ public class UserService {
      */
     @Transactional
     public void delete(@NonNull Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
-        userRepository.deleteById(id);
+        User u = userRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        userRepository.delete(u);
         log.info("User with id {} deleted", id);
         notificationService.notifyUserChange();
     }
@@ -276,7 +277,7 @@ public class UserService {
     /**
      * Resets a user's password with a new provided value.
      * 
-     * @param id User ID
+     * @param id          User ID
      * @param newPassword Plain text new password
      */
     @Transactional
@@ -294,7 +295,8 @@ public class UserService {
     }
 
     /**
-     * Changes the authenticated user's password after verifying the current password.
+     * Changes the authenticated user's password after verifying the current
+     * password.
      *
      * @param email Authenticated user's email
      * @param req   Password change payload
@@ -316,7 +318,7 @@ public class UserService {
     /**
      * Uploads a new profile picture for the user and updates their avatar URL.
      * 
-     * @param id User ID
+     * @param id   User ID
      * @param file The image file
      * @return Updated user details
      */

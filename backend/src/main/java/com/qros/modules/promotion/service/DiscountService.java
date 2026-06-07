@@ -25,7 +25,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * DiscountService - Manages the lifecycle of promotional vouchers and handles discount calculation logic.
+ * DiscountService - Manages the lifecycle of promotional vouchers and handles
+ * discount calculation logic.
  * Ensures atomic usage tracking and provides validation services for checkout.
  */
 @Slf4j
@@ -93,7 +94,7 @@ public class DiscountService {
     /**
      * Updates an existing voucher's properties.
      * 
-     * @param id Voucher ID
+     * @param id  Voucher ID
      * @param req Update request
      * @return Updated Voucher entity
      */
@@ -135,10 +136,11 @@ public class DiscountService {
     }
 
     /**
-     * Validates a discount code against current time and order total without applying it.
+     * Validates a discount code against current time and order total without
+     * applying it.
      * Used for real-time validation on the frontend cart.
      * 
-     * @param code The input code
+     * @param code       The input code
      * @param orderTotal Current subtotal of the cart
      * @return Validation response including status and calculated discount value
      */
@@ -148,7 +150,8 @@ public class DiscountService {
         }
 
         String cleanCode = code.trim().toUpperCase();
-        VoucherRepository.VoucherValidationProjection v = voucherRepo.findProjectedByCodeIgnoreCase(cleanCode).orElse(null);
+        VoucherRepository.VoucherValidationProjection v = voucherRepo.findProjectedByCodeIgnoreCase(cleanCode)
+                .orElse(null);
 
         if (v == null) {
             return new VoucherValidateResponse(cleanCode, "NOT_FOUND", BigDecimal.ZERO, null, false);
@@ -166,9 +169,10 @@ public class DiscountService {
     }
 
     /**
-     * Applies a voucher to an order, performing final validation and atomic usage increment.
+     * Applies a voucher to an order, performing final validation and atomic usage
+     * increment.
      * 
-     * @param code The voucher code to apply
+     * @param code     The voucher code to apply
      * @param subtotal The order subtotal
      * @return DiscountResult containing final amount and applied discount value
      */
@@ -224,7 +228,8 @@ public class DiscountService {
     }
 
     /**
-     * Evaluates the comprehensive status of a voucher based on activation, time, and usage.
+     * Evaluates the comprehensive status of a voucher based on activation, time,
+     * and usage.
      */
     private String getVoucherStatus(Voucher v) {
         if (!Boolean.TRUE.equals(v.getActive()))

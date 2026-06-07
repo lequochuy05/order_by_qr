@@ -26,8 +26,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +54,7 @@ public class OrderCreationService {
     private final OrderStatusService orderStatusService;
     private final OrderMapper orderMapper;
     private final MeterRegistry meterRegistry;
+    private final com.qros.infrastructure.cache.OrderCacheInvalidationService orderCacheInvalidationService;
 
     private Counter ordersCreatedCounter;
 
@@ -67,11 +66,6 @@ public class OrderCreationService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = "tables", allEntries = true),
-            @CacheEvict(value = "order_by_id", allEntries = true),
-            @CacheEvict(value = "order_stats", allEntries = true)
-    })
     public OrderResponse createOrder(@NonNull OrderRequest request) {
         validateOrderItems(request);
         DiningTable table = resolveTable(request);
@@ -108,12 +102,12 @@ public class OrderCreationService {
         Order saved = orderRepository.save(Objects.requireNonNull(order));
         orderStatusService.tryAutoPromoteOrder(saved);
 
-        table.setStatus(DiningTable.TableStatus.OCCUPIED);
-        tableRepository.save(table);
+        orderStatusService.recalcTableStatus(saved);
+        orderCacheInvalidationService.evictAfterOrderMutation(saved.getId());
 
+        ordersCreatedCounter.increment();
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
-        ordersCreatedCounter.increment();
         log.info("Order processed for Table {}: ID #{}", table.getTableNumber(), saved.getId());
         return orderMapper.toResponse(saved);
     }

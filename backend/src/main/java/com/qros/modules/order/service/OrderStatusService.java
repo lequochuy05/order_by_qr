@@ -19,6 +19,7 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.infrastructure.cache.OrderCacheInvalidationService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.util.AppTime;
@@ -27,8 +28,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +54,7 @@ public class OrderStatusService {
     private final OrderAuditService orderAuditService;
     private final OrderDiscountService orderDiscountService;
     private final ReportingSummaryService reportingSummaryService;
+    private final OrderCacheInvalidationService orderCacheInvalidationService;
 
     private Counter ordersCompletedCounter;
 
@@ -66,11 +66,6 @@ public class OrderStatusService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = "tables", allEntries = true),
-            @CacheEvict(value = "order_by_id", key = "#id"),
-            @CacheEvict(value = "order_stats", allEntries = true)
-    })
     public OrderResponse updateStatus(@NonNull Long id, @NonNull String status) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -95,12 +90,12 @@ public class OrderStatusService {
 
         Order saved = orderRepository.save(Objects.requireNonNull(order));
         recalcTableStatus(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(id);
         notificationService.notifyOrderChange();
         return orderMapper.toResponse(saved);
     }
 
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
     public void cancelOrderItem(@NonNull Long itemId) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
@@ -124,17 +119,16 @@ public class OrderStatusService {
 
         recalcTableStatus(order);
         orderRepository.save(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
         notificationService.notifyOrderChange();
     }
 
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus) {
         updateItemStatus(itemId, newStatus, null);
     }
 
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
     public void updateItemStatus(@NonNull Long itemId, @NonNull String newStatus, Long userId) {
         OrderItem item = orderItemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
@@ -152,6 +146,7 @@ public class OrderStatusService {
             Order order = loadOrderWithItems(orderId, item.getOrder());
             tryAutoPromoteOrder(order, changedBy);
             recalcTableStatus(order);
+            orderCacheInvalidationService.evictAfterOrderMutation(orderId);
             notificationService.notifyOrderChange();
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.ORDER_INVALID_ITEM_STATUS, "Invalid item status code: " + newStatus);
@@ -187,17 +182,12 @@ public class OrderStatusService {
         orderPricingService.recalculateOrderTotals(order);
         orderRepository.save(Objects.requireNonNull(order));
 
+        orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
         notificationService.notifyOrderChange();
         return orderMapper.toResponse(order);
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-                    "stats_dish_trend", "stats_dashboard" }, allEntries = true),
-            @CacheEvict(value = "order_by_id", key = "#id"),
-            @CacheEvict(value = "order_stats", allEntries = true)
-    })
     public String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -239,6 +229,7 @@ public class OrderStatusService {
 
         orderRepository.save(Objects.requireNonNull(order));
         recalcTableStatus(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(id);
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
         ordersCompletedCounter.increment();
@@ -248,12 +239,6 @@ public class OrderStatusService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-                    "stats_dish_trend", "stats_dashboard" }, allEntries = true),
-            @CacheEvict(value = "order_by_id", key = "#id"),
-            @CacheEvict(value = "order_stats", allEntries = true)
-    })
     public OrderResponse confirmPaid(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -278,6 +263,7 @@ public class OrderStatusService {
 
         Order saved = orderRepository.save(order);
         recalcTableStatus(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(id);
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
         ordersCompletedCounter.increment();
@@ -285,12 +271,6 @@ public class OrderStatusService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = { "tables", "stats_revenue", "stats_top_dishes", "stats_emp_performance",
-                    "stats_dish_trend", "stats_dashboard" }, allEntries = true),
-            @CacheEvict(value = "order_by_id", key = "#id"),
-            @CacheEvict(value = "order_stats", allEntries = true)
-    })
     public OrderResponse cancelOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -300,13 +280,13 @@ public class OrderStatusService {
         orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "order-cancelled");
         Order saved = orderRepository.save(order);
         recalcTableStatus(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(id);
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
         return orderMapper.toResponse(saved);
     }
 
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
     public void deleteOrder(@NonNull Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -318,6 +298,7 @@ public class OrderStatusService {
         }
 
         orderRepository.delete(Objects.requireNonNull(order));
+        orderCacheInvalidationService.evictAfterOrderMutation(id);
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
     }
@@ -362,7 +343,8 @@ public class OrderStatusService {
         } else if (anyCookingOrFinished && order.getStatus() == Order.OrderStatus.PENDING) {
             Order.OrderStatus fromStatus = order.getStatus();
             order.setStatus(Order.OrderStatus.SERVING);
-            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, "auto-kitchen-started");
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy,
+                    "auto-kitchen-started");
             orderRepository.save(order);
             log.info("Order #{} auto-promoted to SERVING (kitchen started prep)", order.getId());
         }

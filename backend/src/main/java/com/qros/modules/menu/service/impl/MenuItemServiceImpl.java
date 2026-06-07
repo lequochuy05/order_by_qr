@@ -172,6 +172,11 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItem item = menuItemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND, "Not found item"));
 
+        boolean isInCombos = item.getComboItems() != null && !item.getComboItems().isEmpty();
+        if (isInCombos) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Cannot delete menu item that is part of a combo");
+        }
+
         String oldImg = item.getImg();
         menuItemRepository.delete(item);
         sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldImg),
