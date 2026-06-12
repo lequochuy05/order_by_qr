@@ -1,12 +1,3 @@
-/**
- * Order Status — Single Source of Truth
- * Import from here in all components that display order/item/table statuses.
- */
-
-// ============================================
-// ORDER STATUS
-// ============================================
-
 export const ORDER_STATUS = {
   PENDING:          { label: 'Đã nhận đơn',   helper: 'Quán đang kiểm tra',    color: 'amber' },
   SERVING:          { label: 'Đang chuẩn bị',  helper: 'Bếp đang làm món',      color: 'blue' },
@@ -15,10 +6,7 @@ export const ORDER_STATUS = {
   CANCELLED:        { label: 'Đã hủy',          helper: 'Đơn đã bị hủy',         color: 'rose' },
 };
 
-// ============================================
 // ORDER ITEM STATUS (Kitchen workflow)
-// ============================================
-
 export const ITEM_STATUS = {
   PENDING:   { label: 'Chờ nấu',       color: 'amber' },
   COOKING:   { label: 'Đang chế biến', color: 'blue' },
@@ -26,9 +14,7 @@ export const ITEM_STATUS = {
   CANCELLED: { label: 'Đã hủy',        color: 'rose' },
 };
 
-// ============================================
 // TABLE STATUS
-// ============================================
 
 export const TABLE_STATUS = {
   AVAILABLE:           { label: 'Bàn trống',     color: 'slate' },
@@ -36,9 +22,7 @@ export const TABLE_STATUS = {
   WAITING_FOR_PAYMENT: { label: 'Chờ tính tiền', color: 'cyan' },
 };
 
-// ============================================
-// Tailwind CSS class maps (used by UI components)
-// ============================================
+// Tailwind CSS
 
 const COLOR_CLASSES = {
   amber:   { bg: 'bg-amber-50 dark:bg-amber-500/10',     text: 'text-amber-700 dark:text-amber-300',     border: 'border-amber-200 dark:border-amber-500/30' },
@@ -58,10 +42,7 @@ const toClasses = (colorName) => {
   return `${c.bg} ${c.text} ${c.border}`;
 };
 
-// ============================================
 // Utility functions
-// ============================================
-
 /**
  * Returns label, helper, and Tailwind CSS classes for an order status.
  */

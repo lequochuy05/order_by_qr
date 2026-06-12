@@ -1,72 +1,81 @@
 package com.qros.modules.order.repository;
 
+import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.OrderItem;
-import org.springframework.data.jpa.repository.*;
-import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-  @EntityGraph(attributePaths = { "menuItem", "orderItemOptions", "orderItemOptions.itemOptionValue" })
+  @EntityGraph(attributePaths = {
+      "menuItem",
+      "combo",
+      "combo.items",
+      "combo.items.menuItem",
+      "orderItemOptions",
+      "orderItemOptions.itemOptionValue"
+  })
   List<OrderItem> findByOrderId(Long orderId);
 
-  @Query(value = """
-      SELECT oi2.menu_item_id
-      FROM order_item oi1
-      JOIN order_item oi2 ON oi1.order_id = oi2.order_id
-      JOIN orders o ON o.id = oi1.order_id
-      JOIN menu_item mi2 ON mi2.id = oi2.menu_item_id
-      WHERE oi1.menu_item_id = :itemId
-        AND oi2.menu_item_id != :itemId
-        AND oi1.is_deleted = false
-        AND oi2.is_deleted = false
-        AND o.is_deleted = false
-        AND mi2.is_deleted = false
-      GROUP BY oi2.menu_item_id
-      ORDER BY COUNT(oi2.menu_item_id) DESC
-      """, nativeQuery = true)
-  List<Long> findTopAssociatedItems(@Param("itemId") Long itemId, Pageable pageable);
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT oi FROM OrderItem oi WHERE oi.id = :id")
+  @EntityGraph(attributePaths = {
+      "order",
+      "menuItem",
+      "combo",
+      "orderItemOptions",
+      "orderItemOptions.itemOptionValue",
+      "inventoryReservations",
+      "inventoryReservations.inventoryItem"
+  })
+  Optional<OrderItem> findDetailByIdForUpdate(@Param("id") Long id);
 
-  @Query(value = """
-      SELECT oi.menu_item_id
-      FROM order_item oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN menu_item mi ON mi.id = oi.menu_item_id
-      WHERE o.status = 'COMPLETED'
-        AND oi.is_deleted = false
-        AND o.is_deleted = false
-        AND mi.is_deleted = false
-      GROUP BY oi.menu_item_id
-      ORDER BY SUM(oi.quantity) DESC
-      """, nativeQuery = true)
-  List<Long> findTopSellingItemIds(Pageable pageable);
+  @Query("""
+          SELECT oi.menuItem
+          FROM OrderItem oi
+          JOIN oi.order o
+          JOIN oi.menuItem m
+          JOIN m.category c
+          WHERE oi.menuItem IS NOT NULL
+            AND m.active = true
+            AND m.available = true
+            AND c.active = true
+            AND oi.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            AND o.status = com.qros.modules.order.model.enums.OrderStatus.COMPLETED
+          GROUP BY oi.menuItem
+          ORDER BY SUM(oi.quantity) DESC
+          """)
+  List<MenuItem> findPopularAvailableMenuItems(Pageable pageable);
 
-  @Query(value = """
-      SELECT COALESCE(SUM(oi.quantity), 0)
-      FROM order_item oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN menu_item mi ON mi.id = oi.menu_item_id
-      WHERE oi.menu_item_id = :itemId
-        AND o.status = 'COMPLETED'
-        AND oi.is_deleted = false
-        AND o.is_deleted = false
-        AND mi.is_deleted = false
-      """, nativeQuery = true)
-  long countTotalSoldByItemId(@Param("itemId") Long itemId);
-
-  @Query(value = """
-      SELECT oi.menu_item_id, COALESCE(SUM(oi.quantity), 0)
-      FROM order_item oi
-      JOIN orders o ON oi.order_id = o.id
-      JOIN menu_item mi ON mi.id = oi.menu_item_id
-      WHERE oi.menu_item_id IN :ids
-        AND o.status = 'COMPLETED'
-        AND oi.is_deleted = false
-        AND o.is_deleted = false
-        AND mi.is_deleted = false
-      GROUP BY oi.menu_item_id
-      """, nativeQuery = true)
-  List<Object[]> countTotalSoldBatch(@Param("ids") List<Long> ids);
+  @Query("""
+          SELECT other.menuItem
+          FROM OrderItem base
+          JOIN base.order o
+          JOIN o.orderItems other
+          JOIN other.menuItem m
+          JOIN m.category c
+          WHERE base.menuItem IS NOT NULL
+            AND other.menuItem IS NOT NULL
+            AND base.menuItem.id = :itemId
+            AND other.menuItem.id <> :itemId
+            AND m.active = true
+            AND m.available = true
+            AND c.active = true
+            AND base.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            AND other.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            AND o.status = com.qros.modules.order.model.enums.OrderStatus.COMPLETED
+          GROUP BY other.menuItem
+          ORDER BY COUNT(other.menuItem.id) DESC
+          """)
+  List<MenuItem> findCrossSellAvailableMenuItems(
+      @Param("itemId") Long itemId,
+      Pageable pageable);
 }

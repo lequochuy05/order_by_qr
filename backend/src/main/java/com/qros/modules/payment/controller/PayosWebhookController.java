@@ -1,6 +1,8 @@
 package com.qros.modules.payment.controller;
 
-import com.qros.modules.payment.service.PayosService;
+import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
+import com.qros.modules.payment.gateway.PayosGateway;
+import com.qros.modules.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,32 +11,23 @@ import vn.payos.model.webhooks.Webhook;
 
 import java.util.Map;
 
-/**
- * PayosWebhookController - Handles automated payment notifications from PayOS.
- */
+@Slf4j
 @RestController
 @RequestMapping("/api/webhooks")
 @RequiredArgsConstructor
-@Slf4j
 public class PayosWebhookController {
 
-    private final PayosService payosService;
+    private final PayosGateway payosGateway;
+    private final PaymentService paymentService;
 
-    /**
-     * Handles the payment confirmation webhook sent by PayOS.
-     * 
-     * @param webhook The webhook payload from PayOS
-     * @return ResponseEntity containing success status
-     */
     @PostMapping("/payos")
     public ResponseEntity<Map<String, Object>> handlePayosWebhook(@RequestBody Webhook webhook) {
-        log.info("=== [PayOS Webhook] Received payload ===");
-
         try {
-            payosService.processWebhook(webhook);
+            PaymentWebhookResult result = payosGateway.verifyWebhook(webhook);
+            paymentService.confirmPaymentFromWebhook(result);
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
-            log.error("[PayOS Webhook] Error processing webhook payload: ", e);
+            log.error("[PayOS Webhook] Error processing webhook payload", e);
             return ResponseEntity.ok(Map.of("success", false, "message", e.getMessage()));
         }
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
@@ -57,7 +57,7 @@ export default function OrderHistoryPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const itemsPerPage = 15;
+  const itemsPerPage = 10;
 
   // Filters
   const [orderId, setOrderId] = useState('');
@@ -69,6 +69,9 @@ export default function OrderHistoryPage() {
 
   // Stats
   const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0 });
+  const isMountedRef = useRef(true);
+  const ordersFetchSeqRef = useRef(0);
+  const statsFetchSeqRef = useRef(0);
 
   // Applied filters (only update when user clicks "Lọc")
   const [appliedFilters, setAppliedFilters] = useState(() => {
@@ -84,18 +87,15 @@ export default function OrderHistoryPage() {
   });
 
 
-
-  const getRequestParams = useCallback(() => {
+  const getFilterParams = useCallback(() => {
     return {
-      page: currentPage,
-      size: itemsPerPage,
       ...(appliedFilters.orderId && { orderId: appliedFilters.orderId }),
       ...(appliedFilters.tableNumber && { tableNumber: appliedFilters.tableNumber }),
       ...(appliedFilters.status && { status: appliedFilters.status }),
-      ...(appliedFilters.startDate && { startDate: appliedFilters.startDate }),
-      ...(appliedFilters.endDate && { endDate: appliedFilters.endDate }),
+      ...(appliedFilters.startDate && { from: appliedFilters.startDate }),
+      ...(appliedFilters.endDate && { to: appliedFilters.endDate }),
     };
-  }, [currentPage, appliedFilters]);
+  }, [appliedFilters]);
 
   const handleApplyFilters = () => {
     let dateRange;
@@ -116,38 +116,62 @@ export default function OrderHistoryPage() {
     setCurrentPage(0); // Reset to first page on new filter
   };
 
-  const fetchOrders = useCallback(async () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchOrders = useCallback(async ({ force = false } = {}) => {
+    const fetchSeq = ++ordersFetchSeqRef.current;
     try {
       setLoading(true);
-      const params = getRequestParams();
-      const data = await orderService.getOrderHistory(params);
+      const params = {
+        ...getFilterParams(),
+        page: currentPage,
+        size: itemsPerPage,
+      };
+      const data = await orderService.getOrderHistory(params, { force });
+      if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
       setOrders(data.content || []);
       setTotalPages(data.totalPages || 0);
       setTotalElements(data.totalElements || 0);
     } catch (error) {
+      if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
       console.error('Error fetching orders:', error);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && fetchSeq === ordersFetchSeqRef.current) {
+        setLoading(false);
+      }
     }
-  }, [getRequestParams]);
+  }, [getFilterParams, currentPage]);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async ({ force = false } = {}) => {
+    const fetchSeq = ++statsFetchSeqRef.current;
     try {
-      const params = getRequestParams();
-      const statsParams = { ...params };
-      delete statsParams.page;
-      delete statsParams.size;
-      const data = await orderService.getOrderStats(statsParams);
+      const params = getFilterParams();
+      const data = await orderService.getOrderStats(params, { force });
+      if (!isMountedRef.current || fetchSeq !== statsFetchSeqRef.current) return;
       setStats(data);
     } catch (error) {
+      if (!isMountedRef.current || fetchSeq !== statsFetchSeqRef.current) return;
       console.error('Error fetching stats:', error);
     }
-  }, [getRequestParams]);
+  }, [getFilterParams]);
+
+  const refreshData = useCallback(({ force = false } = {}) => {
+    fetchOrders({ force });
+    fetchStats({ force });
+  }, [fetchOrders, fetchStats]);
 
   useEffect(() => {
     fetchOrders();
+  }, [fetchOrders]);
+
+  useEffect(() => {
     fetchStats();
-  }, [fetchOrders, fetchStats]);
+  }, [fetchStats]);
 
   const avgOrder = stats.totalOrders > 0 ? stats.totalRevenue / stats.totalOrders : 0;
 
@@ -173,7 +197,7 @@ export default function OrderHistoryPage() {
       const res = await orderService.reconcileOrder(orderId);
       if (res.success) {
         toast.success('Tra soát thành công: ' + res.message);
-        fetchOrders(); // Reload data
+        refreshData({ force: true });
       }
     } catch (error) {
       toast.error('Lỗi khi tra soát đơn hàng: ' + (error.message || ''));
@@ -245,7 +269,7 @@ export default function OrderHistoryPage() {
         </div>
 
         <button
-          onClick={() => { fetchOrders(); fetchStats(); }}
+          onClick={() => refreshData({ force: true })}
           className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl transition-all shadow-sm border border-gray-200 font-medium"
         >
           <RefreshCcw size={18} className={loading ? 'animate-spin text-orange-500' : 'text-gray-400'} />

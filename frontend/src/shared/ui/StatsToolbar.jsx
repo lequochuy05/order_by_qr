@@ -22,12 +22,12 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
                 <span className="font-bold text-gray-700 mr-2">{title}</span>
                 <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
                     <Calendar size={18} className="text-gray-500" />
-                    <input type="date" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                    <input type="date" aria-label="Từ ngày" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
                         value={formatBusinessDate(dateRange.from)}
                         onChange={(e) => handleDateChange('from', e.target.value)}
                     />
                     <span className="text-gray-400">-</span>
-                    <input type="date" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+                    <input type="date" aria-label="Đến ngày" className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
                         value={formatBusinessDate(dateRange.to)}
                         onChange={(e) => handleDateChange('to', e.target.value)}
                     />

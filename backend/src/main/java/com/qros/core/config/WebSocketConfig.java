@@ -51,7 +51,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private static final Map<String, Set<String>> PROTECTED_TOPICS = Map.of(
             "/topic/kitchen", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
             "/topic/users", Set.of("ROLE_MANAGER"),
-            "/topic/vouchers", Set.of("ROLE_MANAGER", "ROLE_STAFF"));
+            "/topic/vouchers", Set.of("ROLE_MANAGER", "ROLE_STAFF"),
+            "/topic/inventory", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"));
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;

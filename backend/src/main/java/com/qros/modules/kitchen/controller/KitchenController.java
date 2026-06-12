@@ -1,11 +1,14 @@
 package com.qros.modules.kitchen.controller;
 
-import com.qros.modules.kitchen.dto.KitchenOrderDto;
-import com.qros.modules.kitchen.dto.KitchenMarkPreparedRequest;
+import com.qros.modules.kitchen.dto.request.KitchenItemStatusRequest;
+import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.kitchen.service.KitchenService;
+import com.qros.modules.user.service.CurrentUserService;
 import com.qros.shared.response.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,37 +16,39 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.List;
-import com.qros.modules.kitchen.dto.KitchenItemStatusRequest;
-import jakarta.validation.Valid;
-import java.util.Objects;
 
+@Validated
 @RestController
 @RequestMapping("/api/kitchen")
 @RequiredArgsConstructor
 public class KitchenController {
 
     private final KitchenService kitchenService;
+    private final CurrentUserService currentUserService;
 
     @GetMapping("/orders")
-    public ApiResponse<List<KitchenOrderDto>> getKitchenOrders() {
+    public ApiResponse<List<KitchenOrderResponse>> getKitchenOrders() {
         return ApiResponse.success(kitchenService.getKitchenOrders());
     }
 
     @PatchMapping("/items/{itemId}/prepared")
     public ApiResponse<Void> markItemPrepared(
-            @PathVariable @NonNull Long itemId,
-            @RequestBody(required = false) KitchenMarkPreparedRequest body) {
-        kitchenService.markItemPrepared(itemId, body != null ? body.getUserId() : null);
+            @PathVariable @Positive(message = "Item ID must be positive") Long itemId,
+            Principal principal) {
+        Long currentUserId = currentUserService.getCurrentUserId(principal.getName());
+        kitchenService.markItemPrepared(itemId, currentUserId);
         return ApiResponse.success("Mark item as prepared successfully", null);
     }
 
     @PatchMapping("/items/{itemId}/status")
     public ApiResponse<Void> updateItemStatus(
-            @PathVariable @NonNull Long itemId,
-            @Valid @RequestBody @NonNull KitchenItemStatusRequest body) {
-        String status = body.getStatus();
-        kitchenService.updateItemStatus(itemId, Objects.requireNonNull(status), body.getUserId());
+            @PathVariable @Positive(message = "Item ID must be positive") Long itemId,
+            @Valid @RequestBody KitchenItemStatusRequest body,
+            Principal principal) {
+        Long currentUserId = currentUserService.getCurrentUserId(principal.getName());
+        kitchenService.updateItemStatus(itemId, body.status(), currentUserId);
         return ApiResponse.success("Update item status successfully", null);
     }
 }

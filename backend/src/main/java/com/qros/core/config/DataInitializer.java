@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 
 import com.qros.modules.user.model.User;
+import com.qros.modules.user.model.enums.UserRole;
+import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Objects;
@@ -14,7 +16,6 @@ import java.util.Objects;
  * DataInitializer - Initialize essential data when the application starts.
  */
 @Component
-@Profile("dev")
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
@@ -35,8 +36,8 @@ public class DataInitializer implements CommandLineRunner {
                     .email("admin@gmail.com")
                     .fullName("Admin")
                     .password(pwEncoder.encode("admin123"))
-                    .role(User.Role.MANAGER)
-                    .status(User.UserStatus.ACTIVE)
+                    .role(UserRole.MANAGER)
+                    .status(UserStatus.ACTIVE)
                     .build();
             userRepo.save(Objects.requireNonNull(u));
 

@@ -1,283 +1,189 @@
 package com.qros.modules.table.service;
 
-import com.qros.infrastructure.storage.CloudinaryStorageService;
+import com.qros.modules.menu.dto.publicmenu.PublicTable;
 import com.qros.modules.notification.service.NotificationService;
-import com.qros.shared.transaction.TransactionSideEffectService;
-import com.qros.modules.table.dto.DiningTableRequest;
-import com.qros.modules.table.dto.DiningTableResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.table.dto.internal.TableQrMedia;
+import com.qros.modules.table.dto.request.CreateDiningTableRequest;
+import com.qros.modules.table.dto.request.UpdateDiningTableRequest;
+import com.qros.modules.table.dto.request.UpdateTableStatusRequest;
+import com.qros.modules.table.dto.response.DiningTableResponse;
+import com.qros.modules.table.mapper.DiningTableMapper;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
 
-/**
- * DiningTableService - Manages dining table lifecycle, availability status, and
- * automated QR code generation.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class DiningTableService {
 
-    private final DiningTableRepository repo;
-    private final QRCodeService qrCodeService;
-    private final CloudinaryStorageService cloudinaryStorageService;
+    private final DiningTableRepository tableRepo;
+    private final TableCodeGenerator tableCodeGenerator;
+    private final TableQrService tableQrService;
+    private final DiningTableMapper diningTableMapper;
     private final NotificationService notificationService;
     private final TransactionSideEffectService sideEffects;
 
-    @Value("${app.frontend.base-url}")
-    private String frontendBaseUrl;
-
-    /**
-     * Retrieves all dining tables sorted by their display number.
-     * 
-     * @return List of dining table responses
-     */
-    @Cacheable(value = "tables", key = "'all_sorted'")
-    public List<DiningTableResponse> getAllTablesSorted() {
-        return repo.findAllByOrderByTableNumberAsc().stream()
-                .map(this::convertToResponse)
+    @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
+    public List<DiningTableResponse> getAllSorted() {
+        return tableRepo.findAllByOrderByTableNumberAsc().stream()
+                .map(diningTableMapper::toResponse)
                 .toList();
     }
 
-    /**
-     * Retrieves a single table entity by its identifier.
-     * 
-     * @param id Table ID
-     * @return DiningTable entity
-     * @throws BusinessException if table is not found
-     */
-    public DiningTable getById(@NonNull Long id) {
-        return repo.findById(id)
+    public DiningTable getEntityById(@NonNull Long id) {
+        return tableRepo.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
     }
 
-    /**
-     * Retrieves table details in response DTO format.
-     * 
-     * @param id Table ID
-     * @return DiningTableResponse
-     */
-    public DiningTableResponse getByIdResponse(@NonNull Long id) {
-        return convertToResponse(getById(id));
+    public DiningTableResponse getById(@NonNull Long id) {
+        return diningTableMapper.toResponse(getEntityById(id));
     }
 
-    /**
-     * Locates a table using the unique code embedded in its QR.
-     * 
-     * @param tableCode Unique QR code
-     * @return DiningTableResponse
-     */
-    @Cacheable(value = "tables", key = "'code_' + #tableCode")
-    public DiningTableResponse getByTableCode(@NonNull String tableCode) {
-        return repo.findByTableCode(tableCode)
-                .map(this::convertToResponse)
+    @Cacheable(value = CacheNames.TABLES, key = "'code_' + #tableCode")
+    public DiningTableResponse getByCode(@NonNull String tableCode) {
+        return tableRepo.findByTableCode(tableCode)
+                .map(diningTableMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
-    @Cacheable(value = "tables", key = "'public_code_' + #tableCode")
-    public PublicMenuResponse.Table getPublicByTableCode(@NonNull String tableCode) {
-        return repo.findByTableCode(tableCode)
-                .map(table -> new PublicMenuResponse.Table(table.getId(), table.getTableNumber()))
+    @Cacheable(value = CacheNames.TABLES, key = "'public_code_' + #tableCode")
+    public PublicTable getPublicByCode(@NonNull String tableCode) {
+        return tableRepo.findByTableCode(tableCode)
+                .map(diningTableMapper::toPublicTable)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
-    /**
-     * Retrieves a table by its display number (e.g., "A1").
-     * 
-     * @param tableNumber Display number
-     * @return DiningTableResponse
-     */
-    public DiningTableResponse getByTableNumber(@NonNull String tableNumber) {
-        return repo.findByTableNumber(tableNumber)
-                .map(this::convertToResponse)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND,
+    public DiningTableResponse getByNumber(@NonNull String tableNumber) {
+        return tableRepo.findByTableNumberIgnoreCase(tableNumber)
+                .map(diningTableMapper::toResponse)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.TABLE_NOT_FOUND,
                         "Table number not found: " + tableNumber));
     }
 
-    /**
-     * Filters tables based on their current availability or payment status.
-     * 
-     * @param status Target status
-     * @return List of matching tables
-     */
-    public List<DiningTableResponse> getTablesByStatus(@NonNull DiningTable.TableStatus status) {
-        return repo.findByStatus(status).stream()
-                .map(this::convertToResponse)
+    public List<DiningTableResponse> getByStatus(@NonNull TableStatus status) {
+        return tableRepo.findByStatusOrderByTableNumberAsc(status).stream()
+                .map(diningTableMapper::toResponse)
                 .toList();
     }
 
-    /**
-     * Registers a new dining table and automatically generates its unique QR code
-     * and Cloudinary storage link.
-     * 
-     * @param req Table creation request
-     * @return Created table details
-     */
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
-    public DiningTableResponse create(DiningTableRequest req) {
-        if (repo.existsByTableNumberIgnoreCase(req.getTableNumber())) {
+    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    public DiningTableResponse create(@NonNull CreateDiningTableRequest req) {
+        if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 
-        String tableCode = generateUniqueTableCode();
-        Map<String, String> qrMedia = generateQRMedia(tableCode);
-        sideEffects.afterRollback(() -> cloudinaryStorageService.delete(qrMedia.get("publicId")),
+        String tableCode = tableCodeGenerator.generate();
+        TableQrMedia qrMedia = tableQrService.generate(tableCode);
+
+        sideEffects.afterRollback(
+                () -> tableQrService.delete(qrMedia.publicId()),
                 "delete rolled back table QR media " + tableCode);
 
         DiningTable table = DiningTable.builder()
-                .tableNumber(req.getTableNumber())
-                .capacity(req.getCapacity())
-                .status(req.getStatus() != null ? req.getStatus() : DiningTable.TableStatus.AVAILABLE)
+                .tableNumber(req.tableNumber())
+                .capacity(req.capacity())
+                .status(TableStatus.AVAILABLE)
                 .tableCode(tableCode)
-                .qrCodeUrl(qrMedia.get("url"))
-                .qrCodePublicId(qrMedia.get("publicId"))
+                .qrCodeUrl(qrMedia.url())
+                .qrCodePublicId(qrMedia.publicId())
                 .build();
 
-        DiningTable savedTable = repo.save(Objects.requireNonNull(table));
+        DiningTable saved = tableRepo.save(table);
         notificationService.notifyTableChange();
-        return convertToResponse(savedTable);
+
+        return diningTableMapper.toResponse(saved);
     }
 
-    /**
-     * Internal helper to generate a QR code pointing to the ordering URL and upload
-     * it to cloud storage.
-     */
-    private Map<String, String> generateQRMedia(String tableCode) {
-        try {
-            String qrContent = frontendBaseUrl + "/menu?tableCode=" + tableCode;
-            byte[] qrBytes = qrCodeService.generateQRCodeImage(qrContent, 300, 300);
-            String folder = "order_by_qr/tables";
-            String publicId = "qr_" + tableCode;
-            Map<String, Object> result = cloudinaryStorageService.uploadBytes(qrBytes, folder, publicId);
-            return Map.of(
-                    "url", result.get("secure_url").toString(),
-                    "publicId", result.get("public_id").toString());
-        } catch (Exception e) {
-            log.error("Error generating QR code: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "System error generating QR code", e);
-        }
-    }
-
-    private String generateUniqueTableCode() {
-        for (int attempt = 0; attempt < 10; attempt++) {
-            String tableCode = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-            if (!repo.existsByTableCode(tableCode)) {
-                return tableCode;
-            }
-        }
-
-        throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "Unable to generate unique table code");
-    }
-
-    /**
-     * Updates table configuration such as capacity or display number.
-     * 
-     * @param id  Table ID
-     * @param req Update request
-     * @return Updated table details
-     */
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
-    public DiningTableResponse update(@NonNull Long id, DiningTableRequest req) {
-        DiningTable table = getById(id);
-
-        if (repo.existsByTableNumberIgnoreCaseAndIdNot(req.getTableNumber(), id)) {
+    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    public DiningTableResponse update(@NonNull Long id, @NonNull UpdateDiningTableRequest req) {
+    DiningTable table = getEntityById(id);
+        if (tableRepo.existsByTableNumberIgnoreCaseAndIdNot(req.tableNumber(), id)) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
 
-        table.setTableNumber(req.getTableNumber());
-        table.setCapacity(req.getCapacity());
-        table.setStatus(req.getStatus() != null ? req.getStatus() : table.getStatus());
+        table.setTableNumber(req.tableNumber());
+        table.setCapacity(req.capacity());
 
-        DiningTable saved = repo.save(table);
+        DiningTable saved = tableRepo.save(table);
         notificationService.notifyTableChange();
-        return convertToResponse(saved);
+
+        return diningTableMapper.toResponse(saved);
     }
 
-    /**
-     * Regenerates the QR code for a specific table.
-     * Useful when the base URL or path changes.
-     *
-     * @param id Table ID
-     * @return Updated table details with new QR code
-     */
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
-    public DiningTableResponse regenerateQrCode(@NonNull Long id) {
-        DiningTable table = getById(id);
-        String oldPublicId = table.getQrCodePublicId();
-        String oldTableCode = table.getTableCode();
+    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    public DiningTableResponse updateStatus(
+            @NonNull Long id,
+            @NonNull UpdateTableStatusRequest req) {
+        DiningTable table = getEntityById(id);
 
-        String newTableCode = generateUniqueTableCode();
-        Map<String, String> qrMedia = generateQRMedia(newTableCode);
-        sideEffects.afterRollback(() -> cloudinaryStorageService.delete(qrMedia.get("publicId")),
+        table.setStatus(req.status());
+
+        DiningTable saved = tableRepo.save(table);
+        notificationService.notifyTableChange();
+
+        return diningTableMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    public DiningTableResponse regenerateQrCode(@NonNull Long id) {
+        DiningTable table = getEntityById(id);
+
+        String oldPublicId = table.getQrCodePublicId();
+
+        String newTableCode = tableCodeGenerator.generate();
+        TableQrMedia qrMedia = tableQrService.generate(newTableCode);
+
+        sideEffects.afterRollback(
+                () -> tableQrService.delete(qrMedia.publicId()),
                 "delete rolled back regenerated table QR media " + newTableCode);
 
         table.setTableCode(newTableCode);
-        table.setQrCodeUrl(qrMedia.get("url"));
-        table.setQrCodePublicId(qrMedia.get("publicId"));
+        table.setQrCodeUrl(qrMedia.url());
+        table.setQrCodePublicId(qrMedia.publicId());
 
-        DiningTable savedTable = repo.save(table);
+        DiningTable saved = tableRepo.save(table);
 
-        if (oldPublicId != null && !oldPublicId.equals("PENDING")) {
-            sideEffects.afterCommit(() -> {
-                try {
-                    cloudinaryStorageService.delete(oldPublicId);
-                } catch (Exception e) {
-                    log.error("Failed to delete old QR code", e);
-                }
-            }, "delete old table QR media " + oldTableCode);
-        }
+        sideEffects.afterCommit(
+                () -> tableQrService.delete(oldPublicId),
+                "delete old table QR media " + id);
 
         notificationService.notifyTableChange();
-        return convertToResponse(savedTable);
+
+        return diningTableMapper.toResponse(saved);
     }
 
-    /**
-     * Soft deletes a table and cleans up its associated QR code from cloud storage.
-     * 
-     * @param id Table ID
-     */
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
+    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
     public void delete(@NonNull Long id) {
-        DiningTable table = getById(id);
+        DiningTable table = getEntityById(id);
+        String publicId = table.getQrCodePublicId();
 
-        if (table.getQrCodePublicId() != null && !table.getQrCodePublicId().equals("PENDING")) {
-            String publicId = table.getQrCodePublicId();
-            sideEffects.afterCommit(() -> cloudinaryStorageService.delete(publicId),
-                    "delete table QR media after table delete " + id);
-        }
+        tableRepo.delete(table);
 
-        repo.delete(Objects.requireNonNull(table));
+        sideEffects.afterCommit(
+                () -> tableQrService.delete(publicId),
+                "delete table QR media after table delete " + id);
+
         notificationService.notifyTableChange();
-    }
-
-    /**
-     * Mapping helper to convert entity to DTO.
-     */
-    private DiningTableResponse convertToResponse(DiningTable table) {
-        return new DiningTableResponse(
-                table.getId(),
-                table.getTableNumber(),
-                table.getTableCode(),
-                table.getStatus().name(),
-                table.getCapacity(),
-                table.getQrCodeUrl(),
-                table.getCreatedAt(),
-                table.getUpdatedAt());
     }
 }

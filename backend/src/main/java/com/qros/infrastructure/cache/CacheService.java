@@ -26,7 +26,7 @@ public interface CacheService {
      * @param key Key to lookup
      * @return Cached object or null if not found
      */
-    Object get(@NonNull String key);
+    <T> T get(String key, Class<T> type);
 
     /**
      * Removes a value from cache by key.

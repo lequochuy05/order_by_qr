@@ -2,9 +2,6 @@ package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import jakarta.persistence.*;
 
 import lombok.*;
@@ -15,16 +12,11 @@ import java.util.Set;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
 /**
  * MenuItem - Entity representing a single dish or beverage on the menu.
  * Includes details such as price, category, and customizable options.
  */
 @Entity
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 @Table(name = "menu_item")
 @Getter
 @Setter
@@ -39,60 +31,41 @@ public class MenuItem extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Display name of the menu item.
-     */
-    @NotBlank(message = "Item name cannot be empty")
     @Column(length = 50, nullable = false)
     private String name;
 
-    /**
-     * URL of the item's representative image.
-     */
-    @NotBlank(message = "Item image cannot be empty")
-    @Column(length = 150)
+    @Column(length = 500)
+    private String img;
+
     @Builder.Default
-    private String img = "default_menu_item.png";
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal price = BigDecimal.ZERO;
 
-    /**
-     * Base price of the item.
-     */
-    @NotNull(message = "Item price cannot be empty")
+    @Column(length = 500)
+    private String description;
+
+    @Builder.Default
     @Column(nullable = false)
-    @Min(value = 0, message = "Item price cannot be negative")
-    private BigDecimal price;
+    private Integer displayOrder = 0;
 
-    /**
-     * Flag indicating if the item is currently available for ordering.
-     */
     @Builder.Default
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean active = true;
 
-    /**
-     * The category this item belongs to.
-     */
-    @NotNull(message = "Category cannot be empty")
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean available = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cate_id", nullable = false)
-    @JsonIgnoreProperties("menuItems")
     private Category category;
 
-    /**
-     * Collection of customizable options (e.g., Sugar Level, Toppings) for this
-     * item.
-     */
     @Builder.Default
     @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties({ "menuItem" })
     private Set<ItemOption> itemOptions = new LinkedHashSet<>();
 
-    /**
-     * Collection of combo packages that include this item.
-     */
     @Builder.Default
-    @JsonIgnore
-    @OneToMany(mappedBy = "menuItem", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY)
     private Set<ComboItem> comboItems = new LinkedHashSet<>();
 
 }

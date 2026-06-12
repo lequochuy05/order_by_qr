@@ -9,7 +9,7 @@ import java.util.TimeZone;
 
 import org.junit.jupiter.api.Test;
 
-import com.qros.shared.util.AppTime;
+import com.qros.shared.time.AppTime;
 
 class TimeZoneConfigTest {
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.qros.shared.cache.CacheNames;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -28,7 +29,6 @@ import java.util.Map;
  * Enables caching and sets up RedisTemplate with JSON serialization.
  */
 @Configuration
-@EnableCaching
 @Slf4j
 public class RedisConfig implements CachingConfigurer {
 
@@ -101,24 +101,20 @@ public class RedisConfig implements CachingConfigurer {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("categories", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("menu", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("combos", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("qrcodes", config.entryTtl(Duration.ofDays(7)));
-        cacheConfigurations.put("tables", config.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigurations.put("vouchers", config.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigurations.put("recommendations", config.entryTtl(Duration.ofMinutes(30)));
-        cacheConfigurations.put("popularItems", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_revenue", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_emp_performance", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_top_dishes", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_dish_trend", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("settings", config.entryTtl(Duration.ofHours(1)));
-
-        // New performance caches
-        cacheConfigurations.put("order_by_id", config.entryTtl(Duration.ofMinutes(2)));
-        cacheConfigurations.put("order_stats", config.entryTtl(Duration.ofMinutes(2)));
-        cacheConfigurations.put("stats_dashboard", config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.CATEGORIES, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.MENU, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.PUBLIC_MENU, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.COMBOS, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.QRCODES, config.entryTtl(Duration.ofDays(7)));
+        cacheConfigurations.put(CacheNames.TABLES, config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.STATS_DASHBOARD, config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.VOUCHERS, config.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigurations.put(CacheNames.RECOMMENDATIONS, config.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put(CacheNames.POPULAR_ITEMS, config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put(CacheNames.ANALYTICS, config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put(CacheNames.SETTINGS, config.entryTtl(Duration.ofHours(1)));
+        cacheConfigurations.put(CacheNames.ORDER_BY_ID, config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

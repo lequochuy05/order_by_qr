@@ -2,7 +2,7 @@ package com.qros.shared.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.Instant;
 
@@ -12,7 +12,7 @@ import java.time.Instant;
  * 
  * @param <T> Type of the data payload
  */
-@Data
+@Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

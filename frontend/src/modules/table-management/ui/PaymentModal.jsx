@@ -7,7 +7,7 @@ import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from '@entities/order/lib/orderMoney.js';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 import { toast } from 'react-hot-toast';
 
 const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
@@ -27,7 +27,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const payosSyncingRef = useRef(false);
     const voucherCodeRef = useRef('');
     const draftKey = order?.id ? `payment_draft_${order.id}` : null;
-    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+    const { confirm } = useConfirmModal();
 
     const savePaymentDraft = useCallback((code, preview) => {
         if (!draftKey || !code || !preview?.voucherValid) return;
@@ -144,13 +144,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     }, [isOpen, initializePaymentModal]);
 
     useEffect(() => {
-        if (isOpen && (table?.id || order?.id)) {
-            const currentVoucherCode = voucherCodeRef.current;
-            loadPreview(currentVoucherCode || '', { persistDraft: Boolean(currentVoucherCode && !order?.voucherCode) });
-        }
-    }, [table?.id, order?.id, order?.voucherCode, isOpen, loadPreview]); // Reload preview when data changes but don't reset method
-
-    useEffect(() => {
         // Cleanup if needed
         return () => { };
     }, []);
@@ -173,7 +166,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         setPayosLoading(true);
         setError('');
         try {
-            const data = await paymentService.createPaymentLink(order.id, voucherCode, currentUser?.userId);
+            const data = await paymentService.createPaymentLink(order.id, voucherCode);
             setPayosData(data);
             setPayosStatus('waiting');
             setPaymentMethod('PAYOS');
@@ -262,7 +255,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
 
         setPayosStatus('success');
         setPaymentMethod('PAYOS');
-        console.log("[PaymentModal] Payment success detected. Preparing to finish...");
 
         // Tự động đóng và in hóa đơn sau 1.5s thành công (giảm từ 2s cho cảm giác nhanh hơn)
         setTimeout(() => {
@@ -307,7 +299,6 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     // WebSocket listener for real-time payment success
     useWebSocket('/topic/tables', (msg) => {
         if (msg && msg.event === 'PAYMENT_SUCCESS' && (msg.orderId === order?.id || msg.transactionId === payosData?.transactionId)) {
-            console.log("[WebSocket] Payment success received!");
             handlePaymentSuccess();
         }
     });
@@ -327,10 +318,8 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
         const confirmed = await confirm('Xác nhận thanh toán', `Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`);
         if (!confirmed) return;
         try {
-            const userId = currentUser?.userId;
-            if (!userId) throw new Error('Không xác định được nhân viên thanh toán');
             const finalVoucher = voucherCode.trim() === '' ? null : voucherCode;
-            await orderService.payOrder(order.id, userId, finalVoucher);
+            await orderService.payOrder(order.id, finalVoucher);
             await finishPayment('CASH');
         } catch (e) {
             toast.error("Thanh toán thất bại: " + (e.response?.data?.message || e.message));
@@ -349,8 +338,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     const finalAmount = previewData?.finalAmount ?? payosData?.finalAmount ?? payosData?.amount ?? getOrderFinalAmount(order) ?? 0;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-lg !p-0 overflow-hidden">
                 <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
                     <div>
                         <h3 className="font-bold text-lg">Thanh toán hóa đơn</h3>
@@ -536,15 +524,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
                         </button>
                     )}
                 </div>
-            </div>
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={closeConfirm}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-            />
-        </div>
+        </SharedModal>
     );
 };
 

@@ -1,16 +1,19 @@
 package com.qros.modules.menu.service;
 
-import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.menu.dto.ComboItemRequest;
-import com.qros.modules.menu.dto.ComboRequest;
-import com.qros.modules.menu.dto.ComboResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.menu.dto.publicmenu.PublicComboItem;
+import com.qros.modules.menu.dto.request.ComboItemRequest;
+import com.qros.modules.menu.dto.request.ComboRequest;
+import com.qros.modules.menu.dto.response.ComboResponse;
+import com.qros.modules.menu.mapper.ComboMapper;
+import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.notification.service.NotificationService;
+import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -24,247 +27,309 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * ComboService - Manages bundled menu items (combos).
- * Handles complex synchronization between combos and their constituent items.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ComboService {
 
-        private final ComboRepository comboRepo;
-        private final ComboItemRepository comboItemRepo;
-        private final MenuItemRepository menuItemRepo;
-        private final NotificationService notificationService;
+    private final ComboRepository comboRepo;
+    private final ComboItemRepository comboItemRepo;
+    private final MenuItemRepository menuItemRepo;
 
-        /**
-         * Retrieves all active combos including their pre-fetched items.
-         * 
-         * @return List of active combos
-         */
-        @Cacheable(value = "combos", key = "'all_active'")
-        public List<ComboResponse> getAllActive() {
-                return comboRepo.findAllActiveWithItems().stream()
-                                .map(this::convertToResponse)
-                                .toList();
+    private final ComboMapper comboMapper;
+    private final PublicMenuMapper publicMenuMapper;
+
+    private final NotificationService notificationService;
+
+    @Cacheable(value = CacheNames.COMBOS, key = "'all_active'")
+    public List<ComboResponse> getAllActive() {
+        return comboRepo.findAllActiveWithItems().stream()
+                .map(comboMapper::toResponse)
+                .toList();
+    }
+
+    @Cacheable(value = CacheNames.COMBOS, key = "'public_all_active'")
+    public List<PublicComboItem> getPublicActive() {
+        return comboRepo.findAllActiveWithItems().stream()
+                .map(publicMenuMapper::toComboItem)
+                .toList();
+    }
+
+    @Cacheable(value = CacheNames.COMBOS, key = "'all'")
+    public List<ComboResponse> getAll() {
+        return comboRepo.findAllForManagementSummary().stream()
+                .map(comboMapper::toSummaryResponse)
+                .toList();
+    }
+
+    @Cacheable(value = CacheNames.COMBOS, key = "'item_' + #id", unless = "#result == null")
+    public ComboResponse getById(@NonNull Long id) {
+        return comboMapper.toResponse(getEntityByIdWithItems(id));
+    }
+
+    @Transactional
+    @CacheEvict(
+            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
+            allEntries = true
+    )
+    public ComboResponse create(@NonNull ComboRequest req) {
+        String name = normalizeRequired(req.name(), "Combo name cannot be empty");
+
+        if (comboRepo.existsByNameIgnoreCase(name)) {
+            throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
         }
 
-        @Cacheable(value = "combos", key = "'public_all_active'")
-        public List<PublicMenuResponse.ComboItem> getPublicActive() {
-                return comboRepo.findAllActiveWithItems().stream()
-                                .map(PublicMenuResponse::fromCombo)
-                                .toList();
+        validateItems(req.items());
+
+        Combo combo = Combo.builder()
+                .name(name)
+                .description(normalizeBlank(req.description()))
+                .price(req.price())
+                .active(req.active() != null ? req.active() : true)
+                .available(req.available() != null ? req.available() : true)
+                .displayOrder(req.displayOrder() != null ? req.displayOrder() : 0)
+                .items(new LinkedHashSet<>())
+                .build();
+
+        Map<Long, MenuItem> menuItemMap = loadMenuItemMap(req.items());
+
+        for (ComboItemRequest itemReq : req.items()) {
+            MenuItem menuItem = menuItemMap.get(itemReq.menuItemId());
+
+            if (menuItem == null) {
+                throw new BusinessException(
+                        ErrorCode.MENU_ITEM_NOT_FOUND,
+                        "Menu item not found: " + itemReq.menuItemId()
+                );
+            }
+
+            combo.getItems().add(ComboItem.builder()
+                    .combo(combo)
+                    .menuItem(menuItem)
+                    .quantity(itemReq.quantity() != null ? itemReq.quantity() : 1)
+                    .build());
         }
 
-        /**
-         * Retrieves all combos in the system.
-         * 
-         * @return List of all combos
-         */
-        public List<ComboResponse> getAll() {
-                return comboRepo.findAll().stream()
-                                .map(this::convertToResponse)
-                                .toList();
+        Combo saved = comboRepo.save(combo);
+        notificationService.notifyComboChange("created", saved.getId());
+
+        return comboMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(
+            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
+            allEntries = true
+    )
+    public ComboResponse update(@NonNull Long id, @NonNull ComboRequest req) {
+        Combo combo = getEntityByIdWithItems(id);
+
+        String name = normalizeRequired(req.name(), "Combo name cannot be empty");
+
+        if (!combo.getName().equalsIgnoreCase(name)
+                && comboRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
         }
 
-        /**
-         * Retrieves a single combo by its identifier.
-         * 
-         * @param id Combo ID
-         * @return ComboResponse DTO
-         * @throws BusinessException if combo not found
-         */
-        public ComboResponse getById(@NonNull Long id) {
-                Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
-                return convertToResponse(combo);
+        validateItems(req.items());
+
+        combo.setName(name);
+        combo.setDescription(normalizeBlank(req.description()));
+        combo.setPrice(req.price());
+
+        if (req.active() != null) {
+            combo.setActive(req.active());
         }
 
-        /**
-         * Creates a new combo and its associated items.
-         * Validates that all menu items exist before persisting.
-         * 
-         * @param req Combo creation request
-         * @return Created ComboResponse DTO
-         */
-        @Transactional
-        @CacheEvict(value = "combos", allEntries = true)
-        public ComboResponse create(ComboRequest req) {
-                if (comboRepo.existsByNameIgnoreCase(req.getName())) {
-                        throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
+        if (req.available() != null) {
+            combo.setAvailable(req.available());
+        }
+
+        if (req.displayOrder() != null) {
+            combo.setDisplayOrder(req.displayOrder());
+        }
+
+        syncComboItems(combo, req.items());
+
+        Combo saved = comboRepo.save(combo);
+        notificationService.notifyComboChange("updated", saved.getId());
+
+        return comboMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(
+            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
+            allEntries = true
+    )
+    public void delete(@NonNull Long id) {
+        Combo combo = getEntityByIdWithItems(id);
+
+        comboItemRepo.softDeleteByComboId(id);
+        comboRepo.delete(combo);
+
+        notificationService.notifyComboChange("deleted", id);
+    }
+
+    @Transactional
+    @CacheEvict(
+            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
+            allEntries = true
+    )
+    public ComboResponse toggleActive(@NonNull Long id) {
+        Combo combo = getEntityByIdWithItems(id);
+
+        combo.setActive(!Boolean.TRUE.equals(combo.getActive()));
+
+        Combo saved = comboRepo.save(combo);
+        notificationService.notifyComboChange("status_updated", saved.getId());
+
+        return comboMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(
+            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
+            allEntries = true
+    )
+    public ComboResponse toggleAvailable(@NonNull Long id) {
+        Combo combo = getEntityByIdWithItems(id);
+
+        combo.setAvailable(!Boolean.TRUE.equals(combo.getAvailable()));
+
+        Combo saved = comboRepo.save(combo);
+        notificationService.notifyComboChange("availability_updated", saved.getId());
+
+        return comboMapper.toResponse(saved);
+    }
+
+    private Combo getEntityByIdWithItems(Long id) {
+        return comboRepo.findByIdWithItems(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
+    }
+
+    private void syncComboItems(Combo combo, List<ComboItemRequest> incomingItems) {
+        if (incomingItems == null || incomingItems.isEmpty()) {
+            combo.getItems().clear();
+            return;
+        }
+
+        Map<Long, ComboItem> existingMap = combo.getItems().stream()
+                .filter(item -> item.getId() != null)
+                .collect(Collectors.toMap(ComboItem::getId, item -> item));
+
+        Set<Long> incomingExistingIds = incomingItems.stream()
+                .map(ComboItemRequest::id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        combo.getItems().removeIf(item ->
+                item.getId() != null && !incomingExistingIds.contains(item.getId())
+        );
+
+        Set<Long> menuItemIdsToLoad = incomingItems.stream()
+                .filter(itemReq -> itemReq.id() == null)
+                .map(ComboItemRequest::menuItemId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, MenuItem> menuItemMap = menuItemIdsToLoad.isEmpty()
+                ? Collections.emptyMap()
+                : menuItemRepo.findAllById(menuItemIdsToLoad).stream()
+                        .collect(Collectors.toMap(MenuItem::getId, item -> item));
+
+        for (ComboItemRequest itemReq : incomingItems) {
+            Integer quantity = itemReq.quantity() != null ? itemReq.quantity() : 1;
+
+            if (itemReq.id() != null) {
+                ComboItem existing = existingMap.get(itemReq.id());
+
+                if (existing == null) {
+                    throw new BusinessException(
+                            ErrorCode.BUSINESS_ERROR,
+                            "Combo item not found in this combo: " + itemReq.id()
+                    );
                 }
 
-                Combo combo = Combo.builder()
-                                .name(req.getName())
-                                .price(req.getPrice())
-                                .active(req.getActive() != null ? req.getActive() : true)
-                                .items(new LinkedHashSet<>())
-                                .build();
+                existing.setQuantity(quantity);
+                continue;
+            }
 
-                if (req.getItems() != null && !req.getItems().isEmpty()) {
-                        Set<Long> menuIds = req.getItems().stream()
-                                        .map(ComboItemRequest::getMenuItemId)
-                                        .filter(Objects::nonNull)
-                                        .collect(Collectors.toSet());
+            MenuItem menuItem = menuItemMap.get(itemReq.menuItemId());
 
-                        Map<Long, MenuItem> menuMap = menuItemRepo.findAllById(Objects.requireNonNull(menuIds)).stream()
-                                        .collect(Collectors.toMap(MenuItem::getId, m -> m));
+            if (menuItem == null) {
+                throw new BusinessException(
+                        ErrorCode.MENU_ITEM_NOT_FOUND,
+                        "Menu item not found: " + itemReq.menuItemId()
+                );
+            }
 
-                        for (ComboItemRequest itemReq : req.getItems()) {
-                                MenuItem menuItem = menuMap.get(itemReq.getMenuItemId());
-                                if (menuItem == null) {
-                                        throw new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND,
-                                                        "Menu item not found: " + itemReq.getMenuItemId());
-                                }
+            combo.getItems().add(ComboItem.builder()
+                    .combo(combo)
+                    .menuItem(menuItem)
+                    .quantity(quantity)
+                    .build());
+        }
+    }
 
-                                combo.getItems().add(ComboItem.builder()
-                                                .combo(combo)
-                                                .menuItem(menuItem)
-                                                .quantity(itemReq.getQuantity() != null ? itemReq.getQuantity() : 1)
-                                                .build());
-                        }
-                }
+    private Map<Long, MenuItem> loadMenuItemMap(List<ComboItemRequest> items) {
+        Set<Long> menuItemIds = items.stream()
+                .map(ComboItemRequest::menuItemId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-                Combo saved = comboRepo.save(Objects.requireNonNull(combo));
-                notificationService.notifyComboChange("created", saved.getId());
-                return convertToResponse(saved);
+        if (menuItemIds.isEmpty()) {
+            return Collections.emptyMap();
         }
 
-        /**
-         * Updates an existing combo and synchronizes its item list.
-         * 
-         * @param id  Combo ID
-         * @param req Update request
-         * @return Updated ComboResponse DTO
-         */
-        @Transactional
-        @CacheEvict(value = "combos", allEntries = true)
-        public ComboResponse update(@NonNull Long id, ComboRequest req) {
-                Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
+        return menuItemRepo.findAllById(menuItemIds).stream()
+                .collect(Collectors.toMap(MenuItem::getId, item -> item));
+    }
 
-                if (!combo.getName().equalsIgnoreCase(req.getName())
-                                && comboRepo.existsByNameIgnoreCaseAndIdNot(req.getName(), id)) {
-                        throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
-                }
-
-                combo.setName(req.getName());
-                combo.setPrice(req.getPrice());
-                combo.setActive(req.getActive() != null ? req.getActive() : combo.getActive());
-
-                syncComboItems(combo, req.getItems());
-
-                Combo saved = comboRepo.save(Objects.requireNonNull(combo));
-                notificationService.notifyComboChange("updated", saved.getId());
-                return convertToResponse(saved);
+    private void validateItems(List<ComboItemRequest> items) {
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_ERROR,
+                    "Combo must contain at least one item"
+            );
         }
 
-        /**
-         * Internal helper to synchronize the combo's item set with incoming data.
-         * Performs differential updates (add/update/remove).
-         */
-        private void syncComboItems(Combo combo, List<ComboItemRequest> incoming) {
-                if (incoming == null || incoming.isEmpty()) {
-                        combo.getItems().clear();
-                        return;
-                }
+        Set<Long> menuItemIds = new HashSet<>();
 
-                Map<Long, ComboItem> existingMap = combo.getItems().stream()
-                                .collect(Collectors.toMap(ComboItem::getId, item -> item));
+        for (ComboItemRequest item : items) {
+            if (item.menuItemId() == null && item.id() == null) {
+                throw new BusinessException(
+                        ErrorCode.BUSINESS_ERROR,
+                        "Menu item ID is required"
+                );
+            }
 
-                Set<Long> incomingIds = incoming.stream()
-                                .map(ComboItemRequest::getId)
-                                .filter(Objects::nonNull)
-                                .collect(Collectors.toSet());
+            if (item.quantity() != null && item.quantity() < 1) {
+                throw new BusinessException(
+                        ErrorCode.BUSINESS_ERROR,
+                        "Combo item quantity must be at least 1"
+                );
+            }
 
-                combo.getItems().removeIf(item -> !incomingIds.contains(item.getId()));
+            if (item.menuItemId() != null && !menuItemIds.add(item.menuItemId())) {
+                throw new BusinessException(
+                        ErrorCode.BUSINESS_ERROR,
+                        "Duplicate menu item in combo: " + item.menuItemId()
+                );
+            }
+        }
+    }
 
-                List<ComboItemRequest> newItemsReq = incoming.stream()
-                                .filter(req -> req.getId() == null)
-                                .toList();
-
-                Set<Long> newMenuIds = newItemsReq.stream()
-                                .map(ComboItemRequest::getMenuItemId)
-                                .collect(Collectors.toSet());
-
-                Map<Long, MenuItem> menuMap = newMenuIds.isEmpty() ? Collections.emptyMap()
-                                : menuItemRepo.findAllById(newMenuIds).stream()
-                                                .collect(Collectors.toMap(MenuItem::getId, m -> m));
-
-                for (ComboItemRequest itemReq : incoming) {
-                        if (itemReq.getId() != null && existingMap.containsKey(itemReq.getId())) {
-                                ComboItem existing = existingMap.get(itemReq.getId());
-                                existing.setQuantity(itemReq.getQuantity() != null ? itemReq.getQuantity() : 1);
-                        } else if (itemReq.getId() == null) {
-                                MenuItem menuItem = menuMap.get(itemReq.getMenuItemId());
-                                if (menuItem == null) {
-                                        throw new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND,
-                                                        "Menu item not found: " + itemReq.getMenuItemId());
-                                }
-                                combo.getItems().add(ComboItem.builder()
-                                                .combo(combo)
-                                                .menuItem(menuItem)
-                                                .quantity(itemReq.getQuantity() != null ? itemReq.getQuantity() : 1)
-                                                .build());
-                        }
-                }
+    private String normalizeRequired(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
         }
 
-        /**
-         * Soft deletes a combo and all its associated items.
-         * 
-         * @param id Combo ID
-         */
-        @Transactional
-        @CacheEvict(value = "combos", allEntries = true)
-        public void delete(@NonNull Long id) {
-                Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
+        return value.trim();
+    }
 
-                comboItemRepo.softDeleteByComboId(id);
-                comboRepo.delete(Objects.requireNonNull(combo));
-
-                notificationService.notifyComboChange("deleted", id);
-        }
-
-        /**
-         * Toggles the active status of a combo.
-         * 
-         * @param id Combo ID
-         * @return Updated ComboResponse DTO
-         */
-        @Transactional
-        @CacheEvict(value = "combos", allEntries = true)
-        public ComboResponse toggleActive(@NonNull Long id) {
-                Combo combo = comboRepo.findById(id)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
-                combo.setActive(!Boolean.TRUE.equals(combo.getActive()));
-
-                notificationService.notifyComboChange("status_updated", id);
-                Combo saved = comboRepo.save(Objects.requireNonNull(combo));
-                return convertToResponse(saved);
-        }
-
-        /**
-         * Mapping helper to convert Combo entity to ComboResponse DTO.
-         */
-        private ComboResponse convertToResponse(Combo combo) {
-                return ComboResponse.builder()
-                                .id(combo.getId())
-                                .name(combo.getName())
-                                .price(combo.getPrice())
-                                .active(combo.getActive())
-                                .items(combo.getItems().stream()
-                                                .map(item -> ComboResponse.ComboItemResponse.builder()
-                                                                .id(item.getId())
-                                                                .menuItemId(item.getMenuItem().getId())
-                                                                .menuItemName(item.getMenuItem().getName())
-                                                                .menuItemImg(item.getMenuItem().getImg())
-                                                                .quantity(item.getQuantity())
-                                                                .build())
-                                                .toList())
-                                .build();
-        }
+    private String normalizeBlank(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
 }

@@ -1,9 +1,10 @@
-import api from './httpClient.js';
+import api from '@shared/api/httpClient.js';
+import { createCachedRequest } from '@shared/lib/cacheUtils.js';
+
+const { requestFn: getSettings } = createCachedRequest(() => api.get('/settings'), 0);
 
 export const settingsService = {
-  get: async () => {
-    return await api.get('/settings');
-  },
+  get: getSettings,
 
   update: async (data) => {
     return await api.put('/settings', data);

@@ -76,17 +76,6 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles IllegalStateException for invalid business logic transitions or states.
-     * 
-     * @param ex IllegalStateException
-     * @return ResponseEntity with 400 Bad Request status
-     */
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiResponse<ErrorResponse>> handleIllegalState(IllegalStateException ex) {
-        return buildErrorResponse(ErrorCode.ORDER_INVALID_STATE, ex.getMessage(), Map.of());
-    }
-
-    /**
      * Catch-all handler for any unhandled exceptions to prevent leaking internal details.
      * 
      * @param ex The unhandled exception

@@ -1,8 +1,10 @@
 package com.qros.modules.user.mapper;
 
-import com.qros.modules.user.dto.UserResponse;
-import com.qros.modules.user.dto.UserUpsertRequest;
+import com.qros.modules.user.dto.response.UserResponse;
+import com.qros.modules.user.dto.request.CreateUserRequest;
+import com.qros.modules.user.dto.request.UpdateUserRequest;
 import com.qros.modules.user.model.User;
+import com.qros.modules.user.model.enums.UserStatus;
 import org.mapstruct.*;
 
 /**
@@ -20,7 +22,7 @@ public interface UserMapper {
     UserResponse toDto(User user);
 
     /**
-     * Converts a UserUpsertRequest DTO to a User entity.
+     * Converts a CreateUserRequest DTO to a User entity.
      * Core sensitive fields are ignored during basic mapping and handled in services.
      * 
      * @param request The source DTO
@@ -32,31 +34,20 @@ public interface UserMapper {
     @Mapping(target = "avatarUrl", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "role", ignore = true)
-    User toEntity(UserUpsertRequest request);
+    User toEntity(CreateUserRequest request);
 
     /**
-     * Updates an existing User entity with data from a UserUpsertRequest.
+     * Updates an existing User entity with data from a CreateUserRequest.
      * 
      * @param entity The entity to be updated
      * @param request The source DTO containing updated values
      */
-    @InheritConfiguration(name = "toEntity")
-    void updateEntity(@MappingTarget User entity, UserUpsertRequest request);
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "password", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "avatarUrl", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "role", ignore = true)
+    void updateEntity(@MappingTarget User entity, UpdateUserRequest request);
 
-    /**
-     * Safe helper logic to convert a status string to its corresponding Enum.
-     * 
-     * @param status The status string
-     * @return The corresponding UserStatus enum or ACTIVE as default
-     */
-    @Named("stringToStatus")
-    default User.UserStatus mapStatus(String status) {
-        if (status == null)
-            return null;
-        try {
-            return User.UserStatus.valueOf(status.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return User.UserStatus.ACTIVE;
-        }
-    }
 }

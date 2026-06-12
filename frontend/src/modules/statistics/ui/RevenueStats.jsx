@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid,
     ResponsiveContainer, Tooltip as RechartsTooltip, Tooltip
@@ -25,7 +25,13 @@ const RevenueStats = () => {
     const [revenueData, setRevenueData] = useState([]);
     const [orders, setOrders] = useState([]);
     const [currentPage, setCurrentPage] = useState(0);
-    const [loading, setLoading] = useState(false);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loadingRevenue, setLoadingRevenue] = useState(false);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+    const isMountedRef = useRef(true);
+    const revenueFetchSeqRef = useRef(0);
+    const ordersFetchSeqRef = useRef(0);
 
     const handleApplyFilters = () => {
         setCurrentPage(0);
@@ -35,70 +41,93 @@ const RevenueStats = () => {
         });
     };
 
-    // Gọi API khi áp dụng khoảng ngày
     useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const [rev, ods] = await Promise.all([
-                    statisticsService.getRevenue(appliedDateRange.from, appliedDateRange.to),
-                    statisticsService.getOrders(appliedDateRange.from, appliedDateRange.to)
-                ]);
-                setRevenueData(rev);
-                // Sắp xếp đơn hàng mới nhất lên đầu để hiển thị trong bảng
-                setOrders(ods.sort((a, b) => new Date(b.paymentTime) - new Date(a.paymentTime)));
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
         };
-        load();
+    }, []);
+
+    // Gọi API tổng hợp khi áp dụng khoảng ngày
+    useEffect(() => {
+        const fetchSeq = ++revenueFetchSeqRef.current;
+        const loadRevenue = async () => {
+            setLoadingRevenue(true);
+            try {
+                const rev = await statisticsService.getRevenue(appliedDateRange.from, appliedDateRange.to);
+                if (!isMountedRef.current || fetchSeq !== revenueFetchSeqRef.current) return;
+                setRevenueData(rev);
+            } catch (e) { console.error(e); }
+            finally {
+                if (isMountedRef.current && fetchSeq === revenueFetchSeqRef.current) {
+                    setLoadingRevenue(false);
+                }
+            }
+        };
+        loadRevenue();
     }, [appliedDateRange]);
+
+    // Gọi API danh sách giao dịch theo trang
+    useEffect(() => {
+        const fetchSeq = ++ordersFetchSeqRef.current;
+        const loadOrders = async () => {
+            setLoadingOrders(true);
+            try {
+                const orderPage = await statisticsService.getOrders(appliedDateRange.from, appliedDateRange.to, {
+                    page: currentPage,
+                    size: ITEMS_PER_PAGE
+                });
+                if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
+                setOrders(orderPage.content || []);
+                setTotalPages(orderPage.totalPages || 0);
+                setTotalElements(orderPage.totalElements || 0);
+            } catch (e) { console.error(e); }
+            finally {
+                if (isMountedRef.current && fetchSeq === ordersFetchSeqRef.current) {
+                    setLoadingOrders(false);
+                }
+            }
+        };
+        loadOrders();
+    }, [appliedDateRange, currentPage]);
 
     // Format dữ liệu biểu đồ
     const chartData = useMemo(() => {
-        const orderCountMap = {};
-        orders.forEach(o => {
-            const d = new Date(o.paymentTime || o.createdAt);
-            const key = fmtDate(d);
-            orderCountMap[key] = (orderCountMap[key] || 0) + 1;
-        });
-
         return revenueData.map(item => {
             // Nếu bucket là string "YYYY-MM-DD"
             const dateKey = fmtDate(new Date(item.bucket + 'T00:00:00'));
             return {
                 date: dateKey,
-                fullDate: fmtDateTime(new Date(item.bucket)),
-                revenue: item.revenue,
-                orderCount: orderCountMap[dateKey] || 0
+                fullDate: fmtDateTime(new Date(item.bucket + 'T00:00:00')),
+                revenue: Number(item.revenue || 0),
+                orderCount: Number(item.orders || 0)
             };
         });
-    }, [revenueData, orders]);
+    }, [revenueData]);
 
     // Tính toán KPI
     const kpi = useMemo(() => {
-        const totalRev = revenueData.reduce((s, i) => s + i.revenue, 0);
-        const totalOrd = orders.length;
+        const totalRev = revenueData.reduce((s, i) => s + Number(i.revenue || 0), 0);
+        const totalOrd = revenueData.reduce((s, i) => s + Number(i.orders || 0), 0);
         const avg = totalOrd ? Math.round(totalRev / totalOrd) : 0;
         return { totalRev, totalOrd, avg };
-    }, [revenueData, orders]);
-
-    const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE);
-    const paginatedOrders = useMemo(() => {
-        const start = currentPage * ITEMS_PER_PAGE;
-        return orders.slice(start, start + ITEMS_PER_PAGE);
-    }, [currentPage, orders]);
+    }, [revenueData]);
 
     useEffect(() => {
         if (totalPages > 0 && currentPage >= totalPages) {
             setCurrentPage(totalPages - 1);
+        } else if (totalPages === 0 && currentPage !== 0) {
+            setCurrentPage(0);
         }
     }, [currentPage, totalPages]);
+
+    const initialLoading = (loadingRevenue || loadingOrders) && revenueData.length === 0 && orders.length === 0;
 
     return (
         <div className="p-6 bg-slate-50 min-h-screen">
             <StatsToolbar dateRange={dateRange} setDateRange={setDateRange} onApply={handleApplyFilters} title="Thời gian" />
 
-            {loading ? <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div> : (
+            {initialLoading ? <div className="p-20 text-center"><Loader2 className="animate-spin inline text-orange-500" size={32} /></div> : (
                 <div className="space-y-6">
 
                     {/* 1. KPI Cards */}
@@ -165,7 +194,7 @@ const RevenueStats = () => {
                                 <Receipt size={20} className="text-gray-500" />
                                 Chi tiết giao dịch
                             </h3>
-                            <span className="text-sm text-gray-500">{orders.length} đơn hàng</span>
+                            <span className="text-sm text-gray-500">{totalElements} đơn hàng</span>
                         </div>
 
                         <div className="overflow-x-auto">
@@ -180,7 +209,20 @@ const RevenueStats = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
-                                    {paginatedOrders.map((order) => (
+                                    {loadingOrders ? (
+                                        <tr key="loading-revenue-orders">
+                                            <td colSpan="5" className="p-8 text-center text-gray-500">
+                                                <Loader2 className="animate-spin inline mr-2 text-orange-500" size={18} />
+                                                Đang tải giao dịch...
+                                            </td>
+                                        </tr>
+                                    ) : orders.length === 0 ? (
+                                        <tr key="empty-revenue-row">
+                                            <td colSpan="5" className="p-8 text-center text-gray-400">
+                                                Không có dữ liệu giao dịch trong khoảng thời gian này.
+                                            </td>
+                                        </tr>
+                                    ) : orders.map((order) => (
                                         <tr key={order.id} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
                                             <td className="p-4 font-medium text-blue-600">#{order.id}</td>
                                             <td className="p-4 text-gray-600">
@@ -199,33 +241,26 @@ const RevenueStats = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {orders.length === 0 && (
-                                        <tr key="empty-revenue-row">
-                                            <td colSpan="5" className="p-8 text-center text-gray-400">
-                                                Không có dữ liệu giao dịch trong khoảng thời gian này.
-                                            </td>
-                                        </tr>
-                                    )}
                                 </tbody>
                             </table>
                             {totalPages > 1 && (
                                 <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100">
                                     <button
                                         type="button"
-                                        disabled={currentPage === 0}
-                                        onClick={() => setCurrentPage(prev => prev - 1)}
+                                        disabled={loadingOrders || currentPage === 0}
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
                                         className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
                                     >
                                         Trước
                                     </button>
                                     <span className="text-gray-500 font-medium px-4">
                                         Trang {currentPage + 1} / {totalPages}
-                                        <span className="text-gray-400 ml-2 text-sm">({orders.length} đơn)</span>
+                                        <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
                                     </span>
                                     <button
                                         type="button"
-                                        disabled={currentPage >= totalPages - 1}
-                                        onClick={() => setCurrentPage(prev => prev + 1)}
+                                        disabled={loadingOrders || currentPage >= totalPages - 1}
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
                                         className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
                                     >
                                         Sau

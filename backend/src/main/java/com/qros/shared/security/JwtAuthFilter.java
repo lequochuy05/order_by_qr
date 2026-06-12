@@ -14,8 +14,10 @@ import org.springframework.lang.NonNull;
 import java.io.IOException;
 
 /**
- * JwtAuthFilter - Security filter that intercepts each HTTP request to validate JWT tokens.
- * Extracts the token from the 'Authorization' header and establishes security context.
+ * JwtAuthFilter - Security filter that intercepts each HTTP request to validate
+ * JWT tokens.
+ * Extracts the token from the 'Authorization' header and establishes security
+ * context.
  */
 @Component
 @RequiredArgsConstructor
@@ -24,13 +26,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   private final UserDetailsService userDetailsService;
 
   /**
-   * Performs the filtering logic: validates the Bearer token and sets authentication in SecurityContext.
+   * Performs the filtering logic: validates the Bearer token and sets
+   * authentication in SecurityContext.
    * 
-   * @param request The incoming HTTP request
+   * @param request  The incoming HTTP request
    * @param response The outgoing HTTP response
-   * @param chain The filter chain
+   * @param chain    The filter chain
    * @throws ServletException if a servlet error occurs
-   * @throws IOException if an I/O error occurs
+   * @throws IOException      if an I/O error occurs
    */
   @Override
   protected void doFilterInternal(
@@ -46,7 +49,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     final String token = authHeader.substring(7);
-    if (jwtService.isValid(token) && "access".equals(jwtService.extractTokenType(token))) {
+    if (SecurityContextHolder.getContext().getAuthentication() == null
+        && jwtService.isValid(token)
+        && "access".equals(jwtService.extractTokenType(token))) {
       String email = jwtService.extractSubject(token);
       UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 

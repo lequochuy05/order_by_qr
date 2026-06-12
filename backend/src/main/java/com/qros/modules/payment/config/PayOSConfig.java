@@ -1,4 +1,4 @@
-package com.qros.config;
+package com.qros.modules.payment.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

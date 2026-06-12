@@ -18,7 +18,7 @@ import java.util.Objects;
  */
 @Slf4j
 @Service
-public class CloudinaryStorageService {
+public class CloudinaryStorageService implements StorageService {
 
     private final Cloudinary cloudinary;
 

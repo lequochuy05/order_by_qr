@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { X, Search, AlertCircle, ShoppingBasket } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 import { fmtVND } from '@shared/lib/formatters.js';
 
 const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors = {}, setErrors }) => {
-  const [formData, setFormData] = useState(initialData || { name: '', price: 0, active: true, items: [] });
+  const [formData, setFormData] = useState(initialData || { name: '', description: '', price: 0, active: true, available: true, displayOrder: 0, items: [] });
 
   const isChanged = React.useMemo(() => {
     if (!initialData) return true;
 
     if (formData.name !== initialData.name) return true;
+    if ((formData.description || '') !== (initialData.description || '')) return true;
     if (formData.price !== initialData.price) return true;
     if (formData.active !== initialData.active) return true;
+    if ((formData.available ?? true) !== (initialData.available ?? true)) return true;
+    if (Number(formData.displayOrder || 0) !== Number(initialData.displayOrder || 0)) return true;
 
     if (formData.items.length !== initialData.items.length) return true;
 
@@ -69,9 +73,7 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-[2rem] w-full max-w-xl shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
-
+    <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-xl !p-0">
         {/* Header */}
         <div className="px-8 py-6 border-b flex justify-between items-center shrink-0">
           <div>
@@ -105,6 +107,21 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors 
                 <AlertCircle size={12} /> {errors.name}
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">Mô tả</label>
+            <textarea
+              rows={2}
+              maxLength={500}
+              className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl outline-none text-sm transition-all resize-none focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
+              placeholder="Mô tả ngắn gọn về combo..."
+              value={formData.description || ''}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+            />
+            <div className="text-right mt-1">
+              <span className="text-[10px] font-medium text-gray-400">{(formData.description || '').length}/500</span>
+            </div>
           </div>
 
           <div>
@@ -167,17 +184,37 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors 
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 uppercase">VNĐ</span>
               </div>
             </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-3 px-5 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 rounded-md text-orange-500 focus:ring-orange-200 border-gray-200 cursor-pointer"
-                  checked={formData.active}
-                  onChange={e => setFormData({ ...formData, active: e.target.checked })}
-                />
-                <span className="text-xs font-black text-gray-600 uppercase tracking-tight">Đang kinh doanh</span>
-              </label>
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">Thứ tự hiển thị</label>
+              <input
+                type="number"
+                min="0"
+                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 outline-none rounded-2xl text-sm font-bold transition-all"
+                value={formData.displayOrder ?? 0}
+                onChange={e => setFormData({ ...formData, displayOrder: e.target.value })}
+              />
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 px-5 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded-md text-orange-500 focus:ring-orange-200 border-gray-200 cursor-pointer"
+                checked={formData.active}
+                onChange={e => setFormData({ ...formData, active: e.target.checked })}
+              />
+              <span className="text-xs font-black text-gray-600 uppercase tracking-tight">Đang kinh doanh</span>
+            </label>
+            <label className="flex items-center gap-3 px-5 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded-md text-emerald-500 focus:ring-emerald-200 border-gray-200 cursor-pointer"
+                checked={formData.available ?? true}
+                onChange={e => setFormData({ ...formData, available: e.target.checked })}
+              />
+              <span className="text-xs font-black text-gray-600 uppercase tracking-tight">Còn hàng</span>
+            </label>
           </div>
         </form>
 
@@ -204,8 +241,7 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors 
             </div>
           </button>
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

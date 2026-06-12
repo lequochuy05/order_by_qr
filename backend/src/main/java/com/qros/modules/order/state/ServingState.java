@@ -1,20 +1,21 @@
 package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
 /**
- * ServingState - Handles the logic for orders that are currently being prepared or served.
+ * ServingState - Handles the logic for orders that are currently being prepared
+ * or served.
  */
 @Component
 public class ServingState implements OrderState {
 
-    private static final Set<Order.OrderStatus> ALLOWED_FROM = Set.of(
-            Order.OrderStatus.PENDING,
-            Order.OrderStatus.AWAITING_PAYMENT
-    );
+    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(
+            OrderStatus.PENDING,
+            OrderStatus.AWAITING_PAYMENT);
 
     /**
      * Transitions the order status to SERVING.
@@ -28,12 +29,12 @@ public class ServingState implements OrderState {
     }
 
     @Override
-    public Order.OrderStatus getStatus() {
-        return Order.OrderStatus.SERVING;
+    public OrderStatus getStatus() {
+        return OrderStatus.SERVING;
     }
 
     @Override
-    public Set<Order.OrderStatus> allowedTransitionsFrom() {
+    public Set<OrderStatus> allowedTransitionsFrom() {
         return ALLOWED_FROM;
     }
 }

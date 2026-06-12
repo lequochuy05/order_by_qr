@@ -1,8 +1,8 @@
 import React from 'react';
-import { Pencil, Trash2, Power, PowerOff, Package, ChevronRight } from 'lucide-react';
+import { Pencil, Trash2, Power, PowerOff, Package, Loader2 } from 'lucide-react';
 import { fmtVND, fmtStatus } from '@shared/lib/formatters.js';
 
-const ComboCard = ({ combo, onEdit, onDelete, onToggle }) => (
+const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => (
   <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-xl transition-all flex flex-col h-full relative overflow-hidden">
         {/* Trang trí góc thẻ */}
         <div className="absolute -top-6 -right-6 w-20 h-20 bg-orange-50 rounded-full group-hover:bg-orange-100 transition-colors" />
@@ -24,8 +24,12 @@ const ComboCard = ({ combo, onEdit, onDelete, onToggle }) => (
         </div>
 
         <div className="flex gap-3 mt-auto relative z-10">
-            <button onClick={() => onEdit(combo.id)} className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100 font-bold">
-                <Pencil size={18} />
+            <button
+                onClick={() => onEdit(combo.id)}
+                disabled={isEditing}
+                className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100 font-bold disabled:opacity-60 disabled:cursor-wait"
+            >
+                {isEditing ? <Loader2 size={18} className="animate-spin" /> : <Pencil size={18} />}
             </button>
             <button 
                 onClick={() => onToggle(combo.id)} 

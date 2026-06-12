@@ -1,32 +1,48 @@
 import React from 'react';
-import { X, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { X, Image as ImageIcon } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
+import FormError from '@shared/ui/FormError.jsx';
 
 const CategoryModal = ({
-    isOpen, onClose, onSubmit, editId, catName, setCatName,
-    preview, handleFileChange, isSubmitting, initialCatName,
+    isOpen, onClose, onSubmit, editId, formData, setFormData,
+    preview, handleFileChange, isSubmitting, initialFormData,
     selectedFile, errors = {}, setErrors
 }) => {
 
     const isChanged = React.useMemo(() => {
         if (!editId) return true;
         if (selectedFile) return true;
-        return catName !== initialCatName;
-    }, [editId, catName, initialCatName, selectedFile]);
+
+        return (
+            formData.name !== initialFormData?.name ||
+            (formData.description || '') !== (initialFormData?.description || '') ||
+            (formData.active ?? true) !== (initialFormData?.active ?? true) ||
+            Number(formData.displayOrder || 0) !== Number(initialFormData?.displayOrder || 0)
+        );
+    }, [editId, formData, initialFormData, selectedFile]);
+
+    const updateField = (field, value) => {
+        setFormData({ ...formData, [field]: value });
+        if (errors[field]) {
+            const newErrors = { ...errors };
+            delete newErrors[field];
+            setErrors(newErrors);
+        }
+    };
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+  return (
+        <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-lg !p-0">
 
                 {/* Header */}
-                <div className="flex justify-between items-center px-6 py-5 border-b shrink-0">
+                <div className="flex justify-between items-center px-6 py-5 border-b shrink-0 bg-gray-50/50">
                     <h2 className="text-xl font-bold text-gray-800">
                         {editId ? 'Sửa Danh Mục' : 'Thêm Danh Mục'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors"
+                        className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -45,18 +61,70 @@ const CategoryModal = ({
                                 ? 'border-red-500 focus:ring-red-100'
                                 : 'border-gray-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500'
                                 }`}
-                            value={catName}
-                            onChange={(e) => {
-                                setCatName(e.target.value);
-                                if (errors.name) setErrors({ ...errors, name: null });
-                            }}
+                            value={formData.name}
+                            onChange={(e) => updateField('name', e.target.value)}
                             placeholder="Ví dụ: Đồ uống, Món khai vị..."
                         />
-                        {errors.name && (
-                            <p className="text-red-500 text-[11px] mt-1.5 flex items-center gap-1 font-medium animate-in slide-in-from-top-1">
-                                <AlertCircle size={12} /> {errors.name}
-                            </p>
-                        )}
+                        <FormError message={errors.name} />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1.5 text-gray-500 tracking-wider">
+                            Mô tả
+                        </label>
+                        <textarea
+                            rows={3}
+                            maxLength={255}
+                            className={`w-full px-4 py-3 border rounded-xl outline-none text-sm transition-all resize-none ${errors.description
+                                ? 'border-red-500 focus:ring-red-100'
+                                : 'border-gray-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500'
+                                }`}
+                            value={formData.description || ''}
+                            onChange={(e) => updateField('description', e.target.value)}
+                            placeholder="Mô tả ngắn về nhóm món trong danh mục..."
+                        />
+                        <div className="flex justify-between items-start gap-3 mt-1">
+                            <FormError message={errors.description} />
+                            <span className="ml-auto text-[10px] font-medium text-gray-400">
+                                {(formData.description || '').length}/255
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1.5 text-gray-500 tracking-wider">
+                                Thứ tự hiển thị
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                className={`w-full px-4 py-3 border rounded-xl outline-none text-sm transition-all ${errors.displayOrder
+                                    ? 'border-red-500 focus:ring-red-100'
+                                    : 'border-gray-200 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500'
+                                    }`}
+                                value={formData.displayOrder ?? 0}
+                                onChange={(e) => updateField('displayOrder', e.target.value)}
+                            />
+                            <FormError message={errors.displayOrder} />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1.5 text-gray-500 tracking-wider">
+                                Trạng thái
+                            </label>
+                            <label className="flex items-center gap-3 px-4 h-[46px] bg-gray-50 hover:bg-gray-100 rounded-xl cursor-pointer border border-gray-200 transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-300 cursor-pointer"
+                                    checked={formData.active ?? true}
+                                    onChange={(e) => updateField('active', e.target.checked)}
+                                />
+                                <span className="text-sm font-bold text-gray-700">
+                                    Hiển thị danh mục
+                                </span>
+                            </label>
+                        </div>
                     </div>
 
                     {/* Hình ảnh */}
@@ -102,7 +170,7 @@ const CategoryModal = ({
                 </form>
 
                 {/* Footer */}
-                <div className="px-6 py-5 border-t bg-gray-50/50 rounded-b-3xl flex gap-3 shrink-0">
+                <div className="px-6 py-5 border-t bg-gray-50/50 rounded-b-[2rem] flex gap-3 shrink-0">
                     <button
                         type="button"
                         onClick={onClose}
@@ -129,9 +197,8 @@ const CategoryModal = ({
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
-    );
+        </SharedModal>
+  );
 };
 
 export default CategoryModal;

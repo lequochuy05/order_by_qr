@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, ImageIcon, Plus, Trash2, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const MenuItemModal = ({
   isOpen, onClose, onSubmit, categories, formData, setFormData,
@@ -11,8 +12,12 @@ const MenuItemModal = ({
     if (selectedFile) return true;
 
     if (formData.name !== initialFormData.name) return true;
+    if ((formData.description || '') !== (initialFormData.description || '')) return true;
     if (Number(formData.price) !== Number(initialFormData.price)) return true;
     if (Number(formData.categoryId) !== Number(initialFormData.categoryId)) return true;
+    if ((formData.active ?? true) !== (initialFormData.active ?? true)) return true;
+    if ((formData.available ?? true) !== (initialFormData.available ?? true)) return true;
+    if (Number(formData.displayOrder || 0) !== Number(initialFormData.displayOrder || 0)) return true;
 
     // Deep compare itemOptions
     return JSON.stringify(formData.itemOptions) !== JSON.stringify(initialFormData.itemOptions);
@@ -21,7 +26,7 @@ const MenuItemModal = ({
   if (!isOpen) return null;
 
   const addOption = () => {
-    const newOption = { name: '', isRequired: false, maxSelection: 1, optionValues: [] };
+    const newOption = { name: '', required: false, maxSelection: 1, optionValues: [] };
     setFormData({ ...formData, itemOptions: [...formData.itemOptions, newOption] });
   };
 
@@ -129,8 +134,7 @@ const MenuItemModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+    <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-2xl !p-0">
 
         {/* Header - Fixed */}
         <div className="px-8 py-6 border-b flex justify-between items-center shrink-0">
@@ -243,6 +247,59 @@ const MenuItemModal = ({
             </div>
           </div>
 
+          {/* Mô tả & Cài đặt nâng cao */}
+          <div className="space-y-5">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">Mô tả món ăn</label>
+              <textarea
+                rows={3}
+                maxLength={500}
+                className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl outline-none text-sm transition-all resize-none focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
+                placeholder="Mô tả ngắn gọn về món ăn..."
+                value={formData.description || ''}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+              />
+              <div className="text-right mt-1">
+                <span className="text-[10px] font-medium text-gray-400">{(formData.description || '').length}/500</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">Thứ tự</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl outline-none text-sm font-bold transition-all focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
+                  value={formData.displayOrder ?? 0}
+                  onChange={e => setFormData({ ...formData, displayOrder: e.target.value })}
+                />
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-3 px-4 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-200 cursor-pointer"
+                    checked={formData.active ?? true}
+                    onChange={e => setFormData({ ...formData, active: e.target.checked })}
+                  />
+                  <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">Kinh doanh</span>
+                </label>
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-3 px-4 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-200 border-gray-200 cursor-pointer"
+                    checked={formData.available ?? true}
+                    onChange={e => setFormData({ ...formData, available: e.target.checked })}
+                  />
+                  <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">Còn hàng</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Tùy chọn (Options) */}
           <div className="space-y-5">
             <div className="flex justify-between items-center px-1">
@@ -289,7 +346,7 @@ const MenuItemModal = ({
                         <input
                           type="checkbox"
                           className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-100 cursor-pointer"
-                          checked={opt.isRequired} onChange={e => updateOption(optIdx, 'isRequired', e.target.checked)}
+                          checked={opt.required ?? opt.isRequired ?? false} onChange={e => updateOption(optIdx, 'required', e.target.checked)}
                         />
                         <span className="text-[11px] font-bold text-gray-600 ml-2">Yêu cầu chọn</span>
                       </label>
@@ -404,8 +461,7 @@ const MenuItemModal = ({
             )}
           </button>
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

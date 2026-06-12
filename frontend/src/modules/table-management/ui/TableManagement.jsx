@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
@@ -14,8 +14,6 @@ import TableGrid from './TableGrid.jsx';
 import OrderDetailModal from './OrderDetailModal.jsx';
 import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
-import StatusModal from '@shared/ui/StatusModal.jsx';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { TABLE_STATUS } from '@entities/order/lib/orderStatus.js';
 
@@ -37,9 +35,11 @@ const TableManager = () => {
     const [payModal, setPayModal] = useState({ open: false, table: null, order: null });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRegeneratingQr, setIsRegeneratingQr] = useState(false);
+    const isMountedRef = useRef(true);
+    const fetchSeqRef = useRef(0);
 
-    const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
-    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+    const { showSuccess, showError } = useStatusModal();
+    const { confirm } = useConfirmModal();
 
     const { user } = useAuth();
     const userRole = user?.role || 'STAFF';
@@ -52,30 +52,51 @@ const TableManager = () => {
         return true;
     };
 
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     const fetchTables = useCallback(async (showLoading = false) => {
+        const fetchSeq = ++fetchSeqRef.current;
         if (showLoading) setLoading(true);
         try {
-            // 1. Fetch tables and active orders in parallel to reduce sequential blocking
-            const [tableData, activeOrders] = await Promise.all([
-                tableService.getAll(),
-                orderService.getActiveOrders().catch(() => []) // Fallback to empty if fails
-            ]);
+            const board = await orderService.getTableBoard();
 
-            const sortedTables = tableData.sort((a, b) => parseInt(a.tableNumber) - parseInt(b.tableNumber));
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+
+            const tableData = Array.isArray(board?.tables) ? board.tables : [];
+            const activeOrders = Array.isArray(board?.activeOrders) ? board.activeOrders : [];
+            const sortedTables = [...tableData].sort((a, b) =>
+                String(a.tableNumber).localeCompare(String(b.tableNumber), undefined, { numeric: true })
+            );
             setTables(sortedTables);
 
-            // 2. Create map orders from batch results (No more loop-fetching)
             const newOrdersMap = {};
             activeOrders.forEach(ord => {
-                if (ord.table && ord.table.id) {
-                    newOrdersMap[ord.table.id] = ord;
+                if (ord.tableId && !newOrdersMap[ord.tableId]) {
+                    newOrdersMap[ord.tableId] = {
+                        id: ord.id,
+                        status: ord.status,
+                        finalAmount: ord.finalAmount,
+                        createdAt: ord.createdAt,
+                        table: {
+                            id: ord.tableId,
+                            tableNumber: ord.tableNumber
+                        }
+                    };
                 }
             });
 
             setOrders(newOrdersMap);
 
-        } catch (e) { console.error("Error fetching tables/orders:", e); }
-        finally { setLoading(false); }
+        } catch (e) {
+            if (isMountedRef.current) console.error("Error fetching table board:", e);
+        } finally {
+            if (isMountedRef.current && fetchSeq === fetchSeqRef.current) setLoading(false);
+        }
     }, []);
 
     useEffect(() => { fetchTables(true); }, [fetchTables]);
@@ -89,7 +110,7 @@ const TableManager = () => {
     });
 
     // 3. Handlers
-    const handleAction = ({ type, table, order }) => {
+    const handleAction = async ({ type, table }) => {
         switch (type) {
             case 'ADD_ITEM': setAddItemModal({ open: true, table }); break;
             case 'DETAIL':
@@ -98,7 +119,19 @@ const TableManager = () => {
                     .then(res => setDetailModal({ open: true, table, order: res || null }))
                     .catch(() => setDetailModal({ open: true, table, order: null }));
                 break;
-            case 'PAY': setPayModal({ open: true, table, order }); break;
+            case 'PAY':
+                try {
+                    const latestOrder = await orderService.getCurrentOrder(table.id);
+                    if (!latestOrder) {
+                        showError("Không tìm thấy đơn đang hoạt động của bàn này");
+                        fetchTables();
+                        break;
+                    }
+                    setPayModal({ open: true, table, order: latestOrder });
+                } catch (error) {
+                    showError(error);
+                }
+                break;
 
             case 'EDIT':
                 if (checkPermission()) setFormModal({ open: true, data: table });
@@ -235,15 +268,6 @@ const TableManager = () => {
                     showSuccess("Thanh toán thành công");
                     fetchTables();
                 }}
-            />
-
-            <StatusModal isOpen={statusModal.isOpen} onClose={closeStatusModal} type={statusModal.type} title={statusModal.title} message={statusModal.message} />
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={closeConfirm}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
             />
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
 // Import Hook
@@ -13,9 +13,25 @@ import { categoryService } from '@entities/category/api/categoryService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import CategoryCard from './CategoryCard';
 import CategoryModal from './CategoryModal';
-import StatusModal from '@shared/ui/StatusModal.jsx';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
+
+const emptyCategoryForm = {
+    id: null,
+    name: '',
+    img: '',
+    description: '',
+    active: true,
+    displayOrder: 0
+};
+
+const toCategoryFormData = (category = {}) => ({
+    id: category.id || null,
+    name: category.name || '',
+    img: category.img || '',
+    description: category.description || '',
+    active: category.active ?? true,
+    displayOrder: category.displayOrder ?? 0
+});
 
 const CategoryManager = () => {
     const [categories, setCategories] = useState([]);
@@ -25,27 +41,34 @@ const CategoryManager = () => {
     // State cho Modal nhập liệu
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editId, setEditId] = useState(null);
-    const [catName, setCatName] = useState('');
-    const [initialCatName, setInitialCatName] = useState('');
+    const [formData, setFormData] = useState(emptyCategoryForm);
+    const [initialFormData, setInitialFormData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState('');
     const [errors, setErrors] = useState({});
+    const isMountedRef = useRef(true);
+    const fetchSeqRef = useRef(0);
 
     // === Hook Status Modal ===
-    const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
-    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+    const { showSuccess, showError } = useStatusModal();
+    const { confirm } = useConfirmModal();
 
     // === Tải dữ liệu ===
-    const fetchCategories = useCallback(async (showLoading = false) => {
+    const fetchCategories = useCallback(async (showLoading = false, { force = false } = {}) => {
+        const fetchSeq = ++fetchSeqRef.current;
         if (showLoading) setLoading(true);
         try {
-            const data = await categoryService.getAll();
+            const data = await categoryService.getAll({ force });
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             setCategories(data.content || data);
         } catch (err) {
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             console.error("Lỗi tải danh mục:", err);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+                setLoading(false);
+            }
         }
     }, []);
 
@@ -53,22 +76,38 @@ const CategoryManager = () => {
     useWebSocket('/topic/categories', (message) => {
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             playNotificationSound();
-            fetchCategories();
+            fetchCategories(false, { force: true });
         }
     });
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => { fetchCategories(true); }, [fetchCategories]);
 
     // === Validate ===
     const validateForm = () => {
         const newErrors = {};
-        if (!catName || !catName.trim()) {
+        if (!formData.name || !formData.name.trim()) {
             newErrors.name = "Tên danh mục không được để trống";
-        } else if (catName.length < 2) {
+        } else if (formData.name.trim().length < 2) {
             newErrors.name = "Tên danh mục phải có ít nhất 2 ký tự";
-        } else if (/^\d/.test(catName)) {
+        } else if (/^\d/.test(formData.name.trim())) {
             newErrors.name = "Tên danh mục không được bắt đầu bằng số";
         }
+
+        if ((formData.description || '').length > 255) {
+            newErrors.description = "Mô tả không được vượt quá 255 ký tự";
+        }
+
+        if (Number(formData.displayOrder) < 0) {
+            newErrors.displayOrder = "Thứ tự hiển thị không được âm";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -80,12 +119,21 @@ const CategoryManager = () => {
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
+            const payload = {
+                ...formData,
+                name: formData.name.trim(),
+                img: formData.img || null,
+                description: formData.description?.trim() || null,
+                active: formData.active ?? true,
+                displayOrder: Number(formData.displayOrder) || 0
+            };
+
             let result;
             if (editId) {
-                result = await categoryService.update(editId, catName);
+                result = await categoryService.update(editId, payload);
                 showSuccess("Cập nhật danh mục thành công!");
             } else {
-                result = await categoryService.create(catName);
+                result = await categoryService.create(payload);
                 showSuccess("Thêm mới danh mục thành công!");
             }
             if (selectedFile) {
@@ -121,14 +169,15 @@ const CategoryManager = () => {
     // Modal
     const openModal = (cat = null) => {
         if (cat) {
+            const categoryFormData = toCategoryFormData(cat);
             setEditId(cat.id);
-            setCatName(cat.name);
-            setInitialCatName(cat.name);
+            setFormData(categoryFormData);
+            setInitialFormData(categoryFormData);
             setPreview(cat.img || '');
         } else {
             setEditId(null);
-            setCatName('');
-            setInitialCatName('');
+            setFormData(emptyCategoryForm);
+            setInitialFormData(null);
             setPreview('');
         }
         setSelectedFile(null);
@@ -179,9 +228,9 @@ const CategoryManager = () => {
             {/* Modal Nhập liệu */}
             <CategoryModal
                 isOpen={isModalOpen} onClose={closeModal} onSubmit={handleSubmit}
-                editId={editId} catName={catName} setCatName={setCatName}
+                editId={editId} formData={formData} setFormData={setFormData}
                 preview={preview} isSubmitting={isSubmitting}
-                initialCatName={initialCatName} selectedFile={selectedFile}
+                initialFormData={initialFormData} selectedFile={selectedFile}
                 errors={errors} setErrors={setErrors}
                 handleFileChange={(e) => {
                     const f = e.target.files[0];
@@ -190,22 +239,6 @@ const CategoryManager = () => {
                         setPreview(URL.createObjectURL(f));
                     }
                 }}
-            />
-
-            {/* Modal Thông báo (Dùng Hook) */}
-            <StatusModal
-                isOpen={statusModal.isOpen}
-                onClose={closeStatusModal}
-                type={statusModal.type}
-                title={statusModal.title}
-                message={statusModal.message}
-            />
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={closeConfirm}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
             />
         </div>
     );

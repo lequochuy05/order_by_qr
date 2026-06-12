@@ -46,9 +46,26 @@ public enum ErrorCode {
 
     VOUCHER_NOT_FOUND(HttpStatus.NOT_FOUND, "Voucher not found"),
     VOUCHER_CODE_EXISTS(HttpStatus.CONFLICT, "Voucher code already exists"),
-    VOUCHER_EXPIRED(HttpStatus.BAD_REQUEST, "Voucher expired"),
-    VOUCHER_USAGE_LIMIT_REACHED(HttpStatus.BAD_REQUEST, "Voucher usage limit reached"),
+    VOUCHER_INACTIVE(HttpStatus.BAD_REQUEST, "Voucher is inactive"),
+    VOUCHER_NOT_YET_ACTIVE(HttpStatus.BAD_REQUEST, "Voucher is not active yet"),
+    VOUCHER_EXPIRED(HttpStatus.BAD_REQUEST, "Voucher has expired"),
+    VOUCHER_USAGE_LIMIT_REACHED(HttpStatus.BAD_REQUEST, "Voucher usage limit has been reached"),
     VOUCHER_INVALID(HttpStatus.BAD_REQUEST, "Voucher invalid"),
+
+    PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Promotion not found"),
+    PROMOTION_NAME_EXISTS(HttpStatus.CONFLICT, "Promotion name already exists"),
+    PROMOTION_INACTIVE(HttpStatus.BAD_REQUEST, "Promotion is inactive"),
+    PROMOTION_INVALID(HttpStatus.BAD_REQUEST, "Promotion invalid"),
+
+    INVENTORY_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Inventory item not found"),
+    INVENTORY_ITEM_NAME_EXISTS(HttpStatus.CONFLICT, "Inventory item name already exists"),
+    INVENTORY_ITEM_IN_USE(HttpStatus.CONFLICT, "Inventory item is being used in recipe"),
+    INVENTORY_QUANTITY_INVALID(HttpStatus.BAD_REQUEST, "Inventory quantity is invalid"),
+    INVENTORY_QUANTITY_BELOW_RESERVED(HttpStatus.BAD_REQUEST,
+            "Quantity on hand cannot be lower than reserved quantity"),
+    INVENTORY_INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST, "Insufficient inventory stock"),
+    RECIPE_ITEM_DUPLICATED(HttpStatus.BAD_REQUEST, "Recipe item is duplicated"),
+    INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "From date cannot be after to date"),
 
     PAYMENT_TRANSACTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Transaction not found"),
     PAYMENT_GATEWAY_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Payment gateway error"),

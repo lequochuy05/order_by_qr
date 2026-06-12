@@ -26,7 +26,7 @@ public class ApiErrorController implements ErrorController {
         ErrorResponse error = ErrorResponse.builder()
                 .code(errorCode.name())
                 .message(message)
-                .details(Map.of())
+                .details(Map.of("path", request.getRequestURI()))
                 .build();
 
         return ResponseEntity.status(status)

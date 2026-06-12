@@ -3,7 +3,6 @@ import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-rea
 import { orderService } from '@modules/order-management/api/orderService.js';
 import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { toast } from 'react-hot-toast';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
@@ -14,7 +13,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
 
     const { user } = useAuth();
     const isManager = user?.role === 'MANAGER';
-    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+    const { confirm } = useConfirmModal();
 
     // Adjust state when order prop changes (React recommended pattern)
     if (order !== prevOrder) {
@@ -158,13 +157,6 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                     })}
                 </div>
             </div>
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={closeConfirm}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
-            />
         </div>
     );
 };

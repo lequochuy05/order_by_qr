@@ -106,6 +106,8 @@ Từ thư mục `backend/`:
 mvn spring-boot:run
 ```
 
+Backend tự đọc `.env` ở root dự án (`../.env`) hoặc trong thư mục `backend/` nếu có.
+
 Chạy với profile `dev` để seed tài khoản quản lý khi bảng `users` đang rỗng:
 
 ```bash

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Loader2, Ticket, Pencil, Trash2 } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
@@ -6,8 +6,6 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { voucherService } from '@modules/voucher-management/api/voucherService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import VoucherModal from './VoucherModal.jsx';
-import StatusModal from '@shared/ui/StatusModal.jsx';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 
@@ -30,10 +28,12 @@ const VoucherManager = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
+  const isMountedRef = useRef(true);
+  const fetchSeqRef = useRef(0);
 
   // === 1. State cho Status Modal ===
-  const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
-  const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+  const { showSuccess, showError } = useStatusModal();
+  const { confirm } = useConfirmModal();
 
   const getStatusInfo = (v) => {
     const now = new Date();
@@ -52,19 +52,34 @@ const VoucherManager = () => {
     return { value, ...VOUCHER_STATUS[value] };
   };
 
-  const fetchData = useCallback(async (showLoading = false) => {
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const fetchData = useCallback(async (showLoading = false, { force = false } = {}) => {
+    const fetchSeq = ++fetchSeqRef.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await voucherService.getAll();
+      const data = await voucherService.getAll({ force });
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       setVouchers(data);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+      console.error(err);
+    } finally {
+      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+        setLoading(false);
+      }
+    }
   }, []);
 
   useWebSocket('/topic/vouchers', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       playNotificationSound();
-      fetchData();
+      fetchData(false, { force: true });
     }
   });
 
@@ -86,12 +101,22 @@ const VoucherManager = () => {
     };
 
     try {
+      let saved;
       if (editingVoucher?.id) {
-        await voucherService.update(editingVoucher.id, payload);
+        saved = await voucherService.update(editingVoucher.id, payload);
         showSuccess(`Đã cập nhật voucher`);
       } else {
-        await voucherService.create(payload);
+        saved = await voucherService.create(payload);
         showSuccess(`Đã thêm voucher`);
+      }
+      if (saved?.id) {
+        setVouchers(prev => {
+          const exists = prev.some(voucher => voucher.id === saved.id);
+          if (exists) {
+            return prev.map(voucher => voucher.id === saved.id ? saved : voucher);
+          }
+          return [saved, ...prev];
+        });
       }
       setIsModalOpen(false);
     } catch (err) {
@@ -109,13 +134,14 @@ const VoucherManager = () => {
     if (!confirmed) return;
     try {
       await voucherService.delete(id);
+      setVouchers(prev => prev.filter(voucher => voucher.id !== id));
       showSuccess("Đã xóa voucher thành công");
     } catch (err) {
       showError(err);
     }
   };
 
-  const filteredVouchers = React.useMemo(() => {
+  const filteredVouchers = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase();
     return vouchers.filter(v => {
       const status = getStatusInfo(v);
@@ -189,21 +215,6 @@ const VoucherManager = () => {
         key={isModalOpen ? (editingVoucher?.id || 'new') : 'closed'}
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
         initialData={editingVoucher} onSubmit={handleSubmit}
-      />
-
-      <StatusModal
-        isOpen={statusModal.isOpen}
-        onClose={closeStatusModal}
-        type={statusModal.type}
-        title={statusModal.title}
-        message={statusModal.message}
-      />
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={closeConfirm}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -11,7 +12,8 @@ import java.util.Set;
 @Component
 public class PendingState implements OrderState {
 
-    private static final Set<Order.OrderStatus> ALLOWED_FROM = Set.of(); // PENDING is the initial state, not reached via transition
+    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(); // PENDING is the initial state, not reached via
+                                                                   // transition
 
     /**
      * Sets the order status to PENDING.
@@ -24,12 +26,12 @@ public class PendingState implements OrderState {
     }
 
     @Override
-    public Order.OrderStatus getStatus() {
-        return Order.OrderStatus.PENDING;
+    public OrderStatus getStatus() {
+        return OrderStatus.PENDING;
     }
 
     @Override
-    public Set<Order.OrderStatus> allowedTransitionsFrom() {
+    public Set<OrderStatus> allowedTransitionsFrom() {
         return ALLOWED_FROM;
     }
 }

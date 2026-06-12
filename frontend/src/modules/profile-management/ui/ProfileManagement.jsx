@@ -15,7 +15,6 @@ import {
   User
 } from 'lucide-react';
 
-import StatusModal from '@shared/ui/StatusModal.jsx';
 import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { profileService } from '@modules/profile-management/api/profileService.js';
@@ -51,7 +50,7 @@ const strengthMeta = [
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
-  const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+  const { showSuccess, showError } = useStatusModal();
   const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState(initialProfile);
@@ -64,10 +63,23 @@ const ProfilePage = () => {
   const [showPasswords, setShowPasswords] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const isMountedRef = useRef(true);
+  const fetchSeqRef = useRef(0);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const loadProfile = useCallback(async () => {
+    const fetchSeq = ++fetchSeqRef.current;
     setLoading(true);
     try {
       const data = await profileService.getMe();
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+
       const nextProfile = {
         fullName: data.fullName || '',
         email: data.email || '',
@@ -85,9 +97,12 @@ const ProfilePage = () => {
         avatarUrl: nextProfile.avatarUrl
       });
     } catch (err) {
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       showError(err, 'Không thể tải hồ sơ');
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [showError, updateUser]);
 
@@ -216,7 +231,7 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto bg-slate-50 min-h-screen">
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col items-center text-center">
@@ -436,14 +451,6 @@ const ProfilePage = () => {
           </div>
         </form>
       </section>
-
-      <StatusModal
-        isOpen={statusModal.isOpen}
-        onClose={closeStatusModal}
-        type={statusModal.type}
-        title={statusModal.title}
-        message={statusModal.message}
-      />
     </div>
   );
 };

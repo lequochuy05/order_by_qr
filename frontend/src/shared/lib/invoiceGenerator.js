@@ -14,7 +14,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const storeName = settings.restaurantName || 'Nhà hàng';
   const storeAddress = settings.restaurantAddress || '';
   const storePhone = settings.restaurantPhone || '';
-  const wifiSsid = settings.wifiSsid || '';
+  const wifiSsid = settings.wifiName || settings.wifiSsid || '';
   const wifiPassword = settings.wifiPassword || '';
 
   const items = order.orderItems || [];

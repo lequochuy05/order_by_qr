@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
@@ -11,8 +11,7 @@ import { staffService } from '@modules/staff-management/api/staffService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import StaffCard from './StaffCard';
 import StaffModal from './StaffModal';
-import StatusModal from '@shared/ui/StatusModal.jsx';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
+import EmptyState from '@shared/ui/EmptyState.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { USER_STATUS } from '@shared/lib/formatters.js';
 
@@ -31,22 +30,36 @@ const StaffManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [errors, setErrors] = useState({});
+  const isMountedRef = useRef(true);
+  const fetchSeqRef = useRef(0);
 
   // Hook Status Modal
-  const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
-  const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+  const { showSuccess, showError } = useStatusModal();
+  const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Tải dữ liệu 
-  const fetchStaffs = useCallback(async (showLoading = false) => {
+  const fetchStaffs = useCallback(async (showLoading = false, { force = false } = {}) => {
+    const fetchSeq = ++fetchSeqRef.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await staffService.getAll();
+      const data = await staffService.getAll({ force });
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       setStaffs(data);
     } catch (err) {
+      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       console.error("Lỗi tải nhân viên:", err);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -54,7 +67,7 @@ const StaffManager = () => {
   useWebSocket('/topic/users', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       playNotificationSound();
-      fetchStaffs();
+      fetchStaffs(false, { force: true });
     }
   });
 
@@ -97,17 +110,25 @@ const StaffManager = () => {
         avatarResult = await staffService.uploadAvatar(result.id, selectedFile);
       }
 
+      const savedStaff = avatarResult || result;
+      setStaffs(prev => {
+        const exists = prev.some(staff => staff.id === savedStaff.id);
+        if (exists) {
+          return prev.map(staff => staff.id === savedStaff.id ? savedStaff : staff);
+        }
+        return [savedStaff, ...prev];
+      });
+
       if (formData.id && user?.userId && formData.id === user.userId) {
         updateUser({
-          fullName: result.fullName,
-          role: result.role,
-          avatarUrl: avatarResult?.avatarUrl || result.avatarUrl,
+          fullName: savedStaff.fullName,
+          role: savedStaff.role,
+          avatarUrl: savedStaff.avatarUrl,
         });
       }
 
       setIsModalOpen(false);
-      showSuccess(`${actionType} nhân viên "${result.fullName}" thành công!`);
-      fetchStaffs();
+      showSuccess(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
 
     } catch (err) {
       console.error('Error saving staff:', err);
@@ -134,14 +155,14 @@ const StaffManager = () => {
     if (!confirmed) return;
     try {
       await staffService.delete(id);
+      setStaffs(prev => prev.filter(staff => staff.id !== id));
       showSuccess("Đã xóa nhân viên thành công!");
-      fetchStaffs();
     } catch (err) {
       showError(err);
     }
   };
 
-  const filteredStaffs = React.useMemo(() => {
+  const filteredStaffs = useMemo(() => {
     const normalizedSearch = searchTerm.toLowerCase();
     return staffs.filter(s => {
       const matchesSearch =
@@ -191,10 +212,7 @@ const StaffManager = () => {
       )}
 
       {!loading && filteredStaffs.length === 0 && (
-        <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
-          <Users size={40} className="mx-auto mb-4 opacity-30" />
-          Không tìm thấy nhân viên phù hợp hoặc chưa có dữ liệu.
-        </div>
+        <EmptyState icon={Users} message="Không tìm thấy nhân viên phù hợp hoặc chưa có dữ liệu." />
       )}
 
       {/* Modal Thêm/Sửa */}
@@ -206,21 +224,6 @@ const StaffManager = () => {
         onSubmit={handleSubmit}
         errors={errors}
         setErrors={setErrors}
-      />
-
-      <StatusModal
-        isOpen={statusModal.isOpen}
-        onClose={closeStatusModal}
-        type={statusModal.type}
-        title={statusModal.title}
-        message={statusModal.message}
-      />
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={closeConfirm}
-        onConfirm={confirmModal.onConfirm}
-        title={confirmModal.title}
-        message={confirmModal.message}
       />
     </div>
   );

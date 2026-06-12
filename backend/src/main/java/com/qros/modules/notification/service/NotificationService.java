@@ -55,6 +55,11 @@ public interface NotificationService {
     void notifyVoucherChange();
 
     /**
+     * Notifies admin clients of changes in promotion configurations.
+     */
+    void notifyPromotionChange();
+
+    /**
      * Notifies admin clients of changes in the user/staff list.
      */
     void notifyUserChange();
@@ -63,6 +68,14 @@ public interface NotificationService {
      * Notifies clients that restaurant/system settings changed.
      */
     void notifySettingsChange();
+
+    /**
+     * Notifies internal clients that inventory stock, recipes, or item metadata changed.
+     *
+     * @param type Change type
+     * @param id   Affected entity identifier or reference
+     */
+    void notifyInventoryChange(String type, Object id);
 
     /**
      * Notifies clients that restaurant/system settings changed and includes the

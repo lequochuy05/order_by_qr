@@ -1,7 +1,7 @@
-import { Pencil, Trash2, ImageIcon } from 'lucide-react';
+import { Pencil, Trash2, ImageIcon, Loader2 } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 
-const MenuItemCard = ({ item, onEdit, onDelete }) => (
+const MenuItemCard = ({ item, onEdit, onDelete, isEditing = false }) => (
   <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-md transition-all flex flex-col h-full">
     <div className="relative h-32 mb-3 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
       {item.img ? (
@@ -20,8 +20,12 @@ const MenuItemCard = ({ item, onEdit, onDelete }) => (
     </div>
 
     <div className="flex gap-2 mt-3 group-hover:opacity-100 transition-opacity">
-      <button onClick={() => onEdit(item)} className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100">
-        <Pencil size={14} />
+      <button
+        onClick={() => onEdit(item)}
+        disabled={isEditing}
+        className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100 disabled:opacity-60 disabled:cursor-wait"
+      >
+        {isEditing ? <Loader2 size={14} className="animate-spin" /> : <Pencil size={14} />}
       </button>
       <button onClick={() => onDelete(item.id)} className="flex-1 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all flex justify-center border border-red-100">
         <Trash2 size={14} />

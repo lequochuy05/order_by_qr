@@ -10,6 +10,7 @@ import {
   Table,
   Users,
   BarChart3,
+  Boxes,
   Package,
   TicketIcon,
   ChevronDown,
@@ -56,6 +57,12 @@ const menuItems = [
     roles: ['MANAGER']
   },
   {
+    title: 'Quản lý kho',
+    path: '/admin/inventory',
+    icon: <Boxes size={22} />,
+    roles: ['MANAGER']
+  },
+  {
     title: 'Quản lý voucher',
     path: '/admin/voucher',
     icon: <TicketIcon size={22} />,
@@ -97,7 +104,8 @@ const menuItems = [
     roles: ['MANAGER', 'STAFF', 'CHEF'],
     children: [
       { title: 'Thông tin cá nhân', path: '/admin/profile' },
-      { title: 'Cài đặt', path: '/admin/settings' }
+      { title: 'Cài đặt nhà hàng', path: '/admin/settings', roles: ['MANAGER'] },
+      { title: 'Tùy chọn cá nhân', path: '/admin/settings', roles: ['STAFF', 'CHEF'] }
     ]
   }
 ];
@@ -271,7 +279,9 @@ const englishMenuLabels = {
   'Món ăn bán chạy': 'Top dishes',
   'Nhân viên': 'Staff',
   'Cài đặt': 'Settings',
-  'Thông tin cá nhân': 'Profile'
+  'Thông tin cá nhân': 'Profile',
+  'Cài đặt nhà hàng': 'Restaurant settings',
+  'Tùy chọn cá nhân': 'Preferences'
 };
 
 const getMenuLabel = (text, language) => {

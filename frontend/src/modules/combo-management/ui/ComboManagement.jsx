@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
@@ -9,8 +9,6 @@ import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
-import StatusModal from '@shared/ui/StatusModal.jsx';
-import ConfirmModal from '@shared/ui/ConfirmModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 
 const ComboManager = () => {
@@ -24,43 +22,73 @@ const ComboManager = () => {
     const [editingCombo, setEditingCombo] = useState(null);
     const [toggleConfirm, setToggleConfirm] = useState({ isOpen: false, id: null, active: false });
     const [errors, setErrors] = useState({});
+    const [detailLoadingId, setDetailLoadingId] = useState(null);
+    const isMountedRef = useRef(true);
+    const fetchSeqRef = useRef(0);
 
-    const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
-    const { confirmModal, confirm, closeConfirm } = useConfirmModal();
+    const { showSuccess, showError } = useStatusModal();
+    const { confirm } = useConfirmModal();
 
-    const fetchData = useCallback(async (showLoading = false) => {
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    const fetchCombos = useCallback(async (showLoading = false, { force = false } = {}) => {
+        const fetchSeq = ++fetchSeqRef.current;
         if (showLoading) setLoading(true);
         try {
-            const [comboData, menuData] = await Promise.all([
-                comboService.getAll(),
-                menuItemService.getAll()
-            ]);
+            const comboData = await comboService.getAll({ force });
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             setCombos(comboData);
-            setMenuItems(menuData);
         } catch (err) {
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             console.error("Lỗi đồng bộ dữ liệu:", err);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+                setLoading(false);
+            }
         }
     }, []);
+
+    const ensureMenuItems = useCallback(async () => {
+        if (menuItems.length > 0) return menuItems;
+        const data = await menuItemService.getAll();
+        if (isMountedRef.current) {
+            setMenuItems(data || []);
+        }
+        return data || [];
+    }, [menuItems]);
 
     useWebSocket('/topic/combos', (message) => {
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             playNotificationSound();
-            fetchData();
+            fetchCombos(false, { force: true });
         }
     });
 
-    useEffect(() => { fetchData(true); }, [fetchData]);
+    useEffect(() => { fetchCombos(true); }, [fetchCombos]);
 
     const handleSubmit = async (data) => {
         try {
+            let saved;
             if (data.id) {
-                await comboService.update(data.id, data);
+                saved = await comboService.update(data.id, data);
                 showSuccess("Cập nhật Combo thành công!");
             } else {
-                await comboService.create(data);
+                saved = await comboService.create(data);
                 showSuccess("Thêm mới Combo thành công!");
+            }
+            if (saved?.id) {
+                setCombos(prev => {
+                    const exists = prev.some(combo => combo.id === saved.id);
+                    if (exists) {
+                        return prev.map(combo => combo.id === saved.id ? { ...combo, ...saved, items: combo.items || [] } : combo);
+                    }
+                    return [saved, ...prev];
+                });
             }
             setErrors({});
             setIsModalOpen(false);
@@ -82,7 +110,7 @@ const ComboManager = () => {
         try {
             await comboService.delete(id);
             showSuccess("Đã xóa Combo thành công!");
-            fetchData();
+            setCombos(prev => prev.filter(combo => combo.id !== id));
         } catch (err) {
             showError(err);
         }
@@ -95,7 +123,8 @@ const ComboManager = () => {
     const handleConfirmToggle = async () => {
         const { id } = toggleConfirm;
         try {
-            await comboService.toggleActive(id);
+            const updated = await comboService.toggleActive(id);
+            setCombos(prev => prev.map(combo => combo.id === id ? { ...combo, active: updated.active } : combo));
 
             setToggleConfirm({ isOpen: false, id: null, active: false });
         } catch (err) {
@@ -105,8 +134,13 @@ const ComboManager = () => {
     };
 
     const handleEdit = async (id) => {
+        setDetailLoadingId(id);
         try {
-            const detail = await comboService.getById(id);
+            const [detail] = await Promise.all([
+                comboService.getById(id),
+                ensureMenuItems()
+            ]);
+            if (!isMountedRef.current) return;
             const formatted = {
                 ...detail,
                 items: (detail.items || []).map(i => ({
@@ -120,10 +154,27 @@ const ComboManager = () => {
             setIsModalOpen(true);
         } catch (err) {
             showError(err);
+        } finally {
+            if (isMountedRef.current) {
+                setDetailLoadingId(null);
+            }
         }
     };
 
-    const filteredCombos = React.useMemo(() => {
+    const handleOpenCreate = async () => {
+        setEditingCombo(null);
+        setErrors({});
+        try {
+            await ensureMenuItems();
+            if (isMountedRef.current) {
+                setIsModalOpen(true);
+            }
+        } catch (err) {
+            showError(err);
+        }
+    };
+
+    const filteredCombos = useMemo(() => {
         const normalizedSearch = searchTerm.toLowerCase();
         return combos.filter(c => {
             const matchesSearch = c.name.toLowerCase().includes(normalizedSearch);
@@ -142,11 +193,7 @@ const ComboManager = () => {
                 searchPlaceholder="Tìm kiếm combo..."
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
-                onAddClick={() => {
-                    setEditingCombo(null);
-                    setErrors({});
-                    setIsModalOpen(true);
-                }}
+                onAddClick={handleOpenCreate}
                 addButtonText="Thêm mới"
                 showFilter
                 filterAllLabel="Tất cả trạng thái"
@@ -171,6 +218,7 @@ const ComboManager = () => {
                             onEdit={() => handleEdit(c.id)}
                             onToggle={() => handleRequestToggle(c.id, c.active)}
                             onDelete={() => handleDelete(c.id)}
+                            isEditing={detailLoadingId === c.id}
                         />
                     ))}
                 </div>
@@ -195,18 +243,6 @@ const ComboManager = () => {
                 isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
                 menuItems={menuItems} initialData={editingCombo} onSubmit={handleSubmit}
                 errors={errors} setErrors={setErrors}
-            />
-
-            <StatusModal
-                isOpen={statusModal.isOpen} onClose={closeStatusModal}
-                type={statusModal.type} title={statusModal.title} message={statusModal.message}
-            />
-            <ConfirmModal
-                isOpen={confirmModal.isOpen}
-                onClose={closeConfirm}
-                onConfirm={confirmModal.onConfirm}
-                title={confirmModal.title}
-                message={confirmModal.message}
             />
         </div>
     );

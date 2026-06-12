@@ -1,12 +1,20 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.order.dto.OrderPreviewResponse;
-import com.qros.modules.order.dto.OrderRequest;
-import com.qros.modules.order.dto.OrderResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
+import com.qros.modules.order.dto.request.OrderItemUpdateRequest;
+import com.qros.modules.order.dto.request.OrderPayRequest;
+import com.qros.modules.order.dto.request.OrderStatusUpdateRequest;
+import com.qros.modules.order.dto.request.StaffCreateOrderRequest;
+import com.qros.modules.order.dto.response.OrderPreviewResponse;
+import com.qros.modules.order.dto.response.OrderResponse;
+import com.qros.modules.order.dto.response.PublicOrderResponse;
+import com.qros.modules.order.dto.response.TableBoardResponse;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -14,127 +22,137 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * OrderService - Core interface for managing the complete ordering lifecycle.
- * Handles customer requests, order status changes, and financial transactions.
+ * OrderService - Facade service for the order module.
+ * Controllers should call this class instead of accessing smaller order
+ * services directly.
  */
-public interface OrderService {
+@Service
+@RequiredArgsConstructor
+public class OrderService {
 
-    /**
-     * Retrieves all orders currently registered in the system.
-     * 
-     * @return List of OrderResponse objects
-     */
-    List<OrderResponse> getAllOrders();
+        private final OrderCreationService orderCreationService;
+        private final OrderQueryService orderQueryService;
+        private final OrderPricingService orderPricingService;
+        private final OrderStatusService orderStatusService;
+        private final OrderItemWorkflowService orderItemWorkflowService;
+        private final OrderPaymentService orderPaymentService;
 
-    /**
-     * Retrieves filtered and paginated order history records.
-     * 
-     * @param status        Status filter
-     * @param startDate     Range start
-     * @param endDate       Range end
-     * @param orderId       Order ID filter
-     * @param tableNumber   Table number filter
-     * @param pageable      Pagination configuration
-     * @return Page of OrderResponse objects
-     */
-    Page<OrderResponse> getOrderHistory(String status, LocalDate startDate, LocalDate endDate, String orderId,
-            String tableNumber, @NonNull Pageable pageable);
+        public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
+                return orderCreationService.createCustomerOrder(request);
+        }
 
-    /**
-     * Generates high-level statistical summaries for specified order criteria.
-     * 
-     * @return Map containing metrics like total revenue and volume
-     */
-    Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
-            String tableNumber);
+        public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
+                return orderCreationService.createStaffOrder(request);
+        }
 
-    /**
-     * Synchronizes order status with external payment providers or internal rules.
-     * 
-     * @param id Order ID
-     * @return Updated OrderResponse
-     */
-    OrderResponse reconcileOrder(@NonNull Long id);
+        public OrderPreviewResponse previewCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
+                return orderPricingService.previewCustomerOrder(request);
+        }
 
-    /**
-     * Transitions an order between lifecycle states (e.g., PENDING to SERVING).
-     * 
-     * @param id     Order ID
-     * @param status Target status string
-     * @return Updated OrderResponse
-     */
-    OrderResponse updateStatus(@NonNull Long id, @NonNull String status);
+        public OrderPreviewResponse previewStaffOrder(@NonNull StaffCreateOrderRequest request) {
+                return orderPricingService.previewStaffOrder(request);
+        }
 
-    /**
-     * Creates a new order or merges items into an existing session for the same
-     * table.
-     * 
-     * @param req Order request data
-     * @return Created or updated OrderResponse
-     */
-    OrderResponse createOrder(@NonNull OrderRequest req);
+        public Page<OrderResponse> getAllOrders(@NonNull Pageable pageable) {
+                return orderQueryService.getAllOrders(pageable);
+        }
 
-    /**
-     * Cancels a specific item line from an active order.
-     * 
-     * @param itemId Item identifier
-     */
-    void cancelOrderItem(@NonNull Long itemId);
+        public Page<OrderResponse> getOrderHistory(
+                        String status,
+                        LocalDate from,
+                        LocalDate to,
+                        String orderId,
+                        String tableNumber,
+                        @NonNull Pageable pageable) {
+                return orderQueryService.getOrderHistory(status, from, to, orderId, tableNumber, pageable);
+        }
 
-    /**
-     * Locates the active ordering session for a specific dining table.
-     */
-    Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId);
+        public Map<String, Object> getOrderStats(
+                        String status,
+                        LocalDate from,
+                        LocalDate to,
+                        String orderId,
+                        String tableNumber) {
+                return orderQueryService.getOrderStats(status, from, to, orderId, tableNumber);
+        }
 
-    Optional<PublicMenuResponse.Order> getPublicCurrentOrderByTable(@NonNull Long tableId);
+        public List<OrderResponse> getActiveOrders() {
+                return orderQueryService.getActiveOrders();
+        }
 
-    /**
-     * Updates line-item specifics like quantity or custom instructions.
-     */
-    OrderResponse updateOrderItem(@NonNull Long itemId, int quantity, String notes);
+        public TableBoardResponse getTableBoard() {
+                return orderQueryService.getTableBoard();
+        }
 
-    /**
-     * Finalizes the financial transaction for an order (Cash payment flow).
-     * 
-     * @param id          Order ID
-     * @param userId      The staff member processing the payment
-     * @param voucherCode Optional promotional voucher
-     * @return Success confirmation string
-     */
-    String payOrder(@NonNull Long id, @NonNull Long userId, String voucherCode);
+        public OrderResponse getOrderById(@NonNull Long id) {
+                return orderQueryService.getOrderById(id);
+        }
 
-    /**
-     * Calculates the projected bill for a potential order without persisting it.
-     */
-    OrderPreviewResponse preview(@NonNull OrderRequest req);
+        public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
+                return orderQueryService.getCurrentOrderByTable(tableId);
+        }
 
-    /**
-     * Lists all orders currently in progress (not completed or cancelled).
-     */
-    List<OrderResponse> getActiveOrders();
+        public Optional<PublicOrderResponse> getPublicCurrentOrderByTableCode(@NonNull String tableCode) {
+                return orderQueryService.getPublicCurrentOrderByTableCode(tableCode);
+        }
 
-    /**
-     * Confirms that an order has been settled financially.
-     */
-    OrderResponse confirmPaid(@NonNull Long id);
+        public Optional<PublicOrderResponse> getPublicCurrentOrderByTable(@NonNull Long tableId) {
+                return orderQueryService.getPublicCurrentOrderByTable(tableId);
+        }
 
-    /**
-     * Terminates an order session entirely.
-     */
-    OrderResponse cancelOrder(@NonNull Long id);
+        public OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId) {
+                return orderQueryService.getOrderPreviewByTableId(tableId);
+        }
 
-    /**
-     * Retrieves a detailed view of a single order.
-     */
-    OrderResponse getOrderById(@NonNull Long id);
+        public OrderResponse reconcileOrder(@NonNull Long id) {
+                return orderQueryService.reconcileOrder(id);
+        }
 
-    /**
-     * Generates a billing preview for the current active order on a table.
-     */
-    OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId);
+        public OrderResponse updateStatus(@NonNull Long id, @NonNull OrderStatusUpdateRequest request) {
+                return orderStatusService.updateStatus(id, request.status());
+        }
 
-    /**
-     * Permanently removes an order record from system history.
-     */
-    void deleteOrder(@NonNull Long id);
+        public OrderResponse cancelOrder(@NonNull Long id) {
+                return orderStatusService.cancelOrder(id);
+        }
+
+        public void deleteOrder(@NonNull Long id) {
+                orderStatusService.deleteOrder(id);
+        }
+
+        public OrderResponse updateOrderItem(@NonNull Long itemId, @NonNull OrderItemUpdateRequest request) {
+                return orderItemWorkflowService.updateOrderItem(itemId, request.quantity(), request.notes());
+        }
+
+        public void cancelOrderItem(@NonNull Long itemId) {
+                orderItemWorkflowService.cancelOrderItem(itemId);
+        }
+
+        public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status) {
+                orderItemWorkflowService.updateItemStatus(itemId, status);
+        }
+
+        public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status, Long userId) {
+                orderItemWorkflowService.updateItemStatus(itemId, status, userId);
+        }
+
+        public void markItemPrepared(@NonNull Long itemId) {
+                orderItemWorkflowService.markItemPrepared(itemId);
+        }
+
+        public void markItemPrepared(@NonNull Long itemId, Long userId) {
+                orderItemWorkflowService.markItemPrepared(itemId, userId);
+        }
+
+        public String payOrder(@NonNull Long id, @NonNull OrderPayRequest request) {
+                return orderPaymentService.payOrder(id, request.voucherCode());
+        }
+
+        public String payOrder(@NonNull Long id, Long userId, @NonNull OrderPayRequest request) {
+                return orderPaymentService.payOrder(id, userId, request.voucherCode());
+        }
+
+        public OrderResponse confirmPaid(@NonNull Long id) {
+                return orderPaymentService.confirmPaid(id);
+        }
 }

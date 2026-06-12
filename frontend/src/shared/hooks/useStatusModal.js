@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { create } from 'zustand';
 
 const tryParseJson = (value) => {
   if (typeof value !== 'string') return value;
@@ -86,43 +86,41 @@ const buildErrorMessage = (err) => {
   return details.length > 0 ? `${msg}\n\n${details.join('\n')}` : msg;
 };
 
-export const useStatusModal = () => {
-  const [statusModal, setStatusModal] = useState({
-    isOpen: false,
+export const useStatusModalStore = create((set) => ({
+  isOpen: false,
+  type: 'success',
+  title: '',
+  message: '',
+
+  showSuccess: (msg, title = 'Thành công!') => set({
+    isOpen: true,
     type: 'success',
-    title: '',
-    message: ''
-  });
+    title: title,
+    message: msg
+  }),
 
-  // Hàm hiển thị thành công
-  const showSuccess = useCallback((msg, title = 'Thành công!') => {
-    setStatusModal({
-      isOpen: true,
-      type: 'success',
-      title: title,
-      message: msg
-    });
-  }, []);
+  showError: (err, title = 'Thao tác thất bại') => set({
+    isOpen: true,
+    type: 'error',
+    title: title,
+    message: buildErrorMessage(err)
+  }),
 
-  // Hàm hiển thị lỗi "thông minh"
-  const showError = useCallback((err, title = 'Thao tác thất bại') => {
-    setStatusModal({
-      isOpen: true,
-      type: 'error',
-      title: title,
-      message: buildErrorMessage(err)
-    });
-  }, []);
+  closeStatusModal: () => set({ isOpen: false })
+}));
 
-  // Hàm đóng modal
-  const closeStatusModal = useCallback(() => {
-    setStatusModal(prev => ({ ...prev, isOpen: false }));
-  }, []);
+export const useStatusModal = () => {
+  const store = useStatusModalStore();
 
   return {
-    statusModal,      // State để truyền vào Component
-    showSuccess,      // Hàm gọi khi thành công
-    showError,        // Hàm gọi khi lỗi
-    closeStatusModal  // Hàm đóng
+    statusModal: {
+      isOpen: store.isOpen,
+      type: store.type,
+      title: store.title,
+      message: store.message
+    },
+    showSuccess: store.showSuccess,
+    showError: store.showError,
+    closeStatusModal: store.closeStatusModal
   };
 };

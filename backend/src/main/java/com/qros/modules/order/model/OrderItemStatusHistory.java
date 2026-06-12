@@ -1,6 +1,8 @@
 package com.qros.modules.order.model;
 
 import com.qros.modules.user.model.User;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -25,18 +27,19 @@ public class OrderItemStatusHistory {
 
     @Enumerated(EnumType.STRING)
     @Column(length = 30)
-    private OrderItem.OrderItemStatus fromStatus;
+    private OrderItemStatus fromStatus;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 30, nullable = false)
-    private OrderItem.OrderItemStatus toStatus;
+    private OrderItemStatus toStatus;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "changed_by")
     private User changedBy;
 
     @Column(nullable = false)
-    private LocalDateTime changedAt;
+    @Builder.Default
+    private LocalDateTime changedAt = LocalDateTime.now();
 
     @Column(length = 255)
     private String reason;

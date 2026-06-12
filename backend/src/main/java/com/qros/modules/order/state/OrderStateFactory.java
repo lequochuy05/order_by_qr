@@ -1,19 +1,21 @@
 package com.qros.modules.order.state;
 
-import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
 import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.EnumMap;
 import java.util.List;
 
 /**
- * OrderStateFactory - Manages the initialization and retrieval of OrderState implementations.
- * Centralizes the mapping between OrderStatus enums and their corresponding behavior classes.
+ * OrderStateFactory - Manages the initialization and retrieval of OrderState
+ * implementations.
+ * Centralizes the mapping between OrderStatus enums and their corresponding
+ * behavior classes.
  */
 @Component
 public class OrderStateFactory {
-    
-    private final Map<Order.OrderStatus, OrderState> states = new EnumMap<>(Order.OrderStatus.class);
+
+    private final Map<OrderStatus, OrderState> states = new EnumMap<>(OrderStatus.class);
 
     /**
      * Initializes the factory by mapping each injected OrderState to its status.
@@ -33,7 +35,7 @@ public class OrderStateFactory {
      * @return The corresponding OrderState implementation
      * @throws IllegalArgumentException if no handler is found for the given status
      */
-    public OrderState getState(Order.OrderStatus status) {
+    public OrderState getState(OrderStatus status) {
         OrderState state = states.get(status);
         if (state == null) {
             throw new IllegalArgumentException("State handler not found for status: " + status);
@@ -51,7 +53,7 @@ public class OrderStateFactory {
      */
     public OrderState getState(String statusName) {
         try {
-            Order.OrderStatus status = Order.OrderStatus.valueOf(statusName.toUpperCase());
+            OrderStatus status = OrderStatus.valueOf(statusName.toUpperCase());
             return getState(status);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid order status: " + statusName);
@@ -59,13 +61,14 @@ public class OrderStateFactory {
     }
 
     /**
-     * Validates that the given current status is allowed to transition into the target status.
+     * Validates that the given current status is allowed to transition into the
+     * target status.
      *
-     * @param current   The order's current status
-     * @param target    The desired new status
+     * @param current The order's current status
+     * @param target  The desired new status
      * @throws IllegalStateException if the transition is not allowed
      */
-    public void validateTransition(Order.OrderStatus current, Order.OrderStatus target) {
+    public void validateTransition(OrderStatus current, OrderStatus target) {
         OrderState targetState = getState(target);
         if (!targetState.allowedTransitionsFrom().contains(current)) {
             throw new IllegalStateException(

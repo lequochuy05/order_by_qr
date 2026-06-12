@@ -1,22 +1,25 @@
 package com.qros.modules.menu.controller;
 
-import com.qros.shared.response.ApiResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.inventory.service.InventoryAvailabilityService;
+import com.qros.modules.menu.dto.publicmenu.PublicCatalogResponse;
+import com.qros.modules.menu.dto.publicmenu.PublicCategoryItem;
+import com.qros.modules.menu.dto.publicmenu.PublicComboItem;
+import com.qros.modules.menu.dto.publicmenu.PublicMenuItem;
+import com.qros.modules.menu.dto.publicmenu.PublicTable;
+import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.service.CategoryService;
 import com.qros.modules.menu.service.ComboService;
-import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.menu.service.MenuItemService;
+import com.qros.modules.recommendation.model.enums.RecommendationContext;
 import com.qros.modules.recommendation.service.RecommendationService;
-import com.qros.modules.settings.service.SystemSettingsService;
+import com.qros.modules.table.service.DiningTableService;
+import com.qros.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/public")
@@ -28,69 +31,161 @@ public class PublicMenuController {
     private final ComboService comboService;
     private final DiningTableService tableService;
     private final RecommendationService recommendationService;
-    private final SystemSettingsService settingsService;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
+    private final PublicMenuMapper publicMenuMapper;
 
     @GetMapping("/categories")
-    public ApiResponse<List<PublicMenuResponse.CategoryItem>> getCategories() {
+    public ApiResponse<List<PublicCategoryItem>> getCategories() {
         return ApiResponse.success(categoryService.getPublicActive());
     }
 
+    @GetMapping("/catalog")
+    public ApiResponse<PublicCatalogResponse> getCatalog() {
+        return ApiResponse.success(new PublicCatalogResponse(
+                categoryService.getPublicActive(),
+                withMenuAvailability(menuItemService.getPublicMenuItems()),
+                getAvailableCombos()
+        ));
+    }
+
     @GetMapping("/menu-items")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getMenuItems(
-            @RequestParam(required = false) Integer categoryId) {
+    public ApiResponse<List<PublicMenuItem>> getMenuItems(
+            @RequestParam(required = false) Long categoryId
+    ) {
         if (categoryId != null) {
-            return ApiResponse.success(menuItemService.getPublicItemsByCategory(categoryId));
+            return ApiResponse.success(
+                    withMenuAvailability(menuItemService.getPublicItemsByCategory(categoryId))
+            );
         }
-        return ApiResponse.success(menuItemService.getPublicMenuItems());
+
+        return ApiResponse.success(
+                withMenuAvailability(menuItemService.getPublicMenuItems())
+        );
+    }
+
+    @GetMapping("/menu-items/category/{categoryId}")
+    public ApiResponse<List<PublicMenuItem>> getMenuItemsByCategory(
+            @PathVariable @NonNull Long categoryId
+    ) {
+        return ApiResponse.success(
+                withMenuAvailability(menuItemService.getPublicItemsByCategory(categoryId))
+        );
     }
 
     @GetMapping("/combos")
-    public ApiResponse<List<PublicMenuResponse.ComboItem>> getCombos() {
-        return ApiResponse.success(comboService.getPublicActive());
-    }
-
-    @GetMapping("/settings")
-    public ApiResponse<PublicMenuResponse.Settings> getSettings() {
-        return ApiResponse.success(settingsService.getPublicSettings());
+    public ApiResponse<List<PublicComboItem>> getCombos() {
+        return ApiResponse.success(getAvailableCombos());
     }
 
     @GetMapping("/tables/by-code/{tableCode}")
-    public ApiResponse<PublicMenuResponse.Table> getTableByCode(@PathVariable @NonNull String tableCode) {
-        return ApiResponse.success(tableService.getPublicByTableCode(tableCode));
+    public ApiResponse<PublicTable> getTableByCode(
+            @PathVariable @NonNull String tableCode
+    ) {
+        return ApiResponse.success(tableService.getPublicByCode(tableCode));
     }
 
     @GetMapping("/recommendations/personalized")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getPersonalizedRecommendations(
+    public ApiResponse<List<PublicMenuItem>> getPersonalizedRecommendations(
             @RequestParam(defaultValue = "Morning") String timeContext,
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(recommendationService.getPersonalizedRecommendations(timeContext, limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        return ApiResponse.success(
+                withMenuAvailability(
+                        recommendationService.getPersonalizedRecommendations(
+                                        parseRecommendationContext(timeContext),
+                                        limit)
+                                .items()
+                                .stream()
+                                .map(publicMenuMapper::fromRecommendationItemResponse)
+                                .toList()
+                )
+        );
     }
 
     @GetMapping("/recommendations/cross-sell/{itemId}")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getCrossSellRecommendations(
+    public ApiResponse<List<PublicMenuItem>> getCrossSellRecommendations(
             @PathVariable @NonNull Long itemId,
-            @RequestParam(defaultValue = "3") int limit) {
-        return ApiResponse.success(recommendationService.getCrossSellRecommendations(itemId, limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+            @RequestParam(defaultValue = "3") int limit
+    ) {
+        return ApiResponse.success(
+                withMenuAvailability(
+                        recommendationService.getCrossSellRecommendations(itemId, limit)
+                                .items()
+                                .stream()
+                                .map(publicMenuMapper::fromRecommendationItemResponse)
+                                .toList()
+                )
+        );
     }
 
     @GetMapping("/recommendations/popular")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getPopularItems(
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(recommendationService.getPopularItems(limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+    public ApiResponse<List<PublicMenuItem>> getPopularItems(
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        return ApiResponse.success(
+                withMenuAvailability(
+                        recommendationService.getPopularItems(limit)
+                                .items()
+                                .stream()
+                                .map(publicMenuMapper::fromRecommendationItemResponse)
+                                .toList()
+                )
+        );
     }
 
     @GetMapping("/recommendations/items/{itemId}")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getRecommendations(
+    public ApiResponse<List<PublicMenuItem>> getRecommendations(
             @PathVariable @NonNull Long itemId,
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(recommendationService.getRecommendations(itemId, limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+            @RequestParam(defaultValue = "5") int limit
+    ) {
+        return ApiResponse.success(
+                withMenuAvailability(
+                        recommendationService.getRecommendations(itemId, limit)
+                                .items()
+                                .stream()
+                                .map(publicMenuMapper::fromRecommendationItemResponse)
+                                .toList()
+                )
+        );
+    }
+
+    private List<PublicComboItem> getAvailableCombos() {
+        var combos = comboService.getPublicActive();
+        var comboIds = combos.stream().map(PublicComboItem::id).toList();
+        var availability = inventoryAvailabilityService.getComboAvailabilityByIds(comboIds);
+
+        return combos.stream()
+                .map(combo -> publicMenuMapper.withAvailability(
+                        combo,
+                        availability.getOrDefault(combo.id(), true)
+                ))
+                .toList();
+    }
+
+    private List<PublicMenuItem> withMenuAvailability(List<PublicMenuItem> items) {
+        var itemIds = items.stream()
+                .map(PublicMenuItem::id)
+                .toList();
+
+        var availability = inventoryAvailabilityService.getMenuItemAvailability(itemIds);
+
+        return items.stream()
+                .map(item -> publicMenuMapper.withAvailability(
+                        item,
+                        availability.getOrDefault(item.id(), true)
+                ))
+                .toList();
+    }
+
+    private RecommendationContext parseRecommendationContext(String value) {
+        if (value == null || value.isBlank()) {
+            return RecommendationContext.ANY;
+        }
+
+        try {
+            return RecommendationContext.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            return RecommendationContext.ANY;
+        }
     }
 }

@@ -1,16 +1,19 @@
 package com.qros.modules.menu.service;
 
-import com.qros.infrastructure.storage.CloudinaryStorageService;
-import com.qros.shared.transaction.TransactionSideEffectService;
-import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.menu.dto.CategoryRequest;
-import com.qros.modules.menu.dto.CategoryResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.infrastructure.storage.StorageService;
+import com.qros.modules.menu.dto.publicmenu.PublicCategoryItem;
+import com.qros.modules.menu.dto.request.CategoryRequest;
+import com.qros.modules.menu.dto.response.CategoryResponse;
+import com.qros.modules.menu.mapper.CategoryMapper;
+import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.notification.service.NotificationService;
+import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionSideEffectService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -25,225 +28,176 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 
-/**
- * CategoryService - Service for managing menu categories.
- * Handles category lifecycle, imagery, and caching.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@org.springframework.transaction.annotation.Transactional(readOnly = true)
+@Transactional(readOnly = true)
 public class CategoryService {
+
+    private static final String CATEGORY_IMAGE_FOLDER = "order_by_qr/categories";
+
     private final CategoryRepository categoryRepo;
     private final MenuItemRepository menuItemRepository;
+    private final CategoryMapper categoryMapper;
+    private final PublicMenuMapper publicMenuMapper;
     private final NotificationService notificationService;
-    private final CloudinaryStorageService cloudinaryStorageService;
+    private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
 
-    /**
-     * Retrieves all active categories along with their associated menu items.
-     * Uses caching to optimize frontend menu displays.
-     * 
-     * @return List of active CategoryResponse DTOs
-     */
-    @Cacheable(value = "categories", key = "'all_active'")
+    @Cacheable(value = CacheNames.CATEGORIES, key = "'all_active'")
     public List<CategoryResponse> getAllActive() {
-        return categoryRepo.findAllActiveWithItems().stream()
-                .map(this::convertToResponse)
+        return categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc().stream()
+                .map(categoryMapper::toSummaryResponse)
                 .toList();
     }
 
-    @Cacheable(value = "categories", key = "'public_all_active'")
-    public List<PublicMenuResponse.CategoryItem> getPublicActive() {
-        return categoryRepo.findAllActiveWithItems().stream()
-                .map(PublicMenuResponse::fromCategory)
+    @Cacheable(value = CacheNames.CATEGORIES, key = "'public_all_active'")
+    public List<PublicCategoryItem> getPublicActive() {
+        return categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc().stream()
+                .map(publicMenuMapper::toCategoryItem)
                 .toList();
     }
 
-    /**
-     * Searches for categories by name with pagination support.
-     * 
-     * @param q        Search keyword
-     * @param pageable Pagination and sorting information
-     * @return Paged result of matching CategoryResponse DTOs
-     */
     public Page<CategoryResponse> search(String q, @NonNull Pageable pageable) {
-        Page<Category> page;
-        if (q == null || q.trim().isEmpty()) {
-            page = categoryRepo.findAll(pageable);
-        } else {
-            page = categoryRepo.findByNameContainingIgnoreCase(q, pageable);
-        }
-        return page.map(this::convertToResponse);
+        Page<Category> page = q == null || q.trim().isEmpty()
+                ? categoryRepo.findAll(pageable)
+                : categoryRepo.findByNameContainingIgnoreCase(q.trim(), pageable);
+
+        return page.map(categoryMapper::toResponse);
     }
 
-    /**
-     * Creates a new category and invalidates the category cache.
-     * 
-     * @param c Category entity to create
-     * @return Saved CategoryResponse DTO
-     * @throws BusinessException if category name already exists
-     */
     @Transactional
-    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
-    public CategoryResponse create(@NonNull CategoryRequest input) {
-        if (categoryRepo.existsByNameIgnoreCase(input.getName())) {
+    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    public CategoryResponse create(@NonNull CategoryRequest req) {
+        String name = normalizeRequired(req.name(), "Category name cannot be empty");
+        if (categoryRepo.existsByNameIgnoreCase(name)) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
-        Category c = new Category();
-        c.setName(input.getName());
-        c.setActive(input.getActive() != null ? input.getActive() : true);
-        if (input.getImg() != null) {
-            c.setImg(input.getImg());
-        }
+        Category category = Category.builder()
+                .name(name)
+                .img(normalizeBlank(req.img()))
+                .description(normalizeBlank(req.description()))
+                .active(req.active() != null ? req.active() : true)
+                .displayOrder(req.displayOrder() != null ? req.displayOrder() : 0)
+                .build();
 
-        Category saved = categoryRepo.save(c);
+        Category saved = categoryRepo.save(category);
         notificationService.notifyCategoryChange("created", saved.getId());
-        return convertToResponse(saved);
+
+        return categoryMapper.toResponse(saved);
     }
 
-    /**
-     * Updates an existing category's properties.
-     * 
-     * @param id    Category ID
-     * @param input Updated category details
-     * @return Updated CategoryResponse DTO
-     */
     @Transactional
-    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
-    public CategoryResponse update(@NonNull Integer id, @NonNull CategoryRequest input) {
-        Category exist = categoryRepo.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    public CategoryResponse update(@NonNull Long id, @NonNull CategoryRequest req) {
+        String name = normalizeRequired(req.name(), "Category name cannot be empty");
+        Category category = getEntityById(id);
 
-        if (!exist.getName().equalsIgnoreCase(input.getName())
-                && categoryRepo.existsByNameIgnoreCaseAndIdNot(input.getName(), id)) {
+        if (!category.getName().equalsIgnoreCase(name)
+                && categoryRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
-        exist.setName(input.getName());
-        if (input.getActive() != null) {
-            exist.setActive(input.getActive());
+        category.setName(name);
+        category.setImg(normalizeBlank(req.img()));
+        category.setDescription(normalizeBlank(req.description()));
+
+        if (req.active() != null) {
+            category.setActive(req.active());
         }
 
-        if (input.getImg() != null && !input.getImg().isBlank()) {
-            exist.setImg(input.getImg());
+        if (req.displayOrder() != null) {
+            category.setDisplayOrder(req.displayOrder());
         }
 
-        Category saved = categoryRepo.save(exist);
+        Category saved = categoryRepo.save(category);
         notificationService.notifyCategoryChange("updated", saved.getId());
-        return convertToResponse(saved);
+
+        return categoryMapper.toResponse(saved);
     }
 
-    /**
-     * Soft deletes a category and cleans up its associated cloud image.
-     * 
-     * @param id Category ID
-     */
     @Transactional
-    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
-    public void delete(@NonNull Integer id) {
-        Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    public void delete(@NonNull Long id) {
+        Category category = getEntityById(id);
 
         if (menuItemRepository.countByCategoryIdAndActiveTrue(id) > 0) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR,
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_ERROR,
                     "Cannot delete category that still contains active menu items");
         }
 
-        if (cat.getImg() != null && !cat.getImg().isBlank()) {
-            String oldImg = cat.getImg();
-            sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldImg),
+        String oldImg = category.getImg();
+
+        categoryRepo.delete(category);
+
+        if (isCustomImage(oldImg)) {
+            sideEffects.afterCommit(
+                    () -> storageService.delete(oldImg),
                     "delete category image after category delete " + id);
         }
 
-        categoryRepo.delete(cat);
         notificationService.notifyCategoryChange("deleted", id);
     }
 
-    /**
-     * Replaces the representative image for a category.
-     * 
-     * @param id   Category ID
-     * @param file The new image file
-     * @return Map containing the new image URL
-     */
     @Transactional
-    @CacheEvict(value = { "categories", "menu", "recommendations", "popularItems" }, allEntries = true)
-    public Map<String, String> uploadImage(@NonNull Integer id, @NonNull MultipartFile file) {
-        Category cat = categoryRepo.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
-
+    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.FILE_INVALID);
         }
 
+        Category category = getEntityById(id);
+        String oldUrl = category.getImg();
+
         try {
-            String oldUrl = cat.getImg();
-            String newUrl = cloudinaryStorageService.upload(file, "order_by_qr/categories");
-            sideEffects.afterRollback(() -> cloudinaryStorageService.delete(newUrl),
+            String newUrl = storageService.upload(file, CATEGORY_IMAGE_FOLDER);
+
+            sideEffects.afterRollback(
+                    () -> storageService.delete(newUrl),
                     "delete rolled back category image " + id);
-            if (oldUrl != null && !oldUrl.isBlank()) {
-                sideEffects.afterCommit(() -> cloudinaryStorageService.delete(oldUrl),
+
+            category.setImg(newUrl);
+            categoryRepo.save(category);
+
+            if (isCustomImage(oldUrl)) {
+                sideEffects.afterCommit(
+                        () -> storageService.delete(oldUrl),
                         "delete replaced category image " + id);
             }
-            cat.setImg(newUrl);
-            categoryRepo.save(cat);
+
             notificationService.notifyCategoryChange("image_updated", id);
+
             return Map.of("img", newUrl);
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Error uploading category image ID {}: {}", id, e.getMessage());
+            log.error("Error uploading category image ID {}: {}", id, e.getMessage(), e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload image", e);
         }
     }
 
-    /**
-     * Mapping helper to convert Category entity to CategoryResponse DTO.
-     */
-    private CategoryResponse convertToResponse(Category category) {
-        com.qros.modules.menu.dto.MenuItemResponse.CategorySummary catSummary = new com.qros.modules.menu.dto.MenuItemResponse.CategorySummary(
-                category.getId(), category.getName());
+    private Category getEntityById(Long id) {
+        return categoryRepo.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
 
-        return CategoryResponse.builder()
-                .id(category.getId())
-                .name(category.getName())
-                .img(category.getImg())
-                .active(category.getActive())
-                .createdAt(category.getCreatedAt())
-                .updatedAt(category.getUpdatedAt())
-                .menuItems(
-                        (!org.hibernate.Hibernate.isInitialized(category.getMenuItems())
-                                || category.getMenuItems() == null)
-                                        ? java.util.Collections.emptyList()
-                                        : category.getMenuItems().stream()
-                                                .map(item -> new com.qros.modules.menu.dto.MenuItemResponse(
-                                                        item.getId(),
-                                                        item.getName(),
-                                                        item.getImg(),
-                                                        item.getPrice(),
-                                                        item.getActive(),
-                                                        catSummary,
-                                                        item.getItemOptions() == null
-                                                                ? java.util.Collections.emptyList()
-                                                                : item.getItemOptions().stream().map(
-                                                                        o -> new com.qros.modules.menu.dto.MenuItemResponse.ItemOptionResponse(
-                                                                                o.getId(),
-                                                                                o.getName(),
-                                                                                o.isRequired(),
-                                                                                o.getMaxSelection(),
-                                                                                o.getOptionValues() == null
-                                                                                        ? java.util.Collections
-                                                                                                .emptyList()
-                                                                                        : o.getOptionValues().stream()
-                                                                                                .map(v -> new com.qros.modules.menu.dto.MenuItemResponse.ItemOptionValueResponse(
-                                                                                                        v.getId(),
-                                                                                                        v.getName(),
-                                                                                                        v.getExtraPrice()))
-                                                                                                .toList()))
-                                                                        .toList(),
-                                                        item.getCreatedAt(),
-                                                        item.getUpdatedAt()))
-                                                .toList())
-                .build();
+    private String normalizeBlank(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String normalizeRequired(String value, String message) {
+        String trimmed = normalizeBlank(value);
+        if (trimmed == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
+        }
+        return trimmed;
+    }
+
+    private boolean isCustomImage(String image) {
+        return image != null
+                && !image.isBlank()
+                && image.startsWith("http");
     }
 }

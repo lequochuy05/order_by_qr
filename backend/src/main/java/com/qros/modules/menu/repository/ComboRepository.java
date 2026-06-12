@@ -1,27 +1,54 @@
 package com.qros.modules.menu.repository;
 
-import java.util.*;
-
 import com.qros.modules.menu.model.Combo;
-
 import org.springframework.data.jpa.repository.*;
+import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface ComboRepository extends JpaRepository<Combo, Long> {
+
     boolean existsByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
     @Override
-    @EntityGraph(attributePaths = { "items.menuItem.category" })
+    @EntityGraph(attributePaths = {
+            "items",
+            "items.menuItem",
+            "items.menuItem.category"
+    })
     @NonNull
     List<Combo> findAll();
 
-    @Query("SELECT DISTINCT c FROM Combo c " +
-            "LEFT JOIN FETCH c.items ci " +
-            "LEFT JOIN FETCH ci.menuItem mi " +
-            "LEFT JOIN FETCH mi.category " +
-            "WHERE c.active = true")
-    List<Combo> findAllActiveWithItems();
+    @Query("""
+        SELECT c
+        FROM Combo c
+        ORDER BY c.displayOrder ASC, c.name ASC
+    """)
+    List<Combo> findAllForManagementSummary();
 
+    @Query("""
+        SELECT DISTINCT c
+        FROM Combo c
+        LEFT JOIN FETCH c.items ci
+        LEFT JOIN FETCH ci.menuItem mi
+        LEFT JOIN FETCH mi.category
+        WHERE c.id = :id
+    """)
+    Optional<Combo> findByIdWithItems(@Param("id") Long id);
+
+    @Query("""
+        SELECT DISTINCT c
+        FROM Combo c
+        LEFT JOIN FETCH c.items ci
+        LEFT JOIN FETCH ci.menuItem mi
+        LEFT JOIN FETCH mi.category
+        WHERE c.active = true
+          AND c.available = true
+        ORDER BY c.displayOrder ASC, c.name ASC
+    """)
+    List<Combo> findAllActiveWithItems();
 }

@@ -12,6 +12,7 @@ const SettingsPage = lazy(() => import('@pages/admin/SettingsPage.jsx'))
 const CategoryPage = lazy(() => import('@pages/admin/CategoryPage.jsx'))
 const MenuPage = lazy(() => import('@pages/admin/MenuPage.jsx'))
 const ComboPage = lazy(() => import('@pages/admin/ComboPage.jsx'))
+const InventoryPage = lazy(() => import('@pages/admin/InventoryPage.jsx'))
 const VoucherPage = lazy(() => import('@pages/admin/VoucherPage.jsx'))
 const StaffPage = lazy(() => import('@pages/admin/StaffPage.jsx'))
 const RevenueStatsPage = lazy(() => import('@pages/admin/RevenueStatsPage.jsx'))
@@ -51,6 +52,7 @@ const AppRouter = () => (
             <Route path="/admin/categories" element={<CategoryPage />} />
             <Route path="/admin/menu" element={<MenuPage />} />
             <Route path="/admin/combo" element={<ComboPage />} />
+            <Route path="/admin/inventory" element={<InventoryPage />} />
             <Route path="/admin/voucher" element={<VoucherPage />} />
             <Route path="/admin/staffs" element={<StaffPage />} />
             <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
@@ -69,7 +71,7 @@ const AppRouter = () => (
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/menu?tableCode=5c8006237e33" replace />} />
+      <Route path="/" element={<Navigate to="/menu?tableCode=2fa542d4f65c4342a48b" replace />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route path="*" element={<div>Trang không tồn tại</div>} />
     </Routes>

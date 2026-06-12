@@ -1,10 +1,23 @@
 package com.qros.modules.promotion.model;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.promotion.model.enums.VoucherType;
 import com.qros.shared.entity.BaseEntity;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
@@ -22,6 +35,7 @@ import java.time.LocalDateTime;
 @SQLDelete(sql = "UPDATE order_discounts SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 public class OrderDiscount extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -34,22 +48,22 @@ public class OrderDiscount extends BaseEntity {
     @JoinColumn(name = "voucher_id")
     private Voucher voucher;
 
-    @Column(length = 50)
+    @Column(name = "code_snapshot", nullable = false, length = 50)
     private String codeSnapshot;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private Voucher.VoucherType discountTypeSnapshot;
+    @Column(name = "discount_type_snapshot", nullable = false, length = 30)
+    private VoucherType discountTypeSnapshot;
 
-    private Double discountPercentSnapshot;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal discountPercentSnapshot;
 
     @Column(precision = 15, scale = 2)
-    @Min(0)
     private BigDecimal discountAmountSnapshot;
 
     @Column(nullable = false, precision = 15, scale = 2)
-    @Min(0)
     private BigDecimal appliedAmount;
 
+    @Column(nullable = false)
     private LocalDateTime appliedAt;
 }

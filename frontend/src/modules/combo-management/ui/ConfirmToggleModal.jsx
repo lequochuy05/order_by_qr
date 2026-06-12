@@ -1,11 +1,9 @@
 import { Power, X } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in duration-300 relative">
+    <SharedModal isOpen={isOpen} onClose={onCancel} className="max-w-sm p-8 relative">
         {/* Nút đóng nhanh */}
         <button 
           onClick={onCancel}
@@ -47,8 +45,7 @@ const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
             Để sau
           </button>
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

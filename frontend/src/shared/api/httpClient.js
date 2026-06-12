@@ -34,7 +34,9 @@ const normalizeApiUrl = (config) => {
 api.interceptors.request.use((config) => {
     normalizeApiUrl(config);
 
-    if (accessToken) {
+    if (config.skipAuth) {
+        delete config.headers.Authorization;
+    } else if (accessToken) {
         config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;

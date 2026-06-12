@@ -15,20 +15,32 @@ import CategoryFilter from './CategoryFilter';
 import ShoppingCartButton from './ShoppingCart';
 import ItemOptionsModal from './ItemOptionsModal';
 import AiChatAssistant from '@modules/ai-assistant/ui/AiChatAssistant.jsx';
-import StatusModal from '@shared/ui/StatusModal.jsx';
 import CurrentOrderBanner from '@modules/customer-ordering/ui/CurrentOrderBanner.jsx';
 import CurrentOrderSheet from '@modules/customer-ordering/ui/CurrentOrderSheet.jsx';
+import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 
 const defaultRestaurantSettings = {
   restaurantName: 'Sắc Màu Quán',
   restaurantPhone: '',
-  restaurantLogoUrl: '',
+  logoUrl: '',
+  orderingEnabled: true,
+  maintenanceMode: false,
   enableAiAssistant: true
 };
+
+const normalizeRestaurantSettings = (settings = {}) => ({
+  ...defaultRestaurantSettings,
+  ...settings,
+  logoUrl: settings.logoUrl ?? settings.restaurantLogoUrl ?? '',
+  orderingEnabled: settings.orderingEnabled ?? true,
+  maintenanceMode: settings.maintenanceMode ?? false,
+  enableAiAssistant: settings.enableAiAssistant ?? true
+});
 
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
   const tableCode = searchParams.get('tableCode');
+  const { user } = useAuth();
 
   // Trạng thái dữ liệu
   const [tableInfo, setTableInfo] = useState(null);
@@ -48,11 +60,13 @@ const MenuPage = () => {
   const hour = new Date().getHours();
   const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
   const weather = "Trời mát";
-  const { statusModal, showSuccess, showError, closeStatusModal } = useStatusModal();
+  const { statusModal, showSuccess, showError } = useStatusModal();
 
   // Trạng thái giỏ hàng
   const [cart, setCart] = useState({ items: {}, combos: {} });
   const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
+  const orderingUnavailable = restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
+  const canUseAiAssistant = Boolean(user) && restaurantSettings.enableAiAssistant !== false;
 
   const getCartItemQty = (item) => {
     return Object.values(cart.items).filter(i => (i.actualId || i.id) === item.id).reduce((sum, i) => sum + i.qty, 0);
@@ -78,17 +92,14 @@ const MenuPage = () => {
       // Chỉ hiện Combo đang Active
       const activeCombos = (Array.isArray(combosRes) ? combosRes : []).filter(c => c.active !== false);
       setCombos(activeCombos);
-      setRestaurantSettings({
-        ...defaultRestaurantSettings,
-        ...(settingsRes || {})
-      });
+      setRestaurantSettings(normalizeRestaurantSettings(settingsRes));
 
       setTableInfo(tableRes);
 
-      // Load current order if table is known
-      if (tableRes && tableRes.id) {
+      // Load current order if table code is known
+      if (tableCode) {
         try {
-          const orderRes = await menuService.getCurrentOrderByTable(tableRes.id);
+          const orderRes = await menuService.getCurrentOrderByTableCode(tableCode);
           setCurrentOrder(orderRes);
         } catch {
           setCurrentOrder(null);
@@ -115,12 +126,22 @@ const MenuPage = () => {
     }
   }, [timeContext, weather]);
 
+  const loadCurrentOrder = useCallback(async () => {
+    if (!tableCode) return;
+    try {
+      const orderRes = await menuService.getCurrentOrderByTableCode(tableCode);
+      setCurrentOrder(orderRes);
+    } catch {
+      setCurrentOrder(null);
+    }
+  }, [tableCode]);
+
   useEffect(() => {
     loadData(true);
     loadRecommendations();
   }, [loadData, loadRecommendations]);
 
-  const handleRealtimeUpdate = useCallback((message) => {
+  const handleCatalogRealtimeUpdate = useCallback((message) => {
     // message đã được JSON.parse bởi wsService.
     // Nếu là chuỗi 'UPDATED' hoặc là một object (thông báo thay đổi cụ thể), ta tiến hành tải lại data.
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
@@ -129,12 +150,18 @@ const MenuPage = () => {
     }
   }, [loadData, loadRecommendations]);
 
-  useWebSocket('/topic/menu', handleRealtimeUpdate);
-  useWebSocket('/topic/combos', handleRealtimeUpdate);
-  useWebSocket('/topic/categories', handleRealtimeUpdate);
-  useWebSocket('/topic/settings', handleRealtimeUpdate);
-  useWebSocket('/topic/orders', handleRealtimeUpdate);
-  useWebSocket('/topic/tables', handleRealtimeUpdate);
+  const handleOrderRealtimeUpdate = useCallback((message) => {
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      loadCurrentOrder();
+    }
+  }, [loadCurrentOrder]);
+
+  useWebSocket('/topic/menu', handleCatalogRealtimeUpdate);
+  useWebSocket('/topic/combos', handleCatalogRealtimeUpdate);
+  useWebSocket('/topic/categories', handleCatalogRealtimeUpdate);
+  useWebSocket('/topic/settings', handleCatalogRealtimeUpdate);
+  useWebSocket('/topic/orders', handleOrderRealtimeUpdate);
+  useWebSocket('/topic/tables', handleOrderRealtimeUpdate);
 
   // Instant WS status via listener (no polling)
   useEffect(() => {
@@ -146,6 +173,21 @@ const MenuPage = () => {
   }, []);
 
   const handleAddToCart = (product, qty, isCombo = false, needsOptions = false) => {
+    if (orderingUnavailable && qty > 0) {
+      showError(
+        restaurantSettings.maintenanceMode
+          ? 'Quán đang bảo trì, vui lòng thử lại sau.'
+          : 'Quán đang tạm ngưng nhận đơn mới.',
+        'Chưa thể đặt món'
+      );
+      return;
+    }
+
+    if (product.available === false && qty > 0) {
+      showError('Món này hiện đã hết nguyên liệu.', 'Hết hàng');
+      return;
+    }
+
     if (needsOptions) {
       setSelectedItemForOptions(product);
       return;
@@ -180,6 +222,21 @@ const MenuPage = () => {
   };
 
   const handleAddWithOptions = (product, selectedValueIds, selectedOptionObjs, finalPrice) => {
+    if (orderingUnavailable) {
+      showError(
+        restaurantSettings.maintenanceMode
+          ? 'Quán đang bảo trì, vui lòng thử lại sau.'
+          : 'Quán đang tạm ngưng nhận đơn mới.',
+        'Chưa thể đặt món'
+      );
+      return;
+    }
+
+    if (product.available === false) {
+      showError('Món này hiện đã hết nguyên liệu.', 'Hết hàng');
+      return;
+    }
+
     setCart(prev => {
       const cartId = product.id + '_' + selectedValueIds.join('_');
       const currentQty = prev.items[cartId]?.qty || 0;
@@ -244,6 +301,16 @@ const MenuPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmitOrder = async () => {
+    if (orderingUnavailable) {
+      showError(
+        restaurantSettings.maintenanceMode
+          ? 'Quán đang bảo trì, vui lòng thử lại sau.'
+          : 'Quán đang tạm ngưng nhận đơn mới.',
+        'Chưa thể đặt món'
+      );
+      return;
+    }
+
     if (!tableCode) {
       showError('Vui lòng quét mã QR trên bàn để đặt món.', 'Chưa xác định bàn');
       return;
@@ -308,9 +375,9 @@ const MenuPage = () => {
           <div className="bg-orange-500 text-white p-5 rounded-b-[2.5rem] shadow-lg">
             <div className="flex justify-between items-start">
               <div className="flex items-start gap-3 min-w-0">
-                {restaurantSettings.restaurantLogoUrl && (
+                {restaurantSettings.logoUrl && (
                   <img
-                    src={restaurantSettings.restaurantLogoUrl}
+                    src={restaurantSettings.logoUrl}
                     alt={restaurantSettings.restaurantName}
                     className="h-10 w-10 rounded-xl border border-white/30 bg-white/20 object-cover"
                   />
@@ -356,6 +423,14 @@ const MenuPage = () => {
                 order={currentOrder}
                 onClick={() => setShowCurrentOrderSheet(true)}
               />
+            </div>
+          )}
+
+          {orderingUnavailable && (
+            <div className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              {restaurantSettings.maintenanceMode
+                ? 'Quán đang bảo trì, hiện chưa nhận đơn mới.'
+                : 'Quán đang tạm ngưng nhận đơn mới.'}
             </div>
           )}
 
@@ -452,17 +527,9 @@ const MenuPage = () => {
           />
 
           {/* AI Customer Assistant */}
-          {restaurantSettings.enableAiAssistant !== false && (
+          {canUseAiAssistant && (
             <AiChatAssistant hidden={showOrderModal || showCurrentOrderSheet || statusModal.isOpen || selectedItemForOptions} />
           )}
-
-          <StatusModal
-            isOpen={statusModal.isOpen}
-            onClose={closeStatusModal}
-            type={statusModal.type}
-            title={statusModal.title}
-            message={statusModal.message}
-          />
 
           <CurrentOrderSheet
             isOpen={showCurrentOrderSheet}

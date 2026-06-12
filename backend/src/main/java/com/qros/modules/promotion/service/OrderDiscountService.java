@@ -1,52 +1,57 @@
 package com.qros.modules.promotion.service;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.promotion.dto.internal.DiscountResult;
+import com.qros.modules.promotion.mapper.OrderDiscountMapper;
 import com.qros.modules.promotion.model.OrderDiscount;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.OrderDiscountRepository;
-import com.qros.modules.promotion.repository.VoucherRepository;
-import com.qros.shared.util.AppTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class OrderDiscountService {
+
     private final OrderDiscountRepository orderDiscountRepository;
-    private final VoucherRepository voucherRepository;
+    private final OrderDiscountMapper orderDiscountMapper;
 
-    public void recordVoucherSnapshot(Order order, Voucher voucher, BigDecimal appliedAmount) {
-        if (order == null || voucher == null || appliedAmount == null || appliedAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
-        }
-        upsert(order, voucher, appliedAmount);
+    @Transactional(readOnly = true)
+    public List<OrderDiscount> findByOrderId(@NonNull Long orderId) {
+        return orderDiscountRepository.findByOrderIdOrderByAppliedAtDesc(orderId);
     }
 
-    public void recordVoucherSnapshot(Order order, String code, BigDecimal appliedAmount) {
-        if (code == null || code.isBlank()) {
-            return;
-        }
-        voucherRepository.findByCodeIgnoreCase(code.trim().toUpperCase())
-                .ifPresent(voucher -> recordVoucherSnapshot(order, voucher, appliedAmount));
+    @Transactional(readOnly = true)
+    public boolean existsByOrderIdAndCode(@NonNull Long orderId, @NonNull String code) {
+        return orderDiscountRepository.existsByOrderIdAndCodeSnapshotIgnoreCase(orderId, code);
     }
 
-    private void upsert(Order order, Voucher voucher, BigDecimal appliedAmount) {
-        OrderDiscount snapshot = orderDiscountRepository
-                .findFirstByOrderIdAndCodeSnapshotIgnoreCase(order.getId(), voucher.getCode())
-                .orElseGet(() -> OrderDiscount.builder()
-                        .order(order)
-                        .voucher(voucher)
-                        .codeSnapshot(voucher.getCode())
-                        .build());
+    @Transactional
+    public OrderDiscount recordVoucherDiscount(
+            @NonNull Order order,
+            Voucher voucher,
+            @NonNull DiscountResult discountResult) {
+        if (voucher == null || discountResult.voucherCode() == null) {
+            return null;
+        }
 
-        snapshot.setVoucher(voucher);
-        snapshot.setDiscountTypeSnapshot(voucher.getType());
-        snapshot.setDiscountPercentSnapshot(voucher.getDiscountPercent());
-        snapshot.setDiscountAmountSnapshot(voucher.getDiscountAmount());
-        snapshot.setAppliedAmount(appliedAmount);
-        snapshot.setAppliedAt(AppTime.now());
-        orderDiscountRepository.save(snapshot);
+        if (discountResult.appliedDiscountAmount() == null
+                || discountResult.appliedDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        return orderDiscountRepository
+                .findByOrderIdAndCodeSnapshotIgnoreCase(order.getId(), discountResult.voucherCode())
+                .orElseGet(() -> createSnapshot(order, voucher, discountResult));
+    }
+
+    private OrderDiscount createSnapshot(Order order, Voucher voucher, DiscountResult discountResult) {
+        OrderDiscount orderDiscount = orderDiscountMapper.toEntity(order, voucher, discountResult);
+        return orderDiscountRepository.save(orderDiscount);
     }
 }

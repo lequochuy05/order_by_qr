@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { X, Search } from 'lucide-react';
-import { menuItemService } from '@modules/menu-management/api/menuService.js';
-import { comboService } from '@modules/combo-management/api/comboService.js';
-import { categoryService } from '@entities/category/api/categoryService.js';
+import { Loader2, X } from 'lucide-react';
+import { tableOrderCatalogService } from '@modules/table-management/api/tableOrderCatalogService.js';
 import ItemOptionsModal from '@modules/customer-ordering/ui/ItemOptionsModal.jsx';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [activeTab, setActiveTab] = useState('ITEMS'); // ITEMS | COMBOS
@@ -13,28 +12,28 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
     const [categories, setCategories] = useState([]);
     const [selectedCate, setSelectedCate] = useState('ALL');
     const [cart, setCart] = useState([]); // [{cartId, id, type, name, price, qty, notes, options}]
+    const [catalogLoading, setCatalogLoading] = useState(false);
 
     // State cho Modal chọn Options
     const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
     const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
 
     useEffect(() => {
-        let isMounted = true;
+        let isCancelled = false;
 
         const loadAllData = async () => {
+            setCatalogLoading(true);
             try {
-                const [m, c, cat] = await Promise.all([
-                    menuItemService.getAll(),
-                    comboService.getAll(),
-                    categoryService.getAll()
-                ]);
-                if (isMounted) {
-                    setMenuItems(m);
-                    setCombos(c.filter(combo => combo.active));
-                    setCategories(cat);
-                }
+                const catalog = await tableOrderCatalogService.getCatalog();
+                if (isCancelled) return;
+
+                setMenuItems(Array.isArray(catalog?.menuItems) ? catalog.menuItems : []);
+                setCombos(Array.isArray(catalog?.combos) ? catalog.combos : []);
+                setCategories(Array.isArray(catalog?.categories) ? catalog.categories : []);
             } catch {
                 console.error("Lỗi tải menu/combo");
+            } finally {
+                if (!isCancelled) setCatalogLoading(false);
             }
         };
 
@@ -42,7 +41,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
             loadAllData();
         }
 
-        return () => { isMounted = false; };
+        return () => { isCancelled = true; };
     }, [isOpen]);
 
     const addToCart = (item, type, options = [], optionObjs = [], totalPrice = null) => {
@@ -107,8 +106,8 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         : combos;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-5xl h-[90vh] flex shadow-2xl overflow-hidden">
+        <>
+            <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-5xl !h-[90vh] !flex-row !p-0 overflow-hidden !rounded-2xl">
                 {/* LEFT: Menu Selection */}
                 <div className="flex-1 flex flex-col border-r bg-gray-50 min-w-0">
                     <div className="p-4 bg-white border-b">
@@ -131,13 +130,43 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 content-start">
-                        {displayList.map(item => (
-                            <div key={item.id} onClick={() => handleItemClick(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
-                                className="bg-white p-3 rounded-xl border shadow-sm cursor-pointer hover:border-orange-500 hover:shadow-md transition-all active:scale-95 flex flex-col justify-between min-h-[80px]">
-                                <div className="font-bold text-gray-800 text-sm leading-tight">{item.name}</div>
-                                <div className="text-orange-600 font-bold text-sm mt-2">{item.price.toLocaleString()}đ</div>
+                        {catalogLoading ? (
+                            <div className="col-span-full flex h-52 items-center justify-center text-gray-400">
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin text-orange-500" />
+                                <span className="text-sm font-bold">Đang tải món...</span>
                             </div>
-                        ))}
+                        ) : displayList.map(item => {
+                            const available = item.available !== false;
+
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    disabled={!available}
+                                    onClick={() => available && handleItemClick(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
+                                    className={`min-h-[80px] rounded-xl border bg-white p-3 text-left shadow-sm transition-all flex flex-col justify-between ${
+                                        available
+                                            ? 'cursor-pointer hover:border-orange-500 hover:shadow-md active:scale-95'
+                                            : 'cursor-not-allowed opacity-55'
+                                    }`}
+                                >
+                                    <div className="font-bold text-gray-800 text-sm leading-tight">{item.name}</div>
+                                    <div className="mt-2 flex items-center justify-between gap-2">
+                                        <span className="text-orange-600 font-bold text-sm">{item.price.toLocaleString()}đ</span>
+                                        {!available && (
+                                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black uppercase text-gray-500">
+                                                Hết kho
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                        {!catalogLoading && displayList.length === 0 && (
+                            <div className="col-span-full flex h-52 items-center justify-center text-sm font-bold text-gray-400">
+                                Không có món phù hợp
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -197,7 +226,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                         </button>
                     </div>
                 </div>
-            </div>
+            </SharedModal>
 
             {/* Modal Chọn Options của món (dùng chung từ khách hàng) */}
             <ItemOptionsModal
@@ -210,7 +239,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
                 }}
                 onConfirm={handleConfirmOptions}
             />
-        </div>
+        </>
     );
 };
 

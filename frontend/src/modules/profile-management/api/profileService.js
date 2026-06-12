@@ -1,9 +1,10 @@
 import api from '@shared/api/httpClient.js';
+import { createCachedRequest } from '@shared/lib/cacheUtils.js';
+
+const { requestFn: getMe } = createCachedRequest(() => api.get('/users/me'), 0);
 
 export const profileService = {
-  getMe: async () => {
-    return await api.get('/users/me');
-  },
+  getMe: getMe,
 
   updateMe: async (data) => {
     return await api.patch('/users/me', data);

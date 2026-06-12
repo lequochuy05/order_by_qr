@@ -2,8 +2,6 @@ package com.qros.modules.user.model;
 
 import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -17,6 +15,8 @@ import org.hibernate.annotations.SQLRestriction;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.qros.modules.user.model.enums.UserRole;
+import com.qros.modules.user.model.enums.UserStatus;
 /**
  * User - Entity representing a system user (Staff, Manager, or Chef).
  * Implements Spring Security's UserDetails for authentication and authorization.
@@ -36,50 +36,27 @@ public class User extends BaseEntity implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Unique email address used for login and notifications.
-     */
-    @NotBlank(message = "Email cannot be empty")
-    @Email(message = "Email format is invalid")
     @Column(length = 50, unique = true, nullable = false)
     private String email;
 
-    /**
-     * URL of the user's profile picture stored on a cloud provider.
-     */
     @Column(length = 150)
     private String avatarUrl;
 
-    /**
-     * Full legal name of the user.
-     */
-    @NotBlank(message = "Full name cannot be empty")
     @Column(length = 50, nullable = false)
     private String fullName;
 
-    /**
-     * Hashed password for account security.
-     */
-    @Column(length = 100, nullable = false)
+    @Column(length = 255, nullable = false)
     @JsonIgnore
     private String password;
 
-    /**
-     * Contact phone number.
-     */
     @Column(unique = true, length = 15)
     private String phone;
 
-    /**
-     * Assigned security role within the application.
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    @Builder.Default
+    private UserRole role = UserRole.STAFF;
 
-    /**
-     * Current account operational status.
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
@@ -113,19 +90,5 @@ public class User extends BaseEntity implements UserDetails {
     @Override
     public boolean isEnabled() {
         return !isDeleted() && status == UserStatus.ACTIVE;
-    }
-
-    /**
-     * Enum for application security roles.
-     */
-    public enum Role {
-        STAFF, MANAGER, CHEF
-    }
-
-    /**
-     * Enum for user account statuses.
-     */
-    public enum UserStatus {
-        ACTIVE, BANNED, INACTIVE
     }
 }

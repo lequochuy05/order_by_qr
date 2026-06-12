@@ -1,5 +1,6 @@
 package com.qros.modules.order.service;
 
+import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
@@ -8,19 +9,29 @@ import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.ItemOptionValueRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.order.dto.OrderRequest;
-import com.qros.modules.order.dto.OrderResponse;
+import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
+import com.qros.modules.order.dto.request.OrderComboRequest;
+import com.qros.modules.order.dto.request.OrderItemRequest;
+import com.qros.modules.order.dto.request.StaffCreateOrderRequest;
+import com.qros.modules.order.dto.response.OrderResponse;
+import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderBatch;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.OrderItemOption;
+import com.qros.modules.order.model.enums.BatchSource;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import com.qros.modules.order.model.enums.OrderItemType;
+import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
+import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import com.qros.shared.util.AppTime;
+import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
@@ -52,225 +63,315 @@ public class OrderCreationService {
     private final NotificationService notificationService;
     private final OrderPricingService orderPricingService;
     private final OrderStatusService orderStatusService;
+    private final OrderTableSyncService orderTableSyncService;
     private final OrderMapper orderMapper;
     private final MeterRegistry meterRegistry;
-    private final com.qros.infrastructure.cache.OrderCacheInvalidationService orderCacheInvalidationService;
+    private final OrderCacheInvalidationService orderCacheInvalidationService;
+    private final InventoryReservationService inventoryReservationService;
+    private final OrderValidator orderValidator;
 
     private Counter ordersCreatedCounter;
 
     @PostConstruct
     public void initCounters() {
         ordersCreatedCounter = Counter.builder("orders.created")
-                .description("Total number of orders created (including merged sessions)")
+                .description("Total number of orders created including merged sessions")
                 .register(meterRegistry);
     }
 
     @Transactional
-    public OrderResponse createOrder(@NonNull OrderRequest request) {
-        validateOrderItems(request);
-        DiningTable table = resolveTable(request);
+    public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
+        validateOrderContent(request.items(), request.combos());
 
-        Order order = orderRepository.findFirstByTableIdAndStatusInForUpdate(table.getId(),
-                List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT))
-                .orElse(null);
+        DiningTable table = tableRepository.findByTableCodeForUpdate(request.tableCode())
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.TABLE_CODE_INVALID,
+                        "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
 
-        if (order == null) {
-            order = Order.builder()
-                    .table(table)
-                    .status(Order.OrderStatus.PENDING)
-                    .paymentStatus(Order.PaymentStatus.PENDING)
-                    .orderType(Order.OrderType.DINE_IN)
-                    .subtotalAmount(BigDecimal.ZERO)
-                    .finalAmount(BigDecimal.ZERO)
-                    .discountAmount(BigDecimal.ZERO)
-                    .paidAmount(BigDecimal.ZERO)
-                    .businessDate(AppTime.today())
-                    .build();
-        }
+        return createOrder(
+                table,
+                request.items(),
+                request.combos(),
+                BatchSource.QR);
+    }
+
+    @Transactional
+    public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
+        validateOrderContent(request.items(), request.combos());
+
+        DiningTable table = tableRepository.findByIdForUpdate(request.tableId())
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.TABLE_NOT_FOUND,
+                        "Không tìm thấy thông tin bàn."));
+
+        return createOrder(
+                table,
+                request.items(),
+                request.combos(),
+                BatchSource.STAFF);
+    }
+
+    private OrderResponse createOrder(
+            DiningTable table,
+            List<OrderItemRequest> items,
+            List<OrderComboRequest> combos,
+            BatchSource source) {
+        Order order = getOrCreateActiveOrder(table);
+        orderValidator.validateTableAcceptsOrders(table);
 
         OrderBatch batch = OrderBatch.builder()
-                .order(order)
                 .submittedAt(AppTime.now())
-                .source(resolveBatchSource(request))
+                .source(source)
                 .build();
-        order.getOrderBatches().add(batch);
 
-        buildOrderItems(request, order, batch);
-        buildOrderCombos(request, order, batch);
+        order.addBatch(batch);
+
+        buildOrderItems(items, order, batch);
+        buildOrderCombos(combos, order, batch);
+
         orderPricingService.recalculateOrderTotals(order);
 
-        Order saved = orderRepository.save(Objects.requireNonNull(order));
-        orderStatusService.tryAutoPromoteOrder(saved);
+        Order saved = orderRepository.save(order);
 
-        orderStatusService.recalcTableStatus(saved);
+        orderStatusService.tryAutoPromoteOrder(saved);
+        orderTableSyncService.recalcTableStatus(saved);
+
         orderCacheInvalidationService.evictAfterOrderMutation(saved.getId());
 
         ordersCreatedCounter.increment();
+
         notificationService.notifyOrderChange();
         notificationService.notifyTableChange();
-        log.info("Order processed for Table {}: ID #{}", table.getTableNumber(), saved.getId());
+
+        log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
+
         return orderMapper.toResponse(saved);
     }
 
-    private void validateOrderItems(OrderRequest request) {
-        if ((request.getItems() == null || request.getItems().isEmpty())
-                && (request.getCombos() == null || request.getCombos().isEmpty())) {
+    private Order getOrCreateActiveOrder(DiningTable table) {
+        List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
+                table.getId(),
+                List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+
+        if (!activeOrders.isEmpty()) {
+            if (activeOrders.size() > 1) {
+                log.warn("Table {} has {} active orders. Using the latest one.",
+                        table.getId(), activeOrders.size());
+            }
+
+            return activeOrders.get(0);
+        }
+
+        return Order.builder()
+                .table(table)
+                .status(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .orderType(OrderType.DINE_IN)
+                .subtotalAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+    }
+
+    private void validateOrderContent(List<OrderItemRequest> items, List<OrderComboRequest> combos) {
+        boolean hasItems = items != null && !items.isEmpty();
+        boolean hasCombos = combos != null && !combos.isEmpty();
+
+        if (!hasItems && !hasCombos) {
             throw new BusinessException(ErrorCode.ORDER_CONTENT_EMPTY);
         }
     }
 
-    private DiningTable resolveTable(OrderRequest request) {
-        if (request.getTableCode() != null && !request.getTableCode().isBlank()) {
-            return tableRepository.findByTableCode(request.getTableCode())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID,
-                            "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
-        } else if (request.getTableId() != null) {
-            return tableRepository.findById(Objects.requireNonNull(request.getTableId()))
-                    .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND,
-                            "Không tìm thấy thông tin bàn."));
-        }
-        throw new BusinessException(ErrorCode.INVALID_REQUEST, "Vui lòng quét mã QR trên bàn để đặt món.");
-    }
-
-    private OrderBatch.BatchSource resolveBatchSource(OrderRequest request) {
-        return request.getTableCode() != null && !request.getTableCode().isBlank()
-                ? OrderBatch.BatchSource.QR
-                : OrderBatch.BatchSource.STAFF;
-    }
-
-    private void buildOrderItems(OrderRequest request, Order order, OrderBatch batch) {
-        if (request.getItems() == null) {
+    private void buildOrderItems(List<OrderItemRequest> items, Order order, OrderBatch batch) {
+        if (items == null || items.isEmpty()) {
             return;
         }
 
-        for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
-            MenuItem menuItem = menuItemRepository.findById(Objects.requireNonNull(itemRequest.getMenuItemId()))
+        for (OrderItemRequest itemRequest : items) {
+            MenuItem menuItem = menuItemRepository.findById(itemRequest.menuItemId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
+            orderValidator.validateMenuItemOrderable(menuItem);
 
-            validateRequiredOptions(menuItem, itemRequest.getSelectedOptionValueIds());
+            List<Long> selectedOptionValueIds = itemRequest.selectedOptionValueIds() == null
+                    ? List.of()
+                    : itemRequest.selectedOptionValueIds();
 
-            List<ItemOptionValue> selectedValues = itemRequest.getSelectedOptionValueIds() != null
-                    ? itemOptionValueRepository.findAllById(
-                            Objects.requireNonNull(itemRequest.getSelectedOptionValueIds()))
-                    : List.of();
+            validateSelectedOptions(menuItem, selectedOptionValueIds);
+
+            List<ItemOptionValue> selectedValues = selectedOptionValueIds.isEmpty()
+                    ? List.of()
+                    : itemOptionValueRepository.findAllById(selectedOptionValueIds);
+
+            validateOptionValuesExist(selectedOptionValueIds, selectedValues);
 
             BigDecimal extraPrice = selectedValues.stream()
                     .map(ItemOptionValue::getExtraPrice)
+                    .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+
             BigDecimal unitPrice = menuItem.getPrice().add(extraPrice);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
-                    .filter(item -> item.getMenuItem() != null && item.getMenuItem().getId().equals(menuItem.getId()))
-                    .filter(item -> Objects.equals(item.getNotes(), itemRequest.getNotes()))
-                    .filter(item -> !item.isPrepared())
-                    .filter(item -> checkOptionsMatch(item.getOrderItemOptions(),
-                            itemRequest.getSelectedOptionValueIds()))
+                    .filter(OrderItem::canBeMerged)
+                    .filter(item -> item.getMenuItem() != null)
+                    .filter(item -> Objects.equals(item.getMenuItem().getId(), menuItem.getId()))
+                    .filter(item -> Objects.equals(normalizeNotes(item.getNotes()),
+                            normalizeNotes(itemRequest.notes())))
+                    .filter(item -> checkOptionsMatch(item.getOrderItemOptions(), selectedOptionValueIds))
                     .findFirst();
 
             if (existing.isPresent()) {
-                OrderItem existingItem = existing.get();
-                if (existingItem.getItemNameSnapshot() == null) {
-                    existingItem.setItemNameSnapshot(menuItem.getName());
-                }
-                if (existingItem.getItemType() == null) {
-                    existingItem.setItemType(OrderItem.OrderItemType.MENU_ITEM);
-                }
-                if (existingItem.getBatch() == null) {
-                    existingItem.setBatch(batch);
-                }
-                existingItem.setQuantity(existingItem.getQuantity() + itemRequest.getQuantity());
-                orderPricingService.recalculateLineTotal(existingItem);
-            } else {
-                OrderItem orderItem = OrderItem.builder()
-                        .order(order)
-                        .batch(batch)
-                        .menuItem(menuItem)
-                        .unitPrice(unitPrice)
-                        .itemNameSnapshot(menuItem.getName())
-                        .itemType(OrderItem.OrderItemType.MENU_ITEM)
-                        .quantity(itemRequest.getQuantity())
-                        .lineTotal(orderPricingService.calculateLineTotal(unitPrice, itemRequest.getQuantity()))
-                        .notes(itemRequest.getNotes())
-                        .status(OrderItem.OrderItemStatus.PENDING)
-                        .build();
-
-                selectedValues.forEach(value -> orderItem.getOrderItemOptions().add(OrderItemOption.builder()
-                        .orderItem(orderItem)
-                        .optionName(value.getItemOption().getName())
-                        .optionValueName(value.getName())
-                        .extraPrice(value.getExtraPrice())
-                        .itemOptionValue(value)
-                        .build()));
-
-                order.getOrderItems().add(orderItem);
+                mergeExistingItem(existing.get(), itemRequest.quantity());
+                continue;
             }
+
+            OrderItem orderItem = OrderItem.builder()
+                    .batch(batch)
+                    .menuItem(menuItem)
+                    .unitPrice(unitPrice)
+                    .itemNameSnapshot(menuItem.getName())
+                    .itemType(OrderItemType.MENU_ITEM)
+                    .quantity(itemRequest.quantity())
+                    .lineTotal(orderPricingService.calculateLineTotal(unitPrice, itemRequest.quantity()))
+                    .notes(normalizeNotes(itemRequest.notes()))
+                    .status(OrderItemStatus.PENDING)
+                    .build();
+
+            selectedValues.forEach(value -> orderItem.addOption(OrderItemOption.builder()
+                    .optionName(value.getItemOption().getName())
+                    .optionValueName(value.getName())
+                    .extraPrice(value.getExtraPrice())
+                    .itemOptionValue(value)
+                    .build()));
+
+            inventoryReservationService.reserveForOrderItem(orderItem, itemRequest.quantity());
+
+            order.addItem(orderItem);
         }
     }
 
-    private void buildOrderCombos(OrderRequest request, Order order, OrderBatch batch) {
-        if (request.getCombos() == null) {
+    private void buildOrderCombos(List<OrderComboRequest> combos, Order order, OrderBatch batch) {
+        if (combos == null || combos.isEmpty()) {
             return;
         }
 
-        for (OrderRequest.OrderComboRequest comboRequest : request.getCombos()) {
-            Combo combo = comboRepository.findById(Objects.requireNonNull(comboRequest.getComboId()))
+        for (OrderComboRequest comboRequest : combos) {
+            Combo combo = comboRepository.findById(comboRequest.comboId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
+            orderValidator.validateComboOrderable(combo);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
-                    .filter(item -> item.getCombo() != null && item.getCombo().getId().equals(combo.getId()))
-                    .filter(item -> Objects.equals(item.getNotes(), comboRequest.getNotes()))
-                    .filter(item -> !item.isPrepared())
+                    .filter(OrderItem::canBeMerged)
+                    .filter(item -> item.getCombo() != null)
+                    .filter(item -> Objects.equals(item.getCombo().getId(), combo.getId()))
+                    .filter(item -> Objects.equals(normalizeNotes(item.getNotes()),
+                            normalizeNotes(comboRequest.notes())))
                     .findFirst();
 
             if (existing.isPresent()) {
-                OrderItem existingItem = existing.get();
-                if (existingItem.getItemNameSnapshot() == null) {
-                    existingItem.setItemNameSnapshot(combo.getName());
-                }
-                if (existingItem.getItemType() == null) {
-                    existingItem.setItemType(OrderItem.OrderItemType.COMBO);
-                }
-                if (existingItem.getBatch() == null) {
-                    existingItem.setBatch(batch);
-                }
-                existingItem.setQuantity(existingItem.getQuantity() + comboRequest.getQuantity());
-                orderPricingService.recalculateLineTotal(existingItem);
-            } else {
-                order.getOrderItems().add(OrderItem.builder()
-                        .order(order)
-                        .batch(batch)
-                        .combo(combo)
-                        .unitPrice(combo.getPrice())
-                        .itemNameSnapshot(combo.getName())
-                        .itemType(OrderItem.OrderItemType.COMBO)
-                        .quantity(comboRequest.getQuantity())
-                        .lineTotal(orderPricingService.calculateLineTotal(combo.getPrice(), comboRequest.getQuantity()))
-                        .notes(comboRequest.getNotes())
-                        .status(OrderItem.OrderItemStatus.PENDING)
-                        .build());
+                mergeExistingItem(existing.get(), comboRequest.quantity());
+                continue;
             }
+
+            OrderItem orderItem = OrderItem.builder()
+                    .batch(batch)
+                    .combo(combo)
+                    .unitPrice(combo.getPrice())
+                    .itemNameSnapshot(combo.getName())
+                    .itemType(OrderItemType.COMBO)
+                    .quantity(comboRequest.quantity())
+                    .lineTotal(orderPricingService.calculateLineTotal(combo.getPrice(), comboRequest.quantity()))
+                    .notes(normalizeNotes(comboRequest.notes()))
+                    .status(OrderItemStatus.PENDING)
+                    .build();
+
+            inventoryReservationService.reserveForOrderItem(orderItem, comboRequest.quantity());
+
+            order.addItem(orderItem);
         }
     }
 
-    private void validateRequiredOptions(MenuItem menuItem, List<Long> selectedValueIds) {
-        Set<Long> selectedIds = selectedValueIds != null ? new HashSet<>(selectedValueIds) : Set.of();
+    private void mergeExistingItem(OrderItem existingItem, Integer additionalQuantity) {
+        inventoryReservationService.reserveForOrderItem(existingItem, additionalQuantity);
+
+        existingItem.setQuantity(existingItem.getQuantity() + additionalQuantity);
+        orderPricingService.recalculateLineTotal(existingItem);
+    }
+
+    private void validateSelectedOptions(MenuItem menuItem, List<Long> selectedValueIds) {
+        Set<Long> selectedIds = new HashSet<>(selectedValueIds);
+
+        validateRequiredOptions(menuItem, selectedIds);
+        validateOptionValuesBelongToMenuItem(menuItem, selectedIds);
+    }
+
+    private void validateRequiredOptions(MenuItem menuItem, Set<Long> selectedIds) {
         menuItem.getItemOptions().stream()
-                .filter(ItemOption::isRequired)
+                .filter(option -> Boolean.TRUE.equals(option.getRequired()))
                 .forEach(option -> {
                     boolean selected = option.getOptionValues().stream()
                             .anyMatch(value -> selectedIds.contains(value.getId()));
+
                     if (!selected) {
-                        throw new BusinessException(ErrorCode.INVALID_REQUEST,
+                        throw new BusinessException(
+                                ErrorCode.INVALID_REQUEST,
                                 "Required option selection missing: " + option.getName());
                     }
                 });
     }
 
-    private boolean checkOptionsMatch(Collection<OrderItemOption> existing, List<Long> incomingIds) {
-        Set<Long> existingIds = existing.stream()
-                .map(option -> option.getItemOptionValue().getId())
+    private void validateOptionValuesBelongToMenuItem(MenuItem menuItem, Set<Long> selectedIds) {
+        if (selectedIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> validValueIds = menuItem.getItemOptions().stream()
+                .flatMap(option -> option.getOptionValues().stream())
+                .map(ItemOptionValue::getId)
                 .collect(Collectors.toSet());
-        Set<Long> incoming = incomingIds != null ? new HashSet<>(incomingIds) : Set.of();
+
+        boolean allBelongToMenuItem = validValueIds.containsAll(selectedIds);
+
+        if (!allBelongToMenuItem) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Selected option contains invalid value for this menu item.");
+        }
+    }
+
+    private void validateOptionValuesExist(List<Long> requestedIds, List<ItemOptionValue> selectedValues) {
+        if (requestedIds.isEmpty()) {
+            return;
+        }
+
+        Set<Long> foundIds = selectedValues.stream()
+                .map(ItemOptionValue::getId)
+                .collect(Collectors.toSet());
+
+        if (!foundIds.containsAll(requestedIds)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Selected option value does not exist.");
+        }
+    }
+
+    private boolean checkOptionsMatch(Collection<OrderItemOption> existingOptions, List<Long> incomingIds) {
+        Set<Long> existingIds = existingOptions.stream()
+                .map(OrderItemOption::getItemOptionValue)
+                .filter(Objects::nonNull)
+                .map(ItemOptionValue::getId)
+                .collect(Collectors.toSet());
+
+        Set<Long> incoming = incomingIds == null
+                ? Set.of()
+                : new HashSet<>(incomingIds);
+
         return existingIds.equals(incoming);
+    }
+
+    private String normalizeNotes(String notes) {
+        return notes == null ? "" : notes.trim();
     }
 }

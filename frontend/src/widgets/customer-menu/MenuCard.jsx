@@ -3,9 +3,10 @@ import { fmtVND } from '@shared/lib/formatters.js';
 const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
 
   const imageUrl = item.img;
+  const available = item.available !== false;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-50/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)] active:scale-[0.98] group">
+    <div className={`bg-white dark:bg-slate-900 rounded-3xl border border-gray-50/50 dark:border-slate-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)] active:scale-[0.98] group ${available ? '' : 'opacity-70'}`}>
       <div className="relative w-full pt-[100%] bg-gray-50 dark:bg-slate-800 overflow-hidden">
         <img
           src={imageUrl}
@@ -15,6 +16,11 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
             e.target.onerror = null;
           }}
         />
+        {!available && (
+          <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+            <span className="px-3 py-1 rounded-full bg-white text-red-600 text-[10px] font-black uppercase">Hết hàng</span>
+          </div>
+        )}
       </div>
 
       <div className="p-3 flex flex-col flex-1 justify-between transition-colors duration-500">
@@ -37,9 +43,10 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
             {item.itemOptions && item.itemOptions.length > 0 ? (
                <button 
                  onClick={() => onAddToCart(item, quantity + 1, true)}
-                 className="w-full h-7 bg-orange-500 hover:bg-orange-600 rounded-full shadow-sm flex items-center justify-center text-white font-black text-[10px] uppercase tracking-wider px-2 transition-colors"
+                 disabled={!available}
+                 className="w-full h-7 bg-orange-500 hover:bg-orange-600 rounded-full shadow-sm flex items-center justify-center text-white font-black text-[10px] uppercase tracking-wider px-2 transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                >
-                 Tùy chọn
+                 {available ? 'Tùy chọn' : 'Hết hàng'}
                </button>
             ) : (
               <>
@@ -58,7 +65,8 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
 
                 <button
                   onClick={() => onAddToCart(item, quantity + 1)}
-                  className="w-6 h-6 bg-orange-500 rounded-full shadow-sm flex items-center justify-center text-white font-bold hover:bg-orange-600 transition-colors"
+                  disabled={!available}
+                  className="w-6 h-6 bg-orange-500 rounded-full shadow-sm flex items-center justify-center text-white font-bold hover:bg-orange-600 transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                 >
                   <Plus size={14} />
                 </button>

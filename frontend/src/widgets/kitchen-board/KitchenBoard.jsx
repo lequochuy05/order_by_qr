@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -16,7 +16,6 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { orderService } from '@modules/order-management/api/orderService.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
-import StatusModal from '@shared/ui/StatusModal.jsx';
 import KitchenColumn from './KitchenColumn';
 import { playNotificationSound, playLoudSound } from '@modules/notifications/lib/notificationSound.js';
 import { showBrowserNotification } from '@modules/notifications/lib/browserNotification.js';
@@ -35,25 +34,39 @@ const KitchenManager = () => {
     const [now, setNow] = useState(() => Date.now());
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
     const { user } = useAuth();
+    const isMountedRef = useRef(true);
+    const fetchSeqRef = useRef(0);
 
     const [preferences, setPreferences] = useAdminPreferences();
-    const { statusModal, showError, closeStatusModal } = useStatusModal();
+    const { showError } = useStatusModal();
 
     const fetchKitchenOrders = useCallback(async ({ silent = false } = {}) => {
+        const fetchSeq = ++fetchSeqRef.current;
         if (!silent) setRefreshing(true);
 
         try {
             const data = await orderService.getKitchenOrders();
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             setOrders(Array.isArray(data) ? data : []);
             setLastUpdatedAt(new Date());
         } catch (error) {
+            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             console.error('Failed to fetch kitchen orders:', error);
             showError('Không thể tải danh sách đơn hàng nhà bếp');
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+                setLoading(false);
+                setRefreshing(false);
+            }
         }
     }, [showError]);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         fetchKitchenOrders({ silent: true });
@@ -320,14 +333,6 @@ const KitchenManager = () => {
                     ))}
                 </div>
             )}
-
-            <StatusModal
-                isOpen={statusModal.isOpen}
-                onClose={closeStatusModal}
-                type={statusModal.type}
-                title={statusModal.title}
-                message={statusModal.message}
-            />
         </div>
     );
 };

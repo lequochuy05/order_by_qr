@@ -1,20 +1,21 @@
 package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
 
 /**
- * CompletedState - Handles the logic for orders that have been successfully finished and paid.
+ * CompletedState - Handles the logic for orders that have been successfully
+ * finished and paid.
  * COMPLETED is an end state — no transitions out are allowed.
  */
 @Component
 public class CompletedState implements OrderState {
 
-    private static final Set<Order.OrderStatus> ALLOWED_FROM = Set.of(
-            Order.OrderStatus.AWAITING_PAYMENT
-    );
+    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(
+            OrderStatus.AWAITING_PAYMENT);
 
     /**
      * Transitions the order status to COMPLETED.
@@ -28,12 +29,12 @@ public class CompletedState implements OrderState {
     }
 
     @Override
-    public Order.OrderStatus getStatus() {
-        return Order.OrderStatus.COMPLETED;
+    public OrderStatus getStatus() {
+        return OrderStatus.COMPLETED;
     }
 
     @Override
-    public Set<Order.OrderStatus> allowedTransitionsFrom() {
+    public Set<OrderStatus> allowedTransitionsFrom() {
         return ALLOWED_FROM;
     }
 }

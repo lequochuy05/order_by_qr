@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, QrCode, AlertCircle, Save, Loader2, RefreshCw } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 import { TABLE_STATUS } from '@entities/order/lib/orderStatus.js';
 
 const TABLE_STATUS_OPTIONS = Object.entries(TABLE_STATUS).map(([value, meta]) => ({
@@ -49,11 +50,10 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in duration-300 flex flex-col overflow-hidden">
+        <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-md !p-0">
 
                 {/* Header */}
-                <div className="px-8 py-6 border-b flex justify-between items-center shrink-0 bg-white">
+                <div className="px-8 py-6 border-b flex justify-between items-center shrink-0 bg-white rounded-t-[2rem]">
                     <div>
                         <h2 className="text-xl font-black text-gray-800 tracking-tight">
                             {formData.id ? 'Cập Nhật Bàn' : 'Thêm Bàn Mới'}
@@ -153,7 +153,7 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting, 
                 </form>
 
                 {/* Footer */}
-                <div className="px-8 py-6 border-t bg-gray-50/50 flex gap-4 shrink-0">
+                <div className="px-8 py-6 border-t bg-gray-50/50 flex gap-4 shrink-0 rounded-b-[2rem]">
                     <button
                         type="button"
                         onClick={onClose}
@@ -183,8 +183,7 @@ const TableFormModal = ({ isOpen, onClose, initialData, onSubmit, isSubmitting, 
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
+        </SharedModal>
     );
 };
 

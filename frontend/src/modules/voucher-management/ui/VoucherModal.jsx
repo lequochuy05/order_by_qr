@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Wand2, AlertCircle } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     // State dữ liệu form
@@ -33,11 +34,13 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             validFrom: initialData.validFrom ? initialData.validFrom.split('T')[0] : '',
             validTo: initialData.validTo ? initialData.validTo.split('T')[0] : '',
             active: initialData.active ?? true,
+            type: initialData.discountPercent ? 'PERCENTAGE' : 'FIXED_AMOUNT',
         };
     }, [initialData]);
 
     const isChanged = React.useMemo(() => {
         if (!initialData) return true;
+        const currentType = formData.discountPercent ? 'PERCENTAGE' : 'FIXED_AMOUNT';
         return JSON.stringify(originalData) !== JSON.stringify({
             code: formData.code,
             discountPercent: formData.discountPercent,
@@ -46,6 +49,7 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             validFrom: formData.validFrom,
             validTo: formData.validTo,
             active: formData.active,
+            type: currentType,
         });
     }, [formData, originalData, initialData]);
 
@@ -117,11 +121,11 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             }
         }
 
-        // 4. Validate Giới hạn
-        if (formData.usageLimit === null || formData.usageLimit === '') {
-            newErrors.usageLimit = "Vui lòng nhập giới hạn lượt dùng (Nhập 0 nếu không giới hạn)";
-            isValid = false;
-        } else if (parseInt(formData.usageLimit) < 0) {
+        // 4. Validate Giới hạn (0 hoặc rỗng = không giới hạn → gửi null)
+        const parsedLimit = formData.usageLimit === '' || formData.usageLimit === null
+            ? null
+            : parseInt(formData.usageLimit);
+        if (parsedLimit !== null && parsedLimit < 0) {
             newErrors.usageLimit = "Giới hạn lượt dùng không được âm";
             isValid = false;
         }
@@ -142,10 +146,11 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
             code: formData.code.trim().toUpperCase(),
             validFrom: formData.validFrom ? `${formData.validFrom}T00:00:00` : null,
             validTo: formData.validTo ? `${formData.validTo}T23:59:59` : null,
-            usageLimit: formData.usageLimit === '' ? 0 : parseInt(formData.usageLimit),
+            usageLimit: (formData.usageLimit === '' || formData.usageLimit === '0' || parseInt(formData.usageLimit) === 0) ? null : parseInt(formData.usageLimit),
             // Đảm bảo gửi null nếu field rỗng
             discountPercent: formData.discountPercent ? parseFloat(formData.discountPercent) : null,
             discountAmount: formData.discountAmount ? parseFloat(formData.discountAmount) : null,
+            type: formData.discountPercent ? 'PERCENTAGE' : 'FIXED_AMOUNT',
         };
 
         onSubmit(payload);
@@ -154,158 +159,155 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl animate-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+        <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-lg p-6">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-5 shrink-0">
+                <h2 className="text-xl font-bold text-gray-800">
+                    {initialData ? 'Sửa Voucher' : 'Thêm Voucher Mới'}
+                </h2>
+                <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                    <X size={20} />
+                </button>
+            </div>
 
-                {/* Header */}
-                <div className="flex justify-between items-center mb-5 shrink-0">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {initialData ? 'Sửa Voucher' : 'Thêm Voucher Mới'}
-                    </h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
+            {/* Form Body - Có scroll nếu dài */}
+            <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
 
-                {/* Form Body - Có scroll nếu dài */}
-                <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
-
-                    {/* Mã Voucher */}
-                    <div>
-                        <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Mã Voucher <span className="text-red-500">*</span></label>
-                        <div className="flex gap-2 relative">
-                            <input
-                                type="text"
-                                placeholder="HELLO2026"
-                                className={`w-full px-4 py-2 border rounded-xl outline-none uppercase font-mono font-bold text-gray-700 ${errors.code ? 'border-red-500 focus:ring-red-200' : 'focus:ring-2 focus:ring-orange-500'}`}
-                                value={formData.code}
-                                onChange={e => {
-                                    setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') }); // Tự động xóa khoảng trắng
-                                    if (errors.code) setErrors({ ...errors, code: null });
-                                }}
-                            />
-                            <button type="button" onClick={generateCode} className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200" title="Tạo mã ngẫu nhiên">
-                                <Wand2 size={20} />
-                            </button>
-                        </div>
-                        {errors.code && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.code}</p>}
-                    </div>
-
-                    {/* Giảm giá (Logic Disable ô còn lại) */}
-                    <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
-                        <p className="text-xs font-bold uppercase text-orange-600 mb-3">Hình thức giảm giá</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Giảm theo %</label>
-                                <input
-                                    type="number" placeholder="0-100"
-                                    className={`w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${formData.discountAmount ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white'}`}
-                                    value={formData.discountPercent || ''}
-                                    disabled={!!formData.discountAmount} // Disable nếu đã nhập tiền
-                                    onChange={e => setFormData({ ...formData, discountPercent: e.target.value, discountAmount: '' })}
-                                />
-                                {errors.discountPercent && <p className="text-red-500 text-[10px] mt-1">{errors.discountPercent}</p>}
-                            </div>
-
-                            <div className="relative">
-                                {/* Vạch ngăn cách OR */}
-                                <div className="absolute top-1/2 -left-2 -translate-x-1/2 -translate-y-1/2 bg-white px-1 text-[10px] text-gray-400 font-bold z-10">OR</div>
-
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Giảm số tiền</label>
-                                <input
-                                    type="number" placeholder="VNĐ"
-                                    className={`w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${formData.discountPercent ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white'}`}
-                                    value={formData.discountAmount || ''}
-                                    disabled={!!formData.discountPercent} // Disable nếu đã nhập %
-                                    onChange={e => setFormData({ ...formData, discountAmount: e.target.value, discountPercent: '' })}
-                                />
-                                {errors.discountAmount && <p className="text-red-500 text-[10px] mt-1">{errors.discountAmount}</p>}
-                            </div>
-                        </div>
-                        {errors.discount && <p className="text-red-500 text-xs mt-2 font-medium text-center">{errors.discount}</p>}
-                    </div>
-
-                    {/* Giới hạn */}
-                    <div>
-                        <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Giới hạn lượt dùng <span className="text-red-500">*</span></label>
+                {/* Mã Voucher */}
+                <div>
+                    <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Mã Voucher <span className="text-red-500">*</span></label>
+                    <div className="flex gap-2 relative">
                         <input
-                            type="number" placeholder="Nhập 0 = Không giới hạn"
-                            className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.usageLimit ? 'border-red-500 focus:ring-red-200' : ''}`}
-                            value={formData.usageLimit}
+                            type="text"
+                            placeholder="HELLO2026"
+                            className={`w-full px-4 py-2 border rounded-xl outline-none uppercase font-mono font-bold text-gray-700 ${errors.code ? 'border-red-500 focus:ring-red-200' : 'focus:ring-2 focus:ring-orange-500'}`}
+                            value={formData.code}
                             onChange={e => {
-                                setFormData({ ...formData, usageLimit: e.target.value });
-                                if (errors.usageLimit) setErrors({ ...errors, usageLimit: null });
+                                setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') }); // Tự động xóa khoảng trắng
+                                if (errors.code) setErrors({ ...errors, code: null });
                             }}
                         />
-                        {errors.usageLimit && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.usageLimit}</p>}
+                        <button type="button" onClick={generateCode} className="p-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200" title="Tạo mã ngẫu nhiên">
+                            <Wand2 size={20} />
+                        </button>
                     </div>
+                    {errors.code && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.code}</p>}
+                </div>
 
-                    {/* Thời gian */}
+                {/* Giảm giá (Logic Disable ô còn lại) */}
+                <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100">
+                    <p className="text-xs font-bold uppercase text-orange-600 mb-3">Hình thức giảm giá</p>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Từ ngày <span className="text-red-500">*</span></label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Giảm theo %</label>
                             <input
-                                type="date"
-                                className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.validFrom ? 'border-red-500' : ''}`}
-                                value={formData.validFrom}
-                                onChange={e => {
-                                    setFormData({ ...formData, validFrom: e.target.value });
-                                    if (errors.validFrom) setErrors({ ...errors, validFrom: null });
-                                }}
+                                type="number" placeholder="0-100"
+                                className={`w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${formData.discountAmount ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white'}`}
+                                value={formData.discountPercent || ''}
+                                disabled={!!formData.discountAmount} // Disable nếu đã nhập tiền
+                                onChange={e => setFormData({ ...formData, discountPercent: e.target.value, discountAmount: '' })}
                             />
-                            {errors.validFrom && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.validFrom}</p>}
+                            {errors.discountPercent && <p className="text-red-500 text-[10px] mt-1">{errors.discountPercent}</p>}
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Đến ngày <span className="text-red-500">*</span></label>
+
+                        <div className="relative">
+                            {/* Vạch ngăn cách OR */}
+                            <div className="absolute top-1/2 -left-2 -translate-x-1/2 -translate-y-1/2 bg-white px-1 text-[10px] text-gray-400 font-bold z-10">OR</div>
+
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Giảm số tiền</label>
                             <input
-                                type="date"
-                                className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.validTo ? 'border-red-500' : ''}`}
-                                value={formData.validTo}
-                                onChange={e => {
-                                    setFormData({ ...formData, validTo: e.target.value });
-                                    if (errors.validTo) setErrors({ ...errors, validTo: null });
-                                }}
+                                type="number" placeholder="VNĐ"
+                                className={`w-full px-3 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${formData.discountPercent ? 'bg-gray-100 cursor-not-allowed text-gray-400' : 'bg-white'}`}
+                                value={formData.discountAmount || ''}
+                                disabled={!!formData.discountPercent} // Disable nếu đã nhập %
+                                onChange={e => setFormData({ ...formData, discountAmount: e.target.value, discountPercent: '' })}
                             />
-                            {errors.validTo && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.validTo}</p>}
+                            {errors.discountAmount && <p className="text-red-500 text-[10px] mt-1">{errors.discountAmount}</p>}
                         </div>
                     </div>
-
-                    {/* Active Checkbox */}
-                    <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
-                        <div className="relative flex items-center">
-                            <input
-                                type="checkbox"
-                                className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-orange-500 checked:bg-orange-500"
-                                checked={formData.active}
-                                onChange={e => setFormData({ ...formData, active: e.target.checked })}
-                            />
-                            <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                            </div>
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 select-none">Kích hoạt Voucher ngay</span>
-                    </label>
-
-                </form>
-
-                {/* Footer Buttons */}
-                <div className="flex gap-3 pt-4 border-t mt-2 shrink-0">
-                    <button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all">
-                        Hủy bỏ
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={!isChanged}
-                        className={`flex-1 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${!isChanged
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-100'
-                            }`}
-                    >
-                        {initialData ? 'Cập nhật' : 'Tạo Voucher'}
-                    </button>
+                    {errors.discount && <p className="text-red-500 text-xs mt-2 font-medium text-center">{errors.discount}</p>}
                 </div>
+
+                {/* Giới hạn */}
+                <div>
+                    <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Giới hạn lượt dùng <span className="text-red-500">*</span></label>
+                    <input
+                        type="number" placeholder="Nhập 0 = Không giới hạn"
+                        className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.usageLimit ? 'border-red-500 focus:ring-red-200' : ''}`}
+                        value={formData.usageLimit}
+                        onChange={e => {
+                            setFormData({ ...formData, usageLimit: e.target.value });
+                            if (errors.usageLimit) setErrors({ ...errors, usageLimit: null });
+                        }}
+                    />
+                    {errors.usageLimit && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.usageLimit}</p>}
+                </div>
+
+                {/* Thời gian */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Từ ngày <span className="text-red-500">*</span></label>
+                        <input
+                            type="date"
+                            className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.validFrom ? 'border-red-500' : ''}`}
+                            value={formData.validFrom}
+                            onChange={e => {
+                                setFormData({ ...formData, validFrom: e.target.value });
+                                if (errors.validFrom) setErrors({ ...errors, validFrom: null });
+                            }}
+                        />
+                        {errors.validFrom && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.validFrom}</p>}
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1 text-gray-500">Đến ngày <span className="text-red-500">*</span></label>
+                        <input
+                            type="date"
+                            className={`w-full px-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500 ${errors.validTo ? 'border-red-500' : ''}`}
+                            value={formData.validTo}
+                            onChange={e => {
+                                setFormData({ ...formData, validTo: e.target.value });
+                                if (errors.validTo) setErrors({ ...errors, validTo: null });
+                            }}
+                        />
+                        {errors.validTo && <p className="text-red-500 text-[10px] mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.validTo}</p>}
+                    </div>
+                </div>
+
+                {/* Active Checkbox */}
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200">
+                    <div className="relative flex items-center">
+                        <input
+                            type="checkbox"
+                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 transition-all checked:border-orange-500 checked:bg-orange-500"
+                            checked={formData.active}
+                            onChange={e => setFormData({ ...formData, active: e.target.checked })}
+                        />
+                        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        </div>
+                    </div>
+                    <span className="text-sm font-bold text-gray-700 select-none">Kích hoạt Voucher ngay</span>
+                </label>
+
+            </form>
+
+            {/* Footer Buttons */}
+            <div className="flex gap-3 pt-4 border-t mt-2 shrink-0">
+                <button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-all">
+                    Hủy bỏ
+                </button>
+                <button
+                    onClick={handleSubmit}
+                    disabled={!isChanged}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${!isChanged
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                        : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-100'
+                        }`}
+                >
+                    {initialData ? 'Cập nhật' : 'Tạo Voucher'}
+                </button>
             </div>
-        </div>
+        </SharedModal>
     );
 };
 
