@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Ticket, Pencil, Trash2 } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { voucherService } from '@modules/voucher-management/api/voucherService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
+import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import VoucherModal from './VoucherModal.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
@@ -28,12 +30,18 @@ const VoucherManager = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const isMountedRef = useRef(true);
   const fetchSeqRef = useRef(0);
+  const pageSize = 24;
 
   // === 1. State cho Status Modal ===
   const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
+  const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   const getStatusInfo = (v) => {
     const now = new Date();
@@ -63,9 +71,18 @@ const VoucherManager = () => {
     const fetchSeq = ++fetchSeqRef.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await voucherService.getAll({ force });
+      const params = {
+        page: currentPage,
+        size: pageSize
+      };
+      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+
+      const data = await voucherService.getPage(params, { force });
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setVouchers(data);
+      setVouchers(data.content || []);
+      setTotalPages(data.totalPages || 0);
+      setTotalElements(data.totalElements || 0);
     } catch (err) {
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       console.error(err);
@@ -74,7 +91,7 @@ const VoucherManager = () => {
         setLoading(false);
       }
     }
-  }, []);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
 
   useWebSocket('/topic/vouchers', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
@@ -83,9 +100,14 @@ const VoucherManager = () => {
     }
   });
 
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearchTerm, statusFilter]);
+
   useEffect(() => { fetchData(true); }, [fetchData]);
 
   const handleSubmit = async (data) => {
+    setIsSaving(true);
     const safeValidFrom = data.validFrom && !data.validFrom.includes('T') ? `${data.validFrom}T00:00:00` : data.validFrom;
     const safeValidTo = data.validTo && !data.validTo.includes('T') ? `${data.validTo}T23:59:59` : data.validTo;
 
@@ -101,24 +123,15 @@ const VoucherManager = () => {
     };
 
     try {
-      let saved;
       if (editingVoucher?.id) {
-        saved = await voucherService.update(editingVoucher.id, payload);
+        await voucherService.update(editingVoucher.id, payload);
         showSuccess(`Đã cập nhật voucher`);
       } else {
-        saved = await voucherService.create(payload);
+        await voucherService.create(payload);
         showSuccess(`Đã thêm voucher`);
       }
-      if (saved?.id) {
-        setVouchers(prev => {
-          const exists = prev.some(voucher => voucher.id === saved.id);
-          if (exists) {
-            return prev.map(voucher => voucher.id === saved.id ? saved : voucher);
-          }
-          return [saved, ...prev];
-        });
-      }
       setIsModalOpen(false);
+      fetchData(false, { force: true });
     } catch (err) {
       const errorMsg = err.message || '';
       if (errorMsg.includes("Voucher code already exists")) {
@@ -126,6 +139,8 @@ const VoucherManager = () => {
       } else {
         showError(err);
       }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -134,23 +149,12 @@ const VoucherManager = () => {
     if (!confirmed) return;
     try {
       await voucherService.delete(id);
-      setVouchers(prev => prev.filter(voucher => voucher.id !== id));
       showSuccess("Đã xóa voucher thành công");
+      fetchData(false, { force: true });
     } catch (err) {
       showError(err);
     }
   };
-
-  const filteredVouchers = useMemo(() => {
-    const normalizedSearch = searchTerm.toLowerCase();
-    return vouchers.filter(v => {
-      const status = getStatusInfo(v);
-      const matchesSearch = v.code.toLowerCase().includes(normalizedSearch);
-      const matchesStatus = statusFilter === 'ALL' || status.value === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [vouchers, searchTerm, statusFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -171,7 +175,7 @@ const VoucherManager = () => {
         <div className="flex justify-center p-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {filteredVouchers.map(v => {
+          {vouchers.map(v => {
             const status = getStatusInfo(v);
             return (
               <div key={v.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all">
@@ -203,18 +207,28 @@ const VoucherManager = () => {
         </div>
       )}
 
-      {!loading && filteredVouchers.length === 0 && (
+      {!loading && vouchers.length === 0 && (
         <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
           <Ticket size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy voucher nào.
         </div>
       )}
 
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        itemLabel="voucher"
+        loading={loading}
+        onPageChange={setCurrentPage}
+      />
+
       {/* Modal Nhập liệu */}
       <VoucherModal
         key={isModalOpen ? (editingVoucher?.id || 'new') : 'closed'}
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
         initialData={editingVoucher} onSubmit={handleSubmit}
+        isSubmitting={isSaving}
       />
     </div>
   );

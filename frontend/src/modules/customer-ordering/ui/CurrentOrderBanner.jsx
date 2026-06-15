@@ -5,7 +5,7 @@ import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
-const countItems = (order) => (order?.orderItems || [])
+const countItems = (order) => (order?.items || order?.orderItems || [])
   .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
 
 const CurrentOrderBanner = ({ order, onClick }) => {

@@ -4,12 +4,14 @@ import com.qros.modules.inventory.dto.request.InventoryItemRequest;
 import com.qros.modules.inventory.dto.request.StockAdjustmentRequest;
 import com.qros.modules.inventory.dto.request.StockInRequest;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
+import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.mapper.InventoryItemMapper;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.enums.StockMovementType;
 import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -36,7 +38,7 @@ public class InventoryItemService {
     private final RecipeItemRepository recipeItemRepository;
     private final InventoryItemMapper inventoryItemMapper;
     private final StockMovementService stockMovementService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public Page<InventoryItemResponse> findAll(Pageable pageable) {
@@ -46,13 +48,26 @@ public class InventoryItemService {
 
     @Transactional(readOnly = true)
     public Page<InventoryItemResponse> search(String keyword, Pageable pageable) {
-        if (keyword == null || keyword.isBlank()) {
-            return findAll(pageable);
-        }
+        return search(keyword, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<InventoryItemResponse> search(String keyword, String stockFilter, Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        String normalizedStockFilter = stockFilter == null || stockFilter.isBlank() ? "ALL" : stockFilter.trim().toUpperCase();
 
         return inventoryItemRepository
-                .findByNameContainingIgnoreCaseOrderByNameAsc(keyword.trim(), pageable)
+                .searchForManagement(normalizedKeyword, normalizedStockFilter, pageable)
                 .map(inventoryItemMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public InventorySummaryResponse getSummary() {
+        return new InventorySummaryResponse(
+                inventoryItemRepository.count(),
+                inventoryItemRepository.countByActiveTrue(),
+                inventoryItemRepository.countLowStockActiveItems(),
+                inventoryItemRepository.countOutOfStockActiveItems());
     }
 
     @Transactional(readOnly = true)
@@ -100,7 +115,7 @@ public class InventoryItemService {
 
         InventoryItem saved = inventoryItemRepository.save(item);
 
-        notificationService.notifyInventoryChange("inventory_item_created", saved.getId());
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_item_created", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
     }
@@ -132,7 +147,7 @@ public class InventoryItemService {
 
         InventoryItem saved = inventoryItemRepository.save(item);
 
-        notificationService.notifyInventoryChange("inventory_item_updated", saved.getId());
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_item_updated", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
     }
@@ -153,7 +168,7 @@ public class InventoryItemService {
 
         inventoryItemRepository.delete(item);
 
-        notificationService.notifyInventoryChange("inventory_item_deleted", id);
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_item_deleted", id));
     }
 
     @Transactional
@@ -185,7 +200,7 @@ public class InventoryItemService {
                 quantityAfter,
                 request.note());
 
-        notificationService.notifyInventoryChange("stock_in", saved.getId());
+        eventPublisher.publishEvent(new InventoryChangeEvent("stock_in", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
     }
@@ -232,7 +247,7 @@ public class InventoryItemService {
                 quantityAfter,
                 request.note());
 
-        notificationService.notifyInventoryChange("stock_adjusted", saved.getId());
+        eventPublisher.publishEvent(new InventoryChangeEvent("stock_adjusted", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
     }

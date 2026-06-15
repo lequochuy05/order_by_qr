@@ -116,21 +116,30 @@ const CartModal = ({
                             </button>
                         </div>
                         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                            {crossSellItems.map(item => (
-                                <div key={item.id} className="min-w-[130px] bg-gray-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-gray-100 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-500 transition-all flex flex-col justify-between">
-                                    <div>
-                                        <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 leading-tight mb-2 line-clamp-2 h-8 transition-colors">
-                                            {item.name}
-                                        </p>
+                            {crossSellItems.map(item => {
+                                const hasOptions = item.itemOptions?.length > 0;
+                                const available = item.available !== false;
+
+                                return (
+                                    <div key={item.id} className="min-w-[130px] bg-gray-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-gray-100 dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-500 transition-all flex flex-col justify-between">
+                                        <div>
+                                            <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 leading-tight mb-2 line-clamp-2 h-8 transition-colors">
+                                                {item.name}
+                                            </p>
+                                            <p className="mb-2 text-[11px] font-black text-orange-600 dark:text-orange-400">
+                                                {fmtVND(item.price)}
+                                            </p>
+                                        </div>
+                                        <button
+                                            disabled={!available}
+                                            onClick={() => handleAddToCart(item, getCartItemQty(item) + 1, false, hasOptions)}
+                                            className="w-full py-2 bg-orange-500 text-white text-[10px] font-extrabold rounded-xl shadow-md shadow-orange-100 dark:shadow-orange-900/20 active:scale-95 transition-all disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none"
+                                        >
+                                            {!available ? 'Hết hàng' : hasOptions ? 'Tùy chọn' : '+ Thêm'}
+                                        </button>
                                     </div>
-                                    <button
-                                        onClick={() => handleAddToCart(item, getCartItemQty(item) + 1, false, item.itemOptions?.length > 0)}
-                                        className="w-full py-2 bg-orange-500 text-white text-[10px] font-extrabold rounded-xl shadow-md shadow-orange-100 dark:shadow-orange-900/20 active:scale-95 transition-all"
-                                    >
-                                        + {fmtVND(item.price)}
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

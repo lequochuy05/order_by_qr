@@ -12,7 +12,7 @@ import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
-import com.qros.modules.promotion.service.VoucherService;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.exception.BusinessException;
@@ -34,7 +34,7 @@ public class OrderPaymentService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
-    private final VoucherService voucherService;
+    private final VoucherCheckoutService voucherCheckoutService;
     private final PaymentTransactionRepository transactionRepository;
     private final OrderPricingService orderPricingService;
     private final PaymentCompletionService paymentCompletionService;
@@ -129,7 +129,7 @@ public class OrderPaymentService {
             return null;
         }
 
-        VoucherPaymentResult voucherResult = voucherService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
+        VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
         order.setVoucherCode(voucherResult.voucherCode());
         orderPricingService.setOrderMoney(order, currentSubtotalAmount(order), voucherResult.appliedDiscountAmount());
 

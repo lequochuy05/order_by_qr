@@ -41,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, AUTH_PUBLIC_POST).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
-                        .requestMatchers(HttpMethod.POST, AUTHENTICATED_POST).authenticated()
+
 
                         .requestMatchers(HttpMethod.GET, SELF_GET).authenticated()
                         .requestMatchers(HttpMethod.PATCH, SELF_PATCH).authenticated()

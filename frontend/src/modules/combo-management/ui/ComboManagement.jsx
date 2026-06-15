@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { comboService } from '@modules/combo-management/api/comboService.js';
 import { menuItemService } from '@modules/menu-management/api/menuService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
+import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
@@ -23,11 +25,16 @@ const ComboManager = () => {
     const [toggleConfirm, setToggleConfirm] = useState({ isOpen: false, id: null, active: false });
     const [errors, setErrors] = useState({});
     const [detailLoadingId, setDetailLoadingId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
     const isMountedRef = useRef(true);
     const fetchSeqRef = useRef(0);
+    const pageSize = 24;
 
     const { showSuccess, showError } = useStatusModal();
     const { confirm } = useConfirmModal();
+    const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
     useEffect(() => {
         isMountedRef.current = true;
@@ -40,9 +47,19 @@ const ComboManager = () => {
         const fetchSeq = ++fetchSeqRef.current;
         if (showLoading) setLoading(true);
         try {
-            const comboData = await comboService.getAll({ force });
+            const params = {
+                page: currentPage,
+                size: pageSize
+            };
+            if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+            if (statusFilter === 'ACTIVE') params.active = true;
+            if (statusFilter === 'INACTIVE') params.active = false;
+
+            const comboData = await comboService.getPage(params, { force });
             if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-            setCombos(comboData);
+            setCombos(comboData.content || []);
+            setTotalPages(comboData.totalPages || 0);
+            setTotalElements(comboData.totalElements || 0);
         } catch (err) {
             if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             console.error("Lỗi đồng bộ dữ liệu:", err);
@@ -51,7 +68,7 @@ const ComboManager = () => {
                 setLoading(false);
             }
         }
-    }, []);
+    }, [currentPage, debouncedSearchTerm, statusFilter]);
 
     const ensureMenuItems = useCallback(async () => {
         if (menuItems.length > 0) return menuItems;
@@ -69,29 +86,24 @@ const ComboManager = () => {
         }
     });
 
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [debouncedSearchTerm, statusFilter]);
+
     useEffect(() => { fetchCombos(true); }, [fetchCombos]);
 
     const handleSubmit = async (data) => {
         try {
-            let saved;
             if (data.id) {
-                saved = await comboService.update(data.id, data);
+                await comboService.update(data.id, data);
                 showSuccess("Cập nhật Combo thành công!");
             } else {
-                saved = await comboService.create(data);
+                await comboService.create(data);
                 showSuccess("Thêm mới Combo thành công!");
-            }
-            if (saved?.id) {
-                setCombos(prev => {
-                    const exists = prev.some(combo => combo.id === saved.id);
-                    if (exists) {
-                        return prev.map(combo => combo.id === saved.id ? { ...combo, ...saved, items: combo.items || [] } : combo);
-                    }
-                    return [saved, ...prev];
-                });
             }
             setErrors({});
             setIsModalOpen(false);
+            fetchCombos(false, { force: true });
 
         } catch (err) {
             console.error('Error saving combo:', err)
@@ -110,7 +122,7 @@ const ComboManager = () => {
         try {
             await comboService.delete(id);
             showSuccess("Đã xóa Combo thành công!");
-            setCombos(prev => prev.filter(combo => combo.id !== id));
+            fetchCombos(false, { force: true });
         } catch (err) {
             showError(err);
         }
@@ -127,6 +139,7 @@ const ComboManager = () => {
             setCombos(prev => prev.map(combo => combo.id === id ? { ...combo, active: updated.active } : combo));
 
             setToggleConfirm({ isOpen: false, id: null, active: false });
+            fetchCombos(false, { force: true });
         } catch (err) {
             setToggleConfirm({ isOpen: false, id: null, active: false });
             showError(err);
@@ -174,19 +187,6 @@ const ComboManager = () => {
         }
     };
 
-    const filteredCombos = useMemo(() => {
-        const normalizedSearch = searchTerm.toLowerCase();
-        return combos.filter(c => {
-            const matchesSearch = c.name.toLowerCase().includes(normalizedSearch);
-            const matchesStatus =
-                statusFilter === 'ALL' ||
-                (statusFilter === 'ACTIVE' && c.active) ||
-                (statusFilter === 'INACTIVE' && !c.active);
-
-            return matchesSearch && matchesStatus;
-        });
-    }, [combos, searchTerm, statusFilter]);
-
     return (
         <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen font-sans">
             <ManagementHeader
@@ -211,7 +211,7 @@ const ComboManager = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {filteredCombos.map(c => (
+                    {combos.map(c => (
                         <ComboCard
                             key={c.id}
                             combo={c}
@@ -224,12 +224,21 @@ const ComboManager = () => {
                 </div>
             )}
 
-            {!loading && filteredCombos.length === 0 && (
+            {!loading && combos.length === 0 && (
                 <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
                     <Package size={40} className="mx-auto mb-4 opacity-30" />
                     Không tìm thấy combo phù hợp hoặc chưa có dữ liệu.
                 </div>
             )}
+
+            <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalElements={totalElements}
+                itemLabel="combo"
+                loading={loading}
+                onPageChange={setCurrentPage}
+            />
 
             <ConfirmToggleModal
                 isOpen={toggleConfirm.isOpen}

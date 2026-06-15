@@ -21,7 +21,43 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     Page<InventoryItem> findByNameContainingIgnoreCaseOrderByNameAsc(String name, Pageable pageable);
 
+    @Query("""
+            SELECT i
+            FROM InventoryItem i
+            WHERE (CAST(:keyword AS string) IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR LOWER(i.unit) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
+              AND (
+                    CAST(:stockFilter AS string) IS NULL
+                    OR :stockFilter = 'ALL'
+                    OR (:stockFilter = 'LOW' AND i.active = true AND (i.quantityOnHand - i.reservedQuantity) <= i.lowStockThreshold)
+                    OR (:stockFilter = 'OUT' AND i.active = true AND (i.quantityOnHand - i.reservedQuantity) <= 0)
+                    OR (:stockFilter = 'INACTIVE' AND i.active = false)
+                  )
+            ORDER BY i.name ASC
+            """)
+    Page<InventoryItem> searchForManagement(
+            @Param("keyword") String keyword,
+            @Param("stockFilter") String stockFilter,
+            Pageable pageable);
+
     List<InventoryItem> findByActiveTrueOrderByNameAsc();
+
+    long countByActiveTrue();
+
+    @Query("""
+            SELECT COUNT(i)
+            FROM InventoryItem i
+            WHERE i.active = true
+              AND (i.quantityOnHand - i.reservedQuantity) <= i.lowStockThreshold
+            """)
+    long countLowStockActiveItems();
+
+    @Query("""
+            SELECT COUNT(i)
+            FROM InventoryItem i
+            WHERE i.active = true
+              AND (i.quantityOnHand - i.reservedQuantity) <= 0
+            """)
+    long countOutOfStockActiveItems();
 
     @Override
     @NonNull

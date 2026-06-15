@@ -1,6 +1,7 @@
 package com.qros.modules.settings.service;
 
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
@@ -23,7 +24,7 @@ public class SystemSettingsService {
 
     private final SystemSettingsRepository settingsRepository;
     private final SystemSettingsMapper settingsMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.SETTINGS, key = "'admin'")
@@ -47,7 +48,7 @@ public class SystemSettingsService {
         SystemSettings saved = settingsRepository.save(settings);
         PublicSettingsResponse publicSettings = settingsMapper.toPublicResponse(saved);
 
-        notificationService.notifySettingsChange(publicSettings);
+        eventPublisher.publishEvent(new SettingsChangeEvent(publicSettings));
 
         return settingsMapper.toResponse(saved);
     }

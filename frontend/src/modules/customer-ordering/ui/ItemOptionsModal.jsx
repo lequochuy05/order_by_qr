@@ -24,7 +24,7 @@ const ItemOptionsModal = ({
     if (item?.itemOptions) {
       item.itemOptions.forEach(opt => {
         // Chỉ tự động chọn nếu là Bắt buộc và chỉ cho phép chọn 1 (Radio)
-        if (opt.isRequired && opt.maxSelection === 1 && opt.optionValues?.length > 0) {
+        if (opt.required && opt.maxSelection === 1 && opt.optionValues?.length > 0) {
           defaultSelections[opt.id] = opt.optionValues[0].id;
         } else {
           // Nếu chọn nhiều (Checkbox) hoặc không bắt buộc, để trống/mảng rỗng
@@ -67,8 +67,8 @@ const ItemOptionsModal = ({
       } else {
         // Logic Radio (Chọn 1)
         // Nếu click lại cái đang chọn thì bỏ chọn (nếu không bắt buộc)
-        const isRequired = item.itemOptions?.find(o => o.id === optionId)?.isRequired;
-        if (prev[optionId] === valueId && !isRequired) {
+        const required = item.itemOptions?.find(o => o.id === optionId)?.required;
+        if (prev[optionId] === valueId && !required) {
           return { ...prev, [optionId]: null };
         }
         return { ...prev, [optionId]: valueId };
@@ -95,7 +95,7 @@ const ItemOptionsModal = ({
 
   const handleConfirm = () => {
     setSubmitted(true);
-    const requiredOptions = item.itemOptions?.filter(o => o.isRequired) || [];
+    const requiredOptions = item.itemOptions?.filter(o => o.required) || [];
     for (const opt of requiredOptions) {
       if (!hasRequiredSelection(opt)) {
         onError?.(labels.requiredMessage(opt.name), labels.requiredTitle);
@@ -131,7 +131,6 @@ const ItemOptionsModal = ({
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-200"
-      onClick={onClose}
     >
       <div
         className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 transition-colors overflow-hidden"
@@ -168,7 +167,7 @@ const ItemOptionsModal = ({
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {item.itemOptions?.map(opt => {
-            const invalid = submitted && opt.isRequired && !hasRequiredSelection(opt);
+            const invalid = submitted && opt.required && !hasRequiredSelection(opt);
             return (
             <div
               key={opt.id}
@@ -180,7 +179,7 @@ const ItemOptionsModal = ({
             >
               <div className="flex items-center justify-between gap-3">
                 <h4 className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-widest transition-colors">{opt.name}</h4>
-                {opt.isRequired && (
+                {opt.required && (
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase transition-colors ${
                     invalid
                       ? 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300'

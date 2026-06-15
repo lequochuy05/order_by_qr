@@ -1,5 +1,5 @@
 import api from '@shared/api/httpClient.js';
-import { createKeyedCachedRequest } from '@shared/lib/cacheUtils.js';
+import { createCachedRequest, createKeyedCachedRequest } from '@shared/lib/cacheUtils.js';
 
 const stableStringify = (value) => {
     if (!value) return 'all';
@@ -18,8 +18,24 @@ const { requestFn: getItemsCached, clearCache: clearItemsCache } = createKeyedCa
   (options) => stableStringify(options)
 );
 
+const { requestFn: getItemPageCached, clearCache: clearItemPageCache } = createKeyedCachedRequest(
+  (options = {}) => {
+    const page = Number(options.page || 0);
+    const size = Number(options.size || 24);
+    return api.get('/inventory/items', { params: { page, size, sort: 'name,asc', ...options } })
+      .then((data) => normalizePage(data, page, size, normalizeInventoryItem));
+  },
+  INVENTORY_CACHE_MS,
+  (options) => stableStringify(options)
+);
+
+const { requestFn: getSummaryCached, clearCache: clearSummaryCache } = createCachedRequest(
+  () => api.get('/inventory/items/summary'),
+  INVENTORY_CACHE_MS
+);
+
 const { requestFn: getMovementsCached, clearCache: clearMovementsCache } = createKeyedCachedRequest(
-  (options = {}) => api.get('/inventory/movements', { params: { size: 1000, sort: 'createdAt,desc', ...options } })
+  (options = {}) => api.get('/inventory/movements', { params: { size: 100, sort: 'createdAt,desc', ...options } })
     .then(normalizePageContent)
     .then((movements) => movements.map(normalizeStockMovement)),
   INVENTORY_CACHE_MS,
@@ -36,6 +52,31 @@ const normalizePageContent = (data) => {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.content)) return data.content;
   return [];
+};
+
+const emptyPage = (page = 0, size = 24) => ({
+  content: [],
+  number: page,
+  size,
+  totalElements: 0,
+  totalPages: 0
+});
+
+const normalizePage = (data, page = 0, size = 24, itemMapper = (item) => item) => {
+  if (Array.isArray(data)) {
+    return {
+      ...emptyPage(page, size),
+      content: data.map(itemMapper),
+      totalElements: data.length,
+      totalPages: data.length > 0 ? 1 : 0
+    };
+  }
+
+  return {
+    ...emptyPage(page, size),
+    ...data,
+    content: normalizePageContent(data).map(itemMapper)
+  };
 };
 
 const normalizeInventoryItem = (item = {}) => {
@@ -67,13 +108,17 @@ const inventoryItemPayload = (data = {}) => ({
 
 const clearAllInventoryCache = () => {
   clearItemsCache();
+  clearItemPageCache();
   clearMovementsCache();
   clearRecipeCache();
+  clearSummaryCache();
 };
 
 export const inventoryService = {
-  getItems: (options) => getItemsCached(options),
-  getMovements: (options) => getMovementsCached(options),
+  getItems: ({ force = false, ...params } = {}) => getItemsCached(params, { force }),
+  getItemPage: ({ force = false, ...params } = {}) => getItemPageCached(params, { force }),
+  getSummary: ({ force = false } = {}) => getSummaryCached({ force }),
+  getMovements: ({ force = false, ...params } = {}) => getMovementsCached(params, { force }),
   getRecipe: (menuItemId, options) => getRecipeCached(menuItemId, options),
 
   createItem: async (data) => {

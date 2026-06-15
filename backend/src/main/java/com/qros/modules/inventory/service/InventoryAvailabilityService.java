@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -70,12 +71,14 @@ public class InventoryAvailabilityService {
             return Map.of();
         }
 
-        return menuItemIds.stream()
+        Map<Long, BigDecimal> quantitiesByMenuItem = menuItemIds.stream()
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        id -> canPrepareMenuItem(id, BigDecimal.ONE)));
+                        id -> BigDecimal.ONE));
+
+        return getMenuItemAvailability(quantitiesByMenuItem);
     }
 
     @Transactional(readOnly = true)
@@ -84,13 +87,56 @@ public class InventoryAvailabilityService {
             return Map.of();
         }
 
-        return comboRepository.findAllById(comboIds).stream()
+        List<Long> ids = comboIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Combo> combos = comboRepository.findAllByIdInWithItems(ids);
+
+        List<Long> menuItemIds = combos.stream()
+                .filter(combo -> combo.getItems() != null)
+                .flatMap(combo -> combo.getItems().stream())
+                .map(item -> item.getMenuItem() == null ? null : item.getMenuItem().getId())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<Long, List<RecipeItem>> recipesByMenuItem = recipesByMenuItem(menuItemIds);
+
+        return combos.stream()
                 .collect(Collectors.toMap(
                         Combo::getId,
-                        this::canPrepareCombo));
+                        combo -> canPrepareCombo(combo, recipesByMenuItem)));
     }
 
-    private boolean canPrepareCombo(Combo combo) {
+    private Map<Long, Boolean> getMenuItemAvailability(Map<Long, BigDecimal> quantitiesByMenuItem) {
+        if (quantitiesByMenuItem.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<RecipeItem>> recipesByMenuItem = recipesByMenuItem(quantitiesByMenuItem.keySet().stream().toList());
+        Map<Long, Boolean> availability = new HashMap<>();
+
+        quantitiesByMenuItem.forEach((menuItemId, quantity) ->
+                availability.put(menuItemId, canPrepareMenuItem(menuItemId, quantity, recipesByMenuItem)));
+
+        return availability;
+    }
+
+    private Map<Long, List<RecipeItem>> recipesByMenuItem(List<Long> menuItemIds) {
+        if (menuItemIds == null || menuItemIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return recipeItemRepository.findByMenuItemIds(menuItemIds).stream()
+                .collect(Collectors.groupingBy(recipeItem -> recipeItem.getMenuItem().getId()));
+    }
+
+    private boolean canPrepareCombo(Combo combo, Map<Long, List<RecipeItem>> recipesByMenuItem) {
         if (combo.getItems() == null || combo.getItems().isEmpty()) {
             return true;
         }
@@ -99,7 +145,19 @@ public class InventoryAvailabilityService {
                 .filter(item -> item.getMenuItem() != null)
                 .allMatch(item -> canPrepareMenuItem(
                         item.getMenuItem().getId(),
-                        quantityFrom(item.getQuantity())));
+                        quantityFrom(item.getQuantity()),
+                        recipesByMenuItem));
+    }
+
+    private boolean canPrepareMenuItem(
+            Long menuItemId,
+            BigDecimal quantity,
+            Map<Long, List<RecipeItem>> recipesByMenuItem) {
+        List<RecipeItem> recipeItems = recipesByMenuItem.getOrDefault(menuItemId, List.of());
+
+        return recipeItems.stream()
+                .map(recipeItem -> toRequirement(recipeItem, quantity))
+                .allMatch(InventoryRequirement::sufficient);
     }
 
     private InventoryRequirement toRequirement(

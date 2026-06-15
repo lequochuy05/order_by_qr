@@ -1,6 +1,7 @@
 package com.qros.modules.user.service;
 
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -26,7 +27,7 @@ import java.util.Objects;
 public class CurrentUserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
 
     public UserResponse getCurrentProfile(@NonNull String email) {
@@ -59,7 +60,7 @@ public class CurrentUserService {
 
         userRepository.save(u);
         // log.info("User self-updated profile: {}", u.getEmail());
-        notificationService.notifyUserChange();
+        eventPublisher.publishEvent(new UserChangeEvent());
         return userMapper.toDto(u);
     }
 

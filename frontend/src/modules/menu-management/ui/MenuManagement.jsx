@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
 import { menuItemService } from '@modules/menu-management/api/menuService.js';
 import { categoryService } from '@entities/category/api/categoryService.js';
 import { aiLocalService } from '@modules/ai-assistant/api/aiLocalService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
+import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import MenuCard from './MenuCard';
 import MenuModal from './MenuModal';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
@@ -30,7 +32,7 @@ const emptyMenuForm = {
 const normalizeItemOptions = (itemOptions = []) => itemOptions.map(option => ({
   id: option.id,
   name: option.name || '',
-  required: option.required ?? option.isRequired ?? false,
+  required: option.required ?? false,
   maxSelection: option.maxSelection ?? 1,
   optionValues: (option.optionValues || []).map(value => ({
     id: value.id,
@@ -56,6 +58,7 @@ const MenuManager = () => {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [filterCate, setFilterCate] = useState('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -67,12 +70,17 @@ const MenuManager = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const isMountedRef = useRef(true);
   const fetchSeqRef = useRef(0);
+  const pageSize = 24;
 
   // Hook Status Modal
   const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
+  const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -111,9 +119,18 @@ const MenuManager = () => {
     const fetchSeq = ++fetchSeqRef.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await menuItemService.getAll(undefined, { force });
+      const params = {
+        page: currentPage,
+        size: pageSize
+      };
+      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+      if (filterCate !== 'ALL') params.categoryId = filterCate;
+
+      const data = await menuItemService.getPage(params, { force });
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setItems(data);
+      setItems(data.content || []);
+      setTotalPages(data.totalPages || 0);
+      setTotalElements(data.totalElements || 0);
     } catch (err) {
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       console.error("Lỗi đồng bộ thực đơn:", err);
@@ -122,12 +139,7 @@ const MenuManager = () => {
         setLoading(false);
       }
     }
-  }, []);
-
-  const filteredItems = useMemo(() => {
-    if (filterCate === 'ALL') return items;
-    return items.filter(item => String(item.category?.id) === String(filterCate));
-  }, [items, filterCate]);
+  }, [currentPage, debouncedSearchTerm, filterCate]);
 
   // WebSocket
   useWebSocket('/topic/menu', (message) => {
@@ -136,6 +148,10 @@ const MenuManager = () => {
       fetchItems(false, { force: true });
     }
   });
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearchTerm, filterCate]);
 
   useEffect(() => { fetchItems(true); }, [fetchItems]);
 
@@ -250,6 +266,9 @@ const MenuManager = () => {
   return (
     <div className="p-4 space-y-4">
       <ManagementHeader
+        searchPlaceholder="Tìm món ăn..."
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
         showFilter={true}
         filterValue={filterCate}
         setFilterValue={setFilterCate}
@@ -272,7 +291,7 @@ const MenuManager = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-          {filteredItems.map(it => (
+          {items.map(it => (
             <MenuCard
               key={it.id}
               item={it}
@@ -284,12 +303,21 @@ const MenuManager = () => {
         </div>
       )}
 
-      {!loading && filteredItems.length === 0 && (
+      {!loading && items.length === 0 && (
         <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
           <UtensilsCrossed size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy món ăn phù hợp hoặc chưa có dữ liệu.
         </div>
       )}
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        itemLabel="món"
+        loading={loading}
+        onPageChange={setCurrentPage}
+      />
 
       <MenuModal
         isOpen={isModalOpen}

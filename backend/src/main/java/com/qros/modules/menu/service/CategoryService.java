@@ -9,7 +9,8 @@ import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -40,7 +41,7 @@ public class CategoryService {
     private final MenuItemRepository menuItemRepository;
     private final CategoryMapper categoryMapper;
     private final PublicMenuMapper publicMenuMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
 
@@ -50,7 +51,6 @@ public class CategoryService {
                 .map(categoryMapper::toSummaryResponse)
                 .toList();
     }
-
     @Cacheable(value = CacheNames.CATEGORIES, key = "'public_all_active'")
     public List<PublicCategoryItem> getPublicActive() {
         return categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc().stream()
@@ -58,12 +58,13 @@ public class CategoryService {
                 .toList();
     }
 
+
     public Page<CategoryResponse> search(String q, @NonNull Pageable pageable) {
         Page<Category> page = q == null || q.trim().isEmpty()
                 ? categoryRepo.findAll(pageable)
                 : categoryRepo.findByNameContainingIgnoreCase(q.trim(), pageable);
 
-        return page.map(categoryMapper::toResponse);
+        return page.map(categoryMapper::toSummaryResponse);
     }
 
     @Transactional
@@ -83,7 +84,7 @@ public class CategoryService {
                 .build();
 
         Category saved = categoryRepo.save(category);
-        notificationService.notifyCategoryChange("created", saved.getId());
+        eventPublisher.publishEvent(new CategoryChangeEvent("created", saved.getId()));
 
         return categoryMapper.toResponse(saved);
     }
@@ -112,7 +113,7 @@ public class CategoryService {
         }
 
         Category saved = categoryRepo.save(category);
-        notificationService.notifyCategoryChange("updated", saved.getId());
+        eventPublisher.publishEvent(new CategoryChangeEvent("updated", saved.getId()));
 
         return categoryMapper.toResponse(saved);
     }
@@ -138,7 +139,7 @@ public class CategoryService {
                     "delete category image after category delete " + id);
         }
 
-        notificationService.notifyCategoryChange("deleted", id);
+        eventPublisher.publishEvent(new CategoryChangeEvent("deleted", id));
     }
 
     @Transactional
@@ -167,7 +168,7 @@ public class CategoryService {
                         "delete replaced category image " + id);
             }
 
-            notificationService.notifyCategoryChange("image_updated", id);
+            eventPublisher.publishEvent(new CategoryChangeEvent("image_updated", id));
 
             return Map.of("img", newUrl);
         } catch (BusinessException e) {

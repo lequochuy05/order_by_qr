@@ -1,7 +1,8 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.inventory.service.InventoryReservationService;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -35,7 +36,7 @@ public class OrderStatusService {
     private final OrderTableSyncService orderTableSyncService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
     private final InventoryReservationService inventoryReservationService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
 
     @Transactional
@@ -77,7 +78,7 @@ public class OrderStatusService {
 
         orderTableSyncService.recalcTableStatus(saved);
         orderCacheInvalidationService.evictAfterOrderMutation(id);
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
     }
@@ -126,7 +127,7 @@ public class OrderStatusService {
 
         orderTableSyncService.recalcTableStatus(saved);
         orderCacheInvalidationService.evictAfterOrderMutation(id);
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
     }
@@ -143,7 +144,7 @@ public class OrderStatusService {
         orderRepository.delete(order);
 
         orderCacheInvalidationService.evictAfterOrderMutation(id);
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
     @Transactional
@@ -174,51 +175,33 @@ public class OrderStatusService {
                         || item.getStatus() == OrderItemStatus.FINISHED);
 
         if (allDone && order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
-            OrderStatus fromStatus = order.getStatus();
-
-            order.setStatus(OrderStatus.AWAITING_PAYMENT);
-
-            orderAuditService.recordOrderStatus(
-                    order,
-                    fromStatus,
-                    order.getStatus(),
-                    changedBy,
-                    "auto-all-items-done");
-
-            orderRepository.save(order);
-
-            log.info("Order #{} auto-promoted to AWAITING_PAYMENT", order.getId());
+            applyAutoTransition(order, OrderStatus.AWAITING_PAYMENT, changedBy, "auto-all-items-done");
         } else if (!allDone && order.getStatus() == OrderStatus.AWAITING_PAYMENT) {
-            OrderStatus fromStatus = order.getStatus();
-
-            order.setStatus(OrderStatus.SERVING);
-
-            orderAuditService.recordOrderStatus(
-                    order,
-                    fromStatus,
-                    order.getStatus(),
-                    changedBy,
-                    "auto-items-reopened");
-
-            orderRepository.save(order);
-
-            log.info("Order #{} auto-demoted to SERVING", order.getId());
+            applyAutoTransition(order, OrderStatus.SERVING, changedBy, "auto-items-reopened");
         } else if (anyCookingOrFinished && order.getStatus() == OrderStatus.PENDING) {
-            OrderStatus fromStatus = order.getStatus();
-
-            order.setStatus(OrderStatus.SERVING);
-
-            orderAuditService.recordOrderStatus(
-                    order,
-                    fromStatus,
-                    order.getStatus(),
-                    changedBy,
-                    "auto-kitchen-started");
-
-            orderRepository.save(order);
-
-            log.info("Order #{} auto-promoted to SERVING", order.getId());
+            applyAutoTransition(order, OrderStatus.SERVING, changedBy, "auto-kitchen-started");
         }
+    }
+
+    private void applyAutoTransition(Order order, OrderStatus targetStatus, User changedBy, String reason) {
+        OrderStatus fromStatus = order.getStatus();
+
+        orderStateFactory.validateTransition(fromStatus, targetStatus);
+
+        OrderState state = orderStateFactory.getState(targetStatus);
+        state.handleRequest(order);
+
+        orderAuditService.recordOrderStatus(
+                order,
+                fromStatus,
+                order.getStatus(),
+                changedBy,
+                reason);
+
+        orderRepository.save(order);
+
+        log.info("Order #{} auto-transitioned from {} to {} ({})",
+                order.getId(), fromStatus, targetStatus, reason);
     }
 
     private void restoreReservableItems(Order order) {

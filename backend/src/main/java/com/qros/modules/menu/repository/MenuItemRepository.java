@@ -68,13 +68,25 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
   @NonNull
   List<MenuItem> findAll();
 
+  @EntityGraph(attributePaths = {
+      "category",
+      "itemOptions",
+      "itemOptions.optionValues"
+  })
+  List<MenuItem> findAllByIdIn(java.util.Collection<Long> ids);
+
   @EntityGraph(attributePaths = { "category" })
   @Query("""
           SELECT m
           FROM MenuItem m
+          WHERE (CAST(:keyword AS string) IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
+            AND (CAST(:categoryId AS long) IS NULL OR m.category.id = :categoryId)
           ORDER BY m.displayOrder ASC, m.name ASC
       """)
-  List<MenuItem> findAllForManagementSummary();
+  Page<MenuItem> searchManagementSummaries(
+      @Param("keyword") String keyword,
+      @Param("categoryId") Long categoryId,
+      Pageable pageable);
 
   @EntityGraph(attributePaths = {
       "category",
@@ -113,6 +125,21 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
           ORDER BY m.displayOrder ASC, m.name ASC
       """)
   List<MenuItem> findPublicAvailableItemsByCategoryId(@Param("categoryId") Long categoryId);
+
+  @EntityGraph(attributePaths = {
+      "category",
+      "itemOptions",
+      "itemOptions.optionValues"
+  })
+  @Query("""
+          SELECT DISTINCT m
+          FROM MenuItem m
+          WHERE m.id IN :ids
+            AND m.active = true
+            AND m.available = true
+            AND m.category.active = true
+      """)
+  List<MenuItem> findPublicAvailableItemsByIds(@Param("ids") List<Long> ids);
 
   @EntityGraph(attributePaths = { "category" })
   List<MenuItem> findByActiveTrueAndAvailableTrueOrderByIdDesc(Pageable pageable);

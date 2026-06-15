@@ -160,7 +160,6 @@ const MenuPage = () => {
   useWebSocket('/topic/combos', handleCatalogRealtimeUpdate);
   useWebSocket('/topic/categories', handleCatalogRealtimeUpdate);
   useWebSocket('/topic/settings', handleCatalogRealtimeUpdate);
-  useWebSocket('/topic/orders', handleOrderRealtimeUpdate);
   useWebSocket('/topic/tables', handleOrderRealtimeUpdate);
 
   // Instant WS status via listener (no polling)

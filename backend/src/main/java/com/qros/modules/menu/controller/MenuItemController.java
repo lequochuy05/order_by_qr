@@ -6,6 +6,8 @@ import com.qros.modules.menu.service.MenuItemService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +33,14 @@ public class MenuItemController {
         }
 
         return ApiResponse.success(menuItemService.getAll());
+    }
+
+    @GetMapping("/management-summary")
+    public ApiResponse<Page<MenuItemResponse>> getManagementSummary(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            Pageable pageable) {
+        return ApiResponse.success(menuItemService.searchManagementSummary(q, categoryId, pageable));
     }
 
     @GetMapping("/{id}")

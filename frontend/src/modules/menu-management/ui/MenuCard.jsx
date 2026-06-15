@@ -16,6 +16,9 @@ const MenuItemCard = ({ item, onEdit, onDelete, isEditing = false }) => (
 
     <div className="flex-grow">
       <h3 className="font-bold text-gray-800 text-sm line-clamp-1 mb-1">{item.name}</h3>
+      {item.description && (
+        <p className="mb-2 line-clamp-2 text-[11px] font-medium leading-snug text-gray-400">{item.description}</p>
+      )}
       <p className="text-orange-600 font-black text-sm">{fmtVND(item.price)}</p>
     </div>
 

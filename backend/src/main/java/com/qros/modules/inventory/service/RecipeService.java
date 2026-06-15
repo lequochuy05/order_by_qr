@@ -10,7 +10,8 @@ import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -33,7 +34,7 @@ public class RecipeService {
         private final MenuItemRepository menuItemRepository;
         private final InventoryItemRepository inventoryItemRepository;
         private final RecipeMapper recipeMapper;
-        private final NotificationService notificationService;
+        private final ApplicationEventPublisher eventPublisher;
 
         @Transactional(readOnly = true)
         public List<RecipeItemResponse> getRecipeByMenuItemId(@NonNull Long menuItemId) {
@@ -69,8 +70,8 @@ public class RecipeService {
 
                 List<RecipeItem> savedRecipeItems = recipeItemRepository.saveAll(newRecipeItems);
 
-                notificationService.notifyInventoryChange("recipe_updated", menuItemId);
-                notificationService.notifyMenuChange("recipe_updated", menuItemId);
+                eventPublisher.publishEvent(new InventoryChangeEvent("recipe_updated", menuItemId));
+                eventPublisher.publishEvent(new MenuChangeEvent("recipe_updated", menuItemId));
 
                 return recipeMapper.toResponses(savedRecipeItems);
         }
@@ -91,8 +92,8 @@ public class RecipeService {
                         recipeItemRepository.deleteAll(recipeItems);
                 }
 
-                notificationService.notifyInventoryChange("recipe_deleted", menuItemId);
-                notificationService.notifyMenuChange("recipe_deleted", menuItemId);
+                eventPublisher.publishEvent(new InventoryChangeEvent("recipe_deleted", menuItemId));
+                eventPublisher.publishEvent(new MenuChangeEvent("recipe_deleted", menuItemId));
         }
 
         private RecipeItem createRecipeItem(

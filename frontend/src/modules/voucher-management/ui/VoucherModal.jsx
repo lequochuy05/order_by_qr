@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, Wand2, AlertCircle } from 'lucide-react';
+import { X, Wand2, AlertCircle, Loader2 } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 
-const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
+const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) => {
     // State dữ liệu form
     const [formData, setFormData] = useState(() => {
         if (initialData) {
@@ -298,13 +298,20 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                 </button>
                 <button
                     onClick={handleSubmit}
-                    disabled={!isChanged}
-                    className={`flex-1 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${!isChanged
+                    disabled={!isChanged || isSubmitting}
+                    className={`flex-1 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 ${(!isChanged || isSubmitting)
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                         : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-100'
                         }`}
                 >
-                    {initialData ? 'Cập nhật' : 'Tạo Voucher'}
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 size={16} className="animate-spin" />
+                            Đang lưu...
+                        </>
+                    ) : (
+                        initialData ? 'Cập nhật' : 'Tạo Voucher'
+                    )}
                 </button>
             </div>
         </SharedModal>

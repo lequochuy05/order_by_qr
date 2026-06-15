@@ -13,12 +13,5 @@ public interface ItemOptionValueRepository extends JpaRepository<ItemOptionValue
 
     List<ItemOptionValue> findByItemOptionIdOrderByDisplayOrderAscNameAsc(Long optionId);
 
-    @Modifying
-    @Transactional
-    @Query("""
-        UPDATE ItemOptionValue iov
-        SET iov.isDeleted = true
-        WHERE iov.itemOption.id = :optionId
-    """)
-    void softDeleteByItemOptionId(@Param("optionId") Long optionId);
+
 }

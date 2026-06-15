@@ -28,8 +28,8 @@ const MenuCard = ({ item, onAddToCart, quantity = 0 }) => {
           <h3 className="font-bold text-gray-800 dark:text-white text-sm line-clamp-1 leading-tight transition-colors">
             {item.name}
           </h3>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-1 transition-colors">
-            {"Thơm ngon nồng hổi..."}
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 line-clamp-2 transition-colors min-h-[2rem]">
+            {item.description?.trim() || 'Chưa có mô tả món.'}
           </p>
         </div>
 

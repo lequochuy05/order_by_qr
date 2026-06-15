@@ -53,6 +53,26 @@ public class MenuItemMapper {
                 item.getUpdatedAt());
     }
 
+    public MenuItemResponse toSummaryResponse(MenuItem item) {
+        if (item == null) {
+            return null;
+        }
+
+        return new MenuItemResponse(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getImg(),
+                item.getPrice(),
+                item.getActive(),
+                item.getAvailable(),
+                item.getDisplayOrder(),
+                toCategorySummary(item.getCategory()),
+                Collections.emptyList(),
+                item.getCreatedAt(),
+                item.getUpdatedAt());
+    }
+
     public ItemOptionResponse toOptionResponse(ItemOption option) {
         if (option == null) {
             return null;

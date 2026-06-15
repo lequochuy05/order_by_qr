@@ -4,6 +4,7 @@ import com.qros.modules.inventory.dto.request.InventoryItemRequest;
 import com.qros.modules.inventory.dto.request.StockAdjustmentRequest;
 import com.qros.modules.inventory.dto.request.StockInRequest;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
+import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.service.InventoryItemService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -35,9 +36,15 @@ public class InventoryItemController {
     @GetMapping
     public ApiResponse<Page<InventoryItemResponse>> list(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String stockFilter,
             Pageable pageable) {
         return ApiResponse.success(
-                inventoryItemService.search(keyword, pageable));
+                inventoryItemService.search(keyword, stockFilter, pageable));
+    }
+
+    @GetMapping("/summary")
+    public ApiResponse<InventorySummaryResponse> summary() {
+        return ApiResponse.success(inventoryItemService.getSummary());
     }
 
     @GetMapping("/active")

@@ -3,6 +3,13 @@ import api from '@shared/api/httpClient.js';
 const COMBO_LIST_CACHE_MS = 15_000;
 const COMBO_DETAIL_CACHE_MS = 10_000;
 
+const stableStringify = (value) => {
+  if (!value) return 'all';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${k}:${stableStringify(value[k])}`).join(',')}}`;
+  return String(value);
+};
+
 let comboListRequest = null;
 let comboListCache = {
   data: null,
@@ -10,6 +17,8 @@ let comboListCache = {
 };
 const comboDetailRequests = new Map();
 const comboDetailCache = new Map();
+const comboPageRequests = new Map();
+const comboPageCache = new Map();
 
 const clearComboCache = () => {
   comboListRequest = null;
@@ -19,6 +28,8 @@ const clearComboCache = () => {
   };
   comboDetailRequests.clear();
   comboDetailCache.clear();
+  comboPageRequests.clear();
+  comboPageCache.clear();
 };
 
 export const comboService = {
@@ -44,6 +55,40 @@ export const comboService = {
     }
 
     return comboListRequest;
+  },
+
+  getPage: async (params = {}, { force = false } = {}) => {
+    const page = Number(params.page || 0);
+    const size = Number(params.size || 24);
+    const requestParams = {
+      page,
+      size,
+      sort: 'displayOrder,asc',
+      ...params
+    };
+    const key = stableStringify(requestParams);
+    const now = Date.now();
+    const cached = comboPageCache.get(key);
+    if (!force && cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+
+    if (!comboPageRequests.has(key)) {
+      const request = api.get('/combos/management-summary', { params: requestParams })
+        .then((res) => {
+          comboPageCache.set(key, {
+            data: res,
+            expiresAt: Date.now() + COMBO_LIST_CACHE_MS
+          });
+          return res;
+        })
+        .finally(() => {
+          comboPageRequests.delete(key);
+        });
+      comboPageRequests.set(key, request);
+    }
+
+    return comboPageRequests.get(key);
   },
 
   // Lấy chi tiết combo theo ID

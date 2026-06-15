@@ -1,6 +1,6 @@
 package com.qros.modules.menu.controller;
 
-import com.qros.modules.menu.dto.publicmenu.PublicCategoryItem;
+
 import com.qros.modules.menu.dto.request.CategoryRequest;
 import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.service.CategoryService;
@@ -27,10 +27,7 @@ public class CategoryController {
         return ApiResponse.success(categoryService.getAllActive());
     }
 
-    @GetMapping("/public/active")
-    public ApiResponse<List<PublicCategoryItem>> getPublicActive() {
-        return ApiResponse.success(categoryService.getPublicActive());
-    }
+
 
     @GetMapping
     public ApiResponse<Page<CategoryResponse>> search(

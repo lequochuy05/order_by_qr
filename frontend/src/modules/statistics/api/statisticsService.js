@@ -257,10 +257,16 @@ export const statisticsService = {
 
     // 8. Payload tổng hợp cho dashboard
     getDashboardSummary: async (from, to, options = {}) => {
-        const res = await api.get('/analytics/dashboard', {
-            params: rangeParams(from, to),
-            signal: options.signal
-        });
-        return normalizeDashboardSummary(res || {});
+        const params = rangeParams(from, to);
+        const data = await getCachedStats(
+            `dashboard:${stableStringify(params)}`,
+            () => api.get('/analytics/dashboard', {
+                params,
+                signal: options.signal
+            }),
+            {},
+            options
+        );
+        return normalizeDashboardSummary(data || {});
     }
 };

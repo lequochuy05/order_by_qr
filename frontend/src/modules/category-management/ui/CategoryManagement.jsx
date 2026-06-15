@@ -5,12 +5,14 @@ import { Loader2, Layers } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
 // Import Service
 import { categoryService } from '@entities/category/api/categoryService.js';
 
 // Import Component
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
+import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import CategoryCard from './CategoryCard';
 import CategoryModal from './CategoryModal';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
@@ -47,21 +49,32 @@ const CategoryManager = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState('');
     const [errors, setErrors] = useState({});
+    const [currentPage, setCurrentPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
     const isMountedRef = useRef(true);
     const fetchSeqRef = useRef(0);
+    const pageSize = 24;
 
     // === Hook Status Modal ===
     const { showSuccess, showError } = useStatusModal();
     const { confirm } = useConfirmModal();
+    const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
     // === Tải dữ liệu ===
-    const fetchCategories = useCallback(async (showLoading = false, { force = false } = {}) => {
+    const fetchCategories = useCallback(async (showLoading = false) => {
         const fetchSeq = ++fetchSeqRef.current;
         if (showLoading) setLoading(true);
         try {
-            const data = await categoryService.getAll({ force });
+            const data = await categoryService.getPage({
+                q: debouncedSearchTerm,
+                page: currentPage,
+                size: pageSize
+            });
             if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-            setCategories(data.content || data);
+            setCategories(data.content || []);
+            setTotalPages(data.totalPages || 0);
+            setTotalElements(data.totalElements || 0);
         } catch (err) {
             if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
             console.error("Lỗi tải danh mục:", err);
@@ -70,13 +83,13 @@ const CategoryManager = () => {
                 setLoading(false);
             }
         }
-    }, []);
+    }, [currentPage, debouncedSearchTerm]);
 
     // === WebSocket ===
     useWebSocket('/topic/categories', (message) => {
         if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
             playNotificationSound();
-            fetchCategories(false, { force: true });
+            fetchCategories(false);
         }
     });
 
@@ -86,6 +99,10 @@ const CategoryManager = () => {
             isMountedRef.current = false;
         };
     }, []);
+
+    useEffect(() => {
+        setCurrentPage(0);
+    }, [debouncedSearchTerm]);
 
     useEffect(() => { fetchCategories(true); }, [fetchCategories]);
 
@@ -141,6 +158,7 @@ const CategoryManager = () => {
             }
 
             setIsModalOpen(false);
+            fetchCategories(false);
         } catch (err) {
             const errorMsg = err.message || '';
             if (errorMsg.toLowerCase().includes('category name already exists')) {
@@ -161,6 +179,7 @@ const CategoryManager = () => {
         try {
             await categoryService.delete(id);
             showSuccess("Đã xóa danh mục thành công!");
+            fetchCategories(false);
         } catch (err) {
             showError(err);
         }
@@ -187,12 +206,6 @@ const CategoryManager = () => {
 
     const closeModal = () => { setIsModalOpen(false); setSelectedFile(null); };
 
-    const filteredCategories = categories.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-
-
     return (
         <div className="p-4 space-y-4">
             <ManagementHeader
@@ -207,7 +220,7 @@ const CategoryManager = () => {
                 <div className="flex justify-center p-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
             ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                    {filteredCategories.map(cat => (
+                    {categories.map(cat => (
                         <CategoryCard
                             key={cat.id}
                             category={cat}
@@ -218,12 +231,21 @@ const CategoryManager = () => {
                 </div>
             )}
 
-            {!loading && filteredCategories.length === 0 && (
+            {!loading && categories.length === 0 && (
                 <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
                     <Layers size={40} className="mx-auto mb-4 opacity-30" />
                     Không tìm thấy danh mục phù hợp hoặc chưa có dữ liệu.
                 </div>
             )}
+
+            <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalElements={totalElements}
+                itemLabel="danh mục"
+                loading={loading}
+                onPageChange={setCurrentPage}
+            />
 
             {/* Modal Nhập liệu */}
             <CategoryModal

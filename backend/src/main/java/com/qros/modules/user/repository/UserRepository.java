@@ -32,11 +32,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
         boolean existsByPhoneAndIdNot(String phone, Long id);
 
         @Query("SELECT u FROM User u WHERE " +
-                        "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-                        "u.phone LIKE CONCAT('%', :keyword, '%')")
+                        "(CAST(:keyword AS string) IS NULL OR " +
+                        "LOWER(u.fullName) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR " +
+                        "LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR " +
+                        "u.phone LIKE CONCAT('%', CAST(:keyword AS string), '%')) AND " +
+                        "(CAST(:status AS string) IS NULL OR u.status = :status)")
         Page<User> searchUsers(
                         @Param("keyword") String keyword,
+                        @Param("status") UserStatus status,
                         Pageable pageable);
 
         List<User> findByRoleAndStatus(UserRole role, UserStatus status);

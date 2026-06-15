@@ -17,12 +17,11 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
   if (!isOpen || !order) return null;
 
   const status = getOrderStatusMeta(order.status);
-  const items = order.orderItems || [];
+  const items = order.items || order.orderItems || [];
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-end bg-black/60 animate-in fade-in duration-300"
-      onClick={onClose}
     >
       <div
         className="mx-auto flex max-h-[85vh] w-full max-w-md flex-col rounded-t-[2rem] bg-white p-6 shadow-2xl transition-colors animate-in slide-in-from-bottom duration-500 dark:bg-slate-900"

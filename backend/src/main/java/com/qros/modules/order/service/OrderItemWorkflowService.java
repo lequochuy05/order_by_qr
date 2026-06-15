@@ -1,7 +1,8 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.inventory.service.InventoryReservationService;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -34,7 +35,7 @@ public class OrderItemWorkflowService {
     private final OrderStatusService orderStatusService;
     private final OrderTableSyncService orderTableSyncService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
 
     @Transactional
@@ -69,7 +70,7 @@ public class OrderItemWorkflowService {
         reconcileOrderAfterItemMutation(order, null);
 
         orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
     @Transactional
@@ -123,7 +124,7 @@ public class OrderItemWorkflowService {
         reconcileOrderAfterItemMutation(order, changedBy);
 
         orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
     @Transactional
@@ -170,7 +171,7 @@ public class OrderItemWorkflowService {
 
         orderTableSyncService.recalcTableStatus(saved);
         orderCacheInvalidationService.evictAfterOrderMutation(saved.getId());
-        notificationService.notifyOrderChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
     }

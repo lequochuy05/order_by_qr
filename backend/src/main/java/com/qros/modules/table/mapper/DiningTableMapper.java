@@ -1,6 +1,6 @@
 package com.qros.modules.table.mapper;
 
-import com.qros.modules.menu.dto.publicmenu.PublicTable;
+import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.dto.response.DiningTableResponse;
 import com.qros.modules.table.model.DiningTable;
 import org.springframework.stereotype.Component;

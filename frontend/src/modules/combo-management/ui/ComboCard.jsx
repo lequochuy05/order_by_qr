@@ -18,6 +18,9 @@ const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => 
 
             <div className="flex-grow relative z-10">
                 <h3 className="font-bold text-gray-900 text-xl mb-2 group-hover:text-orange-600 transition-colors">{combo.name}</h3>
+                {combo.description && (
+                    <p className="mb-3 line-clamp-2 text-sm font-medium leading-snug text-gray-400">{combo.description}</p>
+                )}
                 <div className="text font-black text-orange-600 mb-4 tracking-tight">
                     {fmtVND(combo.price)}
                 </div>

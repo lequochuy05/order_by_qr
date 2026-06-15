@@ -14,7 +14,6 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
       />
 
       {/* Drawer Panel */}

@@ -5,7 +5,8 @@ import com.qros.modules.promotion.dto.response.PromotionResponse;
 import com.qros.modules.promotion.mapper.PromotionMapper;
 import com.qros.modules.promotion.model.Promotion;
 import com.qros.modules.promotion.repository.PromotionRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -29,7 +30,7 @@ public class PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final PromotionMapper promotionMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.PROMOTIONS, key = "'all_desc'")
@@ -74,7 +75,7 @@ public class PromotionService {
 
         Promotion promotion = promotionMapper.toEntity(request, normalizedName);
         Promotion saved = promotionRepository.save(promotion);
-        notificationService.notifyPromotionChange();
+        eventPublisher.publishEvent(new PromotionChangeEvent());
         return promotionMapper.toResponse(saved);
     }
 
@@ -90,7 +91,7 @@ public class PromotionService {
 
         promotionMapper.updateEntity(promotion, request, normalizedName);
         Promotion saved = promotionRepository.save(promotion);
-        notificationService.notifyPromotionChange();
+        eventPublisher.publishEvent(new PromotionChangeEvent());
         return promotionMapper.toResponse(saved);
     }
 
@@ -99,7 +100,7 @@ public class PromotionService {
     public void delete(@NonNull Long id) {
         Promotion promotion = getEntityById(id);
         promotionRepository.delete(promotion);
-        notificationService.notifyPromotionChange();
+        eventPublisher.publishEvent(new PromotionChangeEvent());
     }
 
     private String normalizeName(String name) {

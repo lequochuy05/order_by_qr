@@ -17,7 +17,7 @@ import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
 import com.qros.modules.payment.service.PaymentService;
-import com.qros.modules.promotion.service.VoucherService;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
@@ -62,7 +62,7 @@ class PayosServiceImplTest {
     OrderCacheInvalidationService orderCacheInvalidationService;
 
     @Mock
-    VoucherService voucherService;
+    VoucherCheckoutService voucherCheckoutService;
 
     @Mock
     TransactionSideEffectService sideEffects;
@@ -79,7 +79,7 @@ class PayosServiceImplTest {
                 paymentCompletionService,
                 orderPricingService,
                 orderCacheInvalidationService,
-                voucherService,
+                voucherCheckoutService,
                 sideEffects);
     }
 

@@ -13,10 +13,8 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
   boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-  @EntityGraph(attributePaths = {"menuItems"})
   List<Category> findByActiveTrueOrderByDisplayOrderAscNameAsc();
 
-  @EntityGraph(attributePaths = {"menuItems"})
   Page<Category> findByNameContainingIgnoreCase(String name, Pageable pageable);
 
 }

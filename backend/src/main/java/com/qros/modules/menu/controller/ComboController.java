@@ -6,6 +6,8 @@ import com.qros.modules.menu.service.ComboService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +28,15 @@ public class ComboController {
     @GetMapping("/active")
     public ApiResponse<List<ComboResponse>> getAllActive() {
         return ApiResponse.success(comboService.getAllActive());
+    }
+
+    @GetMapping("/management-summary")
+    public ApiResponse<Page<ComboResponse>> getManagementSummary(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean active,
+            Pageable pageable
+    ) {
+        return ApiResponse.success(comboService.searchManagementSummary(q, active, pageable));
     }
 
     @GetMapping("/{id}")

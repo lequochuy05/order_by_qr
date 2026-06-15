@@ -1,6 +1,6 @@
 package com.qros.service;
 
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.mapper.VoucherMapper;
 import com.qros.modules.promotion.model.Voucher;
@@ -29,7 +29,7 @@ class DiscountServiceTest {
     VoucherRepository voucherRepository;
 
     @Mock
-    NotificationService notificationService;
+    ApplicationEventPublisher eventPublisher;
 
     private DiscountCalculator discountCalculator;
     private VoucherService voucherService;
@@ -40,8 +40,7 @@ class DiscountServiceTest {
         voucherService = new VoucherService(
                 voucherRepository,
                 new VoucherMapper(),
-                discountCalculator,
-                notificationService);
+                eventPublisher);
     }
 
     @Test

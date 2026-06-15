@@ -1,13 +1,9 @@
 package com.qros.modules.payment.service;
 
-import com.qros.modules.notification.service.NotificationService;
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.model.Order;
-import com.qros.modules.order.model.enums.OrderStatus;
-import com.qros.modules.order.model.enums.PaymentStatus;
-import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.order.service.OrderAuditService;
-import com.qros.modules.order.service.OrderTableSyncService;
+import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
@@ -15,6 +11,7 @@ import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.service.OrderDiscountService;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.promotion.service.VoucherService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -27,8 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.qros.modules.order.state.OrderState;
-import com.qros.modules.order.state.OrderStateFactory;
+
 
 import java.math.BigDecimal;
 
@@ -38,16 +34,12 @@ import java.math.BigDecimal;
 public class PaymentCompletionService {
 
     private final PaymentTransactionRepository transactionRepository;
-    private final OrderRepository orderRepository;
-    private final OrderStateFactory orderStateFactory;
+    private final OrderSettlementService orderSettlementService;
 
-    private final OrderAuditService orderAuditService;
     private final OrderDiscountService orderDiscountService;
     private final VoucherService voucherService;
-
-    private final OrderTableSyncService orderTableSyncService;
-    private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final NotificationService notificationService;
+    private final VoucherCheckoutService voucherCheckoutService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private final MeterRegistry meterRegistry;
 
@@ -77,8 +69,7 @@ public class PaymentCompletionService {
                     "Payment transaction is not associated with an order");
         }
 
-        order = orderRepository.findByIdForUpdate(order.getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        order = orderSettlementService.loadForPayment(order.getId());
         transaction.setOrder(order);
 
         if (order.isPaid() || order.isCompleted()) {
@@ -157,59 +148,16 @@ public class PaymentCompletionService {
             BigDecimal totalPaid,
             VoucherPaymentResult voucherPaymentResult) {
 
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
-            return order;
-        }
-
-        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order must be in AWAITING_PAYMENT status before payment completion. Current: "
-                            + order.getStatus());
-        }
-
-        OrderStatus fromStatus = order.getStatus();
-
-        transitionOrderToCompleted(order, fromStatus);
-        order.setPaymentStatus(PaymentStatus.PAID);
-        order.setPaymentMethod(transaction.getPaymentMethod());
-        order.setPaymentTime(AppTime.now());
-        order.setPaidBy(transaction.getCreatedBy());
-        order.setPaidAmount(totalPaid);
-        order.setBusinessDate(order.getPaymentTime().toLocalDate());
-
-        Order savedOrder = orderRepository.save(order);
-        recordAndConsumeVoucher(savedOrder, voucherPaymentResult);
-
-        orderAuditService.recordOrderStatus(
-                savedOrder,
-                fromStatus,
-                savedOrder.getStatus(),
+        String auditReason = "payment-" + transaction.getPaymentMethod().name().toLowerCase();
+        Order savedOrder = orderSettlementService.settleAfterPayment(
+                order,
+                transaction.getPaymentMethod(),
                 transaction.getCreatedBy(),
-                "payment-" + transaction.getPaymentMethod().name().toLowerCase());
+                totalPaid,
+                auditReason);
 
-        orderTableSyncService.recalcTableStatus(savedOrder);
-        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder.getId());
-
-        notificationService.notifyOrderChange();
-
-        log.info(
-                "Order #{} successfully completed via {} payment",
-                savedOrder.getId(),
-                transaction.getPaymentMethod());
-
+        recordAndConsumeVoucher(savedOrder, voucherPaymentResult);
         return savedOrder;
-    }
-
-    private void transitionOrderToCompleted(Order order, OrderStatus fromStatus) {
-        try {
-            orderStateFactory.validateTransition(fromStatus, OrderStatus.COMPLETED);
-        } catch (IllegalStateException e) {
-            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, e.getMessage());
-        }
-
-        OrderState state = orderStateFactory.getState(OrderStatus.COMPLETED);
-        state.handleRequest(order);
     }
 
     private void notifyPaymentSuccess(PaymentTransaction transaction) {
@@ -219,7 +167,7 @@ public class PaymentCompletionService {
             return;
         }
 
-        notificationService.notifyPaymentSuccess(order.getId(), transaction.getId());
+        eventPublisher.publishEvent(new PaymentSuccessEvent(order.getId(), transaction.getId()));
     }
 
     private BigDecimal currentFinalAmount(Order order) {
@@ -241,7 +189,7 @@ public class PaymentCompletionService {
 
         VoucherPaymentResult resolvedVoucherResult = voucherPaymentResult != null
                 ? voucherPaymentResult
-                : voucherService.snapshotForSettledOrder(
+                : voucherCheckoutService.snapshotForSettledOrder(
                         order.getVoucherCode(),
                         currentSubtotalAmount(order),
                         order.getDiscountAmount(),

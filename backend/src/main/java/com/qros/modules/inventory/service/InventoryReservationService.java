@@ -12,7 +12,8 @@ import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.OrderItemInventoryReservationRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.repository.OrderItemRepository;
 import com.qros.shared.exception.BusinessException;
@@ -45,7 +46,7 @@ public class InventoryReservationService {
     private final OrderItemRepository orderItemRepository;
     private final InventoryReservationMapper reservationMapper;
     private final StockMovementService stockMovementService;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
@@ -146,7 +147,7 @@ public class InventoryReservationService {
             upsertReservation(orderItem, reservation);
         }
 
-        notificationService.notifyInventoryChange("inventory_reserved", orderItemId);
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_reserved", orderItemId));
 
         return new InventoryReservationResult(
                 orderItemId,
@@ -224,7 +225,7 @@ public class InventoryReservationService {
             reservationRepository.save(reservation);
         }
 
-        notificationService.notifyInventoryChange("inventory_released", orderItemId);
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_released", orderItemId));
     }
 
     @Transactional
@@ -290,7 +291,7 @@ public class InventoryReservationService {
                     "Consume inventory for order item #" + orderItemId);
         }
 
-        notificationService.notifyInventoryChange("inventory_consumed", orderItemId);
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_consumed", orderItemId));
     }
 
     private List<ReservationDraft> buildReservationDrafts(

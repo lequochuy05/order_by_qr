@@ -1,6 +1,7 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Service;
 public class OrderTableSyncService {
 
     private final DiningTableRepository tableRepository;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public void recalcTableStatus(Order order) {
         if (order == null || order.getTable() == null) {
@@ -48,7 +49,7 @@ public class OrderTableSyncService {
         }
 
         tableRepository.save(table);
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
     }
 
     public void releaseTable(Order order) {
@@ -59,6 +60,6 @@ public class OrderTableSyncService {
         DiningTable table = order.getTable();
         table.setStatus(TableStatus.AVAILABLE);
         tableRepository.save(table);
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
     }
 }

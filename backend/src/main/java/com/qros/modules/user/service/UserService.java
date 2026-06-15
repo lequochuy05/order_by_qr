@@ -1,6 +1,7 @@
 package com.qros.modules.user.service;
 
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -28,7 +29,7 @@ import java.util.Objects;
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
 
     @Transactional
@@ -53,7 +54,7 @@ public class UserService {
 
         userRepository.save(u);
         // log.info("New user created: {}", u.getEmail());
-        notificationService.notifyUserChange();
+        eventPublisher.publishEvent(new UserChangeEvent());
         return userMapper.toDto(u);
     }
 
@@ -89,7 +90,7 @@ public class UserService {
 
         userRepository.save(u);
         // log.info("User updated: {}", u.getEmail());
-        notificationService.notifyUserChange();
+        eventPublisher.publishEvent(new UserChangeEvent());
         return userMapper.toDto(u);
     }
 
@@ -101,7 +102,7 @@ public class UserService {
 
         userRepository.delete(u);
         // log.info("User with id {} deleted", id);
-        notificationService.notifyUserChange();
+        eventPublisher.publishEvent(new UserChangeEvent());
     }
 
     @Transactional

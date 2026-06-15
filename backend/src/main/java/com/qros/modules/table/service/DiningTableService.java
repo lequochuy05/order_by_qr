@@ -1,7 +1,8 @@
 package com.qros.modules.table.service;
 
-import com.qros.modules.menu.dto.publicmenu.PublicTable;
-import com.qros.modules.notification.service.NotificationService;
+import com.qros.modules.table.dto.response.PublicTable;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.table.dto.internal.TableQrMedia;
 import com.qros.modules.table.dto.request.CreateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateDiningTableRequest;
@@ -35,7 +36,7 @@ public class DiningTableService {
     private final TableCodeGenerator tableCodeGenerator;
     private final TableQrService tableQrService;
     private final DiningTableMapper diningTableMapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final TransactionSideEffectService sideEffects;
 
     @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
@@ -106,7 +107,7 @@ public class DiningTableService {
                 .build();
 
         DiningTable saved = tableRepo.save(table);
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
 
         return diningTableMapper.toResponse(saved);
     }
@@ -123,7 +124,7 @@ public class DiningTableService {
         table.setCapacity(req.capacity());
 
         DiningTable saved = tableRepo.save(table);
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
 
         return diningTableMapper.toResponse(saved);
     }
@@ -138,7 +139,7 @@ public class DiningTableService {
         table.setStatus(req.status());
 
         DiningTable saved = tableRepo.save(table);
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
 
         return diningTableMapper.toResponse(saved);
     }
@@ -167,7 +168,7 @@ public class DiningTableService {
                 () -> tableQrService.delete(oldPublicId),
                 "delete old table QR media " + id);
 
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
 
         return diningTableMapper.toResponse(saved);
     }
@@ -184,6 +185,6 @@ public class DiningTableService {
                 () -> tableQrService.delete(publicId),
                 "delete table QR media after table delete " + id);
 
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new TableChangeEvent());
     }
 }

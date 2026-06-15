@@ -12,7 +12,8 @@ import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -20,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +43,7 @@ public class ComboService {
     private final ComboMapper comboMapper;
     private final PublicMenuMapper publicMenuMapper;
 
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Cacheable(value = CacheNames.COMBOS, key = "'all_active'")
     public List<ComboResponse> getAllActive() {
@@ -58,9 +61,15 @@ public class ComboService {
 
     @Cacheable(value = CacheNames.COMBOS, key = "'all'")
     public List<ComboResponse> getAll() {
-        return comboRepo.findAllForManagementSummary().stream()
+        return comboRepo.searchManagementSummaries(null, null, Pageable.unpaged()).stream()
                 .map(comboMapper::toSummaryResponse)
                 .toList();
+    }
+
+    public Page<ComboResponse> searchManagementSummary(String keyword, Boolean active, @NonNull Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return comboRepo.searchManagementSummaries(normalizedKeyword, active, pageable)
+                .map(comboMapper::toSummaryResponse);
     }
 
     @Cacheable(value = CacheNames.COMBOS, key = "'item_' + #id", unless = "#result == null")
@@ -112,7 +121,7 @@ public class ComboService {
         }
 
         Combo saved = comboRepo.save(combo);
-        notificationService.notifyComboChange("created", saved.getId());
+        eventPublisher.publishEvent(new ComboChangeEvent("created", saved.getId()));
 
         return comboMapper.toResponse(saved);
     }
@@ -153,7 +162,7 @@ public class ComboService {
         syncComboItems(combo, req.items());
 
         Combo saved = comboRepo.save(combo);
-        notificationService.notifyComboChange("updated", saved.getId());
+        eventPublisher.publishEvent(new ComboChangeEvent("updated", saved.getId()));
 
         return comboMapper.toResponse(saved);
     }
@@ -169,7 +178,7 @@ public class ComboService {
         comboItemRepo.softDeleteByComboId(id);
         comboRepo.delete(combo);
 
-        notificationService.notifyComboChange("deleted", id);
+        eventPublisher.publishEvent(new ComboChangeEvent("deleted", id));
     }
 
     @Transactional
@@ -183,7 +192,7 @@ public class ComboService {
         combo.setActive(!Boolean.TRUE.equals(combo.getActive()));
 
         Combo saved = comboRepo.save(combo);
-        notificationService.notifyComboChange("status_updated", saved.getId());
+        eventPublisher.publishEvent(new ComboChangeEvent("status_updated", saved.getId()));
 
         return comboMapper.toResponse(saved);
     }
@@ -199,7 +208,7 @@ public class ComboService {
         combo.setAvailable(!Boolean.TRUE.equals(combo.getAvailable()));
 
         Combo saved = comboRepo.save(combo);
-        notificationService.notifyComboChange("availability_updated", saved.getId());
+        eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", saved.getId()));
 
         return comboMapper.toResponse(saved);
     }

@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@modules/auth/model/AuthContext.jsx';
+import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
 import { staffService } from '@modules/staff-management/api/staffService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
+import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import StaffCard from './StaffCard';
 import StaffModal from './StaffModal';
 import EmptyState from '@shared/ui/EmptyState.jsx';
@@ -30,13 +32,18 @@ const StaffManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [errors, setErrors] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const isMountedRef = useRef(true);
   const fetchSeqRef = useRef(0);
+  const pageSize = 24;
 
   // Hook Status Modal
   const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
+  const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -50,9 +57,18 @@ const StaffManager = () => {
     const fetchSeq = ++fetchSeqRef.current;
     if (showLoading) setLoading(true);
     try {
-      const data = await staffService.getAll({ force });
+      const params = {
+        page: currentPage,
+        size: pageSize
+      };
+      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+      if (statusFilter !== 'ALL') params.status = statusFilter;
+
+      const data = await staffService.getPage(params, { force });
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setStaffs(data);
+      setStaffs(data.content || []);
+      setTotalPages(data.totalPages || 0);
+      setTotalElements(data.totalElements || 0);
     } catch (err) {
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       console.error("Lỗi tải nhân viên:", err);
@@ -61,7 +77,7 @@ const StaffManager = () => {
         setLoading(false);
       }
     }
-  }, []);
+  }, [currentPage, debouncedSearchTerm, statusFilter]);
 
   // WebSocket Realtime 
   useWebSocket('/topic/users', (message) => {
@@ -70,6 +86,10 @@ const StaffManager = () => {
       fetchStaffs(false, { force: true });
     }
   });
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearchTerm, statusFilter]);
 
   useEffect(() => { fetchStaffs(true); }, [fetchStaffs]);
 
@@ -111,14 +131,6 @@ const StaffManager = () => {
       }
 
       const savedStaff = avatarResult || result;
-      setStaffs(prev => {
-        const exists = prev.some(staff => staff.id === savedStaff.id);
-        if (exists) {
-          return prev.map(staff => staff.id === savedStaff.id ? savedStaff : staff);
-        }
-        return [savedStaff, ...prev];
-      });
-
       if (formData.id && user?.userId && formData.id === user.userId) {
         updateUser({
           fullName: savedStaff.fullName,
@@ -129,6 +141,7 @@ const StaffManager = () => {
 
       setIsModalOpen(false);
       showSuccess(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
+      fetchStaffs(false, { force: true });
 
     } catch (err) {
       console.error('Error saving staff:', err);
@@ -155,25 +168,12 @@ const StaffManager = () => {
     if (!confirmed) return;
     try {
       await staffService.delete(id);
-      setStaffs(prev => prev.filter(staff => staff.id !== id));
       showSuccess("Đã xóa nhân viên thành công!");
+      fetchStaffs(false, { force: true });
     } catch (err) {
       showError(err);
     }
   };
-
-  const filteredStaffs = useMemo(() => {
-    const normalizedSearch = searchTerm.toLowerCase();
-    return staffs.filter(s => {
-      const matchesSearch =
-        (s.fullName || '').toLowerCase().includes(normalizedSearch) ||
-        (s.email || '').toLowerCase().includes(normalizedSearch) ||
-        (s.phone || '').includes(searchTerm);
-      const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [staffs, searchTerm, statusFilter]);
 
   return (
     <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
@@ -200,7 +200,7 @@ const StaffManager = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredStaffs.map(staff => (
+          {staffs.map(staff => (
             <StaffCard
               key={staff.id}
               staff={staff}
@@ -211,9 +211,18 @@ const StaffManager = () => {
         </div>
       )}
 
-      {!loading && filteredStaffs.length === 0 && (
+      {!loading && staffs.length === 0 && (
         <EmptyState icon={Users} message="Không tìm thấy nhân viên phù hợp hoặc chưa có dữ liệu." />
       )}
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        itemLabel="nhân viên"
+        loading={loading}
+        onPageChange={setCurrentPage}
+      />
 
       {/* Modal Thêm/Sửa */}
       <StaffModal

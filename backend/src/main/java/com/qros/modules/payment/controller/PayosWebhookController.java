@@ -26,9 +26,12 @@ public class PayosWebhookController {
             PaymentWebhookResult result = payosGateway.verifyWebhook(webhook);
             paymentService.confirmPaymentFromWebhook(result);
             return ResponseEntity.ok(Map.of("success", true));
+        } catch (com.qros.shared.exception.BusinessException e) {
+            log.error("[PayOS Webhook] Business error processing webhook payload", e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
-            log.error("[PayOS Webhook] Error processing webhook payload", e);
-            return ResponseEntity.ok(Map.of("success", false, "message", e.getMessage()));
+            log.error("[PayOS Webhook] System error processing webhook payload", e);
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }

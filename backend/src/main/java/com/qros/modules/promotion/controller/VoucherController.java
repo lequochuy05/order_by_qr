@@ -3,12 +3,15 @@ package com.qros.modules.promotion.controller;
 import com.qros.modules.promotion.dto.request.VoucherRequest;
 import com.qros.modules.promotion.dto.response.VoucherResponse;
 import com.qros.modules.promotion.dto.response.VoucherValidateResponse;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.promotion.service.VoucherService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
-import java.util.List;
-
 @Validated
 @RestController
 @RequestMapping("/api/vouchers")
@@ -30,10 +31,14 @@ import java.util.List;
 public class VoucherController {
 
     private final VoucherService voucherService;
+    private final VoucherCheckoutService voucherCheckoutService;
 
     @GetMapping
-    public ApiResponse<List<VoucherResponse>> list() {
-        return ApiResponse.success(voucherService.findAll());
+    public ApiResponse<Page<VoucherResponse>> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ApiResponse.success(voucherService.searchForManagement(q, status, pageable));
     }
 
     @GetMapping("/{id}")
@@ -68,6 +73,6 @@ public class VoucherController {
             @RequestParam @NotBlank(message = "Voucher code cannot be empty") String code,
 
             @RequestParam(defaultValue = "0") @DecimalMin(value = "0.00", message = "Subtotal cannot be negative") BigDecimal subtotal) {
-        return ApiResponse.success(voucherService.validateCode(code, subtotal));
+        return ApiResponse.success(voucherCheckoutService.validateCode(code, subtotal));
     }
 }

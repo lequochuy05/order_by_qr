@@ -16,21 +16,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Optional<VoucherValidationProjection> findProjectedByCodeIgnoreCase(String code);
 
-    @Query("""
-            SELECT v
-            FROM Voucher v
-            WHERE LOWER(v.code) = LOWER(:code)
-              AND v.active = true
-              AND v.validFrom <= :now
-              AND v.validTo >= :now
-              AND (
-                    v.usageLimit IS NULL
-                    OR v.usedCount < v.usageLimit
-                  )
-            """)
-    Optional<Voucher> findValidVoucher(
-            @Param("code") String code,
-            @Param("now") LocalDateTime now);
+
 
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
@@ -42,6 +28,52 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Page<Voucher> findAllByOrderByIdDesc(Pageable pageable);
 
+    @Query("""
+            SELECT v
+            FROM Voucher v
+            WHERE (CAST(:keyword AS string) IS NULL OR LOWER(v.code) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
+              AND (
+                    CAST(:status AS string) IS NULL
+                    OR (
+                        :status = 'ACTIVE'
+                        AND v.active = true
+                        AND v.validFrom <= :now
+                        AND v.validTo >= :now
+                        AND (
+                            v.usageLimit IS NULL
+                            OR v.usageLimit = 0
+                            OR v.usedCount < v.usageLimit
+                        )
+                    )
+                    OR (
+                        :status = 'INACTIVE'
+                        AND (
+                            v.active = false
+                            OR v.validFrom > :now
+                        )
+                    )
+                    OR (
+                        :status = 'EXPIRED'
+                        AND v.active = true
+                        AND v.validTo < :now
+                    )
+                    OR (
+                        :status = 'EXHAUSTED'
+                        AND v.active = true
+                        AND v.validFrom <= :now
+                        AND v.validTo >= :now
+                        AND v.usageLimit IS NOT NULL
+                        AND v.usageLimit > 0
+                        AND v.usedCount >= v.usageLimit
+                    )
+                  )
+            """)
+    Page<Voucher> searchForManagement(
+            @Param("keyword") String keyword,
+            @Param("status") String status,
+            @Param("now") LocalDateTime now,
+            Pageable pageable);
+
     @Modifying
     @Query("""
             UPDATE Voucher v
@@ -49,6 +81,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
             WHERE v.id = :id
               AND (
                     v.usageLimit IS NULL
+                    OR v.usageLimit = 0
                     OR v.usedCount < v.usageLimit
                   )
             """)

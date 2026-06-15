@@ -25,21 +25,12 @@ import java.util.Map;
 public class QRCodeService {
 
     private static final String PNG_FORMAT = "PNG";
-    private static final String DATA_URL_PREFIX = "data:image/png;base64,";
+
 
     private static final int DEFAULT_MARGIN = 1;
     private static final String DEFAULT_CHARACTER_SET = "UTF-8";
     private static final ErrorCorrectionLevel DEFAULT_ERROR_CORRECTION = ErrorCorrectionLevel.H;
 
-    @Cacheable(value = CacheNames.QRCODES, key = "#text + '_' + #width + '_' + #height")
-    public String generateQRCodeBase64(
-            @NonNull String text,
-            int width,
-            int height
-    ) {
-        byte[] imageBytes = generateQRCodeImage(text, width, height);
-        return DATA_URL_PREFIX + Base64.getEncoder().encodeToString(imageBytes);
-    }
 
     public byte[] generateQRCodeImage(
             @NonNull String text,

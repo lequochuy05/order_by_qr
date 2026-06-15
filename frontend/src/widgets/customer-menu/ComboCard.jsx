@@ -21,7 +21,7 @@ const ComboCard = ({ combo, onAddToCart, quantity = 0 }) => {
           )}
         </div>
         <h3 className="font-black text-xl leading-tight drop-shadow-sm mb-1">{combo.name}</h3>
-        <p className="text-xs text-white font-medium">{'Tiết kiệm hơn'}</p>
+        <p className="text-xs text-white/90 font-medium line-clamp-2">{combo.description?.trim() || 'Combo ưu đãi'}</p>
       </div>
 
       <div className="relative z-10 mt-6 flex items-end justify-between">

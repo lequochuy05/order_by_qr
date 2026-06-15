@@ -1,6 +1,6 @@
 package com.qros.modules.user.dto.request;
 
-import com.qros.modules.user.model.User;
+
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
 
@@ -26,15 +26,4 @@ public record CreateUserRequest(
 
     @NotNull
     UserStatus status
-){
-    public static CreateUserRequest of(User user, String password) {
-        return new CreateUserRequest(
-                user.getFullName(),
-                user.getEmail(),
-                user.getPhone(),
-                password,
-                user.getRole(),
-                user.getStatus()
-        );
-    }
-}
+) {}

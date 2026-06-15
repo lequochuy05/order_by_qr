@@ -346,7 +346,7 @@ const MenuItemModal = ({
                         <input
                           type="checkbox"
                           className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-100 cursor-pointer"
-                          checked={opt.required ?? opt.isRequired ?? false} onChange={e => updateOption(optIdx, 'required', e.target.checked)}
+                          checked={opt.required ?? false} onChange={e => updateOption(optIdx, 'required', e.target.checked)}
                         />
                         <span className="text-[11px] font-bold text-gray-600 ml-2">Yêu cầu chọn</span>
                       </label>

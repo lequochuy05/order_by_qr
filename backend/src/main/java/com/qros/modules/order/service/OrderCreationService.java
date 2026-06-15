@@ -8,7 +8,8 @@ import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.ItemOptionValueRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
@@ -60,7 +61,7 @@ public class OrderCreationService {
     private final DiningTableRepository tableRepository;
     private final ComboRepository comboRepository;
     private final ItemOptionValueRepository itemOptionValueRepository;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
     private final OrderPricingService orderPricingService;
     private final OrderStatusService orderStatusService;
     private final OrderTableSyncService orderTableSyncService;
@@ -140,8 +141,8 @@ public class OrderCreationService {
 
         ordersCreatedCounter.increment();
 
-        notificationService.notifyOrderChange();
-        notificationService.notifyTableChange();
+        eventPublisher.publishEvent(new OrderChangeEvent());
+        eventPublisher.publishEvent(new TableChangeEvent());
 
         log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
 
@@ -189,8 +190,15 @@ public class OrderCreationService {
             return;
         }
 
+        Set<Long> menuItemIds = items.stream()
+                .map(OrderItemRequest::menuItemId)
+                .collect(Collectors.toSet());
+        
+        java.util.Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
+                .collect(Collectors.toMap(MenuItem::getId, item -> item));
+
         for (OrderItemRequest itemRequest : items) {
-            MenuItem menuItem = menuItemRepository.findById(itemRequest.menuItemId())
+            MenuItem menuItem = Optional.ofNullable(menuItemsMap.get(itemRequest.menuItemId()))
                     .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
             orderValidator.validateMenuItemOrderable(menuItem);
 
@@ -257,8 +265,15 @@ public class OrderCreationService {
             return;
         }
 
+        List<Long> comboIds = combos.stream()
+                .map(OrderComboRequest::comboId)
+                .collect(Collectors.toList());
+                
+        java.util.Map<Long, Combo> combosMap = comboRepository.findAllByIdInWithItems(comboIds).stream()
+                .collect(Collectors.toMap(Combo::getId, c -> c));
+
         for (OrderComboRequest comboRequest : combos) {
-            Combo combo = comboRepository.findById(comboRequest.comboId())
+            Combo combo = Optional.ofNullable(combosMap.get(comboRequest.comboId()))
                     .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
             orderValidator.validateComboOrderable(combo);
 
@@ -304,6 +319,7 @@ public class OrderCreationService {
         Set<Long> selectedIds = new HashSet<>(selectedValueIds);
 
         validateRequiredOptions(menuItem, selectedIds);
+        validateMaxSelections(menuItem, selectedIds);
         validateOptionValuesBelongToMenuItem(menuItem, selectedIds);
     }
 
@@ -320,6 +336,21 @@ public class OrderCreationService {
                                 "Required option selection missing: " + option.getName());
                     }
                 });
+    }
+
+    private void validateMaxSelections(MenuItem menuItem, Set<Long> selectedIds) {
+        menuItem.getItemOptions().forEach(option -> {
+            int maxSelection = option.getMaxSelection() == null ? 1 : option.getMaxSelection();
+            long selectedCount = option.getOptionValues().stream()
+                    .filter(value -> selectedIds.contains(value.getId()))
+                    .count();
+
+            if (selectedCount > maxSelection) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_REQUEST,
+                        "Too many option selections for: " + option.getName());
+            }
+        });
     }
 
     private void validateOptionValuesBelongToMenuItem(MenuItem menuItem, Set<Long> selectedIds) {

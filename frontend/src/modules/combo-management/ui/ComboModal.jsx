@@ -236,7 +236,6 @@ const ComboModal = ({ isOpen, onClose, onSubmit, menuItems, initialData, errors 
               }`}
           >
             <div className="flex items-center justify-center gap-2">
-              <ShoppingBasket size={16} />
               <span>{initialData?.id ? 'Lưu thay đổi' : 'Tạo Combo'}</span>
             </div>
           </button>

@@ -123,7 +123,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       FROM order_item oi
       JOIN orders o ON o.id = oi.order_id
       LEFT JOIN menu_item mi ON mi.id = oi.menu_item_id AND mi.is_deleted = false
-      LEFT JOIN category c ON c.id = mi.cate_id
+      LEFT JOIN category c ON c.id = mi.cate_id AND c.is_deleted = false
       WHERE o.status = 'COMPLETED'
         AND o.is_deleted = false
         AND oi.is_deleted = false

@@ -20,7 +20,7 @@ import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
-import com.qros.modules.promotion.service.VoucherService;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -51,7 +51,7 @@ public class PaymentService {
 
     private final OrderPricingService orderPricingService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final VoucherService voucherService;
+    private final VoucherCheckoutService voucherCheckoutService;
 
     private final TransactionSideEffectService sideEffects;
 
@@ -304,7 +304,7 @@ public class PaymentService {
 
     private BigDecimal applyVoucher(Order order, String voucherCode) {
         BigDecimal subtotal = currentSubtotalAmount(order);
-        VoucherPaymentResult voucherResult = voucherService.resolveForPayment(voucherCode, subtotal);
+        VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, subtotal);
 
         order.setVoucherCode(voucherResult.voucherCode());
         orderPricingService.setOrderMoney(order, subtotal, voucherResult.appliedDiscountAmount());

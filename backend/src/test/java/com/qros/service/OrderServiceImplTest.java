@@ -11,7 +11,7 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
-import com.qros.modules.promotion.service.VoucherService;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
@@ -46,7 +46,7 @@ class OrderServiceImplTest {
     UserRepository userRepository;
 
     @Mock
-    VoucherService voucherService;
+    VoucherCheckoutService voucherCheckoutService;
 
     @Mock
     PaymentTransactionRepository transactionRepository;
@@ -64,7 +64,7 @@ class OrderServiceImplTest {
         orderPaymentService = new OrderPaymentService(
                 orderRepository,
                 userRepository,
-                voucherService,
+                voucherCheckoutService,
                 transactionRepository,
                 orderPricingService,
                 paymentCompletionService,

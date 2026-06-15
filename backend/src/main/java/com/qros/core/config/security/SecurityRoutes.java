@@ -29,11 +29,8 @@ public final class SecurityRoutes {
 
     public static final String[] PUBLIC_POST = {
             "/api/public/orders",
+            "/api/public/orders/preview",
             "/api/webhooks/**"
-    };
-
-    public static final String[] AUTHENTICATED_POST = {
-            "/api/ai/chat"
     };
 
     public static final String[] SELF_GET = {
@@ -65,15 +62,16 @@ public final class SecurityRoutes {
 
     public static final String[] OPERATION_GET = {
             "/api/orders",
+            "/api/orders/*",
             "/api/orders/table-board",
             "/api/orders/table/*/current",
+            "/api/orders/table/*/preview",
             "/api/tables/**",
             "/api/orders/history",
             "/api/orders/stats",
             "/api/orders/active",
             "/api/kitchen/orders",
             "/api/inventory/**",
-            "/api/stats/**",
             "/api/analytics/**"
     };
 
@@ -87,7 +85,7 @@ public final class SecurityRoutes {
             "/api/tables/**",
             "/api/vouchers/**",
             "/api/promotions/**",
-            "/api/admin/ai/**"
+            "/api/ai/chat"
     };
 
     public static final String[] MANAGER_PUT = {
@@ -122,7 +120,6 @@ public final class SecurityRoutes {
             "/api/vouchers/**",
             "/api/promotions/**",
             "/api/combos/**",
-            "/api/combos/*/items",
             "/api/settings/**"
     };
 

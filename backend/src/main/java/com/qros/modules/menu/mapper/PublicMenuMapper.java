@@ -10,8 +10,6 @@ import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.recommendation.dto.response.RecommendationItemResponse;
-import com.qros.modules.settings.model.SystemSettings;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -48,19 +46,6 @@ public class PublicMenuMapper {
         );
     }
 
-    public PublicSettings toSettings(SystemSettings settings) {
-        if (settings == null) {
-            return null;
-        }
-
-        return new PublicSettings(
-                settings.getRestaurantName(),
-                settings.getRestaurantAddress(),
-                settings.getRestaurantPhone(),
-                settings.getLogoUrl(),
-                true
-        );
-    }
 
     public PublicMenuItem toMenuItem(MenuItem item) {
         if (item == null) {
@@ -216,24 +201,6 @@ public class PublicMenuMapper {
                 options,
                 item.available(),
                 item.displayOrder()
-        );
-    }
-
-    public PublicMenuItem fromRecommendationItemResponse(RecommendationItemResponse item) {
-        if (item == null) {
-            return null;
-        }
-
-        return new PublicMenuItem(
-                item.id(),
-                item.name(),
-                null,
-                item.imageUrl(),
-                item.price(),
-                new CategorySummary(item.categoryId(), item.categoryName()),
-                Collections.emptyList(),
-                true,
-                0
         );
     }
 

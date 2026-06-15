@@ -2,20 +2,17 @@ package com.qros.modules.menu.service;
 
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.menu.dto.publicmenu.PublicMenuItem;
-import com.qros.modules.menu.dto.request.ItemOptionRequest;
-import com.qros.modules.menu.dto.request.ItemOptionValueRequest;
 import com.qros.modules.menu.dto.request.MenuItemRequest;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.mapper.MenuItemMapper;
 import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.model.Category;
-import com.qros.modules.menu.model.ItemOption;
-import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -24,16 +21,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -53,7 +50,8 @@ public class MenuItemService {
 
     private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final MenuItemOptionService menuItemOptionService;
 
     public List<MenuItemResponse> getAll() {
         return menuItemRepository.findAll().stream()
@@ -62,9 +60,15 @@ public class MenuItemService {
     }
 
     public List<MenuItemResponse> getAllManagementSummary() {
-        return menuItemRepository.findAllForManagementSummary().stream()
-                .map(menuItemMapper::toResponse)
+        return menuItemRepository.searchManagementSummaries(null, null, Pageable.unpaged()).stream()
+                .map(menuItemMapper::toSummaryResponse)
                 .toList();
+    }
+
+    public Page<MenuItemResponse> searchManagementSummary(String keyword, Long categoryId, @NonNull Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return menuItemRepository.searchManagementSummaries(normalizedKeyword, categoryId, pageable)
+                .map(menuItemMapper::toSummaryResponse);
     }
 
     public MenuItemResponse getById(@NonNull Long id) {
@@ -91,10 +95,26 @@ public class MenuItemService {
                 .toList();
     }
 
+    public List<PublicMenuItem> getPublicMenuItemsByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, PublicMenuItem> itemsById = new HashMap<>();
+        menuItemRepository.findPublicAvailableItemsByIds(ids).stream()
+                .map(publicMenuMapper::toMenuItem)
+                .forEach(item -> itemsById.put(item.id(), item));
+
+        return ids.stream()
+                .map(itemsById::get)
+                .filter(item -> item != null)
+                .toList();
+    }
+
     @Transactional
     @CacheEvict(value = { CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
     public MenuItemResponse create(@NonNull MenuItemRequest req) {
-        String name = normalizeRequired(req.name(), "Menu item name cannot be empty");
+        String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
         if (menuItemRepository.existsByNameIgnoreCase(name)) {
             throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS);
@@ -103,7 +123,7 @@ public class MenuItemService {
         Category category = categoryRepository.findById(req.categoryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        validateOptions(req.itemOptions());
+        menuItemOptionService.validateOptions(req.itemOptions());
 
         MenuItem item = MenuItem.builder()
                 .name(name)
@@ -117,11 +137,11 @@ public class MenuItemService {
                 .build();
 
         if (req.itemOptions() != null) {
-            req.itemOptions().forEach(optionReq -> item.getItemOptions().add(buildItemOption(optionReq, item)));
+            req.itemOptions().forEach(optionReq -> item.getItemOptions().add(menuItemOptionService.buildItemOption(optionReq, item)));
         }
 
         MenuItem saved = menuItemRepository.save(item);
-        notificationService.notifyMenuChange("created", saved.getId());
+        eventPublisher.publishEvent(new MenuChangeEvent("created", saved.getId()));
 
         return menuItemMapper.toResponse(saved);
     }
@@ -131,7 +151,7 @@ public class MenuItemService {
     public MenuItemResponse update(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = getEntityById(id);
 
-        String name = normalizeRequired(req.name(), "Menu item name cannot be empty");
+        String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
         if (!item.getName().equalsIgnoreCase(name)
                 && menuItemRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
@@ -141,7 +161,7 @@ public class MenuItemService {
         Category category = categoryRepository.findById(req.categoryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        validateOptions(req.itemOptions());
+        menuItemOptionService.validateOptions(req.itemOptions());
 
         item.setName(name);
         item.setDescription(normalizeBlank(req.description()));
@@ -164,10 +184,10 @@ public class MenuItemService {
             item.setDisplayOrder(req.displayOrder());
         }
 
-        syncOptions(item, req.itemOptions());
+        menuItemOptionService.syncOptions(item, req.itemOptions());
 
         MenuItem saved = menuItemRepository.save(item);
-        notificationService.notifyMenuChange("updated", saved.getId());
+        eventPublisher.publishEvent(new MenuChangeEvent("updated", saved.getId()));
 
         return menuItemMapper.toResponse(saved);
     }
@@ -193,7 +213,7 @@ public class MenuItemService {
                     "delete menu item image after item delete " + id);
         }
 
-        notificationService.notifyMenuChange("deleted", id);
+        eventPublisher.publishEvent(new MenuChangeEvent("deleted", id));
     }
 
     @Transactional
@@ -222,7 +242,7 @@ public class MenuItemService {
                         "delete replaced menu item image " + id);
             }
 
-            notificationService.notifyMenuChange("image_updated", id);
+            eventPublisher.publishEvent(new MenuChangeEvent("image_updated", id));
 
             return Map.of("img", newUrl);
         } catch (BusinessException e) {
@@ -236,94 +256,6 @@ public class MenuItemService {
     private MenuItem getEntityById(Long id) {
         return menuItemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
-    }
-
-    private ItemOption buildItemOption(ItemOptionRequest req, MenuItem item) {
-        ItemOption option = ItemOption.builder()
-                .name(normalizeRequired(req.name(), "Option name cannot be empty"))
-                .required(req.required() != null ? req.required() : false)
-                .maxSelection(req.maxSelection() != null ? req.maxSelection() : 1)
-                .displayOrder(0)
-                .menuItem(item)
-                .build();
-
-        if (req.optionValues() != null) {
-            req.optionValues()
-                    .forEach(valueReq -> option.getOptionValues().add(buildItemOptionValue(valueReq, option)));
-        }
-
-        return option;
-    }
-
-    private ItemOptionValue buildItemOptionValue(ItemOptionValueRequest req, ItemOption option) {
-        return ItemOptionValue.builder()
-                .name(normalizeRequired(req.name(), "Option value name cannot be empty"))
-                .extraPrice(req.extraPrice() != null ? req.extraPrice() : BigDecimal.ZERO)
-                .displayOrder(0)
-                .itemOption(option)
-                .build();
-    }
-
-    private void syncOptions(MenuItem item, List<ItemOptionRequest> incomingOptions) {
-        item.getItemOptions().clear();
-
-        if (incomingOptions == null || incomingOptions.isEmpty()) {
-            return;
-        }
-
-        incomingOptions.forEach(optionReq -> item.getItemOptions().add(buildItemOption(optionReq, item)));
-    }
-
-    private void validateOptions(List<ItemOptionRequest> options) {
-        if (options == null || options.isEmpty()) {
-            return;
-        }
-
-        Set<String> optionNames = new HashSet<>();
-
-        for (ItemOptionRequest option : options) {
-            String optionName = normalizeRequired(option.name(), "Option name cannot be empty")
-                    .toLowerCase();
-
-            if (!optionNames.add(optionName)) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Duplicate option name: " + option.name());
-            }
-
-            if (option.optionValues() == null || option.optionValues().isEmpty()) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Option must contain at least one value");
-            }
-
-            if (option.maxSelection() != null && option.maxSelection() > option.optionValues().size()) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Max selection cannot exceed option value count");
-            }
-
-            Set<String> valueNames = new HashSet<>();
-
-            for (ItemOptionValueRequest value : option.optionValues()) {
-                String valueName = normalizeRequired(value.name(), "Option value name cannot be empty")
-                        .toLowerCase();
-
-                if (!valueNames.add(valueName)) {
-                    throw new BusinessException(
-                            ErrorCode.BUSINESS_ERROR,
-                            "Duplicate option value: " + value.name());
-                }
-            }
-        }
-    }
-
-    private String normalizeRequired(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
-        }
-
-        return value.trim();
     }
 
     private String normalizeBlank(String value) {
