@@ -7,20 +7,26 @@ import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
-import { isTerminalSessionError, useCustomerMenuQuery, useTableSessionQuery, useRecommendationsQuery } from '@modules/customer-ordering/api/customerQueries.js';
-import { createClientRequestId, useStartTableSessionMutation, useSubmitOrderMutation } from '@modules/customer-ordering/api/customerMutations.js';
-
-import { menuService } from '@modules/customer-ordering/api/menuService.js';
+import {
+  CartModal,
+  CurrentOrderBanner,
+  CurrentOrderSheet,
+  ItemOptionsModal,
+  ShoppingCart as ShoppingCartButton,
+  createClientRequestId,
+  isTerminalSessionError,
+  menuService,
+  useCustomerMenuQuery,
+  useRecommendationsQuery,
+  useStartTableSessionMutation,
+  useSubmitOrderMutation,
+  useTableSessionQuery
+} from '@features/customer-ordering';
 import MenuCard from './MenuCard';
 import ComboCard from './ComboCard';
-import CartModal from './CartModal';
 import CategoryFilter from './CategoryFilter';
-import ShoppingCartButton from './ShoppingCart';
-import ItemOptionsModal from './ItemOptionsModal';
-import AiChatAssistant from '@modules/ai-assistant/ui/AiChatAssistant.jsx';
-import CurrentOrderBanner from '@modules/customer-ordering/ui/CurrentOrderBanner.jsx';
-import CurrentOrderSheet from '@modules/customer-ordering/ui/CurrentOrderSheet.jsx';
-import { useAuth } from '@modules/auth/model/AuthContext.jsx';
+import { AiChatAssistant } from '@features/ai-assistant';
+import { useAuth } from '@features/auth';
 
 const defaultRestaurantSettings = {
   restaurantName: 'Sắc Màu Quán',

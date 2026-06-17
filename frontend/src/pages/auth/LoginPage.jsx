@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@modules/auth/model/AuthContext.jsx';
-import { authService } from '@modules/auth/api/authService.js';
+import { authService, useAuth } from '@features/auth';
 import { Lock, Mail, Loader2, AlertCircle} from 'lucide-react';
 import { FaGoogle, FaFacebook, FaTwitter } from 'react-icons/fa';
 

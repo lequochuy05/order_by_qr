@@ -1,4 +1,4 @@
-import { getTableStatusMeta } from '@entities/order/lib/orderStatus.js'
+import { getTableStatusMeta } from '@shared/lib/tableStatus.js'
 
 const TableStatusBadge = ({ status }) => {
   const meta = getTableStatusMeta(status)

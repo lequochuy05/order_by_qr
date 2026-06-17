@@ -1,4 +1,4 @@
-import InventoryManagement from '@modules/inventory-management/ui/InventoryManagement.jsx';
+import { InventoryManagement } from '@features/inventory-management';
 
 const InventoryPage = () => <InventoryManagement />;
 

@@ -1,4 +1,4 @@
-import UserManagement from '@modules/user-management/ui/UserManagement.jsx'
+import { UserManagement } from '@features/user-management'
 
 export default function UserPage() {
   return <UserManagement />

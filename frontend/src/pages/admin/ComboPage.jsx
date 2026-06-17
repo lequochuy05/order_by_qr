@@ -1,4 +1,4 @@
-import ComboManagement from '@modules/combo-management/ui/ComboManagement.jsx'
+import { ComboManagement } from '@features/combo-management'
 
 export default function ComboPage() {
   return <ComboManagement />

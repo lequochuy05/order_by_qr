@@ -1,4 +1,4 @@
-import TopDishesStats from '@modules/analytics/ui/TopDishesStats.jsx'
+import { TopDishesStats } from '@features/analytics'
 
 export default function TopDishesStatsPage() {
   return <TopDishesStats />

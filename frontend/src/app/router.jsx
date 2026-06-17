@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { LogIn, QrCode, ScanLine, Utensils } from 'lucide-react'
 
-import ProtectedRoute from '@modules/auth/ui/ProtectedRoute.jsx'
+import { ProtectedRoute } from '@features/auth'
 import AdminLayout from '@widgets/admin-layout/AdminLayout.jsx'
 
 const LoginPage = lazy(() => import('@pages/auth/LoginPage.jsx'))

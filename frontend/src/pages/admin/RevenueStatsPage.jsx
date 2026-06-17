@@ -1,4 +1,4 @@
-import RevenueStats from '@modules/analytics/ui/RevenueStats.jsx'
+import { RevenueStats } from '@features/analytics'
 
 export default function RevenueStatsPage() {
   return <RevenueStats />

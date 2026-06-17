@@ -1,1 +1,1 @@
-export { TABLE_STATUS } from '@entities/order/lib/orderStatus.js'
+export { TABLE_STATUS } from '@shared/lib/tableStatus.js'

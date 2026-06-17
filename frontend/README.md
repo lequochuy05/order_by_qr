@@ -30,7 +30,7 @@ src/
 │   ├── admin/              # Admin route pages
 │   ├── auth/               # Login page
 │   └── customer/           # Customer ordering pages
-├── modules/
+├── features/
 │   ├── ai-assistant/       # Gemini chat + optional local classifier
 │   ├── analytics/          # Revenue, top dishes, staff stats UI/API
 │   ├── auth/               # Auth API, context, protected route
@@ -40,7 +40,6 @@ src/
 │   ├── dashboard-overview/
 │   ├── inventory-management/
 │   ├── menu-management/
-│   ├── notifications/
 │   ├── order-management/
 │   ├── payment/
 │   ├── profile-management/
@@ -60,7 +59,8 @@ Alias trong `vite.config.js`:
 @app     -> src/app
 @pages   -> src/pages
 @widgets -> src/widgets
-@modules -> src/modules
+@features -> src/features
+@modules -> src/features (legacy alias)
 @entities-> src/entities
 @shared  -> src/shared
 ```
@@ -179,7 +179,7 @@ src/shared/api/httpClient.js
 Auth context nằm ở:
 
 ```text
-src/modules/auth/model/AuthContext.jsx
+src/features/auth/model/AuthContext.jsx
 ```
 
 Ghi chú:
@@ -222,13 +222,13 @@ Topics frontend đang dùng:
 
 Zustand đang được dùng cho:
 
-- `modules/customer-ordering/model/cartStore.js`: giỏ hàng khách.
+- `features/customer-ordering/model/cartStore.js`: giỏ hàng khách.
 - `shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
-- `entities/category/model/categoryStore.js`: danh mục và invalidate/refetch.
+- `entities/category/model/categoryStore.js`: state danh mục local thuần.
 
 Auth user state dùng React Context thay vì Zustand.
 
-## Các module chức năng
+## Các feature chức năng
 
 | Module | Mô tả |
 | --- | --- |

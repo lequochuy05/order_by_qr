@@ -1,4 +1,4 @@
-import MenuManagement from '@modules/menu-management/ui/MenuManagement.jsx'
+import { MenuManagement } from '@features/menu-management'
 
 export default function MenuPage() {
   return <MenuManagement />

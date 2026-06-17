@@ -1,9 +1,9 @@
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
-import { clearAnalyticsCache } from '@modules/analytics/api/analyticsService.js';
-import { useAuth } from '@modules/auth/model/AuthContext.jsx';
+import { playNotificationSound } from '@shared/lib/notificationSound.js';
+import { clearAnalyticsCache } from '@features/analytics';
+import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
 
 /**

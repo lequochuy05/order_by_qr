@@ -1,4 +1,4 @@
-import OrderHistory from '@modules/order-management/ui/OrderHistory.jsx'
+import { OrderHistory } from '@features/order-management'
 
 export default function OrderHistoryPage() {
   return <OrderHistory />

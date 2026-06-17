@@ -1,4 +1,4 @@
-import SettingsManagement from '@modules/settings-management/ui/SettingsManagement.jsx'
+import { SettingsManagement } from '@features/settings-management'
 
 export default function SettingsPage() {
   return <SettingsManagement />

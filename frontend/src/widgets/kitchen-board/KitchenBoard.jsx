@@ -13,13 +13,13 @@ import {
     VolumeX,
 } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { orderService } from '@modules/order-management/api/orderService.js';
+import { orderService } from '@features/order-management';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import KitchenColumn from './KitchenColumn';
-import { playNotificationSound, playLoudSound } from '@modules/notifications/lib/notificationSound.js';
-import { showBrowserNotification } from '@modules/notifications/lib/browserNotification.js';
-import { useAuth } from '@modules/auth/model/AuthContext.jsx';
+import { playNotificationSound, playLoudSound } from '@shared/lib/notificationSound.js';
+import { showBrowserNotification } from '@shared/lib/browserNotification.js';
+import { useAuth } from '@features/auth';
 
 const OVERDUE_MINUTES = 20;
 
