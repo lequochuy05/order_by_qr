@@ -1,7 +1,6 @@
 package com.qros.modules.analytics.service;
 
 import com.qros.modules.analytics.dto.response.DashboardSummaryResponse;
-import com.qros.modules.analytics.dto.response.EmployeePerformanceResponse;
 import com.qros.modules.analytics.dto.response.OrderDetailResponse;
 import com.qros.modules.analytics.dto.response.OrderSummaryResponse;
 import com.qros.modules.analytics.dto.response.PopularItemForecastResponse;
@@ -11,11 +10,12 @@ import com.qros.modules.analytics.dto.response.RevenuePointResponse;
 import com.qros.modules.analytics.dto.response.SalesTrendPointResponse;
 import com.qros.modules.analytics.dto.response.TableSummaryResponse;
 import com.qros.modules.analytics.dto.response.TopSellingItemResponse;
+import com.qros.modules.analytics.dto.response.UserPerformanceResponse;
 import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
 import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.EmployeePerformanceProjection;
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
+import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.cache.CacheNames;
@@ -71,7 +71,7 @@ public class AnalyticsService {
                                 safeLong(summary != null ? summary.getTotalItemsSold() : null),
                                 safeMoney(summary != null ? summary.getAverageOrderValue() : null),
                                 getRevenueSeries(range.from(), range.to()),
-                                getEmployeePerformance(range.from(), range.to(), 5),
+                                getUserPerformance(range.from(), range.to(), 5),
                                 getOrderDetails(range.from(), range.to(), PageRequest.of(0, 5)).getContent(),
                                 getTopSellingItems(range.from(), range.to(), 5),
                                 getSalesTrend(range.from(), range.to()),
@@ -95,20 +95,20 @@ public class AnalyticsService {
                                 .toList();
         }
 
-        @Cacheable(value = CacheNames.ANALYTICS, key = "'employees:' + #from + ':' + #to + ':' + #limit")
-        public List<EmployeePerformanceResponse> getEmployeePerformance(
+        @Cacheable(value = CacheNames.ANALYTICS, key = "'users:' + #from + ':' + #to + ':' + #limit")
+        public List<UserPerformanceResponse> getUserPerformance(
                         LocalDate from,
                         LocalDate to,
                         int limit) {
                 DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
                 int safeLimit = sanitizeLimit(limit);
 
-                return analyticsQueryRepository.employeePerformance(
+                return analyticsQueryRepository.userPerformance(
                                 range.from(),
                                 range.toExclusive(),
                                 safeLimit)
                                 .stream()
-                                .map(this::toEmployeePerformanceResponse)
+                                .map(this::toUserPerformanceResponse)
                                 .toList();
         }
 
@@ -125,7 +125,7 @@ public class AnalyticsService {
                                 .map(row -> new OrderDetailResponse(
                                                 row.getOrderId(),
                                                 row.getPaymentTime(),
-                                                row.getStaffName(),
+                                                row.getUserName(),
                                                 safeMoney(row.getFinalAmount()),
                                                 row.getTableNumber()));
         }
@@ -198,10 +198,10 @@ public class AnalyticsService {
                                 .toList();
         }
 
-        private EmployeePerformanceResponse toEmployeePerformanceResponse(
-                        EmployeePerformanceProjection projection) {
-                return new EmployeePerformanceResponse(
-                                projection.getStaffId(),
+        private UserPerformanceResponse toUserPerformanceResponse(
+                        UserPerformanceProjection projection) {
+                return new UserPerformanceResponse(
+                                projection.getUserId(),
                                 projection.getFullName(),
                                 projection.getAvatarUrl(),
                                 safeLong(projection.getOrderCount()),

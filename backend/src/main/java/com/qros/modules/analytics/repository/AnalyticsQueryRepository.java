@@ -1,7 +1,6 @@
 package com.qros.modules.analytics.repository;
 
 import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.EmployeePerformanceProjection;
 import com.qros.modules.analytics.repository.projection.OrderDetailProjection;
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
 import com.qros.modules.analytics.repository.projection.RecentOrderProjection;
@@ -9,6 +8,7 @@ import com.qros.modules.analytics.repository.projection.RevenuePointProjection;
 import com.qros.modules.analytics.repository.projection.SalesTrendPointProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.modules.order.model.Order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,7 +66,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       @Param("toExclusive") LocalDate toExclusive);
 
   @Query(value = """
-      SELECT u.id AS staffId,
+      SELECT u.id AS userId,
              u.full_name AS fullName,
              u.avatar_url AS avatarUrl,
              COUNT(o.id) AS orderCount,
@@ -81,7 +81,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       ORDER BY revenue DESC
       LIMIT :limit
       """, nativeQuery = true)
-  List<EmployeePerformanceProjection> employeePerformance(
+  List<UserPerformanceProjection> userPerformance(
       @Param("from") LocalDate from,
       @Param("toExclusive") LocalDate toExclusive,
       @Param("limit") int limit);
@@ -89,7 +89,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
   @Query(value = """
       SELECT o.id AS orderId,
              o.payment_time AS paymentTime,
-             COALESCE(u.full_name, '—') AS staffName,
+             COALESCE(u.full_name, '—') AS userName,
              o.final_amount AS finalAmount,
              dt.table_number AS tableNumber
       FROM orders o

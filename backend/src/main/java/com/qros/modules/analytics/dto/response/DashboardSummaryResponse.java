@@ -9,7 +9,7 @@ public record DashboardSummaryResponse(
                 Long totalItemsSold,
                 BigDecimal averageOrderValue,
                 List<RevenuePointResponse> revenue,
-                List<EmployeePerformanceResponse> employees,
+                List<UserPerformanceResponse> users,
                 List<OrderDetailResponse> recentCompletedOrders,
                 List<TopSellingItemResponse> topItems,
                 List<SalesTrendPointResponse> salesTrend,

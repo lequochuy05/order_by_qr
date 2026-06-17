@@ -2,9 +2,9 @@ package com.qros.modules.analytics.repository.projection;
 
 import java.math.BigDecimal;
 
-public interface EmployeePerformanceProjection {
+public interface UserPerformanceProjection {
 
-    Long getStaffId();
+    Long getUserId();
 
     String getFullName();
 

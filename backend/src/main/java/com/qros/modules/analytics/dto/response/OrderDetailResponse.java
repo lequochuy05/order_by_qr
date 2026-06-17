@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 public record OrderDetailResponse(
         Long orderId,
         LocalDateTime paymentTime,
-        String staffName,
+        String userName,
         BigDecimal finalAmount,
         String tableNumber) {
 }

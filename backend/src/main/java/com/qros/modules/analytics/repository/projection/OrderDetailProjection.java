@@ -9,7 +9,7 @@ public interface OrderDetailProjection {
 
     LocalDateTime getPaymentTime();
 
-    String getStaffName();
+    String getUserName();
 
     BigDecimal getFinalAmount();
 

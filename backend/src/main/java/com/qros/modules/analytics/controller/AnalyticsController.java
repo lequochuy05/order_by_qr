@@ -1,13 +1,13 @@
 package com.qros.modules.analytics.controller;
 
 import com.qros.modules.analytics.dto.response.DashboardSummaryResponse;
-import com.qros.modules.analytics.dto.response.EmployeePerformanceResponse;
 import com.qros.modules.analytics.dto.response.OrderDetailResponse;
 import com.qros.modules.analytics.dto.response.PopularItemForecastResponse;
 import com.qros.modules.analytics.dto.response.RevenueForecastResponse;
 import com.qros.modules.analytics.dto.response.RevenuePointResponse;
 import com.qros.modules.analytics.dto.response.SalesTrendPointResponse;
 import com.qros.modules.analytics.dto.response.TopSellingItemResponse;
+import com.qros.modules.analytics.dto.response.UserPerformanceResponse;
 import com.qros.modules.analytics.service.AnalyticsService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.constraints.Max;
@@ -52,15 +52,15 @@ public class AnalyticsController {
         analyticsService.getRevenueSeries(from, to));
   }
 
-  @GetMapping("/employees")
-  public ApiResponse<List<EmployeePerformanceResponse>> employees(
+  @GetMapping("/users")
+  public ApiResponse<List<UserPerformanceResponse>> users(
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
 
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
 
       @RequestParam(defaultValue = "10") @Min(value = 1, message = "Limit must be at least 1") @Max(value = 50, message = "Limit cannot exceed 50") int limit) {
     return ApiResponse.success(
-        analyticsService.getEmployeePerformance(from, to, limit));
+        analyticsService.getUserPerformance(from, to, limit));
   }
 
   @GetMapping("/orders")
