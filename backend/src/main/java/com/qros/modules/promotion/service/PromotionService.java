@@ -13,8 +13,8 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +33,13 @@ public class PromotionService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
-    @Cacheable(value = CacheNames.PROMOTIONS, key = "'all_desc'")
-    public List<PromotionResponse> findAll() {
-        List<Promotion> promotions = promotionRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
-        return promotionMapper.toResponses(promotions);
+    public Page<PromotionResponse> searchForManagement(String keyword, @NonNull Pageable pageable) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        Page<Promotion> promotions = normalizedKeyword == null
+                ? promotionRepository.findAll(pageable)
+                : promotionRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable);
+
+        return promotions.map(promotionMapper::toResponse);
     }
 
     @Transactional(readOnly = true)

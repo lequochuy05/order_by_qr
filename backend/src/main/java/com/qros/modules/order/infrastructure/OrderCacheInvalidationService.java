@@ -24,11 +24,20 @@ public class OrderCacheInvalidationService {
      * 
      * @param orderId The ID of the mutated order
      */
-    public void evictAfterOrderMutation(Long orderId) {
-        evict(CacheNames.ORDER_BY_ID, orderId);
-        clear(CacheNames.TABLES);
+    public void evictAfterOrderMutation(com.qros.modules.order.model.Order order) {
+        if (order == null) return;
+        evict(CacheNames.ORDER_BY_ID, order.getId());
+        
+        if (order.getTable() != null) {
+            String tableCode = order.getTable().getTableCode();
+            evict(CacheNames.TABLES, "code_" + tableCode);
+            evict(CacheNames.TABLES, "public_code_" + tableCode);
+        }
+        evict(CacheNames.TABLES, "all_sorted");
+
         clear(CacheNames.ORDER_STATS);
         clear(CacheNames.ANALYTICS);
+        clear(CacheNames.STATS_DASHBOARD);
     }
 
     private void evict(String cacheName, Object key) {

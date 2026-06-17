@@ -14,7 +14,11 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentService;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.TableSession;
+import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableSessionRepository;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -59,6 +63,8 @@ public class OrderQueryService {
     private final PaymentService paymentService;
     private final OrderMapper orderMapper;
     private final DiningTableRepository tableRepository;
+    private final TableSessionService tableSessionService;
+    private final TableSessionRepository tableSessionRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -142,7 +148,7 @@ public class OrderQueryService {
     }
 
     @Cacheable(value = CacheNames.ORDER_STATS)
-    public Map<String, Object> getOrderStats(
+    public Map<String, Object> getOrderAnalytics(
             String status,
             LocalDate from,
             LocalDate to,
@@ -211,16 +217,33 @@ public class OrderQueryService {
     }
 
     public TableBoardResponse getTableBoard() {
+        Map<Long, TableSession> openSessionsByTableId = tableSessionRepository
+                .findByStatus(TableSessionStatus.OPEN)
+                .stream()
+                .filter(session -> session.getTable() != null)
+                .collect(Collectors.toMap(
+                        session -> session.getTable().getId(),
+                        Function.identity(),
+                        (left, right) -> left));
+
         List<TableBoardResponse.TableItem> tables = tableRepository.findAllByOrderByTableNumberAsc().stream()
-                .map(table -> new TableBoardResponse.TableItem(
-                        table.getId(),
-                        table.getTableNumber(),
-                        table.getTableCode(),
-                        table.getStatus().name(),
-                        table.getCapacity(),
-                        table.getQrCodeUrl(),
-                        table.getCreatedAt(),
-                        table.getUpdatedAt()))
+                .map(table -> {
+                    TableSession session = openSessionsByTableId.get(table.getId());
+
+                    return new TableBoardResponse.TableItem(
+                            table.getId(),
+                            table.getTableNumber(),
+                            table.getTableCode(),
+                            table.getStatus().name(),
+                            table.getCapacity(),
+                            table.getQrCodeUrl(),
+                            session != null,
+                            session != null ? session.getStatus().name() : null,
+                            session != null ? session.getOpenedAt() : null,
+                            session != null ? session.getLastActivityAt() : null,
+                            table.getCreatedAt(),
+                            table.getUpdatedAt());
+                })
                 .toList();
 
         List<TableBoardResponse.ActiveOrder> activeOrders = orderRepository.findActiveOrderSummariesForTableBoard()
@@ -247,6 +270,22 @@ public class OrderQueryService {
         return orderRepository
                 .findFirstByTable_TableCodeAndStatusInOrderByCreatedAtDesc(
                         tableCode,
+                        activeStatuses())
+                .map(orderMapper::toPublicResponse);
+    }
+
+    public Optional<PublicOrderResponse> getPublicCurrentOrderBySession(
+            @NonNull String tableCode,
+            @NonNull String sessionToken) {
+        TableSession session = tableSessionService.requireSessionForRead(tableCode, sessionToken);
+
+        if (!session.isOpen()) {
+            return Optional.empty();
+        }
+
+        return orderRepository
+                .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(
+                        session.getId(),
                         activeStatuses())
                 .map(orderMapper::toPublicResponse);
     }

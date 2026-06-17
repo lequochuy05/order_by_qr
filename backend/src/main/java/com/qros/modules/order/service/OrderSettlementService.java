@@ -9,6 +9,10 @@ import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
+import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
+import com.qros.modules.table.model.enums.TableSessionStatus;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
@@ -33,11 +37,38 @@ public class OrderSettlementService {
     private final OrderTableSyncService orderTableSyncService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrderPricingService orderPricingService;
+    private final VoucherCheckoutService voucherCheckoutService;
+    private final TableSessionService tableSessionService;
 
     @Transactional
     public Order loadForPayment(@NonNull Long orderId) {
         return orderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+    }
+
+    @Transactional
+    public Order prepareForOnlinePayment(@NonNull Long orderId, String voucherCode) {
+        Order order = loadForPayment(orderId);
+        validatePayable(order);
+
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(
+                    voucherCode,
+                    currentSubtotalAmount(order));
+
+            order.setVoucherCode(voucherResult.voucherCode());
+            orderPricingService.setOrderMoney(
+                    order,
+                    currentSubtotalAmount(order),
+                    voucherResult.appliedDiscountAmount());
+
+            order = orderRepository.save(order);
+            orderCacheInvalidationService.evictAfterOrderMutation(order);
+            validatePayable(order);
+        }
+
+        return order;
     }
 
     @Transactional
@@ -79,7 +110,13 @@ public class OrderSettlementService {
                 auditReason);
 
         orderTableSyncService.recalcTableStatus(savedOrder);
-        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder.getId());
+        if (savedOrder.getTableSession() != null) {
+            tableSessionService.closeSession(
+                    savedOrder.getTableSession().getId(),
+                    TableSessionStatus.CLOSED,
+                    "Order settled");
+        }
+        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         log.info(
@@ -88,6 +125,40 @@ public class OrderSettlementService {
                 paymentMethod);
 
         return savedOrder;
+    }
+
+    private void validatePayable(Order order) {
+        if (order.getPaymentStatus() == PaymentStatus.PAID
+                || order.getStatus() == OrderStatus.COMPLETED) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ALREADY_PAID,
+                    "This order is already settled");
+        }
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_PAYMENT_INVALID,
+                    "Order must be in AWAITING_PAYMENT status before payment. Current: "
+                            + order.getStatus());
+        }
+
+        if (currentFinalAmount(order).compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_PAYMENT_INVALID,
+                    "Order has no payable amount");
+        }
+    }
+
+    private BigDecimal currentFinalAmount(Order order) {
+        return order.getFinalAmount() != null
+                ? order.getFinalAmount()
+                : BigDecimal.ZERO;
+    }
+
+    private BigDecimal currentSubtotalAmount(Order order) {
+        return order.getSubtotalAmount() != null
+                ? order.getSubtotalAmount()
+                : BigDecimal.ZERO;
     }
 
     private void transitionToCompleted(Order order, OrderStatus fromStatus) {

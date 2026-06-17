@@ -14,13 +14,6 @@ import java.util.Optional;
 
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
-  @EntityGraph(attributePaths = {
-      "category",
-      "itemOptions",
-      "itemOptions.optionValues"
-  })
-  List<MenuItem> findByCategoryIdAndActiveTrueOrderByDisplayOrderAscNameAsc(Long categoryId);
-
   @EntityGraph(attributePaths = { "category" })
   @Query("""
           SELECT m
@@ -58,15 +51,6 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
   })
   @NonNull
   Optional<MenuItem> findById(@NonNull Long id);
-
-  @Override
-  @EntityGraph(attributePaths = {
-      "category",
-      "itemOptions",
-      "itemOptions.optionValues"
-  })
-  @NonNull
-  List<MenuItem> findAll();
 
   @EntityGraph(attributePaths = {
       "category",

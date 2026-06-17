@@ -59,13 +59,6 @@ public class ComboService {
                 .toList();
     }
 
-    @Cacheable(value = CacheNames.COMBOS, key = "'all'")
-    public List<ComboResponse> getAll() {
-        return comboRepo.searchManagementSummaries(null, null, Pageable.unpaged()).stream()
-                .map(comboMapper::toSummaryResponse)
-                .toList();
-    }
-
     public Page<ComboResponse> searchManagementSummary(String keyword, Boolean active, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         return comboRepo.searchManagementSummaries(normalizedKeyword, active, pageable)

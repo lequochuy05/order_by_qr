@@ -12,7 +12,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,13 +25,11 @@ public class MenuItemController {
     private final MenuItemService menuItemService;
 
     @GetMapping
-    public ApiResponse<List<MenuItemResponse>> getAll(
-            @RequestParam(required = false) Long categoryId) {
-        if (categoryId != null) {
-            return ApiResponse.success(menuItemService.getByCategory(categoryId));
-        }
-
-        return ApiResponse.success(menuItemService.getAll());
+    public ApiResponse<Page<MenuItemResponse>> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            Pageable pageable) {
+        return ApiResponse.success(menuItemService.searchManagementSummary(q, categoryId, pageable));
     }
 
     @GetMapping("/management-summary")
@@ -47,12 +44,6 @@ public class MenuItemController {
     public ApiResponse<MenuItemResponse> getById(
             @PathVariable @NonNull Long id) {
         return ApiResponse.success(menuItemService.getById(id));
-    }
-
-    @GetMapping("/category/{categoryId}")
-    public ApiResponse<List<MenuItemResponse>> getByCategory(
-            @PathVariable @NonNull Long categoryId) {
-        return ApiResponse.success(menuItemService.getByCategory(categoryId));
     }
 
     @PostMapping

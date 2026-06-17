@@ -15,6 +15,10 @@ public record TableBoardResponse(
             String status,
             int capacity,
             String qrCodeUrl,
+            boolean hasOpenSession,
+            String sessionStatus,
+            LocalDateTime sessionOpenedAt,
+            LocalDateTime sessionLastActivityAt,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
     }

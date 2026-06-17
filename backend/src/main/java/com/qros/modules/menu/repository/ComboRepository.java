@@ -5,7 +5,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
-import org.springframework.lang.NonNull;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,15 +14,6 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     boolean existsByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
-
-    @Override
-    @EntityGraph(attributePaths = {
-            "items",
-            "items.menuItem",
-            "items.menuItem.category"
-    })
-    @NonNull
-    List<Combo> findAll();
 
     @Query("""
         SELECT c

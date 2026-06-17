@@ -69,7 +69,7 @@ public class OrderItemWorkflowService {
 
         reconcileOrderAfterItemMutation(order, null);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
+        orderCacheInvalidationService.evictAfterOrderMutation(order);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
@@ -123,7 +123,7 @@ public class OrderItemWorkflowService {
 
         reconcileOrderAfterItemMutation(order, changedBy);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(order.getId());
+        orderCacheInvalidationService.evictAfterOrderMutation(order);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
@@ -170,7 +170,7 @@ public class OrderItemWorkflowService {
         Order saved = orderRepository.save(order);
 
         orderTableSyncService.recalcTableStatus(saved);
-        orderCacheInvalidationService.evictAfterOrderMutation(saved.getId());
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
@@ -229,7 +229,7 @@ public class OrderItemWorkflowService {
         }
 
         boolean valid = switch (from) {
-            case PENDING -> to == OrderItemStatus.COOKING || to == OrderItemStatus.CANCELLED;
+            case PENDING -> to == OrderItemStatus.COOKING || to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
             case COOKING -> to == OrderItemStatus.FINISHED;
             case FINISHED -> false;
             case CANCELLED -> false;

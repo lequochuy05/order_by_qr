@@ -77,15 +77,15 @@ public class StaffOrderController {
                 orderService.getOrderHistory(status, from, to, orderId, tableNumber, pageable));
     }
 
-    @GetMapping("/stats")
-    public ApiResponse<Map<String, Object>> getOrderStats(
+    @GetMapping("/analytics")
+    public ApiResponse<Map<String, Object>> getOrderAnalytics(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String orderId,
             @RequestParam(required = false) String tableNumber) {
         return ApiResponse.success(
-                orderService.getOrderStats(status, from, to, orderId, tableNumber));
+                orderService.getOrderAnalytics(status, from, to, orderId, tableNumber));
     }
 
     @GetMapping("/active")

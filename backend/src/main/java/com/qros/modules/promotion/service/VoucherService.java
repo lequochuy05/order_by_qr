@@ -13,15 +13,11 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.time.AppTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,13 +26,6 @@ public class VoucherService {
     private final VoucherRepository voucherRepository;
     private final VoucherMapper voucherMapper;
     private final ApplicationEventPublisher eventPublisher;
-
-    @Transactional(readOnly = true)
-    @Cacheable(value = CacheNames.VOUCHERS, key = "'all_desc'")
-    public List<VoucherResponse> findAll() {
-        List<Voucher> vouchers = voucherRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
-        return voucherMapper.toResponses(vouchers);
-    }
 
     @Transactional(readOnly = true)
     public Page<VoucherResponse> searchForManagement(String keyword, String status, @NonNull Pageable pageable) {

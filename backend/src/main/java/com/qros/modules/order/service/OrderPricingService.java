@@ -16,6 +16,7 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -41,6 +43,7 @@ public class OrderPricingService {
     private final ItemOptionValueRepository itemOptionValueRepository;
     private final VoucherCheckoutService voucherCheckoutService;
     private final OrderValidator orderValidator;
+    private final TableSessionService tableSessionService;
 
     public void recalculateOrderTotals(Order order) {
         order.getOrderItems().forEach(this::recalculateLineTotal);
@@ -90,6 +93,10 @@ public class OrderPricingService {
 
     @Transactional(readOnly = true)
     public OrderPreviewResponse previewCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
+        tableSessionService.requireOpenSessionForRead(
+                request.tableCode(),
+                request.sessionToken());
+
         return preview(
                 request.items(),
                 request.combos(),
@@ -153,6 +160,7 @@ public class OrderPricingService {
         
         java.util.Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
+        Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
 
         for (OrderItemRequest itemRequest : items) {
             MenuItem menuItem = menuItemsMap.get(itemRequest.menuItemId());
@@ -169,7 +177,10 @@ public class OrderPricingService {
 
             validateSelectedOptions(menuItem, selectedOptionValueIds);
 
-            BigDecimal optionsPrice = calculateOptionsPrice(selectedOptionValueIds);
+            List<ItemOptionValue> selectedValues = resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
+            validateOptionValuesExist(selectedOptionValueIds, selectedValues);
+
+            BigDecimal optionsPrice = calculateOptionsPrice(selectedValues);
 
             BigDecimal unitTotal = safe(menuItem.getPrice()).add(optionsPrice);
             subtotal = subtotal.add(calculateLineTotal(unitTotal, itemRequest.quantity()));
@@ -205,14 +216,39 @@ public class OrderPricingService {
         return subtotal;
     }
 
-    private BigDecimal calculateOptionsPrice(List<Long> selectedOptionValueIds) {
-        if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
-            return BigDecimal.ZERO;
+    private Map<Long, ItemOptionValue> loadSelectedOptionValues(List<OrderItemRequest> items) {
+        Set<Long> selectedOptionValueIds = items.stream()
+                .filter(Objects::nonNull)
+                .flatMap(item -> item.selectedOptionValueIds() == null
+                        ? java.util.stream.Stream.<Long>empty()
+                        : item.selectedOptionValueIds().stream())
+                .collect(Collectors.toSet());
+
+        if (selectedOptionValueIds.isEmpty()) {
+            return Map.of();
         }
 
-        List<ItemOptionValue> selectedValues = itemOptionValueRepository.findAllById(selectedOptionValueIds);
+        return itemOptionValueRepository.findAllById(selectedOptionValueIds).stream()
+                .collect(Collectors.toMap(ItemOptionValue::getId, value -> value));
+    }
 
-        validateOptionValuesExist(selectedOptionValueIds, selectedValues);
+    private List<ItemOptionValue> resolveSelectedValues(
+            List<Long> selectedOptionValueIds,
+            Map<Long, ItemOptionValue> selectedValuesById) {
+        if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
+            return List.of();
+        }
+
+        return selectedOptionValueIds.stream()
+                .map(selectedValuesById::get)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private BigDecimal calculateOptionsPrice(List<ItemOptionValue> selectedValues) {
+        if (selectedValues == null || selectedValues.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
 
         return selectedValues.stream()
                 .map(ItemOptionValue::getExtraPrice)

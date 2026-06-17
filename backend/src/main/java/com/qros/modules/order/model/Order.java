@@ -5,6 +5,7 @@ import com.qros.modules.order.model.enums.OrderType;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.TableSession;
 import com.qros.modules.user.model.User;
 import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -97,6 +98,10 @@ public class Order extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
     private DiningTable table;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "table_session_id")
+    private TableSession tableSession;
 
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

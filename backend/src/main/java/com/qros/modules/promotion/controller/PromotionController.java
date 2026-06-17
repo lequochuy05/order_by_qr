@@ -6,6 +6,8 @@ import com.qros.modules.promotion.service.PromotionService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -25,8 +28,17 @@ public class PromotionController {
     private final PromotionService promotionService;
 
     @GetMapping
-    public ApiResponse<List<PromotionResponse>> list() {
-        return ApiResponse.success(promotionService.findAll());
+    public ApiResponse<Page<PromotionResponse>> search(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ApiResponse.success(promotionService.searchForManagement(q, pageable));
+    }
+
+    @GetMapping("/management-summary")
+    public ApiResponse<Page<PromotionResponse>> managementSummary(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ApiResponse.success(promotionService.searchForManagement(q, pageable));
     }
 
     @GetMapping("/active")

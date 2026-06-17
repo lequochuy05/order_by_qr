@@ -21,8 +21,12 @@ public class ComboController {
     private final ComboService comboService;
 
     @GetMapping
-    public ApiResponse<List<ComboResponse>> getAll() {
-        return ApiResponse.success(comboService.getAll());
+    public ApiResponse<Page<ComboResponse>> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Boolean active,
+            Pageable pageable
+    ) {
+        return ApiResponse.success(comboService.searchManagementSummary(q, active, pageable));
     }
 
     @GetMapping("/active")

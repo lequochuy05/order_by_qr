@@ -34,6 +34,9 @@ public enum ErrorCode {
     TABLE_CODE_INVALID(HttpStatus.NOT_FOUND, "Invalid table code"),
     TABLE_NUMBER_EXISTS(HttpStatus.CONFLICT, "Table number already exists"),
     TABLE_QR_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "System error generating QR code"),
+    TABLE_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Table session not found"),
+    TABLE_SESSION_INVALID(HttpStatus.BAD_REQUEST, "Invalid table session"),
+    TABLE_SESSION_EXPIRED(HttpStatus.BAD_REQUEST, "Table session has expired"),
 
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found"),
     ORDER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Order item not found"),

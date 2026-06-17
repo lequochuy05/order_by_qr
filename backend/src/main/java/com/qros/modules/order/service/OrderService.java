@@ -67,13 +67,13 @@ public class OrderService {
                 return orderQueryService.getOrderHistory(status, from, to, orderId, tableNumber, pageable);
         }
 
-        public Map<String, Object> getOrderStats(
+        public Map<String, Object> getOrderAnalytics(
                         String status,
                         LocalDate from,
                         LocalDate to,
                         String orderId,
                         String tableNumber) {
-                return orderQueryService.getOrderStats(status, from, to, orderId, tableNumber);
+                return orderQueryService.getOrderAnalytics(status, from, to, orderId, tableNumber);
         }
 
         public List<OrderResponse> getActiveOrders() {
@@ -94,6 +94,12 @@ public class OrderService {
 
         public Optional<PublicOrderResponse> getPublicCurrentOrderByTableCode(@NonNull String tableCode) {
                 return orderQueryService.getPublicCurrentOrderByTableCode(tableCode);
+        }
+
+        public Optional<PublicOrderResponse> getPublicCurrentOrderBySession(
+                        @NonNull String tableCode,
+                        @NonNull String sessionToken) {
+                return orderQueryService.getPublicCurrentOrderBySession(tableCode, sessionToken);
         }
 
         public Optional<PublicOrderResponse> getPublicCurrentOrderByTable(@NonNull Long tableId) {

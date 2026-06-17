@@ -53,18 +53,6 @@ public class MenuItemService {
     private final ApplicationEventPublisher eventPublisher;
     private final MenuItemOptionService menuItemOptionService;
 
-    public List<MenuItemResponse> getAll() {
-        return menuItemRepository.findAll().stream()
-                .map(menuItemMapper::toResponse)
-                .toList();
-    }
-
-    public List<MenuItemResponse> getAllManagementSummary() {
-        return menuItemRepository.searchManagementSummaries(null, null, Pageable.unpaged()).stream()
-                .map(menuItemMapper::toSummaryResponse)
-                .toList();
-    }
-
     public Page<MenuItemResponse> searchManagementSummary(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         return menuItemRepository.searchManagementSummaries(normalizedKeyword, categoryId, pageable)
@@ -73,12 +61,6 @@ public class MenuItemService {
 
     public MenuItemResponse getById(@NonNull Long id) {
         return menuItemMapper.toResponse(getEntityById(id));
-    }
-
-    public List<MenuItemResponse> getByCategory(@NonNull Long categoryId) {
-        return menuItemRepository.findByCategoryIdAndActiveTrueOrderByDisplayOrderAscNameAsc(categoryId).stream()
-                .map(menuItemMapper::toResponse)
-                .toList();
     }
 
     @Cacheable(value = CacheNames.MENU, key = "'public_items'")

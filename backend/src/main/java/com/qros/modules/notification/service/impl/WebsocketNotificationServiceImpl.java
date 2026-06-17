@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 public class WebsocketNotificationServiceImpl implements NotificationService {
 
     private static final String TOPIC_TABLES = "/topic/tables";
+    private static final String TOPIC_ORDERS = "/topic/orders";
     private static final String TOPIC_KITCHEN = "/topic/kitchen";
     private static final String TOPIC_MENU = "/topic/menu";
     private static final String TOPIC_CATEGORIES = "/topic/categories";
@@ -36,6 +37,11 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
                 TOPIC_TABLES,
                 NotificationPayload.event(EVENT_UPDATED),
                 "Order state changed for customer views");
+
+        publishInternalEvent(
+                TOPIC_ORDERS,
+                NotificationPayload.event(EVENT_UPDATED),
+                "Order state changed for management views");
 
         publishInternalEvent(
                 TOPIC_KITCHEN,

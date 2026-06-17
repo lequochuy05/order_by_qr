@@ -40,15 +40,33 @@ public class RateLimitingFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        if (!"/api/ai/chat".equals(path) || !"POST".equalsIgnoreCase(request.getMethod())) {
+        String method = request.getMethod();
+
+        boolean isAiChat = "/api/ai/chat".equals(path) && "POST".equalsIgnoreCase(method);
+        boolean isPublicOrder = path.startsWith("/api/public/orders") && "POST".equalsIgnoreCase(method);
+        boolean isStartSession = path.matches("^/api/public/tables/[^/]+/start-session$") && "POST".equalsIgnoreCase(method);
+        boolean isHeartbeat = "/api/public/sessions/heartbeat".equals(path) && "POST".equalsIgnoreCase(method);
+        boolean isRecommendation = path.startsWith("/api/public/recommendations") && "GET".equalsIgnoreCase(method);
+
+        if (!isAiChat && !isPublicOrder && !isStartSession && !isHeartbeat && !isRecommendation) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String clientIp = resolveClientIp(request);
+        String sessionToken = request.getHeader("X-Session-Token");
+        String tableToken = request.getHeader("X-Table-Token");
+
+        String limitKey = clientIp;
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            limitKey += "|" + sessionToken;
+        } else if (tableToken != null && !tableToken.isBlank()) {
+            limitKey += "|" + tableToken;
+        }
+
         long now = System.currentTimeMillis();
 
-        Deque<Long> timestamps = requestLogs.computeIfAbsent(clientIp, key -> new ArrayDeque<>());
+        Deque<Long> timestamps = requestLogs.computeIfAbsent(limitKey, key -> new ArrayDeque<>());
         boolean allowed;
 
         synchronized (timestamps) {
@@ -65,7 +83,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         if (!allowed) {
-            log.warn("[RateLimit] IP {} exceeded {} req/min on /api/ai/chat", clientIp, MAX_REQUESTS_PER_WINDOW);
+            log.warn("[RateLimit] Key {} exceeded {} req/min on path {}", limitKey, MAX_REQUESTS_PER_WINDOW, path);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType("application/json; charset=UTF-8");
             response.getWriter().write("{\"status\":429,\"message\":\"Too many requests. Please try again later.\"}");

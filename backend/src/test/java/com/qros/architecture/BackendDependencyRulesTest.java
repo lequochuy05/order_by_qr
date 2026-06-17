@@ -57,6 +57,26 @@ class BackendDependencyRulesTest {
     }
 
     @ArchTest
+    void payment_must_not_depend_on_order_repository_or_infrastructure(JavaClasses classes) {
+        noClasses()
+                .that().resideInAPackage("..modules.payment..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "..modules.order.repository..",
+                        "..modules.order.infrastructure..")
+                .because("payment should cross into order through the order service boundary")
+                .check(classes);
+    }
+
+    @ArchTest
+    void inventory_must_not_depend_on_order_repositories(JavaClasses classes) {
+        noClasses()
+                .that().resideInAPackage("..modules.inventory..")
+                .should().dependOnClassesThat().resideInAPackage("..modules.order.repository..")
+                .because("order item loading belongs to the order workflow; inventory should receive loaded order items")
+                .check(classes);
+    }
+
+    @ArchTest
     void shared_must_not_depend_on_modules(JavaClasses classes) {
         noClasses()
                 .that().resideInAPackage("..shared..")

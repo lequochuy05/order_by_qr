@@ -12,6 +12,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,8 +40,9 @@ public class CustomerOrderController {
 
     @GetMapping("/tables/code/{tableCode}/current-order")
     public ApiResponse<PublicOrderResponse> getCurrentOrder(
-            @PathVariable @NonNull String tableCode) {
-        return orderService.getPublicCurrentOrderByTableCode(tableCode)
+            @PathVariable @NonNull String tableCode,
+            @RequestParam @NonNull String sessionToken) {
+        return orderService.getPublicCurrentOrderBySession(tableCode, sessionToken)
                 .map(ApiResponse::success)
                 .orElseGet(() -> ApiResponse.success(null));
     }

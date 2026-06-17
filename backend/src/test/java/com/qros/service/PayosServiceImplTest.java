@@ -1,11 +1,9 @@
 package com.qros.service;
 
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
-import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.order.service.OrderPricingService;
+import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.request.PaymentCreateRequest;
 import com.qros.modules.payment.dto.response.PaymentCreateResponse;
@@ -17,7 +15,6 @@ import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
 import com.qros.modules.payment.service.PaymentService;
-import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
@@ -41,7 +38,7 @@ import static org.mockito.Mockito.when;
 class PayosServiceImplTest {
 
     @Mock
-    OrderRepository orderRepository;
+    OrderSettlementService orderSettlementService;
 
     @Mock
     PaymentTransactionRepository transactionRepository;
@@ -56,15 +53,6 @@ class PayosServiceImplTest {
     PaymentCompletionService paymentCompletionService;
 
     @Mock
-    OrderPricingService orderPricingService;
-
-    @Mock
-    OrderCacheInvalidationService orderCacheInvalidationService;
-
-    @Mock
-    VoucherCheckoutService voucherCheckoutService;
-
-    @Mock
     TransactionSideEffectService sideEffects;
 
     private PaymentService paymentService;
@@ -72,14 +60,11 @@ class PayosServiceImplTest {
     @BeforeEach
     void setUp() {
         paymentService = new PaymentService(
-                orderRepository,
                 transactionRepository,
                 gatewayResolver,
                 new PaymentMapper(),
                 paymentCompletionService,
-                orderPricingService,
-                orderCacheInvalidationService,
-                voucherCheckoutService,
+                orderSettlementService,
                 sideEffects);
     }
 
@@ -92,7 +77,7 @@ class PayosServiceImplTest {
                 null,
                 "idem-1");
 
-        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
+        when(orderSettlementService.prepareForOnlinePayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.empty());
         when(transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
@@ -139,7 +124,7 @@ class PayosServiceImplTest {
                 .idempotencyKey("idem-1")
                 .build();
 
-        when(orderRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(order));
+        when(orderSettlementService.prepareForOnlinePayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
 

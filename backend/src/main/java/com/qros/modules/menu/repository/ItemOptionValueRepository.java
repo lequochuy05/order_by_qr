@@ -13,5 +13,6 @@ public interface ItemOptionValueRepository extends JpaRepository<ItemOptionValue
 
     List<ItemOptionValue> findByItemOptionIdOrderByDisplayOrderAscNameAsc(Long optionId);
 
-
+    @EntityGraph(attributePaths = "itemOption")
+    List<ItemOptionValue> findAllByIdIn(@Param("ids") java.util.Collection<Long> ids);
 }

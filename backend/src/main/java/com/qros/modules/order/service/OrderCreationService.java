@@ -28,8 +28,13 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.payment.model.PaymentTransaction;
+import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
+import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -45,7 +50,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -70,6 +77,8 @@ public class OrderCreationService {
     private final OrderCacheInvalidationService orderCacheInvalidationService;
     private final InventoryReservationService inventoryReservationService;
     private final OrderValidator orderValidator;
+    private final TableSessionService tableSessionService;
+    private final PaymentTransactionRepository paymentTransactionRepository;
 
     private Counter ordersCreatedCounter;
 
@@ -84,13 +93,18 @@ public class OrderCreationService {
     public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
-        DiningTable table = tableRepository.findByTableCodeForUpdate(request.tableCode())
+        TableSession session = tableSessionService.requireOpenSessionForOrdering(
+                request.tableCode(),
+                request.sessionToken());
+
+        DiningTable table = Optional.ofNullable(session.getTable())
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.TABLE_CODE_INVALID,
                         "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
 
         return createOrder(
                 table,
+                session,
                 request.items(),
                 request.combos(),
                 BatchSource.QR);
@@ -107,6 +121,7 @@ public class OrderCreationService {
 
         return createOrder(
                 table,
+                null,
                 request.items(),
                 request.combos(),
                 BatchSource.STAFF);
@@ -114,10 +129,11 @@ public class OrderCreationService {
 
     private OrderResponse createOrder(
             DiningTable table,
+            TableSession session,
             List<OrderItemRequest> items,
             List<OrderComboRequest> combos,
             BatchSource source) {
-        Order order = getOrCreateActiveOrder(table);
+        Order order = getOrCreateActiveOrder(table, session);
         orderValidator.validateTableAcceptsOrders(table);
 
         OrderBatch batch = OrderBatch.builder()
@@ -127,29 +143,48 @@ public class OrderCreationService {
 
         order.addBatch(batch);
 
-        buildOrderItems(items, order, batch);
-        buildOrderCombos(combos, order, batch);
+        Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
+
+        buildOrderItems(items, order, batch, quantitiesToReserve);
+        buildOrderCombos(combos, order, batch, quantitiesToReserve);
+
+        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
 
         Order saved = orderRepository.save(order);
 
+        expirePendingOnlineTransactions(saved.getId());
+
         orderStatusService.tryAutoPromoteOrder(saved);
         orderTableSyncService.recalcTableStatus(saved);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(saved.getId());
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
 
         ordersCreatedCounter.increment();
 
         eventPublisher.publishEvent(new OrderChangeEvent());
-        eventPublisher.publishEvent(new TableChangeEvent());
-
         log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
 
         return orderMapper.toResponse(saved);
     }
 
-    private Order getOrCreateActiveOrder(DiningTable table) {
+    private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {
+        if (session != null) {
+            List<Order> activeSessionOrders = orderRepository.findActiveByTableSessionIdForUpdate(
+                    session.getId(),
+                    List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+
+            if (!activeSessionOrders.isEmpty()) {
+                if (activeSessionOrders.size() > 1) {
+                    log.warn("Table session {} has {} active orders. Using the latest one.",
+                            session.getId(), activeSessionOrders.size());
+                }
+
+                return activeSessionOrders.get(0);
+            }
+        }
+
         List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
                 table.getId(),
                 List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
@@ -160,11 +195,17 @@ public class OrderCreationService {
                         table.getId(), activeOrders.size());
             }
 
-            return activeOrders.get(0);
+            Order activeOrder = activeOrders.get(0);
+            if (session != null && activeOrder.getTableSession() == null) {
+                activeOrder.setTableSession(session);
+            }
+
+            return activeOrder;
         }
 
         return Order.builder()
                 .table(table)
+                .tableSession(session)
                 .status(OrderStatus.PENDING)
                 .paymentStatus(PaymentStatus.PENDING)
                 .orderType(OrderType.DINE_IN)
@@ -176,6 +217,19 @@ public class OrderCreationService {
                 .build();
     }
 
+    private void expirePendingOnlineTransactions(Long orderId) {
+        if (orderId == null) {
+            return;
+        }
+
+        for (PaymentTransaction transaction : paymentTransactionRepository
+                .findPendingOnlineTransactionsByOrderId(orderId)) {
+            transaction.setStatus(PaymentTransactionStatus.EXPIRED);
+            transaction.setFailureReason("Expired because the order changed after payment link creation");
+            transaction.setUpdatedAt(AppTime.now());
+        }
+    }
+
     private void validateOrderContent(List<OrderItemRequest> items, List<OrderComboRequest> combos) {
         boolean hasItems = items != null && !items.isEmpty();
         boolean hasCombos = combos != null && !combos.isEmpty();
@@ -185,7 +239,11 @@ public class OrderCreationService {
         }
     }
 
-    private void buildOrderItems(List<OrderItemRequest> items, Order order, OrderBatch batch) {
+    private void buildOrderItems(
+            List<OrderItemRequest> items,
+            Order order,
+            OrderBatch batch,
+            Map<OrderItem, Integer> quantitiesToReserve) {
         if (items == null || items.isEmpty()) {
             return;
         }
@@ -194,8 +252,9 @@ public class OrderCreationService {
                 .map(OrderItemRequest::menuItemId)
                 .collect(Collectors.toSet());
         
-        java.util.Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
+        Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
+        Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
 
         for (OrderItemRequest itemRequest : items) {
             MenuItem menuItem = Optional.ofNullable(menuItemsMap.get(itemRequest.menuItemId()))
@@ -208,10 +267,7 @@ public class OrderCreationService {
 
             validateSelectedOptions(menuItem, selectedOptionValueIds);
 
-            List<ItemOptionValue> selectedValues = selectedOptionValueIds.isEmpty()
-                    ? List.of()
-                    : itemOptionValueRepository.findAllById(selectedOptionValueIds);
-
+            List<ItemOptionValue> selectedValues = resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
             validateOptionValuesExist(selectedOptionValueIds, selectedValues);
 
             BigDecimal extraPrice = selectedValues.stream()
@@ -231,7 +287,7 @@ public class OrderCreationService {
                     .findFirst();
 
             if (existing.isPresent()) {
-                mergeExistingItem(existing.get(), itemRequest.quantity());
+                mergeExistingItem(existing.get(), itemRequest.quantity(), quantitiesToReserve);
                 continue;
             }
 
@@ -254,13 +310,45 @@ public class OrderCreationService {
                     .itemOptionValue(value)
                     .build()));
 
-            inventoryReservationService.reserveForOrderItem(orderItem, itemRequest.quantity());
-
             order.addItem(orderItem);
+            quantitiesToReserve.put(orderItem, itemRequest.quantity());
         }
     }
 
-    private void buildOrderCombos(List<OrderComboRequest> combos, Order order, OrderBatch batch) {
+    private Map<Long, ItemOptionValue> loadSelectedOptionValues(List<OrderItemRequest> items) {
+        Set<Long> selectedOptionValueIds = items.stream()
+                .filter(Objects::nonNull)
+                .flatMap(item -> item.selectedOptionValueIds() == null
+                        ? java.util.stream.Stream.<Long>empty()
+                        : item.selectedOptionValueIds().stream())
+                .collect(Collectors.toSet());
+
+        if (selectedOptionValueIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return itemOptionValueRepository.findAllByIdIn(selectedOptionValueIds).stream()
+                .collect(Collectors.toMap(ItemOptionValue::getId, value -> value));
+    }
+
+    private List<ItemOptionValue> resolveSelectedValues(
+            List<Long> selectedOptionValueIds,
+            Map<Long, ItemOptionValue> selectedValuesById) {
+        if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
+            return List.of();
+        }
+
+        return selectedOptionValueIds.stream()
+                .map(selectedValuesById::get)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private void buildOrderCombos(
+            List<OrderComboRequest> combos,
+            Order order,
+            OrderBatch batch,
+            Map<OrderItem, Integer> quantitiesToReserve) {
         if (combos == null || combos.isEmpty()) {
             return;
         }
@@ -286,7 +374,7 @@ public class OrderCreationService {
                     .findFirst();
 
             if (existing.isPresent()) {
-                mergeExistingItem(existing.get(), comboRequest.quantity());
+                mergeExistingItem(existing.get(), comboRequest.quantity(), quantitiesToReserve);
                 continue;
             }
 
@@ -302,14 +390,17 @@ public class OrderCreationService {
                     .status(OrderItemStatus.PENDING)
                     .build();
 
-            inventoryReservationService.reserveForOrderItem(orderItem, comboRequest.quantity());
-
             order.addItem(orderItem);
+            quantitiesToReserve.put(orderItem, comboRequest.quantity());
         }
     }
 
-    private void mergeExistingItem(OrderItem existingItem, Integer additionalQuantity) {
-        inventoryReservationService.reserveForOrderItem(existingItem, additionalQuantity);
+    private void mergeExistingItem(
+            OrderItem existingItem,
+            Integer additionalQuantity,
+            Map<OrderItem, Integer> quantitiesToReserve) {
+
+        quantitiesToReserve.merge(existingItem, additionalQuantity, Integer::sum);
 
         existingItem.setQuantity(existingItem.getQuantity() + additionalQuantity);
         orderPricingService.recalculateLineTotal(existingItem);

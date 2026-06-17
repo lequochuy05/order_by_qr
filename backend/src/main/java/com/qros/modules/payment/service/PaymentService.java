@@ -1,11 +1,7 @@
 package com.qros.modules.payment.service;
 
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
-import com.qros.modules.order.model.enums.OrderStatus;
-import com.qros.modules.order.model.enums.PaymentStatus;
-import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.order.service.OrderPricingService;
+import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
 import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
@@ -19,8 +15,6 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
-import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
-import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -42,28 +36,17 @@ public class PaymentService {
 
     private static final int PAYMENT_LINK_EXPIRY_MINUTES = 20;
 
-    private final OrderRepository orderRepository;
     private final PaymentTransactionRepository transactionRepository;
 
     private final PaymentGatewayResolver gatewayResolver;
     private final PaymentMapper paymentMapper;
     private final PaymentCompletionService paymentCompletionService;
-
-    private final OrderPricingService orderPricingService;
-    private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final VoucherCheckoutService voucherCheckoutService;
+    private final OrderSettlementService orderSettlementService;
 
     private final TransactionSideEffectService sideEffects;
 
     @Transactional
     public PaymentCreateResponse createPaymentLink(@NonNull PaymentCreateRequest request) {
-        Order order = orderRepository.findByIdForUpdate(Objects.requireNonNull(request.orderId()))
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.ORDER_NOT_FOUND,
-                        "Order not found: " + request.orderId()));
-
-        validateOrderPayable(order);
-
         PaymentMethod method = request.paymentMethod();
 
         if (method == PaymentMethod.CASH) {
@@ -72,12 +55,12 @@ public class PaymentService {
                     "CASH payment must be settled through order payment API");
         }
 
+        Order order = orderSettlementService.prepareForOnlinePayment(
+                Objects.requireNonNull(request.orderId()),
+                request.voucherCode());
+
         PaymentGateway gateway = gatewayResolver.resolve(method);
         BigDecimal payableAmount = currentFinalAmount(order);
-
-        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
-            payableAmount = applyVoucher(order, request.voucherCode());
-        }
 
         String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
 
@@ -278,43 +261,6 @@ public class PaymentService {
         }
     }
 
-    private void validateOrderPayable(Order order) {
-        if (order.getPaymentStatus() == PaymentStatus.PAID
-                || order.getStatus() == OrderStatus.COMPLETED) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_ALREADY_PAID,
-                    "This order is already settled");
-        }
-
-        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order must be in AWAITING_PAYMENT status before payment. Current: "
-                            + order.getStatus());
-        }
-
-        BigDecimal payableAmount = currentFinalAmount(order);
-
-        if (payableAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order has no payable amount");
-        }
-    }
-
-    private BigDecimal applyVoucher(Order order, String voucherCode) {
-        BigDecimal subtotal = currentSubtotalAmount(order);
-        VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, subtotal);
-
-        order.setVoucherCode(voucherResult.voucherCode());
-        orderPricingService.setOrderMoney(order, subtotal, voucherResult.appliedDiscountAmount());
-
-        Order savedOrder = orderRepository.save(order);
-        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder.getId());
-
-        return currentFinalAmount(savedOrder);
-    }
-
     private PaymentCreateResponse reuseIdempotentTransaction(
             PaymentTransaction transaction,
             Order order,
@@ -369,20 +315,12 @@ public class PaymentService {
                     "Payment transaction is not associated with an order");
         }
 
-        Order lockedOrder = orderRepository.findByIdForUpdate(transaction.getOrder().getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
-        transaction.setOrder(lockedOrder);
+        transaction.setOrder(orderSettlementService.loadForPayment(transaction.getOrder().getId()));
     }
 
     private BigDecimal currentFinalAmount(Order order) {
         return order.getFinalAmount() != null
                 ? order.getFinalAmount()
-                : BigDecimal.ZERO;
-    }
-
-    private BigDecimal currentSubtotalAmount(Order order) {
-        return order.getSubtotalAmount() != null
-                ? order.getSubtotalAmount()
                 : BigDecimal.ZERO;
     }
 

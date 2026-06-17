@@ -14,6 +14,8 @@ import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
+import com.qros.modules.table.model.enums.TableSessionStatus;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -38,6 +40,7 @@ public class OrderStatusService {
     private final InventoryReservationService inventoryReservationService;
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
+    private final TableSessionService tableSessionService;
 
     @Transactional
     public OrderResponse updateStatus(@NonNull Long id, @NonNull OrderStatus targetStatus) {
@@ -77,7 +80,7 @@ public class OrderStatusService {
         Order saved = orderRepository.save(order);
 
         orderTableSyncService.recalcTableStatus(saved);
-        orderCacheInvalidationService.evictAfterOrderMutation(id);
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
@@ -126,7 +129,13 @@ public class OrderStatusService {
         Order saved = orderRepository.save(order);
 
         orderTableSyncService.recalcTableStatus(saved);
-        orderCacheInvalidationService.evictAfterOrderMutation(id);
+        if (saved.getTableSession() != null) {
+            tableSessionService.closeSession(
+                    saved.getTableSession().getId(),
+                    TableSessionStatus.CANCELLED,
+                    "Order cancelled");
+        }
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
@@ -140,10 +149,16 @@ public class OrderStatusService {
         restoreReservableItems(order);
 
         orderTableSyncService.releaseTable(order);
+        if (order.getTableSession() != null) {
+            tableSessionService.closeSession(
+                    order.getTableSession().getId(),
+                    TableSessionStatus.CANCELLED,
+                    "Order deleted");
+        }
 
         orderRepository.delete(order);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(id);
+        orderCacheInvalidationService.evictAfterOrderMutation(order);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
