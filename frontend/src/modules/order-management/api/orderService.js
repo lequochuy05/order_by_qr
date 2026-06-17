@@ -4,8 +4,8 @@ let tableBoardRequest = null;
 let kitchenOrdersRequest = null;
 const orderHistoryRequests = new Map();
 const orderHistoryCache = new Map();
-const orderStatsRequests = new Map();
-const orderStatsCache = new Map();
+const orderAnalyticsRequests = new Map();
+const orderAnalyticsCache = new Map();
 const previewRequests = new Map();
 const previewCache = new Map();
 const ORDER_QUERY_CACHE_MS = 5_000;
@@ -33,8 +33,8 @@ const stableStringify = (value) => {
 const clearOrderQueryCache = () => {
     orderHistoryRequests.clear();
     orderHistoryCache.clear();
-    orderStatsRequests.clear();
-    orderStatsCache.clear();
+    orderAnalyticsRequests.clear();
+    orderAnalyticsCache.clear();
 };
 
 export const orderService = {
@@ -72,33 +72,33 @@ export const orderService = {
         return orderHistoryRequests.get(key);
     },
 
-    // Aggregate stats for filtered period
-    getOrderStats: async (params = {}, { force = false } = {}) => {
+    // Aggregate analytics for filtered period
+    getOrderAnalytics: async (params = {}, { force = false } = {}) => {
         const key = stableStringify(params);
-        const cached = orderStatsCache.get(key);
+        const cached = orderAnalyticsCache.get(key);
         if (!force && cached && cached.expiresAt > Date.now()) {
             return cached.data;
         }
 
-        if (!orderStatsRequests.has(key)) {
-            orderStatsRequests.set(
+        if (!orderAnalyticsRequests.has(key)) {
+            orderAnalyticsRequests.set(
                 key,
-                api.get('/orders/stats', { params })
+                api.get('/orders/analytics', { params })
                     .then((res) => {
-                        setCacheWithLimit(orderStatsCache, key, {
+                        setCacheWithLimit(orderAnalyticsCache, key, {
                             data: res,
                             expiresAt: Date.now() + ORDER_QUERY_CACHE_MS
                         });
-                        setTimeout(() => orderStatsCache.delete(key), ORDER_QUERY_CACHE_MS);
+                        setTimeout(() => orderAnalyticsCache.delete(key), ORDER_QUERY_CACHE_MS);
                         return res;
                     })
                     .finally(() => {
-                        orderStatsRequests.delete(key);
+                        orderAnalyticsRequests.delete(key);
                     })
             );
         }
 
-        return orderStatsRequests.get(key);
+        return orderAnalyticsRequests.get(key);
     },
 
     getCurrentOrder: async(tableId) => {

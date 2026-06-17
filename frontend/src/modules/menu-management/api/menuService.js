@@ -44,9 +44,13 @@ const normalizePage = (data, page = 0, size = 24) => {
 };
 
 const { requestFn: getMenuList, clearCache: clearMenuListCache } = createKeyedCachedRequest(
-  (categoryId) => categoryId && categoryId !== 'ALL'
-    ? api.get('/menu-items', { params: { categoryId } })
-    : api.get('/menu-items/management-summary', { params: { size: 1000, sort: 'displayOrder,asc' } }),
+  (categoryId) => api.get('/menu-items/management-summary', {
+    params: {
+      size: 1000,
+      sort: 'displayOrder,asc',
+      ...(categoryId && categoryId !== 'ALL' ? { categoryId } : {})
+    }
+  }),
   MENU_LIST_CACHE_MS,
   listKey
 );

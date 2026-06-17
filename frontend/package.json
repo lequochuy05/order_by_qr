@@ -12,6 +12,8 @@
   "dependencies": {
     "@stomp/stompjs": "^7.2.1",
     "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "^5.101.0",
+    "@tanstack/react-query-devtools": "^5.101.0",
     "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.13.2",
     "lucide-react": "^0.562.0",
@@ -23,7 +25,6 @@
     "react-router-dom": "^7.12.0",
     "recharts": "^3.7.0",
     "sockjs-client": "^1.6.1",
-    "stompjs": "^2.3.3",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
@@ -32,7 +33,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",

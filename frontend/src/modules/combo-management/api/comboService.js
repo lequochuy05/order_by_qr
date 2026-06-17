@@ -10,6 +10,12 @@ const stableStringify = (value) => {
   return String(value);
 };
 
+const normalizePageContent = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.content)) return data.content;
+  return [];
+};
+
 let comboListRequest = null;
 let comboListCache = {
   data: null,
@@ -41,13 +47,16 @@ export const comboService = {
     }
 
     if (!comboListRequest) {
-      comboListRequest = api.get('/combos')
+      comboListRequest = api.get('/combos/management-summary', {
+        params: { size: 1000, sort: 'displayOrder,asc' }
+      })
         .then((res) => {
+          const data = normalizePageContent(res);
           comboListCache = {
-            data: res,
+            data,
             expiresAt: Date.now() + COMBO_LIST_CACHE_MS
           };
-          return res;
+          return data;
         })
         .finally(() => {
           comboListRequest = null;
