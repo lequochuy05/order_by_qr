@@ -1,12 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
-import { orderService } from '@modules/order-management/api/orderService.js';
 import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import OrderDetailsModal from './OrderDetailsModal';
 import { toast } from 'react-hot-toast';
+import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
+import { useOrdersHistoryQuery, useOrderAnalyticsQuery } from '../api/orderQueries.js';
+import { useReconcileOrderMutation } from '../api/orderMutations.js';
 
 const DATE_PRESETS = [
   { label: 'Tất cả', value: 'all' },
@@ -49,14 +52,10 @@ function getDateRange(preset) {
 }
 
 export default function OrderHistoryPage() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const itemsPerPage = 10;
 
   // Filters
@@ -66,12 +65,6 @@ export default function OrderHistoryPage() {
   const [datePreset, setDatePreset] = useState('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-
-  // Stats
-  const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0 });
-  const isMountedRef = useRef(true);
-  const ordersFetchSeqRef = useRef(0);
-  const statsFetchSeqRef = useRef(0);
 
   // Applied filters (only update when user clicks "Lọc")
   const [appliedFilters, setAppliedFilters] = useState(() => {
@@ -85,7 +78,6 @@ export default function OrderHistoryPage() {
       endDate: range.endDate
     };
   });
-
 
   const getFilterParams = useCallback(() => {
     return {
@@ -116,64 +108,30 @@ export default function OrderHistoryPage() {
     setCurrentPage(0); // Reset to first page on new filter
   };
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const filterParams = getFilterParams();
+  
+  const queryParams = {
+    ...filterParams,
+    page: currentPage,
+    size: itemsPerPage,
+  };
 
-  const fetchOrders = useCallback(async ({ force = false } = {}) => {
-    const fetchSeq = ++ordersFetchSeqRef.current;
-    try {
-      setLoading(true);
-      const params = {
-        ...getFilterParams(),
-        page: currentPage,
-        size: itemsPerPage,
-      };
-      const data = await orderService.getOrderHistory(params, { force });
-      if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
-      setOrders(data.content || []);
-      setTotalPages(data.totalPages || 0);
-      setTotalElements(data.totalElements || 0);
-    } catch (error) {
-      if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
-      console.error('Error fetching orders:', error);
-    } finally {
-      if (isMountedRef.current && fetchSeq === ordersFetchSeqRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [getFilterParams, currentPage]);
+  const { data: ordersData, isFetching: loadingOrders } = useOrdersHistoryQuery(queryParams);
+  const { data: analyticsData, isFetching: loadingAnalytics } = useOrderAnalyticsQuery(filterParams);
 
-  const fetchStats = useCallback(async ({ force = false } = {}) => {
-    const fetchSeq = ++statsFetchSeqRef.current;
-    try {
-      const params = getFilterParams();
-      const data = await orderService.getOrderStats(params, { force });
-      if (!isMountedRef.current || fetchSeq !== statsFetchSeqRef.current) return;
-      setStats(data);
-    } catch (error) {
-      if (!isMountedRef.current || fetchSeq !== statsFetchSeqRef.current) return;
-      console.error('Error fetching stats:', error);
-    }
-  }, [getFilterParams]);
+  const loading = loadingOrders || loadingAnalytics;
+  const orders = ordersData?.content || [];
+  const totalPages = ordersData?.totalPages || 0;
+  const totalElements = ordersData?.totalElements || 0;
+  const analytics = analyticsData || { totalOrders: 0, totalRevenue: 0 };
+  
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.orders.history() });
+    queryClient.invalidateQueries({ queryKey: ['orders', 'analytics'] });
+  };
 
-  const refreshData = useCallback(({ force = false } = {}) => {
-    fetchOrders({ force });
-    fetchStats({ force });
-  }, [fetchOrders, fetchStats]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  const avgOrder = stats.totalOrders > 0 ? stats.totalRevenue / stats.totalOrders : 0;
+  const avgOrder = analytics.totalOrders > 0 ? analytics.totalRevenue / analytics.totalOrders : 0;
 
   const handlePrint = (e, order) => {
     if (e && e.stopPropagation) e.stopPropagation();
@@ -191,16 +149,15 @@ export default function OrderHistoryPage() {
     });
   };
 
+  const reconcileMutation = useReconcileOrderMutation();
+
   const handleReconcile = async (e, orderId) => {
     e.stopPropagation();
     try {
-      const res = await orderService.reconcileOrder(orderId);
-      if (res.success) {
-        toast.success('Tra soát thành công: ' + res.message);
-        refreshData({ force: true });
-      }
+      const reconciledOrder = await reconcileMutation.mutateAsync(orderId);
+      toast.success(`Tra soát thành công: #${reconciledOrder?.id || orderId}`);
     } catch (error) {
-      toast.error('Lỗi khi tra soát đơn hàng: ' + (error.message || ''));
+      toast.error('Lỗi khi tra soát đơn hàng: ' + (error?.message || ''));
     }
   };
 
@@ -213,14 +170,14 @@ export default function OrderHistoryPage() {
           <div className="p-3 bg-blue-50 rounded-xl"><ShoppingBag size={22} className="text-blue-500" /></div>
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Tổng đơn hàng</p>
-            <p className="text-2xl font-bold text-gray-800">{stats.totalOrders?.toLocaleString() || 0}</p>
+            <p className="text-2xl font-bold text-gray-800">{analytics.totalOrders?.toLocaleString() || 0}</p>
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
           <div className="p-3 bg-green-50 rounded-xl"><DollarSign size={22} className="text-green-500" /></div>
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Tổng doanh thu</p>
-            <p className="text-2xl font-bold text-gray-800">{fmtVND(stats.totalRevenue || 0)}</p>
+            <p className="text-2xl font-bold text-gray-800">{fmtVND(analytics.totalRevenue || 0)}</p>
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">

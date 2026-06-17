@@ -1,20 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
+import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
+import { useMenuPageQuery } from '../api/menuQueries.js';
+import { useCategoriesPageQuery } from '@modules/category-management/api/categoryQueries.js';
+
 import { menuItemService } from '@modules/menu-management/api/menuService.js';
-import { categoryService } from '@entities/category/api/categoryService.js';
 import { aiLocalService } from '@modules/ai-assistant/api/aiLocalService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import MenuCard from './MenuCard';
 import MenuModal from './MenuModal';
-import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 
 const emptyMenuForm = {
   id: null,
@@ -55,11 +57,8 @@ const toMenuFormData = (item) => ({
 });
 
 const MenuManager = () => {
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [filterCate, setFilterCate] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiScanning, setAiScanning] = useState(false);
@@ -71,10 +70,6 @@ const MenuManager = () => {
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const isMountedRef = useRef(true);
-  const fetchSeqRef = useRef(0);
   const pageSize = 24;
 
   // Hook Status Modal
@@ -82,78 +77,34 @@ const MenuManager = () => {
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  // React Query: Categories for filter dropdown
+  const { data: categoryPageData } = useCategoriesPageQuery(
+    { page: 0, size: 1000 },
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const categories = categoryPageData?.content || [];
 
-  // Load Categories
-  useEffect(() => {
-    let cancelled = false;
+  // React Query: Menu items
+  const { data: pageData, isLoading: loading } = useMenuPageQuery({
+    q: debouncedSearchTerm,
+    page: currentPage,
+    size: pageSize,
+    categoryId: filterCate,
+  });
 
-    const loadCategories = async () => {
-      try {
-        const data = await categoryService.getAll();
-        if (cancelled || !isMountedRef.current) return;
+  const items = pageData?.content || [];
+  const totalPages = pageData?.totalPages || 0;
+  const totalElements = pageData?.totalElements || 0;
 
-        const cats = data.content || data || [];
-        setCategories(cats);
-        if (cats.length > 0) {
-          setFormData(prev => ({ ...prev, categoryId: prev.categoryId || cats[0].id }));
-        }
-      } catch (err) {
-        console.error("Lỗi tải danh mục món ăn:", err);
-      }
-    };
-
-    loadCategories();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Fetch Items
-  const fetchItems = useCallback(async (showLoading = false, { force = false } = {}) => {
-    const fetchSeq = ++fetchSeqRef.current;
-    if (showLoading) setLoading(true);
-    try {
-      const params = {
-        page: currentPage,
-        size: pageSize
-      };
-      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
-      if (filterCate !== 'ALL') params.categoryId = filterCate;
-
-      const data = await menuItemService.getPage(params, { force });
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setItems(data.content || []);
-      setTotalPages(data.totalPages || 0);
-      setTotalElements(data.totalElements || 0);
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      console.error("Lỗi đồng bộ thực đơn:", err);
-    } finally {
-      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [currentPage, debouncedSearchTerm, filterCate]);
+  const invalidateMenu = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 
   // WebSocket
-  useWebSocket('/topic/menu', (message) => {
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      playNotificationSound();
-      fetchItems(false, { force: true });
-    }
-  });
+  // WebSocket update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
 
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, filterCate]);
-
-  useEffect(() => { fetchItems(true); }, [fetchItems]);
 
   // AI Magic Scan
   const handleAiScan = useCallback(async () => {
@@ -213,7 +164,7 @@ const MenuManager = () => {
       }
 
       setIsModalOpen(false);
-      fetchItems(false, { force: true });
+      invalidateMenu();
     } catch (err) {
       console.error('Error saving menu item:', err);
       const errorMsg = err.message || '';
@@ -235,7 +186,7 @@ const MenuManager = () => {
     try {
       await menuItemService.delete(id);
       showSuccess("Đã xóa món ăn thành công");
-      fetchItems(false, { force: true });
+      invalidateMenu();
     } catch (err) {
       showError(err);
     }
@@ -245,7 +196,6 @@ const MenuManager = () => {
     setDetailLoadingId(item.id);
     try {
       const detail = await menuItemService.getById(item.id);
-      if (!isMountedRef.current) return;
 
       const data = toMenuFormData(detail);
       setFormData(data);
@@ -257,9 +207,7 @@ const MenuManager = () => {
     } catch (err) {
       showError(err);
     } finally {
-      if (isMountedRef.current) {
-        setDetailLoadingId(null);
-      }
+      setDetailLoadingId(null);
     }
   };
 

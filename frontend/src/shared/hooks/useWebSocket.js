@@ -10,10 +10,13 @@ export const useWebSocket = (topic, onMessage) => {
     }, [onMessage]);
 
     useEffect(() => {
+        if (!topic) {
+            return undefined;
+        }
+
         wsService.connect();
 
         const doSubscribe = () => {
-            if (!topic) return; // Không subscribe nếu không có topic
             if (subscriptionRef.current) {
                 subscriptionRef.current.unsubscribe();
             }

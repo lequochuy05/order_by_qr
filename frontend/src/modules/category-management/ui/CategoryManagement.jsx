@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
 // Import Hook
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
-// Import Service
+// Import React Query
+import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
+import { useCategoriesPageQuery } from '../api/categoryQueries.js';
+
+// Import Service (for create/update/delete — used inside handleSubmit/handleDelete)
 import { categoryService } from '@entities/category/api/categoryService.js';
 
 // Import Component
@@ -15,7 +19,6 @@ import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import CategoryCard from './CategoryCard';
 import CategoryModal from './CategoryModal';
-import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 
 const emptyCategoryForm = {
     id: null,
@@ -36,8 +39,6 @@ const toCategoryFormData = (category = {}) => ({
 });
 
 const CategoryManager = () => {
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     // State cho Modal nhập liệu
@@ -50,10 +51,6 @@ const CategoryManager = () => {
     const [preview, setPreview] = useState('');
     const [errors, setErrors] = useState({});
     const [currentPage, setCurrentPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
-    const [totalElements, setTotalElements] = useState(0);
-    const isMountedRef = useRef(true);
-    const fetchSeqRef = useRef(0);
     const pageSize = 24;
 
     // === Hook Status Modal ===
@@ -61,50 +58,25 @@ const CategoryManager = () => {
     const { confirm } = useConfirmModal();
     const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
-    // === Tải dữ liệu ===
-    const fetchCategories = useCallback(async (showLoading = false) => {
-        const fetchSeq = ++fetchSeqRef.current;
-        if (showLoading) setLoading(true);
-        try {
-            const data = await categoryService.getPage({
-                q: debouncedSearchTerm,
-                page: currentPage,
-                size: pageSize
-            });
-            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-            setCategories(data.content || []);
-            setTotalPages(data.totalPages || 0);
-            setTotalElements(data.totalElements || 0);
-        } catch (err) {
-            if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-            console.error("Lỗi tải danh mục:", err);
-        } finally {
-            if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-                setLoading(false);
-            }
-        }
-    }, [currentPage, debouncedSearchTerm]);
-
-    // === WebSocket ===
-    useWebSocket('/topic/categories', (message) => {
-        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-            playNotificationSound();
-            fetchCategories(false);
-        }
+    // === React Query: Tải dữ liệu ===
+    const { data: pageData, isLoading: loading } = useCategoriesPageQuery({
+        q: debouncedSearchTerm,
+        page: currentPage,
+        size: pageSize,
     });
 
-    useEffect(() => {
-        isMountedRef.current = true;
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, []);
+    const categories = pageData?.content || [];
+    const totalPages = pageData?.totalPages || 0;
+    const totalElements = pageData?.totalElements || 0;
+
+    const invalidateCategories = () =>
+        queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+
+    // Realtime Update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
 
     useEffect(() => {
         setCurrentPage(0);
     }, [debouncedSearchTerm]);
-
-    useEffect(() => { fetchCategories(true); }, [fetchCategories]);
 
     // === Validate ===
     const validateForm = () => {
@@ -158,7 +130,7 @@ const CategoryManager = () => {
             }
 
             setIsModalOpen(false);
-            fetchCategories(false);
+            invalidateCategories();
         } catch (err) {
             const errorMsg = err.message || '';
             if (errorMsg.toLowerCase().includes('category name already exists')) {
@@ -179,7 +151,7 @@ const CategoryManager = () => {
         try {
             await categoryService.delete(id);
             showSuccess("Đã xóa danh mục thành công!");
-            fetchCategories(false);
+            invalidateCategories();
         } catch (err) {
             showError(err);
         }

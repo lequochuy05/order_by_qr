@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Bell,
@@ -18,8 +18,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { settingsService } from '../api/settingsService.js';
+import { useSettingsQuery } from '../api/settingsQueries.js';
+import { useUpdateSettingsMutation } from '../api/settingsMutations.js';
 
 const defaultSettings = {
   restaurantName: 'Sắc Màu Quán',
@@ -43,12 +43,26 @@ const SettingsPage = () => {
   const isManager = user?.role === 'MANAGER';
   const { showSuccess, showError } = useStatusModal();
 
-  const [settings, setSettings] = useState(defaultSettings);
   const [preferences, setPreferences] = useAdminPreferences();
   const [activeTab, setActiveTab] = useState(isManager ? 'restaurant' : 'preferences');
-  const [loading, setLoading] = useState(isManager);
-  const [saving, setSaving] = useState(false);
   const copy = settingsCopy[preferences.language] || settingsCopy.vi;
+
+  const { data: serverSettings, isLoading: loading } = useSettingsQuery({
+    enabled: isManager,
+  });
+
+  const normalizedServerSettings = useMemo(
+    () => normalizeSettings(serverSettings || defaultSettings),
+    [serverSettings]
+  );
+  const [settingsDraft, setSettingsDraft] = useState(null);
+  const settings = settingsDraft ?? normalizedServerSettings;
+  const setSettings = useCallback((updater) => {
+    setSettingsDraft(prev => {
+      const current = prev ?? normalizedServerSettings;
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [normalizedServerSettings]);
 
   const tabs = useMemo(() => {
     const personalTab = { id: 'preferences', label: copy.tabs.preferences, icon: Bell };
@@ -61,40 +75,16 @@ const SettingsPage = () => {
       personalTab
     ];
   }, [copy, isManager]);
+  const activeTabId = tabs.some(tab => tab.id === activeTab) ? activeTab : tabs[0].id;
 
-  useEffect(() => {
-    if (!tabs.some(tab => tab.id === activeTab)) {
-      setActiveTab(tabs[0].id);
-    }
-  }, [activeTab, tabs]);
-
-  const loadSettings = async () => {
-    if (!isManager) return;
-    setLoading(true);
-    try {
-      const data = await settingsService.get();
-      setSettings(normalizeSettings(data));
-    } catch (err) {
-      showError(err, copy.errors.load);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isManager]);
-
-  useWebSocket('/topic/settings', (message) => {
-    if (message?.event === 'SETTINGS_UPDATED' && message.settings) {
-      loadSettings();
-      return;
-    }
-
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      loadSettings();
-    }
+  const updateMutation = useUpdateSettingsMutation({
+    onSuccess: (updated) => {
+      setSettingsDraft(normalizeSettings(updated));
+      showSuccess(copy.success.saved);
+    },
+    onError: (err) => {
+      showError(err);
+    },
   });
 
   const wifiQrValue = useMemo(() => {
@@ -102,38 +92,31 @@ const SettingsPage = () => {
     return `WIFI:T:WPA;S:${escapeWifi(settings.wifiName)};P:${escapeWifi(settings.wifiPassword || '')};;`;
   }, [settings.wifiPassword, settings.wifiName]);
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = () => {
     if (!settings.restaurantName.trim()) {
       showError(copy.errors.restaurantNameRequired, copy.errors.invalidData);
       return;
     }
 
-    setSaving(true);
-    try {
-      const updated = await settingsService.update({
-        restaurantName: settings.restaurantName.trim(),
-        restaurantAddress: settings.restaurantAddress?.trim() || null,
-        restaurantPhone: settings.restaurantPhone?.trim() || null,
-        restaurantEmail: settings.restaurantEmail?.trim() || null,
-        logoUrl: settings.logoUrl?.trim() || null,
-        wifiName: settings.wifiName?.trim() || null,
-        wifiPassword: settings.wifiPassword?.trim() || null,
-        openingTime: settings.openingTime || null,
-        closingTime: settings.closingTime || null,
-        currency: settings.currency?.trim().toUpperCase() || 'VND',
-        taxPercent: Number(settings.taxPercent || 0),
-        serviceChargePercent: Number(settings.serviceChargePercent || 0),
-        orderingEnabled: Boolean(settings.orderingEnabled),
-        maintenanceMode: Boolean(settings.maintenanceMode)
-      });
-      setSettings(normalizeSettings(updated));
-      showSuccess(copy.success.saved);
-    } catch (err) {
-      showError(err);
-    } finally {
-      setSaving(false);
-    }
+    updateMutation.mutate({
+      restaurantName: settings.restaurantName.trim(),
+      restaurantAddress: settings.restaurantAddress?.trim() || null,
+      restaurantPhone: settings.restaurantPhone?.trim() || null,
+      restaurantEmail: settings.restaurantEmail?.trim() || null,
+      logoUrl: settings.logoUrl?.trim() || null,
+      wifiName: settings.wifiName?.trim() || null,
+      wifiPassword: settings.wifiPassword?.trim() || null,
+      openingTime: settings.openingTime || null,
+      closingTime: settings.closingTime || null,
+      currency: settings.currency?.trim().toUpperCase() || 'VND',
+      taxPercent: Number(settings.taxPercent || 0),
+      serviceChargePercent: Number(settings.serviceChargePercent || 0),
+      orderingEnabled: Boolean(settings.orderingEnabled),
+      maintenanceMode: Boolean(settings.maintenanceMode)
+    });
   };
+
+  const saving = updateMutation.isPending;
 
   if (loading) {
     return (
@@ -149,7 +132,7 @@ const SettingsPage = () => {
         <nav className="space-y-1">
           {tabs.map(tab => {
             const Icon = tab.icon;
-            const selected = activeTab === tab.id;
+            const selected = activeTabId === tab.id;
             return (
               <button
                 key={tab.id}
@@ -169,11 +152,11 @@ const SettingsPage = () => {
       </aside>
 
       <main className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
-        {activeTab === 'restaurant' && (
+        {activeTabId === 'restaurant' && (
           <RestaurantTab settings={settings} setSettings={setSettings} saving={saving} onSave={handleSaveSettings} copy={copy} />
         )}
 
-        {activeTab === 'wifi' && (
+        {activeTabId === 'wifi' && (
           <WifiTab
             settings={settings}
             setSettings={setSettings}
@@ -184,11 +167,11 @@ const SettingsPage = () => {
           />
         )}
 
-        {activeTab === 'operation' && (
+        {activeTabId === 'operation' && (
           <OperationTab settings={settings} setSettings={setSettings} saving={saving} onSave={handleSaveSettings} copy={copy} />
         )}
 
-        {activeTab === 'preferences' && (
+        {activeTabId === 'preferences' && (
           <PreferencesTab preferences={preferences} setPreferences={setPreferences} copy={copy} />
         )}
       </main>

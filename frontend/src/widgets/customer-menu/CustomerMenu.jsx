@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import wsService from '@shared/lib/websocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { fmtVND } from '@shared/lib/formatters.js';
+
+import { queryClient } from '@shared/api/queryClient.js';
+import { isTerminalSessionError, useCustomerMenuQuery, useTableSessionQuery, useRecommendationsQuery } from '@modules/customer-ordering/api/customerQueries.js';
+import { useStartTableSessionMutation, useSubmitOrderMutation } from '@modules/customer-ordering/api/customerMutations.js';
 
 import { menuService } from '@modules/customer-ordering/api/menuService.js';
 import MenuCard from './MenuCard';
@@ -37,26 +40,24 @@ const normalizeRestaurantSettings = (settings = {}) => ({
   enableAiAssistant: settings.enableAiAssistant ?? true
 });
 
+const sessionStorageKey = (tableCode) => `qros:table-session:${tableCode}`;
+
 const MenuPage = () => {
   const [searchParams] = useSearchParams();
   const tableCode = searchParams.get('tableCode');
   const { user } = useAuth();
 
-  // Trạng thái dữ liệu
-  const [tableInfo, setTableInfo] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [menuItems, setMenuItems] = useState([]);
-  const [combos, setCombos] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
-  const [recommendations, setRecommendations] = useState([]);
   const [crossSellItems, setCrossSellItems] = useState([]);
-  const [restaurantSettings, setRestaurantSettings] = useState(defaultRestaurantSettings);
-  const [currentOrder, setCurrentOrder] = useState(null);
+  const crossSellCacheRef = useRef(new Map());
   const [showCurrentOrderSheet, setShowCurrentOrderSheet] = useState(false);
+  const [sessionToken, setSessionToken] = useState(() => (
+    tableCode ? sessionStorage.getItem(sessionStorageKey(tableCode)) || '' : ''
+  ));
+  
   const hour = new Date().getHours();
   const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
   const weather = "Trời mát";
@@ -65,6 +66,27 @@ const MenuPage = () => {
   // Trạng thái giỏ hàng
   const [cart, setCart] = useState({ items: {}, combos: {} });
   const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
+  
+  // React Query Hooks
+  const { data: menuData, isLoading: loadingMenu } = useCustomerMenuQuery();
+  const { data: sessionData, isLoading: loadingSession } = useTableSessionQuery(tableCode, sessionToken);
+  const { data: recommendationsData } = useRecommendationsQuery(timeContext, weather);
+
+  const categories = menuData?.categories || [];
+  const menuItems = menuData?.menuItems || [];
+  const combos = menuData?.combos || [];
+  const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
+  const recommendations = recommendationsData || [];
+
+  const tableInfo = sessionData?.tableInfo;
+  const sessionState = sessionData?.sessionState;
+  const currentOrder = sessionData?.currentOrder;
+  const sessionEnded = sessionData?.sessionEnded;
+  const sessionError = sessionData?.sessionError;
+  const hasTerminalSessionError = isTerminalSessionError(sessionError);
+
+  const loading = loadingMenu || loadingSession;
+
   const orderingUnavailable = restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
   const canUseAiAssistant = Boolean(user) && restaurantSettings.enableAiAssistant !== false;
 
@@ -72,97 +94,40 @@ const MenuPage = () => {
     return Object.values(cart.items).filter(i => (i.actualId || i.id) === item.id).reduce((sum, i) => sum + i.qty, 0);
   };
 
-  /**
-   * HÀM TẢI DỮ LIỆU
-   */
-  const loadData = useCallback(async (showLoading = false) => {
-    try {
-      if (showLoading) setLoading(true);
-      const [categoriesRes, menuRes, combosRes, settingsRes, tableRes] = await Promise.all([
-        menuService.getCategories(),
-        menuService.getAllMenuItems(),
-        menuService.getCombos(),
-        menuService.getSettings(),
-        tableCode ? menuService.getTableByCode(tableCode) : Promise.resolve(null)
-      ]);
+  const loadCrossSellRecommendations = useCallback((itemId) => {
+    if (!itemId) return;
 
-      setCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
-      setMenuItems(Array.isArray(menuRes) ? menuRes : []);
-
-      // Chỉ hiện Combo đang Active
-      const activeCombos = (Array.isArray(combosRes) ? combosRes : []).filter(c => c.active !== false);
-      setCombos(activeCombos);
-      setRestaurantSettings(normalizeRestaurantSettings(settingsRes));
-
-      setTableInfo(tableRes);
-
-      // Load current order if table code is known
-      if (tableCode) {
-        try {
-          const orderRes = await menuService.getCurrentOrderByTableCode(tableCode);
-          setCurrentOrder(orderRes);
-        } catch {
-          setCurrentOrder(null);
-        }
-      }
-
-      // console.log(" Menu khách hàng đã được làm mới");
-    } catch (error) {
-      console.error('Lỗi tải dữ liệu API:', error);
-    } finally {
-      setLoading(false);
+    const cached = crossSellCacheRef.current.get(itemId);
+    if (Array.isArray(cached)) {
+      setCrossSellItems(cached);
+      return;
     }
-  }, [tableCode]);
 
-  const loadRecommendations = useCallback(async () => {
-    try {
-      menuService.getPersonalizedRecommendations(timeContext, weather)
-        .then(res => setRecommendations(Array.isArray(res) ? res : []))
-        .catch(() => {
-          menuService.getPopularItems().then(res => setRecommendations(Array.isArray(res) ? res : []));
-        });
-    } catch {
-      // suppress
+    if (cached?.then) {
+      cached
+        .then(setCrossSellItems)
+        .catch(() => {});
+      return;
     }
-  }, [timeContext, weather]);
 
-  const loadCurrentOrder = useCallback(async () => {
-    if (!tableCode) return;
-    try {
-      const orderRes = await menuService.getCurrentOrderByTableCode(tableCode);
-      setCurrentOrder(orderRes);
-    } catch {
-      setCurrentOrder(null);
-    }
-  }, [tableCode]);
+    const request = menuService.getCrossSellRecommendations(itemId)
+      .then(res => {
+        const items = Array.isArray(res) ? res : [];
+        crossSellCacheRef.current.set(itemId, items);
+        return items;
+      })
+      .catch(error => {
+        crossSellCacheRef.current.delete(itemId);
+        throw error;
+      });
 
-  useEffect(() => {
-    loadData(true);
-    loadRecommendations();
-  }, [loadData, loadRecommendations]);
+    crossSellCacheRef.current.set(itemId, request);
+    request
+      .then(setCrossSellItems)
+      .catch(() => {});
+  }, []);
 
-  const handleCatalogRealtimeUpdate = useCallback((message) => {
-    // message đã được JSON.parse bởi wsService.
-    // Nếu là chuỗi 'UPDATED' hoặc là một object (thông báo thay đổi cụ thể), ta tiến hành tải lại data.
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      loadData(false);
-      loadRecommendations();
-    }
-  }, [loadData, loadRecommendations]);
-
-  const handleOrderRealtimeUpdate = useCallback((message) => {
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      loadCurrentOrder();
-    }
-  }, [loadCurrentOrder]);
-
-  useWebSocket('/topic/menu', handleCatalogRealtimeUpdate);
-  useWebSocket('/topic/combos', handleCatalogRealtimeUpdate);
-  useWebSocket('/topic/categories', handleCatalogRealtimeUpdate);
-  useWebSocket('/topic/settings', handleCatalogRealtimeUpdate);
-  useWebSocket('/topic/tables', handleOrderRealtimeUpdate);
-
-  // Instant WS status via listener (no polling)
+  // WS status via listener (no polling)
   useEffect(() => {
     const wsRef = wsService;
     setWsConnected(wsRef.isConnected());
@@ -211,9 +176,7 @@ const MenuPage = () => {
 
         // Gợi ý món đi kèm (Cross-sell)
         if (!isCombo && qty === 1) {
-          menuService.getCrossSellRecommendations(product.id)
-            .then(res => setCrossSellItems(Array.isArray(res) ? res : []))
-            .catch(() => { });
+          loadCrossSellRecommendations(product.id);
         }
       }
       return { ...prev, [group]: updatedGroup };
@@ -258,9 +221,7 @@ const MenuPage = () => {
       };
     });
 
-    menuService.getCrossSellRecommendations(product.id)
-      .then(res => setCrossSellItems(Array.isArray(res) ? res : []))
-      .catch(() => { });
+    loadCrossSellRecommendations(product.id);
   };
 
   const handleUpdateCartItemQty = (cartId, qty) => {
@@ -298,6 +259,114 @@ const MenuPage = () => {
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitOrderMutation = useSubmitOrderMutation();
+  const {
+    mutateAsync: startTableSession,
+    isPending: isStartingSession,
+  } = useStartTableSessionMutation();
+
+  useEffect(() => {
+    if (!tableCode) {
+      setSessionToken('');
+      return;
+    }
+
+    setSessionToken(sessionStorage.getItem(sessionStorageKey(tableCode)) || '');
+  }, [tableCode]);
+
+  const persistSessionToken = useCallback((token) => {
+    if (!tableCode || !token) return;
+
+    sessionStorage.setItem(sessionStorageKey(tableCode), token);
+    setSessionToken(token);
+  }, [tableCode]);
+
+  const clearSessionToken = useCallback(() => {
+    if (tableCode) {
+      sessionStorage.removeItem(sessionStorageKey(tableCode));
+    }
+    setSessionToken('');
+  }, [tableCode]);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    if (!sessionEnded && !hasTerminalSessionError) return;
+
+    clearSessionToken();
+    setShowCurrentOrderSheet(false);
+  }, [clearSessionToken, hasTerminalSessionError, sessionEnded, sessionToken]);
+
+  const ensureSessionToken = useCallback(async () => {
+    if (sessionToken) {
+      return sessionToken;
+    }
+
+    if (!tableCode) {
+      throw new Error('Vui lòng quét mã QR trên bàn để đặt món.');
+    }
+
+    const startedSession = await startTableSession(tableCode);
+    persistSessionToken(startedSession.sessionToken);
+    queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
+    return startedSession.sessionToken;
+  }, [persistSessionToken, sessionToken, startTableSession, tableCode]);
+
+  useEffect(() => {
+    if (!tableCode
+      || sessionToken
+      || orderingUnavailable
+      || !sessionState?.hasOpenSession
+      || isStartingSession) {
+      return undefined;
+    }
+
+    let isActive = true;
+
+    startTableSession(tableCode)
+      .then((startedSession) => {
+        if (!isActive) return;
+
+        persistSessionToken(startedSession.sessionToken);
+        queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
+      })
+      .catch(() => {
+        // Customer can still join/create the session when submitting the first order.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    isStartingSession,
+    orderingUnavailable,
+    persistSessionToken,
+    sessionState?.hasOpenSession,
+    sessionToken,
+    startTableSession,
+    tableCode,
+  ]);
+
+  useEffect(() => {
+    if (!sessionToken) return undefined;
+
+    const sendHeartbeat = () => {
+      if (document.hidden) return;
+
+      menuService.heartbeatSession(sessionToken)
+        .catch((error) => {
+          if (error?.code === 'TABLE_SESSION_EXPIRED'
+            || error?.code === 'TABLE_SESSION_INVALID'
+            || error?.code === 'TABLE_SESSION_NOT_FOUND') {
+            clearSessionToken();
+            queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
+          }
+        });
+    };
+
+    const timer = window.setInterval(sendHeartbeat, 90 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [clearSessionToken, sessionToken, tableCode]);
 
   const handleSubmitOrder = async () => {
     if (orderingUnavailable) {
@@ -321,29 +390,34 @@ const MenuPage = () => {
       return;
     }
 
-    const orderData = {
-      tableCode,
-      items: Object.entries(cart.items).map(([id, i]) => ({
-        menuItemId: i.actualId || parseInt(id),
-        quantity: i.qty,
-        notes: i.note,
-        selectedOptionValueIds: i.selectedOptionValueIds || []
-      })),
-      combos: Object.entries(cart.combos).map(([id, c]) => ({ comboId: parseInt(id), quantity: c.qty, notes: c.note }))
-    };
-
     setIsSubmitting(true);
     try {
-      await menuService.createOrder(orderData);
+      const activeSessionToken = await ensureSessionToken();
+      const orderData = {
+        tableCode,
+        sessionToken: activeSessionToken,
+        items: Object.entries(cart.items).map(([id, i]) => ({
+          menuItemId: i.actualId || parseInt(id),
+          quantity: i.qty,
+          notes: i.note,
+          selectedOptionValueIds: i.selectedOptionValueIds || []
+        })),
+        combos: Object.entries(cart.combos).map(([id, c]) => ({ comboId: parseInt(id), quantity: c.qty, notes: c.note }))
+      };
+
+      await submitOrderMutation.mutateAsync(orderData);
       setCart({ items: {}, combos: {} });
       setShowOrderModal(false);
       showSuccess('Đơn hàng của bạn đã được gửi đến quán.', 'Đặt món thành công');
-      // Tải lại dữ liệu để lấy currentOrder mới
-      loadData(false);
+      // Invalidate the session query to load the new currentOrder
+      queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
     } catch (e) {
       const errorMessage = e?.message || '';
       if (e?.status === 404 && (errorMessage.includes('thông tin bàn') || errorMessage.includes('Table Code'))) {
         showError(e, 'Không tìm thấy thông tin bàn');
+      } else if (e?.code === 'TABLE_SESSION_EXPIRED' || e?.code === 'TABLE_SESSION_INVALID') {
+        clearSessionToken();
+        showError(e, 'Phiên bàn đã hết hạn');
       } else {
         showError(e, 'Không thể gửi đơn hàng');
       }

@@ -14,7 +14,7 @@ const MenuPage = lazy(() => import('@pages/admin/MenuPage.jsx'))
 const ComboPage = lazy(() => import('@pages/admin/ComboPage.jsx'))
 const InventoryPage = lazy(() => import('@pages/admin/InventoryPage.jsx'))
 const VoucherPage = lazy(() => import('@pages/admin/VoucherPage.jsx'))
-const StaffPage = lazy(() => import('@pages/admin/StaffPage.jsx'))
+const UserPage = lazy(() => import('@pages/admin/UserPage.jsx'))
 const RevenueStatsPage = lazy(() => import('@pages/admin/RevenueStatsPage.jsx'))
 const TopDishesStatsPage = lazy(() => import('@pages/admin/TopDishesStatsPage.jsx'))
 const StaffStatsPage = lazy(() => import('@pages/admin/StaffStatsPage.jsx'))
@@ -54,7 +54,7 @@ const AppRouter = () => (
             <Route path="/admin/combo" element={<ComboPage />} />
             <Route path="/admin/inventory" element={<InventoryPage />} />
             <Route path="/admin/voucher" element={<VoucherPage />} />
-            <Route path="/admin/staffs" element={<StaffPage />} />
+            <Route path="/admin/staffs" element={<UserPage />} />
             <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
             <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
             <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
