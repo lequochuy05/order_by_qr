@@ -14,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.Cacheable;
+import com.qros.shared.cache.CacheNames;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -66,6 +68,7 @@ public class InventoryAvailabilityService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheNames.MENU_AVAILABILITY)
     public Map<Long, Boolean> getMenuItemAvailability(List<Long> menuItemIds) {
         if (menuItemIds == null || menuItemIds.isEmpty()) {
             return Map.of();
@@ -82,6 +85,7 @@ public class InventoryAvailabilityService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheNames.MENU_AVAILABILITY)
     public Map<Long, Boolean> getComboAvailabilityByIds(List<Long> comboIds) {
         if (comboIds == null || comboIds.isEmpty()) {
             return Map.of();

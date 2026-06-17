@@ -15,7 +15,6 @@ import com.qros.modules.menu.model.MenuItem;
 import org.springframework.context.ApplicationEventPublisher;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.model.OrderItem;
-import com.qros.modules.order.repository.OrderItemRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.cache.CacheNames;
@@ -33,6 +32,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,32 +45,162 @@ public class InventoryReservationService {
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
     private final OrderItemInventoryReservationRepository reservationRepository;
-    private final OrderItemRepository orderItemRepository;
     private final InventoryReservationMapper reservationMapper;
     private final StockMovementService stockMovementService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
-    public InventoryReservationResult reserveForOrderItemId(@NonNull Long orderItemId) {
-        OrderItem orderItem = orderItemRepository.findDetailByIdForUpdate(orderItemId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
-
-        return reserveForOrderItem(orderItem);
-    }
-
-    @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public InventoryReservationResult reserveForOrderItem(@NonNull OrderItem orderItem) {
         return reserveForOrderItem(orderItem, orderItem.getQuantity(), true);
     }
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public InventoryReservationResult reserveForOrderItem(
             @NonNull OrderItem orderItem,
             @NonNull Integer quantity) {
         return reserveForOrderItem(orderItem, quantity, false);
+    }
+
+    @Transactional
+    public void reserveForOrderItems(@NonNull Map<OrderItem, Integer> quantitiesToReserve) {
+        if (quantitiesToReserve.isEmpty()) {
+            return;
+        }
+
+        List<ReservationDraft> allDrafts = new ArrayList<>();
+        Map<OrderItem, List<ReservationDraft>> itemDraftsMap = new LinkedHashMap<>();
+
+        // 1. Gather all unique menu item IDs across all order items (including combo items)
+        Set<Long> menuItemIds = quantitiesToReserve.keySet().stream()
+                .filter(Objects::nonNull)
+                .flatMap(item -> {
+                    List<MenuItem> menuItems = new ArrayList<>();
+                    if (item.getMenuItem() != null) {
+                        menuItems.add(item.getMenuItem());
+                    }
+                    if (item.getCombo() != null && item.getCombo().getItems() != null) {
+                        item.getCombo().getItems().stream()
+                                .filter(ci -> ci.getMenuItem() != null)
+                                .forEach(ci -> menuItems.add(ci.getMenuItem()));
+                    }
+                    return menuItems.stream();
+                })
+                .map(MenuItem::getId)
+                .collect(Collectors.toSet());
+
+        if (menuItemIds.isEmpty()) {
+            return;
+        }
+
+        // 2. Fetch all required recipe items in one query
+        List<RecipeItem> allRecipeItems = recipeItemRepository.findByMenuItemIds(new ArrayList<>(menuItemIds));
+        Map<Long, List<RecipeItem>> recipeItemsByMenuItem = allRecipeItems.stream()
+                .collect(Collectors.groupingBy(r -> r.getMenuItem().getId()));
+
+        // 3. Build drafts using pre-fetched recipe items
+        for (Map.Entry<OrderItem, Integer> entry : quantitiesToReserve.entrySet()) {
+            OrderItem orderItem = entry.getKey();
+            BigDecimal orderItemQuantity = quantityFrom(entry.getValue());
+            if (orderItemQuantity.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            Map<Long, ReservationDraft> drafts = new LinkedHashMap<>();
+
+            if (orderItem.getMenuItem() != null) {
+                mergeMenuItemRequirementsFast(
+                        drafts,
+                        orderItem.getMenuItem().getId(),
+                        orderItemQuantity,
+                        recipeItemsByMenuItem);
+            }
+
+            if (orderItem.getCombo() != null && orderItem.getCombo().getItems() != null) {
+                for (var comboItem : orderItem.getCombo().getItems()) {
+                    if (comboItem.getMenuItem() == null) {
+                        continue;
+                    }
+
+                    BigDecimal comboItemQuantity = quantityFrom(comboItem.getQuantity());
+                    BigDecimal multiplier = orderItemQuantity.multiply(comboItemQuantity);
+
+                    mergeMenuItemRequirementsFast(
+                            drafts,
+                            comboItem.getMenuItem().getId(),
+                            multiplier,
+                            recipeItemsByMenuItem);
+                }
+            }
+
+            List<ReservationDraft> draftsList = new ArrayList<>(drafts.values());
+            itemDraftsMap.put(orderItem, draftsList);
+            allDrafts.addAll(draftsList);
+        }
+
+        if (allDrafts.isEmpty()) {
+            return;
+        }
+
+        // 4. Aggregate required quantities per inventory item across the whole order
+        Map<Long, BigDecimal> aggregatedRequirements = new LinkedHashMap<>();
+        for (ReservationDraft draft : allDrafts) {
+            aggregatedRequirements.merge(
+                    draft.inventoryItemId(),
+                    draft.requiredQuantity(),
+                    (a, b) -> a.add(b).setScale(QUANTITY_SCALE, RoundingMode.HALF_UP));
+        }
+
+        // 5. Sort inventory item IDs to lock in a consistent order (prevent deadlock)
+        List<Long> sortedInventoryItemIds = aggregatedRequirements.keySet().stream()
+                .sorted()
+                .toList();
+
+        Map<Long, InventoryItem> lockedItemsById = new LinkedHashMap<>();
+
+        // 6. Lock and validate all required inventory items
+        for (Long inventoryItemId : sortedInventoryItemIds) {
+            InventoryItem lockedItem = getInventoryItemForUpdate(inventoryItemId);
+            lockedItemsById.put(inventoryItemId, lockedItem);
+
+            BigDecimal requiredQuantity = aggregatedRequirements.get(inventoryItemId);
+            BigDecimal availableQuantity = lockedItem.availableQuantity();
+            
+            boolean sufficient = Boolean.TRUE.equals(lockedItem.getActive())
+                    && availableQuantity.compareTo(requiredQuantity) >= 0;
+
+            if (!sufficient) {
+                throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
+            }
+        }
+
+        // 7. Update reserved quantities and save all inventory items
+        for (Map.Entry<Long, BigDecimal> entry : aggregatedRequirements.entrySet()) {
+            InventoryItem lockedItem = lockedItemsById.get(entry.getKey());
+            BigDecimal requiredQuantity = entry.getValue();
+
+            BigDecimal reservedQuantity = normalizeQuantity(lockedItem.getReservedQuantity())
+                    .add(requiredQuantity);
+            lockedItem.setReservedQuantity(reservedQuantity);
+        }
+        inventoryItemRepository.saveAll(lockedItemsById.values());
+
+        // 8. Create and associate reservations for each order item
+        for (Map.Entry<OrderItem, List<ReservationDraft>> entry : itemDraftsMap.entrySet()) {
+            OrderItem orderItem = entry.getKey();
+            for (ReservationDraft draft : entry.getValue()) {
+                InventoryItem lockedItem = lockedItemsById.get(draft.inventoryItemId());
+
+                OrderItemInventoryReservation reservation = reservationMapper.toEntity(
+                        orderItem,
+                        lockedItem,
+                        draft.requiredQuantity());
+
+                upsertReservation(orderItem, reservation);
+            }
+            if (orderItem.getId() != null) {
+                eventPublisher.publishEvent(new InventoryChangeEvent("inventory_reserved", orderItem.getId()));
+            }
+        }
     }
 
     private InventoryReservationResult reserveForOrderItem(
@@ -108,9 +240,11 @@ public class InventoryReservationService {
                 .toList();
 
         List<InventoryRequirement> requirements = new ArrayList<>();
+        Map<Long, InventoryItem> lockedItemsById = new LinkedHashMap<>();
 
         for (ReservationDraft draft : sortedDrafts) {
             InventoryItem lockedItem = getInventoryItemForUpdate(draft.inventoryItemId());
+            lockedItemsById.put(draft.inventoryItemId(), lockedItem);
 
             BigDecimal availableQuantity = lockedItem.availableQuantity();
             boolean sufficient = Boolean.TRUE.equals(lockedItem.getActive())
@@ -130,7 +264,7 @@ public class InventoryReservationService {
         }
 
         for (ReservationDraft draft : sortedDrafts) {
-            InventoryItem lockedItem = getInventoryItemForUpdate(draft.inventoryItemId());
+            InventoryItem lockedItem = lockedItemsById.get(draft.inventoryItemId());
 
             BigDecimal reservedQuantity = normalizeQuantity(lockedItem.getReservedQuantity())
                     .add(draft.requiredQuantity());
@@ -156,28 +290,16 @@ public class InventoryReservationService {
     }
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
-    public void releaseForOrderItemId(@NonNull Long orderItemId) {
-        orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
-
-        releaseForOrderItem(orderItemId);
-    }
-
-    @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public void releaseForOrderItem(@NonNull OrderItem orderItem) {
         releaseForOrderItem(orderItem.getId());
     }
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public void restoreOrderItem(@NonNull OrderItem orderItem) {
         releaseForOrderItem(orderItem);
     }
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public void adjustReservationForQuantity(
             @NonNull OrderItem orderItem,
             int oldQuantity,
@@ -229,16 +351,6 @@ public class InventoryReservationService {
     }
 
     @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
-    public void consumeForOrderItemId(@NonNull Long orderItemId) {
-        OrderItem orderItem = orderItemRepository.findById(orderItemId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
-
-        consumeForOrderItem(orderItem);
-    }
-
-    @Transactional
-    @CacheEvict(value = CacheNames.INVENTORY, allEntries = true)
     public void consumeForOrderItem(@NonNull OrderItem orderItem) {
         Long orderItemId = orderItem.getId();
 
@@ -377,6 +489,34 @@ public class InventoryReservationService {
             MenuItem menuItem,
             BigDecimal multiplier) {
         List<RecipeItem> recipeItems = recipeItemRepository.findByMenuItemId(menuItem.getId());
+
+        for (RecipeItem recipeItem : recipeItems) {
+            InventoryItem inventoryItem = recipeItem.getInventoryItem();
+
+            if (inventoryItem == null || inventoryItem.getId() == null) {
+                continue;
+            }
+
+            BigDecimal requiredQuantity = normalizeQuantity(recipeItem.getQuantityRequired())
+                    .multiply(multiplier)
+                    .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
+
+            drafts.merge(
+                    inventoryItem.getId(),
+                    new ReservationDraft(inventoryItem.getId(), requiredQuantity),
+                    (oldValue, newValue) -> new ReservationDraft(
+                            oldValue.inventoryItemId(),
+                            oldValue.requiredQuantity().add(newValue.requiredQuantity())
+                                    .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP)));
+        }
+    }
+
+    private void mergeMenuItemRequirementsFast(
+            Map<Long, ReservationDraft> drafts,
+            Long menuItemId,
+            BigDecimal multiplier,
+            Map<Long, List<RecipeItem>> recipeItemsByMenuItem) {
+        List<RecipeItem> recipeItems = recipeItemsByMenuItem.getOrDefault(menuItemId, List.of());
 
         for (RecipeItem recipeItem : recipeItems) {
             InventoryItem inventoryItem = recipeItem.getInventoryItem();
