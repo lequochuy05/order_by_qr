@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -18,7 +17,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import static com.qros.core.config.security.SecurityRoutes.*;
 
 @Configuration
-@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -51,11 +49,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, STAFF_READ_GET).hasAnyRole("MANAGER", "STAFF")
                         .requestMatchers(HttpMethod.GET, OPERATION_GET).hasAnyRole("MANAGER", "STAFF", "CHEF")
 
-                        .requestMatchers(HttpMethod.POST, MANAGER_POST).hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PUT, MANAGER_PUT).hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.PATCH, MANAGER_PATCH).hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.DELETE, MANAGER_DELETE).hasRole("MANAGER")
-
                         .requestMatchers(HttpMethod.PATCH, KITCHEN_PATCH)
                         .hasAnyRole("MANAGER", "STAFF", "CHEF")
 
@@ -70,6 +63,11 @@ public class SecurityConfig {
 
                         .requestMatchers(PAYMENT_ROUTES)
                         .hasAnyRole("MANAGER", "STAFF")
+
+                        .requestMatchers(HttpMethod.POST, MANAGER_POST).hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.PUT, MANAGER_PUT).hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.PATCH, MANAGER_PATCH).hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, MANAGER_DELETE).hasRole("MANAGER")
 
                         .anyRequest().authenticated()
                 )

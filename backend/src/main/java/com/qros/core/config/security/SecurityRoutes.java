@@ -7,8 +7,7 @@ public final class SecurityRoutes {
     public static final String[] STATIC_AND_SYSTEM = {
             "/error",
             "/ws/**",
-            "/actuator/health",
-            "/actuator/prometheus"
+            "/actuator/health"
     };
 
     public static final String[] AUTH_PUBLIC_POST = {
@@ -30,6 +29,8 @@ public final class SecurityRoutes {
     public static final String[] PUBLIC_POST = {
             "/api/public/orders",
             "/api/public/orders/preview",
+            "/api/public/tables/*/start-session",
+            "/api/public/sessions/heartbeat",
             "/api/webhooks/**"
     };
 
@@ -49,7 +50,8 @@ public final class SecurityRoutes {
     public static final String[] MANAGER_GET = {
             "/api/users",
             "/api/users/*",
-            "/api/settings"
+            "/api/settings",
+            "/actuator/prometheus"
     };
 
     public static final String[] STAFF_READ_GET = {
@@ -68,7 +70,7 @@ public final class SecurityRoutes {
             "/api/orders/table/*/preview",
             "/api/tables/**",
             "/api/orders/history",
-            "/api/orders/stats",
+            "/api/orders/analytics",
             "/api/orders/active",
             "/api/kitchen/orders",
             "/api/inventory/**",
@@ -89,10 +91,12 @@ public final class SecurityRoutes {
     };
 
     public static final String[] MANAGER_PUT = {
+            "/api/users/**",
             "/api/categories/**",
             "/api/menu-items/**",
             "/api/combos/**",
             "/api/inventory/**",
+            "/api/tables/**",
             "/api/vouchers/**",
             "/api/promotions/**",
             "/api/settings"

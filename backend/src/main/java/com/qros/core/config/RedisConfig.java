@@ -8,7 +8,6 @@ import com.qros.shared.cache.CacheNames;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,7 +36,13 @@ public class RedisConfig implements CachingConfigurer {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.error("Redis Cache GET failed for key {}: {}", key, exception.getMessage());
+                log.warn("Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
+                        cache != null ? cache.getName() : "unknown",
+                        key,
+                        exception.getMessage());
+                if (cache != null && key != null) {
+                    cache.evictIfPresent(key);
+                }
             }
 
             @Override
@@ -61,12 +66,11 @@ public class RedisConfig implements CachingConfigurer {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        // NON_FINAL is safer than EVERYTHING: it still serializes type info for
-        // polymorphic deserialization but limits it to non-final classes, avoiding
-        // deserialization attack vectors through final/critical JDK types.
+        // RedisCache deserializes values as Object, so type metadata must also be
+        // written for final DTOs/records returned by public APIs.
         mapper.activateDefaultTyping(
                 mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
+                ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY);
         return mapper;
     }
@@ -95,6 +99,7 @@ public class RedisConfig implements CachingConfigurer {
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(1))
+                .prefixCacheNameWith("qros:v3:")
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
@@ -105,7 +110,6 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put(CacheNames.MENU, config.entryTtl(Duration.ofHours(6)));
         cacheConfigurations.put(CacheNames.PUBLIC_MENU, config.entryTtl(Duration.ofHours(6)));
         cacheConfigurations.put(CacheNames.COMBOS, config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put(CacheNames.QRCODES, config.entryTtl(Duration.ofDays(7)));
         cacheConfigurations.put(CacheNames.TABLES, config.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put(CacheNames.STATS_DASHBOARD, config.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put(CacheNames.VOUCHERS, config.entryTtl(Duration.ofMinutes(15)));
@@ -115,6 +119,7 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put(CacheNames.SETTINGS, config.entryTtl(Duration.ofHours(1)));
         cacheConfigurations.put(CacheNames.ORDER_BY_ID, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put(CacheNames.MENU_AVAILABILITY, config.entryTtl(Duration.ofSeconds(60)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
