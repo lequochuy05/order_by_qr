@@ -4,7 +4,7 @@ import {
     ResponsiveContainer, Tooltip as RechartsTooltip
 } from 'recharts';
 import { Loader2, UtensilsCrossed, ShoppingBag, TrendingUp, BarChart3, Award } from 'lucide-react';
-import { statisticsService } from '@modules/statistics/api/statisticsService.js';
+import { analyticsService } from '@modules/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 import { formatBusinessDate } from '@shared/lib/businessTime.js';
@@ -39,8 +39,8 @@ const TopDishesStats = () => {
             setLoading(true);
             try {
                 const [d, t] = await Promise.all([
-                    statisticsService.getTopDishes(appliedDateRange.from, appliedDateRange.to),
-                    statisticsService.getDishTrend(appliedDateRange.from, appliedDateRange.to)
+                    analyticsService.getTopDishes(appliedDateRange.from, appliedDateRange.to),
+                    analyticsService.getDishTrend(appliedDateRange.from, appliedDateRange.to)
                 ]);
                 setDishes(d);
                 setTrend(t);

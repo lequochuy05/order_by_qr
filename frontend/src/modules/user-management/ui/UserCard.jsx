@@ -1,7 +1,7 @@
 import { Shield, User as UserIcon, UtensilsCrossed, Mail, Phone, Pencil, Trash2 } from 'lucide-react';
 import { fmtRole, fmtStatus } from '@shared/lib/formatters.js';
 
-const StaffCard = ({ staff, onEdit, onDelete }) => {
+const UserCard = ({ staff, onEdit, onDelete }) => {
   // Kiểm tra an toàn để tránh lỗi nếu staff bị null/undefined
   if (!staff) return null;
 
@@ -79,4 +79,4 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
   );
 };
 
-export default StaffCard;
+export default UserCard;

@@ -10,7 +10,7 @@ const USER_STATUS_OPTIONS = Object.entries(USER_STATUS).map(([value, meta]) => (
   label: meta.label
 }));
 
-const StaffModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
+const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
   const [formData, setFormData] = useState(() => {
     if (data) {
       return {
@@ -287,4 +287,4 @@ const StaffModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors })
   );
 };
 
-export default StaffModal;
+export default UserModal;

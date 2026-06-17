@@ -3,7 +3,7 @@ import {
     PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend
 } from 'recharts';
 import { Loader2, Award, Users } from 'lucide-react';
-import { statisticsService } from '@modules/statistics/api/statisticsService.js';
+import { analyticsService } from '@modules/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 
 import { fmtVND } from '@shared/lib/formatters.js';
@@ -34,7 +34,7 @@ const StaffStats = () => {
         const load = async () => {
             setLoading(true);
             try {
-                const data = await statisticsService.getEmployees(appliedDateRange.from, appliedDateRange.to);
+                const data = await analyticsService.getUsers(appliedDateRange.from, appliedDateRange.to);
                 // Sắp xếp giảm dần theo doanh thu
                 setEmployees(data.sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
             } catch (e) { console.error(e); }

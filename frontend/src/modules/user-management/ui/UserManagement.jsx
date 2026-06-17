@@ -7,12 +7,12 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@modules/auth/model/AuthContext.jsx';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
-import { staffService } from '@modules/staff-management/api/staffService.js';
+import { userService } from '@modules/user-management/api/userService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
-import StaffCard from './StaffCard';
-import StaffModal from './StaffModal';
+import UserCard from './UserCard';
+import UserModal from './UserModal';
 import EmptyState from '@shared/ui/EmptyState.jsx';
 import { playNotificationSound } from '@modules/notifications/lib/notificationSound.js';
 import { USER_STATUS } from '@shared/lib/formatters.js';
@@ -64,7 +64,7 @@ const StaffManager = () => {
       if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
       if (statusFilter !== 'ALL') params.status = statusFilter;
 
-      const data = await staffService.getPage(params, { force });
+      const data = await userService.getPage(params, { force });
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
       setStaffs(data.content || []);
       setTotalPages(data.totalPages || 0);
@@ -118,16 +118,16 @@ const StaffManager = () => {
       let actionType = '';
 
       if (formData.id) {
-        result = await staffService.update(formData.id, payload);
+        result = await userService.update(formData.id, payload);
         actionType = 'Cập nhật';
       } else {
-        result = await staffService.create(payload);
+        result = await userService.create(payload);
         actionType = 'Thêm';
       }
 
       let avatarResult = null;
       if (selectedFile) {
-        avatarResult = await staffService.uploadAvatar(result.id, selectedFile);
+        avatarResult = await userService.uploadAvatar(result.id, selectedFile);
       }
 
       const savedStaff = avatarResult || result;
@@ -167,7 +167,7 @@ const StaffManager = () => {
     const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
     if (!confirmed) return;
     try {
-      await staffService.delete(id);
+      await userService.delete(id);
       showSuccess("Đã xóa nhân viên thành công!");
       fetchStaffs(false, { force: true });
     } catch (err) {
@@ -201,7 +201,7 @@ const StaffManager = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {staffs.map(staff => (
-            <StaffCard
+            <UserCard
               key={staff.id}
               staff={staff}
               onEdit={() => { setEditingStaff(staff); setIsModalOpen(true); }}
@@ -225,7 +225,7 @@ const StaffManager = () => {
       />
 
       {/* Modal Thêm/Sửa */}
-      <StaffModal
+      <UserModal
         key={isModalOpen ? (editingStaff?.id || 'new') : 'closed'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

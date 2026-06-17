@@ -4,7 +4,7 @@ import {
     ResponsiveContainer, Tooltip as RechartsTooltip, Tooltip
 } from 'recharts';
 import { Loader2, Receipt } from 'lucide-react'; // Thêm icon Receipt
-import { statisticsService } from '@modules/statistics/api/statisticsService.js';
+import { analyticsService } from '@modules/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
@@ -54,7 +54,7 @@ const RevenueStats = () => {
         const loadRevenue = async () => {
             setLoadingRevenue(true);
             try {
-                const rev = await statisticsService.getRevenue(appliedDateRange.from, appliedDateRange.to);
+                const rev = await analyticsService.getRevenue(appliedDateRange.from, appliedDateRange.to);
                 if (!isMountedRef.current || fetchSeq !== revenueFetchSeqRef.current) return;
                 setRevenueData(rev);
             } catch (e) { console.error(e); }
@@ -73,7 +73,7 @@ const RevenueStats = () => {
         const loadOrders = async () => {
             setLoadingOrders(true);
             try {
-                const orderPage = await statisticsService.getOrders(appliedDateRange.from, appliedDateRange.to, {
+                const orderPage = await analyticsService.getOrders(appliedDateRange.from, appliedDateRange.to, {
                     page: currentPage,
                     size: ITEMS_PER_PAGE
                 });
