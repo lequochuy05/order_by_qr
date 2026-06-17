@@ -70,10 +70,10 @@ public final class SecurityRoutes {
             "/api/orders/table/*/preview",
             "/api/tables/**",
             "/api/orders/history",
-            "/api/orders/analytics",
             "/api/orders/active",
             "/api/kitchen/orders",
             "/api/inventory/**",
+            "/api/orders/analytics",
             "/api/analytics/**"
     };
 
@@ -110,7 +110,7 @@ public final class SecurityRoutes {
             "/api/promotions/**",
             "/api/users/*/reset-password",
             "/api/users/**",
-            "/api/orders/**",
+            "/api/orders/*/cancel",
             "/api/combos/**"
     };
 
@@ -145,6 +145,7 @@ public final class SecurityRoutes {
     };
 
     public static final String[] STAFF_OPERATION_PATCH = {
+            "/api/orders/*/status",
             "/api/orders/items/**"
     };
 

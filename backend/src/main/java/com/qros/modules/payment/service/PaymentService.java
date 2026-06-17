@@ -184,12 +184,30 @@ public class PaymentService {
             return;
         }
 
+        PaymentTransaction existingTransaction = transactionRepository
+                .findWithOrderById(webhookResult.transactionId())
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND,
+                        "Transaction not found: " + webhookResult.transactionId()));
+
+        Long orderId = existingTransaction.getOrder() != null
+                ? existingTransaction.getOrder().getId()
+                : null;
+
+        if (orderId == null) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_NOT_FOUND,
+                    "Payment transaction is not associated with an order");
+        }
+
+        Order lockedOrder = orderSettlementService.loadForPayment(orderId);
+
         PaymentTransaction transaction = transactionRepository
                 .findWithOrderByIdForUpdate(webhookResult.transactionId())
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND,
                         "Transaction not found: " + webhookResult.transactionId()));
-        lockTransactionOrder(transaction);
+        transaction.setOrder(lockedOrder);
 
         if (transaction.getStatus() == PaymentTransactionStatus.PAID) {
             log.info("[Payment Webhook] Transaction {} already marked as PAID", transaction.getId());

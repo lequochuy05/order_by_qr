@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
@@ -42,6 +43,9 @@ class TableSessionServiceTest {
     TableSessionTokenRepository tokenRepository;
 
     @Mock
+    CacheManager cacheManager;
+
+    @Mock
     ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -55,6 +59,7 @@ class TableSessionServiceTest {
                 tableRepository,
                 sessionRepository,
                 tokenRepository,
+                cacheManager,
                 eventPublisher,
                 activeOrderChecker);
     }
@@ -89,6 +94,32 @@ class TableSessionServiceTest {
 
         verify(tokenRepository).save(any(TableSessionToken.class));
         verify(tableRepository).save(table);
+        verify(activeOrderChecker).attachActiveOrderToSession(eq(5L), any(TableSession.class));
+    }
+
+    @Test
+    void startPublicSessionDelegatesStaffOrderAttachment() {
+        DiningTable table = DiningTable.builder()
+                .id(5L)
+                .tableNumber("05")
+                .tableCode("BAN_05")
+                .status(TableStatus.OCCUPIED)
+                .capacity(4)
+                .build();
+
+        when(tableRepository.findByTableCodeForUpdate("BAN_05")).thenReturn(Optional.of(table));
+        when(sessionRepository.findByTableIdAndStatusForUpdate(5L, TableSessionStatus.OPEN))
+                .thenReturn(Optional.empty());
+        when(sessionRepository.save(any(TableSession.class))).thenAnswer(invocation -> {
+            TableSession session = invocation.getArgument(0);
+            session.setId(100L);
+            return session;
+        });
+        when(tokenRepository.save(any(TableSessionToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        tableSessionService.startPublicSession("BAN_05");
+
+        verify(activeOrderChecker).attachActiveOrderToSession(eq(5L), any(TableSession.class));
     }
 
     @Test

@@ -20,7 +20,8 @@ import com.qros.shared.time.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -48,6 +49,7 @@ public class TableSessionService {
     private final DiningTableRepository tableRepository;
     private final TableSessionRepository sessionRepository;
     private final TableSessionTokenRepository tokenRepository;
+    private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
     private final TableActiveOrderChecker activeOrderChecker;
 
@@ -76,7 +78,6 @@ public class TableSessionService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
     public TableSessionStartResponse startPublicSession(@NonNull String tableCode) {
         DiningTable table = tableRepository.findByTableCodeForUpdate(tableCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
@@ -96,6 +97,9 @@ public class TableSessionService {
             table.setStatus(TableStatus.OCCUPIED);
             tableRepository.save(table);
         }
+
+        activeOrderChecker.attachActiveOrderToSession(table.getId(), session);
+        evictTableSessionCaches(table);
 
         String rawToken = issueClientToken(session);
         eventPublisher.publishEvent(new TableChangeEvent());
@@ -183,7 +187,6 @@ public class TableSessionService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
     public void closeSession(Long sessionId, TableSessionStatus targetStatus, String reason) {
         if (sessionId == null) {
             return;
@@ -211,12 +214,12 @@ public class TableSessionService {
         session.setClosedReason(reason);
         sessionRepository.save(session);
 
+        evictTableSessionCaches(session.getTable());
         eventPublisher.publishEvent(new TableChangeEvent());
     }
 
     @Scheduled(fixedDelayString = "${table-session.cleanup-fixed-delay-ms:300000}")
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
     public void expireStaleOpenSessionsWithoutOrders() {
         LocalDateTime cutoff = AppTime.now().minusMinutes(noOrderExpireMinutes);
         List<TableSession> staleSessions = sessionRepository
@@ -244,6 +247,7 @@ public class TableSessionService {
         }
 
         sessionRepository.saveAll(staleSessions);
+        staleSessions.forEach(session -> evictTableSessionCaches(session.getTable()));
         eventPublisher.publishEvent(new TableChangeEvent());
         log.info("Expired {} stale table sessions without orders", staleSessions.size());
     }
@@ -321,6 +325,32 @@ public class TableSessionService {
         }
 
         sessionRepository.touchOpenSessionActivity(session.getId(), AppTime.now());
+    }
+
+    private void evictTableSessionCaches(DiningTable table) {
+        evict(CacheNames.TABLES, "all_sorted");
+        clear(CacheNames.STATS_DASHBOARD);
+
+        if (table == null || table.getTableCode() == null) {
+            return;
+        }
+
+        evict(CacheNames.TABLES, "code_" + table.getTableCode());
+        evict(CacheNames.TABLES, "public_code_" + table.getTableCode());
+    }
+
+    private void evict(String cacheName, Object key) {
+        Cache cache = cacheManager.getCache(cacheName);
+        if (cache != null) {
+            cache.evictIfPresent(key);
+        }
+    }
+
+    private void clear(String cacheName) {
+        Cache cache = cacheManager.getCache(cacheName);
+        if (cache != null) {
+            cache.clear();
+        }
     }
 
     private String generateRawToken() {

@@ -59,8 +59,7 @@ const Dashboard = () => {
                 const past7Start = addDaysToBusinessDate(businessToday, -6);
                 const dashboard = await analyticsService.getDashboardSummary(
                     past7Start,
-                    businessToday,
-                    { signal: controller.signal }
+                    businessToday
                 );
 
                 if (controller.signal.aborted) return;

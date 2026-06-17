@@ -1,5 +1,7 @@
 package com.qros.shared.rate_limit;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,16 +15,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
- * RateLimitingFilter - In-memory sliding-window rate limiter for the public AI chat endpoint.
- * <p>
- * Uses a ConcurrentHashMap of per-IP timestamp deques. Requests exceeding the limit
- * (default: 30 requests per 60-second window per IP) receive HTTP 429.
- * Old entries are opportunistically pruned on each request.
- * <p>
- * No external dependencies (Redis, Bucket4j, Resilience4j) — lightweight self-contained filter.
+ * RateLimitingFilter - In-memory sliding-window rate limiter for public endpoints.
  */
 @Component
 @Order(1)
@@ -31,8 +27,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final int MAX_REQUESTS_PER_WINDOW = 30;
     private static final long WINDOW_DURATION_MS = 60_000L;
+    private static final int MAX_LIMIT_KEYS = 100_000;
 
-    private final ConcurrentHashMap<String, Deque<Long>> requestLogs = new ConcurrentHashMap<>();
+    private final Cache<String, Deque<Long>> requestLogs = Caffeine.newBuilder()
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .maximumSize(MAX_LIMIT_KEYS)
+            .build();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -53,20 +53,11 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return;
         }
 
-        String clientIp = resolveClientIp(request);
-        String sessionToken = request.getHeader("X-Session-Token");
-        String tableToken = request.getHeader("X-Table-Token");
-
-        String limitKey = clientIp;
-        if (sessionToken != null && !sessionToken.isBlank()) {
-            limitKey += "|" + sessionToken;
-        } else if (tableToken != null && !tableToken.isBlank()) {
-            limitKey += "|" + tableToken;
-        }
+        String limitKey = resolveLimitKey(request);
 
         long now = System.currentTimeMillis();
 
-        Deque<Long> timestamps = requestLogs.computeIfAbsent(limitKey, key -> new ArrayDeque<>());
+        Deque<Long> timestamps = requestLogs.get(limitKey, key -> new ArrayDeque<>());
         boolean allowed;
 
         synchronized (timestamps) {
@@ -91,6 +82,20 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String resolveLimitKey(HttpServletRequest request) {
+        String sessionToken = request.getHeader("X-Session-Token");
+        if (sessionToken != null && !sessionToken.isBlank()) {
+            return "session:" + sessionToken.trim();
+        }
+
+        String tableToken = request.getHeader("X-Table-Token");
+        if (tableToken != null && !tableToken.isBlank()) {
+            return "table:" + tableToken.trim();
+        }
+
+        return "ip:" + resolveClientIp(request);
     }
 
     /**

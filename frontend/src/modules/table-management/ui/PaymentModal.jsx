@@ -298,7 +298,10 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
 
     // WebSocket listener for real-time payment success
     useWebSocket('/topic/tables', (msg) => {
-        if (msg && msg.event === 'PAYMENT_SUCCESS' && (msg.orderId === order?.id || msg.transactionId === payosData?.transactionId)) {
+        const eventOrderId = msg?.orderId ?? msg?.id;
+        const eventTransactionId = msg?.transactionId ?? msg?.data;
+
+        if (msg && msg.event === 'PAYMENT_SUCCESS' && (eventOrderId === order?.id || eventTransactionId === payosData?.transactionId)) {
             handlePaymentSuccess();
         }
     });

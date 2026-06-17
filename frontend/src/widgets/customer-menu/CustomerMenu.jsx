@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Loader2, ShoppingBasket, X, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { Loader2, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import wsService from '@shared/lib/websocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
@@ -8,7 +8,7 @@ import { fmtVND } from '@shared/lib/formatters.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { isTerminalSessionError, useCustomerMenuQuery, useTableSessionQuery, useRecommendationsQuery } from '@modules/customer-ordering/api/customerQueries.js';
-import { useStartTableSessionMutation, useSubmitOrderMutation } from '@modules/customer-ordering/api/customerMutations.js';
+import { createClientRequestId, useStartTableSessionMutation, useSubmitOrderMutation } from '@modules/customer-ordering/api/customerMutations.js';
 
 import { menuService } from '@modules/customer-ordering/api/menuService.js';
 import MenuCard from './MenuCard';
@@ -43,8 +43,9 @@ const normalizeRestaurantSettings = (settings = {}) => ({
 const sessionStorageKey = (tableCode) => `qros:table-session:${tableCode}`;
 
 const MenuPage = () => {
+  const { tableCode: routeTableCode } = useParams();
   const [searchParams] = useSearchParams();
-  const tableCode = searchParams.get('tableCode');
+  const tableCode = routeTableCode || searchParams.get('tableCode');
   const { user } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -54,9 +55,11 @@ const MenuPage = () => {
   const [crossSellItems, setCrossSellItems] = useState([]);
   const crossSellCacheRef = useRef(new Map());
   const [showCurrentOrderSheet, setShowCurrentOrderSheet] = useState(false);
+  const submittingRef = useRef(false);
   const [sessionToken, setSessionToken] = useState(() => (
     tableCode ? sessionStorage.getItem(sessionStorageKey(tableCode)) || '' : ''
   ));
+  const [paymentInProgress, setPaymentInProgress] = useState(false);
   
   const hour = new Date().getHours();
   const timeContext = hour < 11 ? "Sáng" : hour < 14 ? "Trưa" : hour < 18 ? "Chiều" : "Tối";
@@ -89,6 +92,8 @@ const MenuPage = () => {
 
   const orderingUnavailable = restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
   const canUseAiAssistant = Boolean(user) && restaurantSettings.enableAiAssistant !== false;
+  const orderPaymentLocked = paymentInProgress || currentOrder?.status === 'AWAITING_PAYMENT';
+  const paymentLockedMessage = 'Bàn đang trong quá trình thanh toán, vui lòng liên hệ nhân viên.';
 
   const getCartItemQty = (item) => {
     return Object.values(cart.items).filter(i => (i.actualId || i.id) === item.id).reduce((sum, i) => sum + i.qty, 0);
@@ -137,6 +142,11 @@ const MenuPage = () => {
   }, []);
 
   const handleAddToCart = (product, qty, isCombo = false, needsOptions = false) => {
+    if (orderPaymentLocked && qty > 0) {
+      showError(paymentLockedMessage, 'Bàn đang thanh toán');
+      return;
+    }
+
     if (orderingUnavailable && qty > 0) {
       showError(
         restaurantSettings.maintenanceMode
@@ -184,6 +194,11 @@ const MenuPage = () => {
   };
 
   const handleAddWithOptions = (product, selectedValueIds, selectedOptionObjs, finalPrice) => {
+    if (orderPaymentLocked) {
+      showError(paymentLockedMessage, 'Bàn đang thanh toán');
+      return;
+    }
+
     if (orderingUnavailable) {
       showError(
         restaurantSettings.maintenanceMode
@@ -296,6 +311,12 @@ const MenuPage = () => {
     setShowCurrentOrderSheet(false);
   }, [clearSessionToken, hasTerminalSessionError, sessionEnded, sessionToken]);
 
+  useEffect(() => {
+    if (currentOrder?.status !== 'AWAITING_PAYMENT') {
+      setPaymentInProgress(false);
+    }
+  }, [currentOrder?.status]);
+
   const ensureSessionToken = useCallback(async () => {
     if (sessionToken) {
       return sessionToken;
@@ -369,6 +390,11 @@ const MenuPage = () => {
   }, [clearSessionToken, sessionToken, tableCode]);
 
   const handleSubmitOrder = async () => {
+    if (orderPaymentLocked) {
+      showError(paymentLockedMessage, 'Bàn đang thanh toán');
+      return;
+    }
+
     if (orderingUnavailable) {
       showError(
         restaurantSettings.maintenanceMode
@@ -383,19 +409,21 @@ const MenuPage = () => {
       showError('Vui lòng quét mã QR trên bàn để đặt món.', 'Chưa xác định bàn');
       return;
     }
-    if (isSubmitting) return;
+    if (isSubmitting || submittingRef.current) return;
 
     if (Object.keys(cart.items).length === 0 && Object.keys(cart.combos).length === 0) {
       showError('Giỏ hàng của bạn đang trống. Hãy chọn món trước khi đặt.', 'Chưa có món');
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       const activeSessionToken = await ensureSessionToken();
       const orderData = {
         tableCode,
         sessionToken: activeSessionToken,
+        clientRequestId: createClientRequestId(),
         items: Object.entries(cart.items).map(([id, i]) => ({
           menuItemId: i.actualId || parseInt(id),
           quantity: i.qty,
@@ -406,6 +434,7 @@ const MenuPage = () => {
       };
 
       await submitOrderMutation.mutateAsync(orderData);
+      setPaymentInProgress(false);
       setCart({ items: {}, combos: {} });
       setShowOrderModal(false);
       showSuccess('Đơn hàng của bạn đã được gửi đến quán.', 'Đặt món thành công');
@@ -418,10 +447,14 @@ const MenuPage = () => {
       } else if (e?.code === 'TABLE_SESSION_EXPIRED' || e?.code === 'TABLE_SESSION_INVALID') {
         clearSessionToken();
         showError(e, 'Phiên bàn đã hết hạn');
+      } else if (e?.code === 'ORDER_PAYMENT_IN_PROGRESS') {
+        setPaymentInProgress(true);
+        showError(e, 'Bàn đang thanh toán');
       } else {
         showError(e, 'Không thể gửi đơn hàng');
       }
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -587,6 +620,8 @@ const MenuPage = () => {
             getCartItemQty={getCartItemQty}
             calculateTotal={calculateTotal}
             isSubmitting={isSubmitting}
+            orderingBlocked={orderPaymentLocked}
+            orderingBlockMessage={paymentLockedMessage}
             handleSubmitOrder={handleSubmitOrder}
           />
 

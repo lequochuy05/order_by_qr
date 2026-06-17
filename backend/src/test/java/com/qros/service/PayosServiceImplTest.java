@@ -5,6 +5,7 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
+import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
 import com.qros.modules.payment.dto.request.PaymentCreateRequest;
 import com.qros.modules.payment.dto.response.PaymentCreateResponse;
 import com.qros.modules.payment.gateway.PaymentGateway;
@@ -30,6 +31,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -137,6 +139,74 @@ class PayosServiceImplTest {
         assertThat(response.transactionId()).isEqualTo(88L);
         assertThat(response.idempotencyKey()).isEqualTo("idem-1");
         verify(transactionRepository, never()).save(any(PaymentTransaction.class));
+    }
+
+    @Test
+    void confirmPaymentFromWebhookLocksOrderBeforeTransaction() {
+        Order orderReference = Order.builder()
+                .id(1L)
+                .build();
+        Order lockedOrder = payableOrder();
+        PaymentTransaction existing = PaymentTransaction.builder()
+                .id(99L)
+                .order(orderReference)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .build();
+        PaymentTransaction lockedTransaction = PaymentTransaction.builder()
+                .id(99L)
+                .order(orderReference)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .build();
+
+        when(transactionRepository.findWithOrderById(99L)).thenReturn(Optional.of(existing));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
+        when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(lockedTransaction));
+
+        paymentService.confirmPaymentFromWebhook(new PaymentWebhookResult(
+                99L,
+                BigDecimal.valueOf(125_000),
+                "payos-ref",
+                "{}"));
+
+        var ordered = inOrder(transactionRepository, orderSettlementService, paymentCompletionService);
+        ordered.verify(transactionRepository).findWithOrderById(99L);
+        ordered.verify(orderSettlementService).loadForPayment(1L);
+        ordered.verify(transactionRepository).findWithOrderByIdForUpdate(99L);
+        ordered.verify(paymentCompletionService).completeSuccessfulTransaction(lockedTransaction);
+
+        assertThat(lockedTransaction.getOrder()).isSameAs(lockedOrder);
+        assertThat(lockedTransaction.getExternalReference()).isEqualTo("payos-ref");
+        assertThat(lockedTransaction.getProviderPayload()).isEqualTo("{}");
+    }
+
+    @Test
+    void confirmPaymentFromWebhookIsIdempotentWhenAlreadyPaid() {
+        Order orderReference = Order.builder()
+                .id(1L)
+                .build();
+        PaymentTransaction existing = PaymentTransaction.builder()
+                .id(99L)
+                .order(orderReference)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PAID)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .build();
+
+        when(transactionRepository.findWithOrderById(99L)).thenReturn(Optional.of(existing));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(payableOrder());
+        when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(existing));
+
+        paymentService.confirmPaymentFromWebhook(new PaymentWebhookResult(
+                99L,
+                BigDecimal.valueOf(125_000),
+                "payos-ref",
+                "{}"));
+
+        verify(paymentCompletionService, never()).completeSuccessfulTransaction(any(PaymentTransaction.class));
     }
 
     private Order payableOrder() {

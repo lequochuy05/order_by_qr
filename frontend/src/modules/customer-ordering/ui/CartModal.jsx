@@ -14,6 +14,8 @@ const CartModal = ({
     getCartItemQty,
     calculateTotal,
     isSubmitting,
+    orderingBlocked = false,
+    orderingBlockMessage = '',
     handleSubmitOrder
 }) => {
     if (!isOpen) return null;
@@ -153,14 +155,19 @@ const CartModal = ({
                         </span>
                     </div>
                     <button
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || orderingBlocked}
                         onClick={handleSubmitOrder}
                         className={`w-full py-4 rounded-2xl font-bold shadow-lg transition-all duration-300 flex items-center justify-center gap-2
-              ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 shadow-orange-200 active:scale-95 text-white'}`}
+              ${isSubmitting || orderingBlocked ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-orange-500 shadow-orange-200 active:scale-95 text-white'}`}
                     >
                         {isSubmitting && <Loader2 className="animate-spin" size={20} />}
-                        {isSubmitting ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN ĐẶT MÓN'}
+                        {orderingBlocked ? 'BÀN ĐANG THANH TOÁN' : isSubmitting ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN ĐẶT MÓN'}
                     </button>
+                    {orderingBlocked && orderingBlockMessage && (
+                        <p className="mt-2 text-center text-xs font-semibold text-red-500">
+                            {orderingBlockMessage}
+                        </p>
+                    )}
                 </div>
 
             </div>

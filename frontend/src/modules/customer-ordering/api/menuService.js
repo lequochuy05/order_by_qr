@@ -1,5 +1,11 @@
 import api from '@shared/api/httpClient.js';
 
+const sessionHeaderConfig = (sessionToken) => (
+  sessionToken
+    ? { headers: { 'X-Session-Token': sessionToken } }
+    : undefined
+);
+
 export const menuService = {
   getCategories: () => api.get('/public/categories'),
   getAllMenuItems: () => api.get('/public/menu-items'),
@@ -9,10 +15,18 @@ export const menuService = {
   getTableByCode: (tableCode) => api.get(`/public/tables/by-code/${tableCode}`),
   getSessionState: (tableCode) => api.get(`/public/tables/${tableCode}/session-state`),
   startSession: (tableCode) => api.post(`/public/tables/${tableCode}/start-session`),
-  heartbeatSession: (sessionToken) => api.post('/public/sessions/heartbeat', { sessionToken }),
+  heartbeatSession: (sessionToken) => api.post(
+    '/public/sessions/heartbeat',
+    { sessionToken },
+    sessionHeaderConfig(sessionToken)
+  ),
   getCurrentOrderByTableCode: (tableCode, sessionToken) =>
     api.get(`/public/tables/code/${tableCode}/current-order`, { params: { sessionToken } }),
-  createOrder: (orderData) => api.post('/public/orders', orderData),
+  createOrder: (orderData) => api.post(
+    '/public/orders',
+    orderData,
+    sessionHeaderConfig(orderData?.sessionToken)
+  ),
   getRecommendations: (itemId) => api.get(`/public/recommendations/items/${itemId}`),
   getPopularItems: () => api.get('/public/recommendations/popular'),
   getPersonalizedRecommendations: (context) =>

@@ -85,6 +85,7 @@ class OrderPricingServiceTest {
                 new CustomerCreateOrderRequest(
                         "T1",
                         "SESSION",
+                        "req-1",
                         null,
                         List.of(
                                 new OrderItemRequest(1L, 2, null, List.of(11L)),

@@ -46,6 +46,8 @@ public enum ErrorCode {
     ORDER_INVALID_STATE(HttpStatus.BAD_REQUEST, "Invalid order state"),
     ORDER_ALREADY_PAID(HttpStatus.BAD_REQUEST, "Order is already paid"),
     ORDER_PAYMENT_INVALID(HttpStatus.BAD_REQUEST, "Order payment is invalid"),
+    ORDER_PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Order payment is in progress"),
+    ORDER_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Order request already submitted"),
 
     VOUCHER_NOT_FOUND(HttpStatus.NOT_FOUND, "Voucher not found"),
     VOUCHER_CODE_EXISTS(HttpStatus.CONFLICT, "Voucher code already exists"),

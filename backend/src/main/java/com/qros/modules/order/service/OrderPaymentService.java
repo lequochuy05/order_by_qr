@@ -38,6 +38,7 @@ public class OrderPaymentService {
     private final PaymentTransactionRepository transactionRepository;
     private final OrderPricingService orderPricingService;
     private final PaymentCompletionService paymentCompletionService;
+    private final OrderStatusService orderStatusService;
     private final OrderMapper orderMapper;
 
     @Transactional
@@ -53,6 +54,8 @@ public class OrderPaymentService {
         if (order.getPaymentStatus() == PaymentStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
             throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "This order is already settled");
         }
+
+        orderStatusService.tryAutoPromoteOrder(order);
 
         if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             throw new BusinessException(
@@ -87,6 +90,8 @@ public class OrderPaymentService {
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
             return orderMapper.toResponse(order);
         }
+
+        orderStatusService.tryAutoPromoteOrder(order);
 
         if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             throw new BusinessException(

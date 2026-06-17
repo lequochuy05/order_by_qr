@@ -67,9 +67,9 @@ public class OrderItemWorkflowService {
                 null,
                 "item-cancelled");
 
-        reconcileOrderAfterItemMutation(order, null);
+        Order saved = reconcileOrderAfterItemMutation(order, null);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
@@ -121,9 +121,9 @@ public class OrderItemWorkflowService {
                 changedBy,
                 "kitchen-status-update");
 
-        reconcileOrderAfterItemMutation(order, changedBy);
+        Order saved = reconcileOrderAfterItemMutation(order, changedBy);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
@@ -176,34 +176,38 @@ public class OrderItemWorkflowService {
         return orderMapper.toResponse(saved);
     }
 
-    private void reconcileOrderAfterItemMutation(Order order, User changedBy) {
-        orderPricingService.recalculateOrderTotals(order);
+    private Order reconcileOrderAfterItemMutation(Order order, User changedBy) {
+        Order lockedOrder = orderRepository.findByIdForUpdate(order.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
-        boolean hasBillableItems = order.getOrderItems().stream()
+        orderPricingService.recalculateOrderTotals(lockedOrder);
+
+        boolean hasBillableItems = lockedOrder.getOrderItems().stream()
                 .anyMatch(OrderItem::isBillable);
 
         if (!hasBillableItems) {
-            OrderStatus fromStatus = order.getStatus();
+            OrderStatus fromStatus = lockedOrder.getStatus();
 
-            order.setStatus(OrderStatus.CANCELLED);
-            order.setPaymentStatus(PaymentStatus.CANCELLED);
+            lockedOrder.setStatus(OrderStatus.CANCELLED);
+            lockedOrder.setPaymentStatus(PaymentStatus.CANCELLED);
 
             orderAuditService.recordOrderStatus(
-                    order,
+                    lockedOrder,
                     fromStatus,
-                    order.getStatus(),
+                    lockedOrder.getStatus(),
                     changedBy,
                     "all-items-cancelled");
 
-            Order saved = orderRepository.save(order);
+            Order saved = orderRepository.save(lockedOrder);
             orderTableSyncService.recalcTableStatus(saved);
-            return;
+            return saved;
         }
 
-        orderStatusService.tryAutoPromoteOrder(order, changedBy);
+        orderStatusService.tryAutoPromoteOrder(lockedOrder, changedBy);
 
-        Order saved = orderRepository.save(order);
+        Order saved = orderRepository.save(lockedOrder);
         orderTableSyncService.recalcTableStatus(saved);
+        return saved;
     }
 
     private void validateOrderMutable(Order order) {

@@ -130,7 +130,7 @@ const ItemOptionsModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[80] flex items-end bg-black/60 animate-in fade-in duration-200"
     >
       <div
         className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 transition-colors overflow-hidden"

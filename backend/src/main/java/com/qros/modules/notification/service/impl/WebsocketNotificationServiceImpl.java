@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -83,10 +85,10 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
 
     @Override
     public void notifyPaymentSuccess(Long orderId, Long transactionId) {
-        NotificationPayload payload = NotificationPayload.eventWithIdAndData(
-                EVENT_PAYMENT_SUCCESS,
-                orderId,
-                transactionId);
+        Map<String, Object> payload = Map.of(
+                "event", EVENT_PAYMENT_SUCCESS,
+                "orderId", orderId,
+                "transactionId", transactionId);
 
         publishInternalEvent(
                 TOPIC_TABLES,

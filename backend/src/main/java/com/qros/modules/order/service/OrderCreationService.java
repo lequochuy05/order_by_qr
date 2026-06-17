@@ -134,6 +134,7 @@ public class OrderCreationService {
             List<OrderComboRequest> combos,
             BatchSource source) {
         Order order = getOrCreateActiveOrder(table, session);
+        ensureNoPaymentInProgress(order);
         orderValidator.validateTableAcceptsOrders(table);
 
         OrderBatch batch = OrderBatch.builder()
@@ -215,6 +216,22 @@ public class OrderCreationService {
                 .paidAmount(BigDecimal.ZERO)
                 .businessDate(AppTime.today())
                 .build();
+    }
+
+    private void ensureNoPaymentInProgress(Order order) {
+        if (order == null || order.getId() == null) {
+            return;
+        }
+
+        boolean hasPendingPayment = paymentTransactionRepository.existsByOrderIdAndStatus(
+                order.getId(),
+                PaymentTransactionStatus.PENDING);
+
+        if (hasPendingPayment) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_PAYMENT_IN_PROGRESS,
+                    "Bàn đang trong quá trình thanh toán, vui lòng liên hệ nhân viên");
+        }
     }
 
     private void expirePendingOnlineTransactions(Long orderId) {

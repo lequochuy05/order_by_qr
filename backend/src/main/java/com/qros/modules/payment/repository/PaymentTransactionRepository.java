@@ -40,6 +40,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         PaymentMethod paymentMethod,
                         PaymentTransactionStatus status);
 
+        boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
+
         @Query("""
                         SELECT t
                         FROM PaymentTransaction t

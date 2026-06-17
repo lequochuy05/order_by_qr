@@ -7,6 +7,7 @@ import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.service.OrderPaymentService;
 import com.qros.modules.order.service.OrderPricingService;
+import com.qros.modules.order.service.OrderStatusService;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +59,9 @@ class OrderServiceImplTest {
     @Mock
     OrderPricingService orderPricingService;
 
+    @Mock
+    OrderStatusService orderStatusService;
+
     private OrderPaymentService orderPaymentService;
 
     @BeforeEach
@@ -68,6 +73,7 @@ class OrderServiceImplTest {
                 transactionRepository,
                 orderPricingService,
                 paymentCompletionService,
+                orderStatusService,
                 new OrderMapper());
     }
 
@@ -107,6 +113,37 @@ class OrderServiceImplTest {
         assertThat(order.getStatus()).isEqualTo(OrderStatus.AWAITING_PAYMENT);
         assertThat(order.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         verify(paymentCompletionService).completeSuccessfulTransaction(transaction, null);
+    }
+
+    @Test
+    void payOrderAutoPromotesFinishedPendingOrderBeforePayment() {
+        User cashier = User.builder().id(8L).fullName("Cashier").build();
+        Order order = Order.builder()
+                .id(52L)
+                .status(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .subtotalAmount(BigDecimal.valueOf(120_000))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.valueOf(120_000))
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+
+        when(orderRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(order));
+        when(userRepository.findById(8L)).thenReturn(Optional.of(cashier));
+        doAnswer(invocation -> {
+            order.setStatus(OrderStatus.AWAITING_PAYMENT);
+            return null;
+        }).when(orderStatusService).tryAutoPromoteOrder(order);
+        when(transactionRepository.findFirstByIdempotencyKey("cash:order:52")).thenReturn(Optional.empty());
+        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        String result = orderPaymentService.payOrder(52L, 8L, null);
+
+        assertThat(result).isEqualTo("Order settled successfully");
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.AWAITING_PAYMENT);
+        verify(orderStatusService).tryAutoPromoteOrder(order);
+        verify(paymentCompletionService).completeSuccessfulTransaction(any(PaymentTransaction.class), isNull());
     }
 
     @Test

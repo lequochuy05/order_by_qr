@@ -19,12 +19,15 @@ import com.qros.modules.order.service.OrderStatusService;
 import com.qros.modules.order.service.OrderTableSyncService;
 import com.qros.modules.order.service.OrderValidator;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,9 +43,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -152,12 +158,49 @@ class OrderCreationServiceTest {
         orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
                 "T1",
                 "SESSION",
+                "req-1",
                 null,
                 List.of(
                         new OrderItemRequest(1L, 2, null, List.of(11L)),
                         new OrderItemRequest(2L, 3, null, List.of(21L)))));
 
         verify(itemOptionValueRepository).findAllByIdIn(argThat(ids -> idsEqual(ids, Set.of(11L, 21L))));
+    }
+
+    @Test
+    void createCustomerOrderRejectsWhenPendingPaymentExists() {
+        DiningTable table = DiningTable.builder()
+                .id(7L)
+                .tableNumber("A1")
+                .tableCode("T1")
+                .status(TableStatus.OCCUPIED)
+                .capacity(4)
+                .build();
+        TableSession session = TableSession.builder()
+                .id(77L)
+                .table(table)
+                .build();
+        Order activeOrder = Order.builder()
+                .id(100L)
+                .table(table)
+                .tableSession(session)
+                .build();
+
+        when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
+        when(orderRepository.findActiveByTableSessionIdForUpdate(any(), any())).thenReturn(List.of(activeOrder));
+        when(paymentTransactionRepository.existsByOrderIdAndStatus(100L, PaymentTransactionStatus.PENDING))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
+                "T1",
+                "SESSION",
+                "req-2",
+                null,
+                List.of(new OrderItemRequest(1L, 1, null, List.of())))))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ORDER_PAYMENT_IN_PROGRESS));
+
+        verify(orderRepository, never()).save(any(Order.class));
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {

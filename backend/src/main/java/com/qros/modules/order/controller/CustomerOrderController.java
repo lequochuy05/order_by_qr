@@ -5,6 +5,7 @@ import com.qros.modules.order.dto.response.OrderPreviewResponse;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.dto.response.PublicOrderResponse;
 import com.qros.modules.order.service.OrderService;
+import com.qros.shared.idempotency.IdempotencyService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerOrderController {
 
     private final OrderService orderService;
+    private final IdempotencyService idempotencyService;
 
     @PostMapping("/orders")
     public ApiResponse<OrderResponse> createCustomerOrder(
             @Valid @RequestBody @NonNull CustomerCreateOrderRequest request) {
+        idempotencyService.requireNew(
+                "public-order:" + request.tableCode() + ":" + request.sessionToken(),
+                request.clientRequestId());
+
         return ApiResponse.success(
                 "Đặt món thành công",
                 orderService.createCustomerOrder(request));
