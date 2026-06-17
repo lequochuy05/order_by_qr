@@ -1,14 +1,13 @@
 package com.qros.modules.order.model;
 
-import com.qros.shared.entity.BaseEntity;
 import com.qros.modules.order.model.enums.BatchSource;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_batches")

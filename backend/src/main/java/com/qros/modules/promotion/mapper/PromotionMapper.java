@@ -3,12 +3,11 @@ package com.qros.modules.promotion.mapper;
 import com.qros.modules.promotion.dto.request.PromotionRequest;
 import com.qros.modules.promotion.dto.response.PromotionResponse;
 import com.qros.modules.promotion.model.Promotion;
-import org.springframework.stereotype.Component;
-
 import java.time.DayOfWeek;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 @Component
 public class PromotionMapper {
@@ -47,9 +46,7 @@ public class PromotionMapper {
     }
 
     public List<PromotionResponse> toResponses(List<Promotion> promotions) {
-        return promotions.stream()
-                .map(this::toResponse)
-                .toList();
+        return promotions.stream().map(this::toResponse).toList();
     }
 
     private Set<DayOfWeek> toSafeDays(Set<DayOfWeek> daysOfWeek) {

@@ -1,17 +1,16 @@
 package com.qros.core.config;
 
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
 /**
  * DataInitializer - Initialize essential data when the application starts.
@@ -30,7 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     /**
      * Executes when the application starts.
      * Checks if the user table is empty and creates a default admin account if necessary.
-     * 
+     *
      * @param args Command line arguments
      * @throws Exception If an error occurs during initialization
      */

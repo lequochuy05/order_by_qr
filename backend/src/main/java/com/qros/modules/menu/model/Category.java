@@ -1,13 +1,14 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
+import jakarta.persistence.*;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import jakarta.persistence.*;
-import java.util.Set;
-import java.util.LinkedHashSet;
+
 /**
  * Category - Entity representing a grouping for menu items (e.g., Drinks,
  * Appetizers).
@@ -21,7 +22,7 @@ import java.util.LinkedHashSet;
 @AllArgsConstructor
 @SQLDelete(sql = "UPDATE category SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
-public class Category extends BaseEntity{
+public class Category extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

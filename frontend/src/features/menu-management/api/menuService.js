@@ -4,12 +4,17 @@ import { createKeyedCachedRequest } from '@shared/lib/cacheUtils.js';
 const MENU_LIST_CACHE_MS = 15_000;
 const MENU_DETAIL_CACHE_MS = 10_000;
 
-const listKey = (categoryId) => (categoryId && categoryId !== 'ALL' ? `category:${categoryId}` : 'all');
+const listKey = (categoryId) =>
+  categoryId && categoryId !== 'ALL' ? `category:${categoryId}` : 'all';
 
 const stableStringify = (value) => {
   if (!value) return 'all';
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${k}:${stableStringify(value[k])}`).join(',')}}`;
+  if (typeof value === 'object')
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${k}:${stableStringify(value[k])}`)
+      .join(',')}}`;
   return String(value);
 };
 
@@ -24,7 +29,7 @@ const emptyPage = (page = 0, size = 24) => ({
   number: page,
   size,
   totalElements: 0,
-  totalPages: 0
+  totalPages: 0,
 });
 
 const normalizePage = (data, page = 0, size = 24) => {
@@ -33,49 +38,52 @@ const normalizePage = (data, page = 0, size = 24) => {
       ...emptyPage(page, size),
       content: data,
       totalElements: data.length,
-      totalPages: data.length > 0 ? 1 : 0
+      totalPages: data.length > 0 ? 1 : 0,
     };
   }
   return {
     ...emptyPage(page, size),
     ...data,
-    content: normalizePageContent(data)
+    content: normalizePageContent(data),
   };
 };
 
 const { requestFn: getMenuList, clearCache: clearMenuListCache } = createKeyedCachedRequest(
-  (categoryId) => api.get('/menu-items/management-summary', {
-    params: {
-      size: 1000,
-      sort: 'displayOrder,asc',
-      ...(categoryId && categoryId !== 'ALL' ? { categoryId } : {})
-    }
-  }),
+  (categoryId) =>
+    api.get('/menu-items/management-summary', {
+      params: {
+        size: 1000,
+        sort: 'displayOrder,asc',
+        ...(categoryId && categoryId !== 'ALL' ? { categoryId } : {}),
+      },
+    }),
   MENU_LIST_CACHE_MS,
-  listKey
+  listKey,
 );
 
 const { requestFn: getMenuPage, clearCache: clearMenuPageCache } = createKeyedCachedRequest(
   (params = {}) => {
     const page = Number(params.page || 0);
     const size = Number(params.size || 24);
-    return api.get('/menu-items/management-summary', {
-      params: {
-        page,
-        size,
-        sort: 'displayOrder,asc',
-        ...params
-      }
-    }).then((data) => normalizePage(data, page, size));
+    return api
+      .get('/menu-items/management-summary', {
+        params: {
+          page,
+          size,
+          sort: 'displayOrder,asc',
+          ...params,
+        },
+      })
+      .then((data) => normalizePage(data, page, size));
   },
   MENU_LIST_CACHE_MS,
-  stableStringify
+  stableStringify,
 );
 
 const { requestFn: getMenuDetail, clearCache: clearMenuDetailCache } = createKeyedCachedRequest(
   (id) => api.get(`/menu-items/${id}`),
   MENU_DETAIL_CACHE_MS,
-  (id) => String(id)
+  (id) => String(id),
 );
 
 const clearMenuCache = () => {
@@ -114,7 +122,7 @@ export const menuItemService = {
     const formData = new FormData();
     formData.append('file', file);
     const res = await api.post(`/menu-items/${id}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     clearMenuCache();
     return res;
@@ -125,5 +133,5 @@ export const menuItemService = {
     clearMenuCache();
     await api.delete(`/menu-items/${id}`);
     clearMenuCache();
-  }
+  },
 };

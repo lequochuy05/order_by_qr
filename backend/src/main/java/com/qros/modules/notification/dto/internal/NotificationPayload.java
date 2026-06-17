@@ -1,9 +1,6 @@
 package com.qros.modules.notification.dto.internal;
 
-public record NotificationPayload(
-        String event,
-        Object id,
-        Object data) {
+public record NotificationPayload(String event, Object id, Object data) {
 
     public static NotificationPayload event(String event) {
         return new NotificationPayload(event, null, null);

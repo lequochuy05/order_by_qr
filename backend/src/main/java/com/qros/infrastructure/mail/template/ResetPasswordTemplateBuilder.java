@@ -3,11 +3,10 @@ package com.qros.infrastructure.mail.template;
 import org.springframework.lang.NonNull;
 
 public final class ResetPasswordTemplateBuilder {
-    
+
     private ResetPasswordTemplateBuilder() {}
 
-    @NonNull
-    public static String build(String resetLink) {
+    @NonNull public static String build(String resetLink) {
         return """
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
               <div style="background: #2c7be5; color: #fff; padding: 20px; text-align: center;">
@@ -30,6 +29,7 @@ public final class ResetPasswordTemplateBuilder {
                   <p>&copy; 2026 wuchuy</p>
               </div>
             </div>
-            """.formatted(resetLink);
+            """
+                .formatted(resetLink);
     }
 }

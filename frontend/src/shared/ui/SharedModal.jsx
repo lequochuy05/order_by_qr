@@ -4,9 +4,9 @@ const SharedModal = ({
   isOpen,
   onClose,
   children,
-  className = "max-w-lg",
-  backdropClassName = "bg-black/60 backdrop-blur-sm",
-  closeOnBackdrop = false
+  className = 'max-w-lg',
+  backdropClassName = 'bg-black/60 backdrop-blur-sm',
+  closeOnBackdrop = false,
 }) => {
   if (!isOpen) return null;
 

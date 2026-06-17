@@ -1,12 +1,9 @@
 package com.qros.modules.promotion.dto.internal;
 
 import com.qros.modules.promotion.model.Voucher;
-
 import java.math.BigDecimal;
 
-public record VoucherPaymentResult(
-        Voucher voucher,
-        DiscountResult discountResult) {
+public record VoucherPaymentResult(Voucher voucher, DiscountResult discountResult) {
 
     public BigDecimal appliedDiscountAmount() {
         return discountResult != null && discountResult.appliedDiscountAmount() != null

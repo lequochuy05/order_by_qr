@@ -5,30 +5,24 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.service.TableActiveOrderChecker;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class TableActiveOrderCheckerImpl implements TableActiveOrderChecker {
 
-    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = List.of(
-            OrderStatus.PENDING,
-            OrderStatus.SERVING,
-            OrderStatus.AWAITING_PAYMENT);
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
+            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
 
     private final OrderRepository orderRepository;
 
     @Override
     public boolean hasActiveOrders(Long tableId) {
-        return orderRepository.existsByTableIdAndStatusIn(
-                tableId,
-                ACTIVE_ORDER_STATUSES
-        );
+        return orderRepository.existsByTableIdAndStatusIn(tableId, ACTIVE_ORDER_STATUSES);
     }
 
     @Override
@@ -37,9 +31,7 @@ public class TableActiveOrderCheckerImpl implements TableActiveOrderChecker {
             return;
         }
 
-        List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
-                tableId,
-                ACTIVE_ORDER_STATUSES);
+        List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(tableId, ACTIVE_ORDER_STATUSES);
 
         if (activeOrders == null || activeOrders.isEmpty()) {
             return;

@@ -10,19 +10,20 @@ import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
 import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.modules.order.model.Order;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
 public interface AnalyticsQueryRepository extends Repository<Order, Long> {
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT COALESCE(SUM(o.final_amount), 0) AS totalRevenue,
              COUNT(o.id) AS totalOrders,
              CAST(COALESCE((
@@ -44,12 +45,14 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND o.is_deleted = false
         AND o.business_date >= :from
         AND o.business_date < :toExclusive
-      """, nativeQuery = true)
-  DashboardSummaryProjection dashboardSummary(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive);
+      """,
+            nativeQuery = true)
+    DashboardSummaryProjection dashboardSummary(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT TO_CHAR(o.business_date, 'YYYY-MM-DD') AS date,
              COALESCE(SUM(o.final_amount), 0) AS revenue,
              COUNT(o.id) AS orderCount
@@ -60,12 +63,14 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND o.business_date < :toExclusive
       GROUP BY o.business_date
       ORDER BY o.business_date ASC
-      """, nativeQuery = true)
-  List<RevenuePointProjection> revenueByDay(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive);
+      """,
+            nativeQuery = true)
+    List<RevenuePointProjection> revenueByDay(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT u.id AS userId,
              u.full_name AS fullName,
              u.avatar_url AS avatarUrl,
@@ -80,13 +85,14 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       GROUP BY u.id, u.full_name, u.avatar_url
       ORDER BY revenue DESC
       LIMIT :limit
-      """, nativeQuery = true)
-  List<UserPerformanceProjection> userPerformance(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive,
-      @Param("limit") int limit);
+      """,
+            nativeQuery = true)
+    List<UserPerformanceProjection> userPerformance(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive, @Param("limit") int limit);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT o.id AS orderId,
              o.payment_time AS paymentTime,
              COALESCE(u.full_name, '—') AS userName,
@@ -100,20 +106,23 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND o.business_date >= :from
         AND o.business_date < :toExclusive
       ORDER BY o.payment_time DESC
-      """, countQuery = """
+      """,
+            countQuery =
+                    """
       SELECT COUNT(o.id)
       FROM orders o
       WHERE o.status = 'COMPLETED'
         AND o.is_deleted = false
         AND o.business_date >= :from
         AND o.business_date < :toExclusive
-      """, nativeQuery = true)
-  Page<OrderDetailProjection> orderDetails(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive,
-      Pageable pageable);
+      """,
+            nativeQuery = true)
+    Page<OrderDetailProjection> orderDetails(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive, Pageable pageable);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT mi.id AS menuItemId,
              oi.item_name_snapshot AS itemName,
              c.name AS categoryName,
@@ -132,13 +141,14 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       GROUP BY mi.id, oi.item_name_snapshot, c.name, mi.img
       ORDER BY quantitySold DESC, revenue DESC
       LIMIT :limit
-      """, nativeQuery = true)
-  List<TopSellingItemProjection> topSellingItems(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive,
-      @Param("limit") int limit);
+      """,
+            nativeQuery = true)
+    List<TopSellingItemProjection> topSellingItems(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive, @Param("limit") int limit);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT TO_CHAR(o.business_date, 'YYYY-MM-DD') AS date,
              CAST(SUM(oi.quantity) AS BIGINT) AS quantitySold
       FROM order_item oi
@@ -150,32 +160,39 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND o.business_date < :toExclusive
       GROUP BY o.business_date
       ORDER BY o.business_date ASC
-      """, nativeQuery = true)
-  List<SalesTrendPointProjection> salesTrendByDay(
-      @Param("from") LocalDate from,
-      @Param("toExclusive") LocalDate toExclusive);
+      """,
+            nativeQuery = true)
+    List<SalesTrendPointProjection> salesTrendByDay(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT COUNT(o.id) AS totalOrders,
              COUNT(o.id) FILTER (WHERE o.status = 'COMPLETED') AS completedOrders
       FROM orders o
       WHERE o.is_deleted = false
         AND o.created_at >= :from
         AND o.created_at < :toExclusive
-      """, nativeQuery = true)
-  OrderSummaryProjection orderSummary(
-      @Param("from") LocalDateTime from,
-      @Param("toExclusive") LocalDateTime toExclusive);
+      """,
+            nativeQuery = true)
+    OrderSummaryProjection orderSummary(
+            @Param("from") LocalDateTime from, @Param("toExclusive") LocalDateTime toExclusive);
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT COUNT(t.id) AS totalTables,
              COUNT(t.id) FILTER (WHERE t.status <> 'AVAILABLE') AS occupiedTables
       FROM tables t
       WHERE t.is_deleted = false
-      """, nativeQuery = true)
-  TableSummaryProjection tableSummary();
+      """,
+            nativeQuery = true)
+    TableSummaryProjection tableSummary();
 
-  @Query(value = """
+    @Query(
+            value =
+                    """
       SELECT o.id AS orderId,
              o.status AS status,
              o.final_amount AS finalAmount,
@@ -189,9 +206,10 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND o.created_at < :toExclusive
       ORDER BY o.created_at DESC
       LIMIT :limit
-      """, nativeQuery = true)
-  List<RecentOrderProjection> recentOrders(
-      @Param("from") LocalDateTime from,
-      @Param("toExclusive") LocalDateTime toExclusive,
-      @Param("limit") int limit);
+      """,
+            nativeQuery = true)
+    List<RecentOrderProjection> recentOrders(
+            @Param("from") LocalDateTime from,
+            @Param("toExclusive") LocalDateTime toExclusive,
+            @Param("limit") int limit);
 }

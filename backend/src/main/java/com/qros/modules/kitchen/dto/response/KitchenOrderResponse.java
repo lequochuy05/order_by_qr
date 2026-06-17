@@ -2,7 +2,6 @@ package com.qros.modules.kitchen.dto.response;
 
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +14,7 @@ public record KitchenOrderResponse(
         List<KitchenOrderItemResponse> orderItems,
         LocalDateTime createdAt) {
 
-    public record TableSummary(Long id, String tableNumber) {
-    }
+    public record TableSummary(Long id, String tableNumber) {}
 
     public record KitchenOrderItemResponse(
             Long id,
@@ -29,22 +27,14 @@ public record KitchenOrderResponse(
             OrderItemStatus status,
             List<KitchenOrderItemOptionResponse> options,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
-    }
+            LocalDateTime updatedAt) {}
 
-    public record MenuItemSummary(Long id, String name, CategorySummary category) {
-    }
+    public record MenuItemSummary(Long id, String name, CategorySummary category) {}
 
-    public record CategorySummary(String name) {
-    }
+    public record CategorySummary(String name) {}
 
-    public record ComboSummary(Long id, String name, BigDecimal price) {
-    }
+    public record ComboSummary(Long id, String name, BigDecimal price) {}
 
     public record KitchenOrderItemOptionResponse(
-            Long valueId,
-            String optionName,
-            String optionValueName,
-            BigDecimal extraPrice) {
-    }
+            Long valueId, String optionName, String optionValueName, BigDecimal extraPrice) {}
 }

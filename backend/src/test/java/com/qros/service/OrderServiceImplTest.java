@@ -1,5 +1,14 @@
 package com.qros.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
@@ -19,24 +28,14 @@ import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.math.BigDecimal;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceImplTest {
@@ -94,7 +93,8 @@ class OrderServiceImplTest {
         when(orderRepository.findByIdForUpdate(50L)).thenReturn(Optional.of(order));
         when(userRepository.findById(7L)).thenReturn(Optional.of(cashier));
         when(transactionRepository.findFirstByIdempotencyKey("cash:order:50")).thenReturn(Optional.empty());
-        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionRepository.save(any(PaymentTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         String result = orderPaymentService.payOrder(50L, 7L, null);
 
@@ -132,11 +132,14 @@ class OrderServiceImplTest {
         when(orderRepository.findByIdForUpdate(52L)).thenReturn(Optional.of(order));
         when(userRepository.findById(8L)).thenReturn(Optional.of(cashier));
         doAnswer(invocation -> {
-            order.setStatus(OrderStatus.AWAITING_PAYMENT);
-            return null;
-        }).when(orderStatusService).tryAutoPromoteOrder(order);
+                    order.setStatus(OrderStatus.AWAITING_PAYMENT);
+                    return null;
+                })
+                .when(orderStatusService)
+                .tryAutoPromoteOrder(order);
         when(transactionRepository.findFirstByIdempotencyKey("cash:order:52")).thenReturn(Optional.empty());
-        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionRepository.save(any(PaymentTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         String result = orderPaymentService.payOrder(52L, 8L, null);
 
@@ -161,6 +164,7 @@ class OrderServiceImplTest {
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.ORDER_PAYMENT_INVALID);
         verify(transactionRepository, never()).save(any(PaymentTransaction.class));
-        verify(paymentCompletionService, never()).completeSuccessfulTransaction(any(PaymentTransaction.class), isNull());
+        verify(paymentCompletionService, never())
+                .completeSuccessfulTransaction(any(PaymentTransaction.class), isNull());
     }
 }

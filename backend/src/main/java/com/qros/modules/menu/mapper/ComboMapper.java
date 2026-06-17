@@ -4,25 +4,22 @@ import com.qros.modules.menu.dto.response.ComboItemResponse;
 import com.qros.modules.menu.dto.response.ComboResponse;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ComboMapper {
 
-    private static final Comparator<ComboItem> COMBO_ITEM_COMPARATOR =
-            Comparator.comparing((ComboItem item) ->
+    private static final Comparator<ComboItem> COMBO_ITEM_COMPARATOR = Comparator.comparing((ComboItem item) ->
                     item.getMenuItem() == null || item.getMenuItem().getDisplayOrder() == null
                             ? 0
-                            : item.getMenuItem().getDisplayOrder()
-            ).thenComparing((ComboItem item) ->
+                            : item.getMenuItem().getDisplayOrder())
+            .thenComparing((ComboItem item) ->
                     item.getMenuItem() == null || item.getMenuItem().getName() == null
                             ? ""
-                            : item.getMenuItem().getName()
-            );
+                            : item.getMenuItem().getName());
 
     public ComboResponse toResponse(Combo combo) {
         if (combo == null) {
@@ -47,8 +44,7 @@ public class ComboMapper {
                 combo.getDisplayOrder(),
                 combo.getCreatedAt(),
                 combo.getUpdatedAt(),
-                items
-        );
+                items);
     }
 
     public ComboResponse toSummaryResponse(Combo combo) {
@@ -66,8 +62,7 @@ public class ComboMapper {
                 combo.getDisplayOrder(),
                 combo.getCreatedAt(),
                 combo.getUpdatedAt(),
-                Collections.emptyList()
-        );
+                Collections.emptyList());
     }
 
     public ComboItemResponse toItemResponse(ComboItem item) {
@@ -80,7 +75,6 @@ public class ComboMapper {
                 item.getMenuItem() != null ? item.getMenuItem().getId() : null,
                 item.getMenuItem() != null ? item.getMenuItem().getName() : null,
                 item.getMenuItem() != null ? item.getMenuItem().getImg() : null,
-                item.getQuantity()
-        );
+                item.getQuantity());
     }
 }

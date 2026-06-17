@@ -2,9 +2,8 @@ package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
-import org.springframework.stereotype.Component;
-
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * CompletedState - Handles the logic for orders that have been successfully
@@ -14,8 +13,7 @@ import java.util.Set;
 @Component
 public class CompletedState implements OrderState {
 
-    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(
-            OrderStatus.AWAITING_PAYMENT);
+    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(OrderStatus.AWAITING_PAYMENT);
 
     /**
      * Transitions the order status to COMPLETED.

@@ -9,6 +9,7 @@ import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,7 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 @Validated
 @RestController
 @RequestMapping("/api/vouchers")
@@ -48,18 +48,12 @@ public class VoucherController {
 
     @PostMapping
     public ApiResponse<VoucherResponse> create(@Valid @RequestBody VoucherRequest request) {
-        return ApiResponse.success(
-                "Voucher created successfully",
-                voucherService.create(request));
+        return ApiResponse.success("Voucher created successfully", voucherService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<VoucherResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody VoucherRequest request) {
-        return ApiResponse.success(
-                "Voucher updated successfully",
-                voucherService.update(id, request));
+    public ApiResponse<VoucherResponse> update(@PathVariable Long id, @Valid @RequestBody VoucherRequest request) {
+        return ApiResponse.success("Voucher updated successfully", voucherService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
@@ -71,8 +65,8 @@ public class VoucherController {
     @GetMapping("/validate")
     public ApiResponse<VoucherValidateResponse> validate(
             @RequestParam @NotBlank(message = "Voucher code cannot be empty") String code,
-
-            @RequestParam(defaultValue = "0") @DecimalMin(value = "0.00", message = "Subtotal cannot be negative") BigDecimal subtotal) {
+            @RequestParam(defaultValue = "0") @DecimalMin(value = "0.00", message = "Subtotal cannot be negative")
+                    BigDecimal subtotal) {
         return ApiResponse.success(voucherCheckoutService.validateCode(code, subtotal));
     }
 }

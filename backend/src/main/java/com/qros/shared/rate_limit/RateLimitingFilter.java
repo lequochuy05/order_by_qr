@@ -6,16 +6,15 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.concurrent.TimeUnit;
 
 /**
  * RateLimitingFilter - In-memory sliding-window rate limiter for public endpoints.
@@ -35,16 +34,16 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             .build();
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
         String path = request.getRequestURI();
         String method = request.getMethod();
 
         boolean isAiChat = "/api/ai/chat".equals(path) && "POST".equalsIgnoreCase(method);
         boolean isPublicOrder = path.startsWith("/api/public/orders") && "POST".equalsIgnoreCase(method);
-        boolean isStartSession = path.matches("^/api/public/tables/[^/]+/start-session$") && "POST".equalsIgnoreCase(method);
+        boolean isStartSession =
+                path.matches("^/api/public/tables/[^/]+/start-session$") && "POST".equalsIgnoreCase(method);
         boolean isHeartbeat = "/api/public/sessions/heartbeat".equals(path) && "POST".equalsIgnoreCase(method);
         boolean isRecommendation = path.startsWith("/api/public/recommendations") && "GET".equalsIgnoreCase(method);
 

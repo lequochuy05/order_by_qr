@@ -1,5 +1,12 @@
 package com.qros.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
@@ -15,24 +22,16 @@ import com.qros.modules.order.service.OrderValidator;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.service.TableSessionService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class OrderPricingServiceTest {
@@ -75,21 +74,18 @@ class OrderPricingServiceTest {
 
         when(menuItemRepository.findAllByIdIn(Set.of(1L, 2L))).thenReturn(List.of(coffee, tea));
         when(itemOptionValueRepository.findAllById(argThat(ids -> idsEqual(ids, Set.of(11L, 21L)))))
-                .thenReturn(List.of(
-                        firstOptionValue(coffee),
-                        firstOptionValue(tea)));
+                .thenReturn(List.of(firstOptionValue(coffee), firstOptionValue(tea)));
         when(voucherCheckoutService.previewVoucher(isNull(), any(BigDecimal.class)))
                 .thenAnswer(invocation -> noDiscount(invocation.getArgument(1)));
 
-        OrderPreviewResponse response = orderPricingService.previewCustomerOrder(
-                new CustomerCreateOrderRequest(
-                        "T1",
-                        "SESSION",
-                        "req-1",
-                        null,
-                        List.of(
-                                new OrderItemRequest(1L, 2, null, List.of(11L)),
-                                new OrderItemRequest(2L, 3, null, List.of(21L)))));
+        OrderPreviewResponse response = orderPricingService.previewCustomerOrder(new CustomerCreateOrderRequest(
+                "T1",
+                "SESSION",
+                "req-1",
+                null,
+                List.of(
+                        new OrderItemRequest(1L, 2, null, List.of(11L)),
+                        new OrderItemRequest(2L, 3, null, List.of(21L)))));
 
         assertThat(response.subtotalItems()).isEqualByComparingTo("51000");
         verify(tableSessionService).requireOpenSessionForRead("T1", "SESSION");
@@ -97,11 +93,8 @@ class OrderPricingServiceTest {
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {
-        Category category = Category.builder()
-                .id(1L)
-                .name("Drinks")
-                .active(true)
-                .build();
+        Category category =
+                Category.builder().id(1L).name("Drinks").active(true).build();
 
         MenuItem item = MenuItem.builder()
                 .id(id)
@@ -136,24 +129,21 @@ class OrderPricingServiceTest {
     }
 
     private ItemOptionValue firstOptionValue(MenuItem item) {
-        return item.getItemOptions().iterator().next().getOptionValues().iterator().next();
+        return item.getItemOptions()
+                .iterator()
+                .next()
+                .getOptionValues()
+                .iterator()
+                .next();
     }
 
     private DiscountResult noDiscount(BigDecimal subtotal) {
         return new DiscountResult(
-                null,
-                null,
-                null,
-                subtotal,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
-                subtotal);
+                null, null, null, subtotal, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, subtotal);
     }
 
     private boolean idsEqual(Iterable<Long> actualIds, Set<Long> expectedIds) {
-        Set<Long> actual = StreamSupport.stream(actualIds.spliterator(), false)
-                .collect(Collectors.toSet());
+        Set<Long> actual = StreamSupport.stream(actualIds.spliterator(), false).collect(Collectors.toSet());
         return actual.equals(expectedIds);
     }
 }

@@ -10,13 +10,12 @@ import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +35,8 @@ public class AuthService {
     public LoginResult login(@NonNull LoginRequest req) {
         String email = req.email().trim().toLowerCase();
 
-        User user = userRepository.findByEmailIgnoreCase(email)
+        User user = userRepository
+                .findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
         if (user.getStatus() != UserStatus.ACTIVE) {
@@ -65,8 +65,6 @@ public class AuthService {
                 user.getEmail(),
                 Map.of(
                         "uid", user.getId(),
-                        "role", user.getRole().name()
-                )
-        );
+                        "role", user.getRole().name()));
     }
 }

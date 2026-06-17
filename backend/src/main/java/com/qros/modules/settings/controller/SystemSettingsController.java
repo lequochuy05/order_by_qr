@@ -25,10 +25,7 @@ public class SystemSettingsController {
     }
 
     @PutMapping
-    public ApiResponse<SystemSettingsResponse> updateSettings(
-            @Valid @RequestBody SystemSettingsUpdateRequest request) {
-        return ApiResponse.success(
-                "System settings updated successfully",
-                settingsService.updateSettings(request));
+    public ApiResponse<SystemSettingsResponse> updateSettings(@Valid @RequestBody SystemSettingsUpdateRequest request) {
+        return ApiResponse.success("System settings updated successfully", settingsService.updateSettings(request));
     }
 }

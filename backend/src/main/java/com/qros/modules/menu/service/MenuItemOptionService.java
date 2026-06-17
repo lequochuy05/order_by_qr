@@ -7,15 +7,14 @@ import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -142,21 +141,16 @@ public class MenuItemOptionService {
                     .toLowerCase();
 
             if (!optionNames.add(optionName)) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Duplicate option name: " + option.name());
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Duplicate option name: " + option.name());
             }
 
             if (option.optionValues() == null || option.optionValues().isEmpty()) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Option must contain at least one value");
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Option must contain at least one value");
             }
 
-            if (option.maxSelection() != null && option.maxSelection() > option.optionValues().size()) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Max selection cannot exceed option value count");
+            if (option.maxSelection() != null
+                    && option.maxSelection() > option.optionValues().size()) {
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Max selection cannot exceed option value count");
             }
 
             Set<String> valueNames = new HashSet<>();
@@ -166,9 +160,7 @@ public class MenuItemOptionService {
                         .toLowerCase();
 
                 if (!valueNames.add(valueName)) {
-                    throw new BusinessException(
-                            ErrorCode.BUSINESS_ERROR,
-                            "Duplicate option value: " + value.name());
+                    throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Duplicate option value: " + value.name());
                 }
             }
         }

@@ -15,12 +15,12 @@ const VOUCHER_STATUS = {
   ACTIVE: { text: 'Đang dùng', color: 'bg-green-100 text-green-700' },
   INACTIVE: { text: 'Ngừng', color: 'bg-gray-100 text-gray-500' },
   EXPIRED: { text: 'Hết hạn', color: 'bg-red-100 text-red-600' },
-  EXHAUSTED: { text: 'Hết lượt', color: 'bg-amber-100 text-amber-700' }
+  EXHAUSTED: { text: 'Hết lượt', color: 'bg-amber-100 text-amber-700' },
 };
 
 const voucherStatusFilterOptions = Object.entries(VOUCHER_STATUS).map(([id, meta]) => ({
   id,
-  name: meta.text
+  name: meta.text,
 }));
 
 const VoucherManager = () => {
@@ -67,31 +67,34 @@ const VoucherManager = () => {
     };
   }, []);
 
-  const fetchData = useCallback(async (showLoading = false, { force = false } = {}) => {
-    const fetchSeq = ++fetchSeqRef.current;
-    if (showLoading) setLoading(true);
-    try {
-      const params = {
-        page: currentPage,
-        size: pageSize
-      };
-      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
-      if (statusFilter !== 'ALL') params.status = statusFilter;
+  const fetchData = useCallback(
+    async (showLoading = false, { force = false } = {}) => {
+      const fetchSeq = ++fetchSeqRef.current;
+      if (showLoading) setLoading(true);
+      try {
+        const params = {
+          page: currentPage,
+          size: pageSize,
+        };
+        if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+        if (statusFilter !== 'ALL') params.status = statusFilter;
 
-      const data = await voucherService.getPage(params, { force });
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setVouchers(data.content || []);
-      setTotalPages(data.totalPages || 0);
-      setTotalElements(data.totalElements || 0);
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      console.error(err);
-    } finally {
-      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-        setLoading(false);
+        const data = await voucherService.getPage(params, { force });
+        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+        setVouchers(data.content || []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
+      } catch (err) {
+        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+        console.error(err);
+      } finally {
+        if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+          setLoading(false);
+        }
       }
-    }
-  }, [currentPage, debouncedSearchTerm, statusFilter]);
+    },
+    [currentPage, debouncedSearchTerm, statusFilter],
+  );
 
   useWebSocket('/topic/vouchers', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
@@ -104,12 +107,18 @@ const VoucherManager = () => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
 
-  useEffect(() => { fetchData(true); }, [fetchData]);
+  useEffect(() => {
+    fetchData(true);
+  }, [fetchData]);
 
   const handleSubmit = async (data) => {
     setIsSaving(true);
-    const safeValidFrom = data.validFrom && !data.validFrom.includes('T') ? `${data.validFrom}T00:00:00` : data.validFrom;
-    const safeValidTo = data.validTo && !data.validTo.includes('T') ? `${data.validTo}T23:59:59` : data.validTo;
+    const safeValidFrom =
+      data.validFrom && !data.validFrom.includes('T')
+        ? `${data.validFrom}T00:00:00`
+        : data.validFrom;
+    const safeValidTo =
+      data.validTo && !data.validTo.includes('T') ? `${data.validTo}T23:59:59` : data.validTo;
 
     const payload = {
       ...data,
@@ -119,7 +128,7 @@ const VoucherManager = () => {
       discountAmount: data.discountAmount ? parseFloat(data.discountAmount) : null,
       usageLimit: parseInt(data.usageLimit) || 0,
       validFrom: safeValidFrom,
-      validTo: safeValidTo
+      validTo: safeValidTo,
     };
 
     try {
@@ -134,8 +143,8 @@ const VoucherManager = () => {
       fetchData(false, { force: true });
     } catch (err) {
       const errorMsg = err.message || '';
-      if (errorMsg.includes("Voucher code already exists")) {
-        showError("Mã voucher này đã tồn tại trên hệ thống");
+      if (errorMsg.includes('Voucher code already exists')) {
+        showError('Mã voucher này đã tồn tại trên hệ thống');
       } else {
         showError(err);
       }
@@ -149,7 +158,7 @@ const VoucherManager = () => {
     if (!confirmed) return;
     try {
       await voucherService.delete(id);
-      showSuccess("Đã xóa voucher thành công");
+      showSuccess('Đã xóa voucher thành công');
       fetchData(false, { force: true });
     } catch (err) {
       showError(err);
@@ -162,7 +171,10 @@ const VoucherManager = () => {
         searchPlaceholder="Tìm mã voucher..."
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
-        onAddClick={() => { setEditingVoucher(null); setIsModalOpen(true); }}
+        onAddClick={() => {
+          setEditingVoucher(null);
+          setIsModalOpen(true);
+        }}
         addButtonText="Thêm Voucher"
         showFilter
         filterAllLabel="Tất cả trạng thái"
@@ -172,34 +184,71 @@ const VoucherManager = () => {
       />
 
       {loading ? (
-        <div className="flex justify-center p-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
+        <div className="flex justify-center p-20">
+          <Loader2 className="animate-spin text-orange-500" size={40} />
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {vouchers.map(v => {
+          {vouchers.map((v) => {
             const status = getStatusInfo(v);
             return (
-              <div key={v.id} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+              <div
+                key={v.id}
+                className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+              >
                 <div className="flex justify-between items-start mb-4">
-                  <div className="bg-orange-50 p-3 rounded-2xl text-orange-500"><Ticket size={24} /></div>
-                  <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${status.color}`}>
+                  <div className="bg-orange-50 p-3 rounded-2xl text-orange-500">
+                    <Ticket size={24} />
+                  </div>
+                  <span
+                    className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${status.color}`}
+                  >
                     {status.text}
                   </span>
                 </div>
 
-                <h3 className="text-xl font-black text-gray-800 mb-1 tracking-wider uppercase">{v.code}</h3>
+                <h3 className="text-xl font-black text-gray-800 mb-1 tracking-wider uppercase">
+                  {v.code}
+                </h3>
                 <div className="text-2xl font-black text-orange-600 mb-4">
                   {v.discountPercent ? `${v.discountPercent}%` : fmtVND(v.discountAmount)}
                 </div>
                 {/* ... Thông tin chi tiết ... */}
                 <div className="space-y-2 text-xs text-gray-500 mb-6">
-                  <div className="flex justify-between"><span>Đã dùng:</span> <span className="font-bold text-gray-700">{v.usedCount}</span></div>
-                  <div className="flex justify-between"><span>Giới hạn:</span> <span className="font-bold text-gray-700">{v.usageLimit === 0 ? '∞' : v.usageLimit}</span></div>
-                  <div className="flex justify-between"><span>Hạn dùng:</span> <span className="font-bold text-gray-700">{fmtDate(v.validTo) || 'Vô hạn'}</span></div>
+                  <div className="flex justify-between">
+                    <span>Đã dùng:</span>{' '}
+                    <span className="font-bold text-gray-700">{v.usedCount}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Giới hạn:</span>{' '}
+                    <span className="font-bold text-gray-700">
+                      {v.usageLimit === 0 ? '∞' : v.usageLimit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Hạn dùng:</span>{' '}
+                    <span className="font-bold text-gray-700">
+                      {fmtDate(v.validTo) || 'Vô hạn'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditingVoucher(v); setIsModalOpen(true); }} className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center"><Pencil size={18} /></button>
-                  <button onClick={() => handleDelete(v.id)} className="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex justify-center"><Trash2 size={18} /></button>
+                  <button
+                    onClick={() => {
+                      setEditingVoucher(v);
+                      setIsModalOpen(true);
+                    }}
+                    className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(v.id)}
+                    className="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex justify-center"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
             );
@@ -225,9 +274,11 @@ const VoucherManager = () => {
 
       {/* Modal Nhập liệu */}
       <VoucherModal
-        key={isModalOpen ? (editingVoucher?.id || 'new') : 'closed'}
-        isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}
-        initialData={editingVoucher} onSubmit={handleSubmit}
+        key={isModalOpen ? editingVoucher?.id || 'new' : 'closed'}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        initialData={editingVoucher}
+        onSubmit={handleSubmit}
         isSubmitting={isSaving}
       />
     </div>

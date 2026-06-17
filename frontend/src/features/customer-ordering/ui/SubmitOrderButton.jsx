@@ -1,4 +1,4 @@
-import { Send } from 'lucide-react'
+import { Send } from 'lucide-react';
 
 const SubmitOrderButton = ({ onClick, disabled = false, loading = false, totalLabel = '' }) => (
   <button
@@ -10,6 +10,6 @@ const SubmitOrderButton = ({ onClick, disabled = false, loading = false, totalLa
     <Send size={18} />
     <span>{loading ? 'Đang gửi...' : `Đặt món${totalLabel ? ` - ${totalLabel}` : ''}`}</span>
   </button>
-)
+);
 
-export default SubmitOrderButton
+export default SubmitOrderButton;

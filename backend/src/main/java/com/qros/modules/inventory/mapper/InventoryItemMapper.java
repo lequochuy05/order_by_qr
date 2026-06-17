@@ -3,18 +3,14 @@ package com.qros.modules.inventory.mapper;
 import com.qros.modules.inventory.dto.request.InventoryItemRequest;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
 import com.qros.modules.inventory.model.InventoryItem;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class InventoryItemMapper {
 
-    public InventoryItem toEntity(
-            InventoryItemRequest request,
-            String normalizedName,
-            String normalizedUnit) {
+    public InventoryItem toEntity(InventoryItemRequest request, String normalizedName, String normalizedUnit) {
         return InventoryItem.builder()
                 .name(normalizedName)
                 .unit(normalizedUnit)
@@ -26,10 +22,7 @@ public class InventoryItemMapper {
     }
 
     public void updateEntity(
-            InventoryItem item,
-            InventoryItemRequest request,
-            String normalizedName,
-            String normalizedUnit) {
+            InventoryItem item, InventoryItemRequest request, String normalizedName, String normalizedUnit) {
         item.setName(normalizedName);
         item.setUnit(normalizedUnit);
         item.setLowStockThreshold(defaultZero(request.lowStockThreshold()));
@@ -50,9 +43,7 @@ public class InventoryItemMapper {
     }
 
     public List<InventoryItemResponse> toResponses(List<InventoryItem> items) {
-        return items.stream()
-                .map(this::toResponse)
-                .toList();
+        return items.stream().map(this::toResponse).toList();
     }
 
     private BigDecimal defaultZero(BigDecimal value) {

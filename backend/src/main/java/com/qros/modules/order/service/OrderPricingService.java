@@ -1,7 +1,6 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.menu.model.Combo;
-import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboRepository;
@@ -20,11 +19,6 @@ import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
-import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +27,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -93,28 +91,18 @@ public class OrderPricingService {
 
     @Transactional(readOnly = true)
     public OrderPreviewResponse previewCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
-        tableSessionService.requireOpenSessionForRead(
-                request.tableCode(),
-                request.sessionToken());
+        tableSessionService.requireOpenSessionForRead(request.tableCode(), request.sessionToken());
 
-        return preview(
-                request.items(),
-                request.combos(),
-                null);
+        return preview(request.items(), request.combos(), null);
     }
 
     @Transactional(readOnly = true)
     public OrderPreviewResponse previewStaffOrder(@NonNull StaffCreateOrderRequest request) {
-        return preview(
-                request.items(),
-                request.combos(),
-                request.voucherCode());
+        return preview(request.items(), request.combos(), request.voucherCode());
     }
 
     private OrderPreviewResponse preview(
-            List<OrderItemRequest> items,
-            List<OrderComboRequest> combos,
-            String voucherCode) {
+            List<OrderItemRequest> items, List<OrderComboRequest> combos, String voucherCode) {
         validateOrderContent(items, combos);
         orderValidator.validateSystemAcceptsOrders();
 
@@ -125,7 +113,9 @@ public class OrderPricingService {
         DiscountResult discountResult = voucherCheckoutService.previewVoucher(voucherCode, subtotal);
 
         boolean isVoucherValid = discountResult.voucherId() != null;
-        String voucherMessage = isVoucherValid ? "Voucher áp dụng thành công" : (voucherCode != null ? "Voucher không hợp lệ hoặc đã hết hạn" : "");
+        String voucherMessage = isVoucherValid
+                ? "Voucher áp dụng thành công"
+                : (voucherCode != null ? "Voucher không hợp lệ hoặc đã hết hạn" : "");
 
         return new OrderPreviewResponse(
                 subtotalItems,
@@ -154,10 +144,8 @@ public class OrderPricingService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        Set<Long> menuItemIds = items.stream()
-                .map(OrderItemRequest::menuItemId)
-                .collect(Collectors.toSet());
-        
+        Set<Long> menuItemIds = items.stream().map(OrderItemRequest::menuItemId).collect(Collectors.toSet());
+
         java.util.Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
         Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
@@ -166,14 +154,12 @@ public class OrderPricingService {
             MenuItem menuItem = menuItemsMap.get(itemRequest.menuItemId());
             if (menuItem == null) {
                 throw new BusinessException(
-                        ErrorCode.MENU_ITEM_NOT_FOUND,
-                        "Menu item not found: " + itemRequest.menuItemId());
+                        ErrorCode.MENU_ITEM_NOT_FOUND, "Menu item not found: " + itemRequest.menuItemId());
             }
             orderValidator.validateMenuItemOrderable(menuItem);
 
-            List<Long> selectedOptionValueIds = itemRequest.selectedOptionValueIds() == null
-                    ? List.of()
-                    : itemRequest.selectedOptionValueIds();
+            List<Long> selectedOptionValueIds =
+                    itemRequest.selectedOptionValueIds() == null ? List.of() : itemRequest.selectedOptionValueIds();
 
             validateSelectedOptions(menuItem, selectedOptionValueIds);
 
@@ -196,18 +182,15 @@ public class OrderPricingService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        List<Long> comboIds = combos.stream()
-                .map(OrderComboRequest::comboId)
-                .collect(Collectors.toList());
-                
+        List<Long> comboIds = combos.stream().map(OrderComboRequest::comboId).collect(Collectors.toList());
+
         java.util.Map<Long, Combo> combosMap = comboRepository.findAllByIdInWithItems(comboIds).stream()
                 .collect(Collectors.toMap(Combo::getId, c -> c));
 
         for (OrderComboRequest comboRequest : combos) {
             Combo combo = Optional.ofNullable(combosMap.get(comboRequest.comboId()))
                     .orElseThrow(() -> new BusinessException(
-                            ErrorCode.COMBO_NOT_FOUND,
-                            "Combo not found: " + comboRequest.comboId()));
+                            ErrorCode.COMBO_NOT_FOUND, "Combo not found: " + comboRequest.comboId()));
             orderValidator.validateComboOrderable(combo);
 
             subtotal = subtotal.add(calculateLineTotal(combo.getPrice(), comboRequest.quantity()));
@@ -233,8 +216,7 @@ public class OrderPricingService {
     }
 
     private List<ItemOptionValue> resolveSelectedValues(
-            List<Long> selectedOptionValueIds,
-            Map<Long, ItemOptionValue> selectedValuesById) {
+            List<Long> selectedOptionValueIds, Map<Long, ItemOptionValue> selectedValuesById) {
         if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
             return List.of();
         }
@@ -257,9 +239,7 @@ public class OrderPricingService {
     }
 
     private void validateSelectedOptions(MenuItem menuItem, List<Long> selectedValueIds) {
-        Set<Long> selectedIds = selectedValueIds == null
-                ? Set.of()
-                : new HashSet<>(selectedValueIds);
+        Set<Long> selectedIds = selectedValueIds == null ? Set.of() : new HashSet<>(selectedValueIds);
 
         validateRequiredOptions(menuItem, selectedIds);
         validateMaxSelections(menuItem, selectedIds);
@@ -270,13 +250,12 @@ public class OrderPricingService {
         menuItem.getItemOptions().stream()
                 .filter(option -> Boolean.TRUE.equals(option.getRequired()))
                 .forEach(option -> {
-                    boolean selected = option.getOptionValues().stream()
-                            .anyMatch(value -> selectedIds.contains(value.getId()));
+                    boolean selected =
+                            option.getOptionValues().stream().anyMatch(value -> selectedIds.contains(value.getId()));
 
                     if (!selected) {
                         throw new BusinessException(
-                                ErrorCode.INVALID_REQUEST,
-                                "Required option selection missing: " + option.getName());
+                                ErrorCode.INVALID_REQUEST, "Required option selection missing: " + option.getName());
                     }
                 });
     }
@@ -290,8 +269,7 @@ public class OrderPricingService {
 
             if (selectedCount > maxSelection) {
                 throw new BusinessException(
-                        ErrorCode.INVALID_REQUEST,
-                        "Too many option selections for: " + option.getName());
+                        ErrorCode.INVALID_REQUEST, "Too many option selections for: " + option.getName());
             }
         });
     }
@@ -308,20 +286,15 @@ public class OrderPricingService {
 
         if (!validValueIds.containsAll(selectedIds)) {
             throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST,
-                    "Selected option contains invalid value for this menu item.");
+                    ErrorCode.INVALID_REQUEST, "Selected option contains invalid value for this menu item.");
         }
     }
 
     private void validateOptionValuesExist(List<Long> requestedIds, List<ItemOptionValue> selectedValues) {
-        Set<Long> foundIds = selectedValues.stream()
-                .map(ItemOptionValue::getId)
-                .collect(Collectors.toSet());
+        Set<Long> foundIds = selectedValues.stream().map(ItemOptionValue::getId).collect(Collectors.toSet());
 
         if (!foundIds.containsAll(requestedIds)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST,
-                    "Selected option value does not exist.");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Selected option value does not exist.");
         }
     }
 

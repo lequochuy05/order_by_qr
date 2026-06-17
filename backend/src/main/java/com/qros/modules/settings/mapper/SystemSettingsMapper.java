@@ -4,9 +4,8 @@ import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
 import com.qros.modules.settings.model.SystemSettings;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SystemSettingsMapper {

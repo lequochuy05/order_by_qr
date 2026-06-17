@@ -10,23 +10,22 @@ import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.enums.StockMovementType;
 import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -42,8 +41,7 @@ public class InventoryItemService {
 
     @Transactional(readOnly = true)
     public Page<InventoryItemResponse> findAll(Pageable pageable) {
-        return inventoryItemRepository.findAll(pageable)
-                .map(inventoryItemMapper::toResponse);
+        return inventoryItemRepository.findAll(pageable).map(inventoryItemMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -54,7 +52,9 @@ public class InventoryItemService {
     @Transactional(readOnly = true)
     public Page<InventoryItemResponse> search(String keyword, String stockFilter, Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        String normalizedStockFilter = stockFilter == null || stockFilter.isBlank() ? "ALL" : stockFilter.trim().toUpperCase();
+        String normalizedStockFilter = stockFilter == null || stockFilter.isBlank()
+                ? "ALL"
+                : stockFilter.trim().toUpperCase();
 
         return inventoryItemRepository
                 .searchForManagement(normalizedKeyword, normalizedStockFilter, pageable)
@@ -72,14 +72,12 @@ public class InventoryItemService {
 
     @Transactional(readOnly = true)
     public List<InventoryItemResponse> findActiveItems() {
-        return inventoryItemMapper.toResponses(
-                inventoryItemRepository.findByActiveTrueOrderByNameAsc());
+        return inventoryItemMapper.toResponses(inventoryItemRepository.findByActiveTrueOrderByNameAsc());
     }
 
     @Transactional(readOnly = true)
     public List<InventoryItemResponse> findLowStockItems() {
-        return inventoryItemMapper.toResponses(
-                inventoryItemRepository.findLowStockActiveItems());
+        return inventoryItemMapper.toResponses(inventoryItemRepository.findLowStockActiveItems());
     }
 
     @Transactional(readOnly = true)
@@ -89,17 +87,19 @@ public class InventoryItemService {
 
     @Transactional(readOnly = true)
     public InventoryItem getEntityById(@NonNull Long id) {
-        return inventoryItemRepository.findById(id)
+        return inventoryItemRepository
+                .findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND));
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-            @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-            @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-            @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-    })
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
     public InventoryItemResponse create(@NonNull InventoryItemRequest request) {
         String normalizedName = normalizeName(request.name());
         String normalizedUnit = normalizeUnit(request.unit());
@@ -108,10 +108,7 @@ public class InventoryItemService {
             throw new BusinessException(ErrorCode.INVENTORY_ITEM_NAME_EXISTS);
         }
 
-        InventoryItem item = inventoryItemMapper.toEntity(
-                request,
-                normalizedName,
-                normalizedUnit);
+        InventoryItem item = inventoryItemMapper.toEntity(request, normalizedName, normalizedUnit);
 
         InventoryItem saved = inventoryItemRepository.save(item);
 
@@ -121,15 +118,14 @@ public class InventoryItemService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-            @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-            @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-            @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-    })
-    public InventoryItemResponse update(
-            @NonNull Long id,
-            @NonNull InventoryItemRequest request) {
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public InventoryItemResponse update(@NonNull Long id, @NonNull InventoryItemRequest request) {
         InventoryItem item = getEntityById(id);
 
         String normalizedName = normalizeName(request.name());
@@ -139,11 +135,7 @@ public class InventoryItemService {
             throw new BusinessException(ErrorCode.INVENTORY_ITEM_NAME_EXISTS);
         }
 
-        inventoryItemMapper.updateEntity(
-                item,
-                request,
-                normalizedName,
-                normalizedUnit);
+        inventoryItemMapper.updateEntity(item, request, normalizedName, normalizedUnit);
 
         InventoryItem saved = inventoryItemRepository.save(item);
 
@@ -153,12 +145,13 @@ public class InventoryItemService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-            @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-            @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-            @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-    })
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
     public void delete(@NonNull Long id) {
         InventoryItem item = getEntityById(id);
 
@@ -172,15 +165,14 @@ public class InventoryItemService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-            @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-            @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-            @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-    })
-    public InventoryItemResponse stockIn(
-            @NonNull Long itemId,
-            @NonNull StockInRequest request) {
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public InventoryItemResponse stockIn(@NonNull Long itemId, @NonNull StockInRequest request) {
         InventoryItem item = getEntityByIdForUpdate(itemId);
 
         BigDecimal quantity = normalizePositiveQuantity(request.quantity());
@@ -192,13 +184,7 @@ public class InventoryItemService {
         InventoryItem saved = inventoryItemRepository.save(item);
 
         stockMovementService.recordMovement(
-                saved,
-                null,
-                StockMovementType.STOCK_IN,
-                quantity,
-                quantityBefore,
-                quantityAfter,
-                request.note());
+                saved, null, StockMovementType.STOCK_IN, quantity, quantityBefore, quantityAfter, request.note());
 
         eventPublisher.publishEvent(new InventoryChangeEvent("stock_in", saved.getId()));
 
@@ -206,15 +192,14 @@ public class InventoryItemService {
     }
 
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-            @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-            @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-            @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-    })
-    public InventoryItemResponse adjustStock(
-            @NonNull Long itemId,
-            @NonNull StockAdjustmentRequest request) {
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public InventoryItemResponse adjustStock(@NonNull Long itemId, @NonNull StockAdjustmentRequest request) {
         InventoryItem item = getEntityByIdForUpdate(itemId);
 
         BigDecimal quantityDelta = normalizeQuantity(request.quantityDelta());
@@ -254,7 +239,8 @@ public class InventoryItemService {
 
     @Transactional(readOnly = true)
     public InventoryItem getEntityByIdForUpdate(@NonNull Long id) {
-        return inventoryItemRepository.findByIdForUpdate(id)
+        return inventoryItemRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND));
     }
 

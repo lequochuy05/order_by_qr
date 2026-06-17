@@ -4,13 +4,12 @@ import com.qros.shared.response.ApiResponse;
 import com.qros.shared.response.ErrorResponse;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.springframework.boot.web.servlet.error.ErrorController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 public class ApiErrorController implements ErrorController {
@@ -29,8 +28,7 @@ public class ApiErrorController implements ErrorController {
                 .details(Map.of("path", request.getRequestURI()))
                 .build();
 
-        return ResponseEntity.status(status)
-                .body(ApiResponse.error(status.value(), message, error));
+        return ResponseEntity.status(status).body(ApiResponse.error(status.value(), message, error));
     }
 
     private HttpStatus resolveStatus(HttpServletRequest request) {

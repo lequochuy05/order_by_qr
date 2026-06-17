@@ -1,9 +1,9 @@
 package com.qros.modules.auth.controller;
 
-import com.qros.shared.response.ApiResponse;
 import com.qros.modules.auth.dto.request.EmailPasswordResetRequest;
 import com.qros.modules.auth.dto.request.PhonePasswordResetRequest;
 import com.qros.modules.auth.service.PasswordResetService;
+import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;

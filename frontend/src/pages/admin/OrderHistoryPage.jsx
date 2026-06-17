@@ -1,5 +1,5 @@
-import { OrderHistory } from '@features/order-management'
+import { OrderHistory } from '@features/order-management';
 
 export default function OrderHistoryPage() {
-  return <OrderHistory />
+  return <OrderHistory />;
 }

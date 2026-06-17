@@ -3,8 +3,7 @@ import { queryKeys } from '@shared/api/queryKeys.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { menuItemService } from './menuService.js';
 
-const invalidateMenu = () =>
-  queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 
 export const useCreateMenuMutation = (options = {}) =>
   useMutation({

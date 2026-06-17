@@ -5,7 +5,8 @@ import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta, getItemStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
 
-const getItemName = (item) => item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món đã gọi';
+const getItemName = (item) =>
+  item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món đã gọi';
 
 const getLineTotal = (item) => {
   if (item.lineTotal != null) return Number(item.lineTotal);
@@ -20,9 +21,7 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
   const items = order.items || order.orderItems || [];
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end bg-black/60 animate-in fade-in duration-300"
-    >
+    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-in fade-in duration-300">
       <div
         className="mx-auto flex max-h-[85vh] w-full max-w-md flex-col rounded-t-[2rem] bg-white p-6 shadow-2xl transition-colors animate-in slide-in-from-bottom duration-500 dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
@@ -64,16 +63,23 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
             {items.map((item) => {
               const itemStatus = getItemStatusMeta(item.status);
               return (
-                <div key={item.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-colors dark:border-slate-800 dark:bg-slate-950/60">
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-colors dark:border-slate-800 dark:bg-slate-950/60"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm font-black text-gray-900 dark:text-white">
                         {getItemName(item)}
-                        <span className="ml-1 text-orange-600 dark:text-orange-300">x{item.quantity}</span>
+                        <span className="ml-1 text-orange-600 dark:text-orange-300">
+                          x{item.quantity}
+                        </span>
                       </p>
                       {item.options?.length > 0 && (
                         <p className="mt-1 text-[11px] font-medium leading-relaxed text-gray-500 dark:text-gray-400">
-                          {item.options.map(opt => `${opt.optionName}: ${opt.optionValueName}`).join(', ')}
+                          {item.options
+                            .map((opt) => `${opt.optionName}: ${opt.optionValueName}`)
+                            .join(', ')}
                         </p>
                       )}
                       {item.notes && (
@@ -84,7 +90,9 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${itemStatus.classes}`}>
+                      <span
+                        className={`rounded-full px-2 py-1 text-[10px] font-bold ${itemStatus.classes}`}
+                      >
                         {itemStatus.label}
                       </span>
                       <p className="mt-2 text-xs font-black text-gray-800 dark:text-gray-200">

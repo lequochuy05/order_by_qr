@@ -21,27 +21,24 @@ public class PaymentController {
     @PostMapping
     public ApiResponse<PaymentCreateResponse> createPaymentLink(
             @Valid @RequestBody @NonNull PaymentCreateRequest request) {
-        return ApiResponse.success(
-                "Payment link initialized successfully",
-                paymentService.createPaymentLink(request));
+        return ApiResponse.success("Payment link initialized successfully", paymentService.createPaymentLink(request));
     }
 
     @PostMapping("/{transactionId}/cancel")
     public ApiResponse<Void> cancelPaymentLink(
-            @PathVariable @NonNull Long transactionId,
-            @RequestBody(required = false) PaymentCancelRequest request) {
+            @PathVariable @NonNull Long transactionId, @RequestBody(required = false) PaymentCancelRequest request) {
 
-        String reason = request != null && request.reason() != null && !request.reason().isBlank()
-                ? request.reason().trim()
-                : "Customer changed payment method";
+        String reason =
+                request != null && request.reason() != null && !request.reason().isBlank()
+                        ? request.reason().trim()
+                        : "Customer changed payment method";
 
         paymentService.cancelPaymentLink(transactionId, reason);
         return ApiResponse.success("Transaction cancelled successfully", null);
     }
 
     @GetMapping("/{transactionId}")
-    public ApiResponse<PaymentTransactionResponse> syncPaymentStatus(
-            @PathVariable @NonNull Long transactionId) {
+    public ApiResponse<PaymentTransactionResponse> syncPaymentStatus(@PathVariable @NonNull Long transactionId) {
         return ApiResponse.success(paymentService.syncPaymentStatus(transactionId));
     }
 }

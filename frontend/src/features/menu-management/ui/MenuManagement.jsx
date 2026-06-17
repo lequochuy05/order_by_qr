@@ -28,20 +28,21 @@ const emptyMenuForm = {
   itemOptions: [],
   active: true,
   available: true,
-  displayOrder: 0
+  displayOrder: 0,
 };
 
-const normalizeItemOptions = (itemOptions = []) => itemOptions.map(option => ({
-  id: option.id,
-  name: option.name || '',
-  required: option.required ?? false,
-  maxSelection: option.maxSelection ?? 1,
-  optionValues: (option.optionValues || []).map(value => ({
-    id: value.id,
-    name: value.name || '',
-    extraPrice: Number(value.extraPrice) || 0
-  }))
-}));
+const normalizeItemOptions = (itemOptions = []) =>
+  itemOptions.map((option) => ({
+    id: option.id,
+    name: option.name || '',
+    required: option.required ?? false,
+    maxSelection: option.maxSelection ?? 1,
+    optionValues: (option.optionValues || []).map((value) => ({
+      id: value.id,
+      name: value.name || '',
+      extraPrice: Number(value.extraPrice) || 0,
+    })),
+  }));
 
 const toMenuFormData = (item) => ({
   id: item.id,
@@ -53,7 +54,7 @@ const toMenuFormData = (item) => ({
   itemOptions: normalizeItemOptions(item.itemOptions || []),
   active: item.active ?? true,
   available: item.available ?? true,
-  displayOrder: item.displayOrder ?? 0
+  displayOrder: item.displayOrder ?? 0,
 });
 
 const MenuManager = () => {
@@ -80,7 +81,7 @@ const MenuManager = () => {
   // React Query: Categories for filter dropdown
   const { data: categoryPageData } = useCategoriesPageQuery(
     { page: 0, size: 1000 },
-    { staleTime: 5 * 60 * 1000 }
+    { staleTime: 5 * 60 * 1000 },
   );
   const categories = categoryPageData?.content || [];
 
@@ -96,8 +97,7 @@ const MenuManager = () => {
   const totalPages = pageData?.totalPages || 0;
   const totalElements = pageData?.totalElements || 0;
 
-  const invalidateMenu = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+  const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 
   // WebSocket
   // WebSocket update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
@@ -114,25 +114,27 @@ const MenuManager = () => {
       const result = await aiLocalService.analyzeDish(preview);
 
       if (result.confidence < 0.4) {
-        showError(`AI không chắc chắn (${(result.confidence * 100).toFixed(0)}%). Hãy thử ảnh rõ hơn.`);
+        showError(
+          `AI không chắc chắn (${(result.confidence * 100).toFixed(0)}%). Hãy thử ảnh rõ hơn.`,
+        );
         return;
       }
 
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         name: result.name,
         categoryId: result.categoryId,
-        price: result.price
+        price: result.price,
       }));
       showSuccess(`Nhận diện: ${result.name}`);
     } catch (err) {
-      showError("Lỗi AI: " + err.message);
+      showError('Lỗi AI: ' + err.message);
     } finally {
       setAiScanning(false);
     }
   }, [preview, showSuccess, showError]);
 
-  // SUBMIT 
+  // SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -147,7 +149,7 @@ const MenuManager = () => {
         itemOptions: normalizeItemOptions(formData.itemOptions),
         active: formData.active ?? true,
         available: formData.available ?? true,
-        displayOrder: Number(formData.displayOrder) || 0
+        displayOrder: Number(formData.displayOrder) || 0,
       };
 
       let res;
@@ -170,7 +172,7 @@ const MenuManager = () => {
       const errorMsg = err.message || '';
 
       if (errorMsg.toLowerCase().includes('item name already exists')) {
-        setErrors({ ...errors, name: "Tên món ăn này đã tồn tại" });
+        setErrors({ ...errors, name: 'Tên món ăn này đã tồn tại' });
       } else {
         showError(err);
       }
@@ -185,7 +187,7 @@ const MenuManager = () => {
     if (!confirmed) return;
     try {
       await menuItemService.delete(id);
-      showSuccess("Đã xóa món ăn thành công");
+      showSuccess('Đã xóa món ăn thành công');
       invalidateMenu();
     } catch (err) {
       showError(err);
@@ -239,7 +241,7 @@ const MenuManager = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-          {items.map(it => (
+          {items.map((it) => (
             <MenuCard
               key={it.id}
               item={it}
@@ -283,7 +285,10 @@ const MenuManager = () => {
         setErrors={setErrors}
         handleFileChange={(e) => {
           const f = e.target.files[0];
-          if (f) { setSelectedFile(f); setPreview(URL.createObjectURL(f)); }
+          if (f) {
+            setSelectedFile(f);
+            setPreview(URL.createObjectURL(f));
+          }
         }}
         onAiScan={handleAiScan}
       />

@@ -2,6 +2,8 @@ package com.qros.modules.promotion.repository;
 
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.projection.VoucherValidationProjection;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,14 +11,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-
 public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Optional<VoucherValidationProjection> findProjectedByCodeIgnoreCase(String code);
-
-
 
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
@@ -28,7 +25,8 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Page<Voucher> findAllByOrderByIdDesc(Pageable pageable);
 
-    @Query("""
+    @Query(
+            """
             SELECT v
             FROM Voucher v
             WHERE (CAST(:keyword AS string) IS NULL OR LOWER(v.code) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -75,7 +73,8 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
             Pageable pageable);
 
     @Modifying
-    @Query("""
+    @Query(
+            """
             UPDATE Voucher v
             SET v.usedCount = v.usedCount + 1
             WHERE v.id = :id

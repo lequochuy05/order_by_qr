@@ -11,6 +11,4 @@ public record PublicComboItem(
         BigDecimal price,
         List<PublicComboLine> items,
         Boolean available,
-        Integer displayOrder
-) {
-}
+        Integer displayOrder) {}

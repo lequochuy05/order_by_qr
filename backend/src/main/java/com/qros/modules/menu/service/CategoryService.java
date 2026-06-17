@@ -9,25 +9,24 @@ import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -51,13 +50,13 @@ public class CategoryService {
                 .map(categoryMapper::toSummaryResponse)
                 .toList();
     }
+
     @Cacheable(value = CacheNames.CATEGORIES, key = "'public_all_active'")
     public List<PublicCategoryItem> getPublicActive() {
         return categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc().stream()
                 .map(publicMenuMapper::toCategoryItem)
                 .toList();
     }
-
 
     public Page<CategoryResponse> search(String q, @NonNull Pageable pageable) {
         Page<Category> page = q == null || q.trim().isEmpty()
@@ -68,7 +67,15 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.CATEGORIES,
+                CacheNames.MENU,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public CategoryResponse create(@NonNull CategoryRequest req) {
         String name = normalizeRequired(req.name(), "Category name cannot be empty");
         if (categoryRepo.existsByNameIgnoreCase(name)) {
@@ -90,13 +97,20 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.CATEGORIES,
+                CacheNames.MENU,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public CategoryResponse update(@NonNull Long id, @NonNull CategoryRequest req) {
         String name = normalizeRequired(req.name(), "Category name cannot be empty");
         Category category = getEntityById(id);
 
-        if (!category.getName().equalsIgnoreCase(name)
-                && categoryRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
+        if (!category.getName().equalsIgnoreCase(name) && categoryRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
         }
 
@@ -119,14 +133,21 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.CATEGORIES,
+                CacheNames.MENU,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public void delete(@NonNull Long id) {
         Category category = getEntityById(id);
 
         if (menuItemRepository.countByCategoryIdAndActiveTrue(id) > 0) {
             throw new BusinessException(
-                    ErrorCode.BUSINESS_ERROR,
-                    "Cannot delete category that still contains active menu items");
+                    ErrorCode.BUSINESS_ERROR, "Cannot delete category that still contains active menu items");
         }
 
         String oldImg = category.getImg();
@@ -135,15 +156,22 @@ public class CategoryService {
 
         if (isCustomImage(oldImg)) {
             sideEffects.afterCommit(
-                    () -> storageService.delete(oldImg),
-                    "delete category image after category delete " + id);
+                    () -> storageService.delete(oldImg), "delete category image after category delete " + id);
         }
 
         eventPublisher.publishEvent(new CategoryChangeEvent("deleted", id));
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.CATEGORIES, CacheNames.MENU, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.CATEGORIES,
+                CacheNames.MENU,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.FILE_INVALID);
@@ -155,17 +183,13 @@ public class CategoryService {
         try {
             String newUrl = storageService.upload(file, CATEGORY_IMAGE_FOLDER);
 
-            sideEffects.afterRollback(
-                    () -> storageService.delete(newUrl),
-                    "delete rolled back category image " + id);
+            sideEffects.afterRollback(() -> storageService.delete(newUrl), "delete rolled back category image " + id);
 
             category.setImg(newUrl);
             categoryRepo.save(category);
 
             if (isCustomImage(oldUrl)) {
-                sideEffects.afterCommit(
-                        () -> storageService.delete(oldUrl),
-                        "delete replaced category image " + id);
+                sideEffects.afterCommit(() -> storageService.delete(oldUrl), "delete replaced category image " + id);
             }
 
             eventPublisher.publishEvent(new CategoryChangeEvent("image_updated", id));
@@ -180,8 +204,7 @@ public class CategoryService {
     }
 
     private Category getEntityById(Long id) {
-        return categoryRepo.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+        return categoryRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
     }
 
     private String normalizeBlank(String value) {
@@ -197,8 +220,6 @@ public class CategoryService {
     }
 
     private boolean isCustomImage(String image) {
-        return image != null
-                && !image.isBlank()
-                && image.startsWith("http");
+        return image != null && !image.isBlank() && image.startsWith("http");
     }
 }

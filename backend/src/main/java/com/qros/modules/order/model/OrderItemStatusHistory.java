@@ -1,13 +1,11 @@
 package com.qros.modules.order.model;
 
-import com.qros.modules.user.model.User;
 import com.qros.modules.order.model.enums.OrderItemStatus;
-
+import com.qros.modules.user.model.User;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_item_status_history")

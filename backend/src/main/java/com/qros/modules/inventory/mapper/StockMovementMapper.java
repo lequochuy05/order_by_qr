@@ -5,10 +5,9 @@ import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.StockMovement;
 import com.qros.modules.inventory.model.enums.StockMovementType;
 import com.qros.modules.order.model.OrderItem;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class StockMovementMapper {
@@ -51,9 +50,7 @@ public class StockMovementMapper {
     }
 
     public List<StockMovementResponse> toResponses(List<StockMovement> movements) {
-        return movements.stream()
-                .map(this::toResponse)
-                .toList();
+        return movements.stream().map(this::toResponse).toList();
     }
 
     private String normalizeNote(String note) {

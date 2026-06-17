@@ -2,6 +2,8 @@ package com.qros.shared.exception;
 
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.response.ErrorResponse;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -12,9 +14,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * GlobalExceptionHandler - Centralized management of system exceptions.
@@ -34,7 +33,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles validation errors triggered by @Valid annotations on DTOs.
-     * 
+     *
      * @param ex MethodArgumentNotValidException containing validation results
      * @return ApiResponse containing field-specific error messages
      */
@@ -55,7 +54,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles 404 errors when a requested URL or static resource is not found.
-     * 
+     *
      * @param ex NoResourceFoundException
      * @return ResponseEntity with 404 Not Found status
      */
@@ -66,7 +65,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles authorization errors when a user lacks the required role or permission.
-     * 
+     *
      * @param ex AccessDeniedException
      * @return ResponseEntity with 403 Forbidden status
      */
@@ -77,7 +76,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Catch-all handler for any unhandled exceptions to prevent leaking internal details.
-     * 
+     *
      * @param ex The unhandled exception
      * @return ResponseEntity with 500 Internal Server Error status
      */
@@ -88,25 +87,22 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ApiResponse<ErrorResponse>> buildErrorResponse(
-            ErrorCode errorCode,
-            String message,
-            Map<String, Object> details) {
-        return buildErrorResponse(errorCode.getStatus(), errorCode.name(),
-                resolveMessage(errorCode.getDefaultMessage(), message), details);
+            ErrorCode errorCode, String message, Map<String, Object> details) {
+        return buildErrorResponse(
+                errorCode.getStatus(),
+                errorCode.name(),
+                resolveMessage(errorCode.getDefaultMessage(), message),
+                details);
     }
 
     private ResponseEntity<ApiResponse<ErrorResponse>> buildErrorResponse(
-            HttpStatusCode status,
-            String code,
-            String message,
-            Map<String, Object> details) {
+            HttpStatusCode status, String code, String message, Map<String, Object> details) {
         ErrorResponse error = ErrorResponse.builder()
                 .code(code)
                 .message(message)
                 .details(details == null ? Map.of() : details)
                 .build();
-        return ResponseEntity.status(status)
-                .body(ApiResponse.error(status.value(), message, error));
+        return ResponseEntity.status(status).body(ApiResponse.error(status.value(), message, error));
     }
 
     private String resolveMessage(String defaultMessage, String message) {

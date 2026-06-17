@@ -1,7 +1,5 @@
 package com.qros.modules.payment.service;
 
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.model.PaymentTransaction;
@@ -13,20 +11,20 @@ import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.service.OrderDiscountService;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.promotion.service.VoucherService;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-
-import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -59,14 +57,12 @@ public class PaymentCompletionService {
 
     @Transactional
     public Order completeSuccessfulTransaction(
-            @NonNull PaymentTransaction transaction,
-            VoucherPaymentResult voucherPaymentResult) {
+            @NonNull PaymentTransaction transaction, VoucherPaymentResult voucherPaymentResult) {
         Order order = transaction.getOrder();
 
         if (order == null) {
             throw new BusinessException(
-                    ErrorCode.ORDER_NOT_FOUND,
-                    "Payment transaction is not associated with an order");
+                    ErrorCode.ORDER_NOT_FOUND, "Payment transaction is not associated with an order");
         }
 
         order = orderSettlementService.loadForPayment(order.getId());
@@ -150,11 +146,7 @@ public class PaymentCompletionService {
 
         String auditReason = "payment-" + transaction.getPaymentMethod().name().toLowerCase();
         Order savedOrder = orderSettlementService.settleAfterPayment(
-                order,
-                transaction.getPaymentMethod(),
-                transaction.getCreatedBy(),
-                totalPaid,
-                auditReason);
+                order, transaction.getPaymentMethod(), transaction.getCreatedBy(), totalPaid, auditReason);
 
         recordAndConsumeVoucher(savedOrder, voucherPaymentResult);
         return savedOrder;
@@ -171,15 +163,11 @@ public class PaymentCompletionService {
     }
 
     private BigDecimal currentFinalAmount(Order order) {
-        return order.getFinalAmount() != null
-                ? order.getFinalAmount()
-                : BigDecimal.ZERO;
+        return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
     }
 
     private BigDecimal currentSubtotalAmount(Order order) {
-        return order.getSubtotalAmount() != null
-                ? order.getSubtotalAmount()
-                : BigDecimal.ZERO;
+        return order.getSubtotalAmount() != null ? order.getSubtotalAmount() : BigDecimal.ZERO;
     }
 
     private void recordAndConsumeVoucher(Order order, VoucherPaymentResult voucherPaymentResult) {
@@ -195,7 +183,8 @@ public class PaymentCompletionService {
                         order.getDiscountAmount(),
                         currentFinalAmount(order));
 
-        if (resolvedVoucherResult == null || resolvedVoucherResult.appliedDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        if (resolvedVoucherResult == null
+                || resolvedVoucherResult.appliedDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
             return;
         }
 
@@ -205,5 +194,4 @@ public class PaymentCompletionService {
         orderDiscountService.recordVoucherDiscount(order, voucher, result);
         voucherService.incrementUsage(voucher.getId());
     }
-
 }

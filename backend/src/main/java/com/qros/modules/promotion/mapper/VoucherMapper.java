@@ -7,10 +7,9 @@ import com.qros.modules.promotion.dto.response.VoucherValidateResponse;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.model.enums.VoucherValidationStatus;
 import com.qros.modules.promotion.repository.projection.VoucherValidationProjection;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class VoucherMapper {
@@ -55,9 +54,7 @@ public class VoucherMapper {
     }
 
     public List<VoucherResponse> toResponses(List<Voucher> vouchers) {
-        return vouchers.stream()
-                .map(this::toResponse)
-                .toList();
+        return vouchers.stream().map(this::toResponse).toList();
     }
 
     public VoucherValidateResponse toValidateResponse(
@@ -89,9 +86,7 @@ public class VoucherMapper {
     }
 
     public VoucherValidateResponse notApplicableValidateResponse(
-            VoucherValidationProjection voucher,
-            VoucherValidationStatus status,
-            DiscountResult discountResult) {
+            VoucherValidationProjection voucher, VoucherValidationStatus status, DiscountResult discountResult) {
         return new VoucherValidateResponse(
                 voucher.getCode(),
                 status,

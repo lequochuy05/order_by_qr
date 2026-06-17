@@ -12,23 +12,22 @@ import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -61,7 +60,8 @@ public class ComboService {
 
     public Page<ComboResponse> searchManagementSummary(String keyword, Boolean active, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return comboRepo.searchManagementSummaries(normalizedKeyword, active, pageable)
+        return comboRepo
+                .searchManagementSummaries(normalizedKeyword, active, pageable)
                 .map(comboMapper::toSummaryResponse);
     }
 
@@ -72,9 +72,14 @@ public class ComboService {
 
     @Transactional
     @CacheEvict(
-            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
-            allEntries = true
-    )
+            value = {
+                CacheNames.COMBOS,
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public ComboResponse create(@NonNull ComboRequest req) {
         String name = normalizeRequired(req.name(), "Combo name cannot be empty");
 
@@ -101,16 +106,15 @@ public class ComboService {
 
             if (menuItem == null) {
                 throw new BusinessException(
-                        ErrorCode.MENU_ITEM_NOT_FOUND,
-                        "Menu item not found: " + itemReq.menuItemId()
-                );
+                        ErrorCode.MENU_ITEM_NOT_FOUND, "Menu item not found: " + itemReq.menuItemId());
             }
 
-            combo.getItems().add(ComboItem.builder()
-                    .combo(combo)
-                    .menuItem(menuItem)
-                    .quantity(itemReq.quantity() != null ? itemReq.quantity() : 1)
-                    .build());
+            combo.getItems()
+                    .add(ComboItem.builder()
+                            .combo(combo)
+                            .menuItem(menuItem)
+                            .quantity(itemReq.quantity() != null ? itemReq.quantity() : 1)
+                            .build());
         }
 
         Combo saved = comboRepo.save(combo);
@@ -121,16 +125,20 @@ public class ComboService {
 
     @Transactional
     @CacheEvict(
-            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
-            allEntries = true
-    )
+            value = {
+                CacheNames.COMBOS,
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public ComboResponse update(@NonNull Long id, @NonNull ComboRequest req) {
         Combo combo = getEntityByIdWithItems(id);
 
         String name = normalizeRequired(req.name(), "Combo name cannot be empty");
 
-        if (!combo.getName().equalsIgnoreCase(name)
-                && comboRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
+        if (!combo.getName().equalsIgnoreCase(name) && comboRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS);
         }
 
@@ -162,9 +170,14 @@ public class ComboService {
 
     @Transactional
     @CacheEvict(
-            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
-            allEntries = true
-    )
+            value = {
+                CacheNames.COMBOS,
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public void delete(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -176,9 +189,14 @@ public class ComboService {
 
     @Transactional
     @CacheEvict(
-            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
-            allEntries = true
-    )
+            value = {
+                CacheNames.COMBOS,
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public ComboResponse toggleActive(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -192,9 +210,14 @@ public class ComboService {
 
     @Transactional
     @CacheEvict(
-            value = { CacheNames.COMBOS, CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS },
-            allEntries = true
-    )
+            value = {
+                CacheNames.COMBOS,
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public ComboResponse toggleAvailable(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -207,8 +230,7 @@ public class ComboService {
     }
 
     private Combo getEntityByIdWithItems(Long id) {
-        return comboRepo.findByIdWithItems(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
+        return comboRepo.findByIdWithItems(id).orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
     }
 
     private void syncComboItems(Combo combo, List<ComboItemRequest> incomingItems) {
@@ -226,9 +248,7 @@ public class ComboService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        combo.getItems().removeIf(item ->
-                item.getId() != null && !incomingExistingIds.contains(item.getId())
-        );
+        combo.getItems().removeIf(item -> item.getId() != null && !incomingExistingIds.contains(item.getId()));
 
         Set<Long> menuItemIdsToLoad = incomingItems.stream()
                 .filter(itemReq -> itemReq.id() == null)
@@ -249,9 +269,7 @@ public class ComboService {
 
                 if (existing == null) {
                     throw new BusinessException(
-                            ErrorCode.BUSINESS_ERROR,
-                            "Combo item not found in this combo: " + itemReq.id()
-                    );
+                            ErrorCode.BUSINESS_ERROR, "Combo item not found in this combo: " + itemReq.id());
                 }
 
                 existing.setQuantity(quantity);
@@ -262,16 +280,15 @@ public class ComboService {
 
             if (menuItem == null) {
                 throw new BusinessException(
-                        ErrorCode.MENU_ITEM_NOT_FOUND,
-                        "Menu item not found: " + itemReq.menuItemId()
-                );
+                        ErrorCode.MENU_ITEM_NOT_FOUND, "Menu item not found: " + itemReq.menuItemId());
             }
 
-            combo.getItems().add(ComboItem.builder()
-                    .combo(combo)
-                    .menuItem(menuItem)
-                    .quantity(quantity)
-                    .build());
+            combo.getItems()
+                    .add(ComboItem.builder()
+                            .combo(combo)
+                            .menuItem(menuItem)
+                            .quantity(quantity)
+                            .build());
         }
     }
 
@@ -285,40 +302,28 @@ public class ComboService {
             return Collections.emptyMap();
         }
 
-        return menuItemRepo.findAllById(menuItemIds).stream()
-                .collect(Collectors.toMap(MenuItem::getId, item -> item));
+        return menuItemRepo.findAllById(menuItemIds).stream().collect(Collectors.toMap(MenuItem::getId, item -> item));
     }
 
     private void validateItems(List<ComboItemRequest> items) {
         if (items == null || items.isEmpty()) {
-            throw new BusinessException(
-                    ErrorCode.BUSINESS_ERROR,
-                    "Combo must contain at least one item"
-            );
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Combo must contain at least one item");
         }
 
         Set<Long> menuItemIds = new HashSet<>();
 
         for (ComboItemRequest item : items) {
             if (item.menuItemId() == null && item.id() == null) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Menu item ID is required"
-                );
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Menu item ID is required");
             }
 
             if (item.quantity() != null && item.quantity() < 1) {
-                throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Combo item quantity must be at least 1"
-                );
+                throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Combo item quantity must be at least 1");
             }
 
             if (item.menuItemId() != null && !menuItemIds.add(item.menuItemId())) {
                 throw new BusinessException(
-                        ErrorCode.BUSINESS_ERROR,
-                        "Duplicate menu item in combo: " + item.menuItemId()
-                );
+                        ErrorCode.BUSINESS_ERROR, "Duplicate menu item in combo: " + item.menuItemId());
             }
         }
     }

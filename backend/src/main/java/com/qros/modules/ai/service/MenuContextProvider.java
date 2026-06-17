@@ -8,10 +8,6 @@ import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.shared.cache.CacheNames;
-import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,6 +16,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -47,9 +46,7 @@ public class MenuContextProvider {
                 .filter(item -> item.getCategory() != null)
                 .filter(item -> Boolean.TRUE.equals(item.getCategory().getActive()))
                 .collect(Collectors.groupingBy(
-                        item -> item.getCategory().getName(),
-                        LinkedHashMap::new,
-                        Collectors.toList()));
+                        item -> item.getCategory().getName(), LinkedHashMap::new, Collectors.toList()));
 
         StringBuilder builder = new StringBuilder();
 
@@ -60,8 +57,8 @@ public class MenuContextProvider {
         return builder.toString();
     }
 
-    private void appendCategoryContext(StringBuilder builder, List<Category> categories,
-            Set<String> categoryNamesFromMenu) {
+    private void appendCategoryContext(
+            StringBuilder builder, List<Category> categories, Set<String> categoryNamesFromMenu) {
         Set<String> categoryNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
         categories.stream()
@@ -77,7 +74,8 @@ public class MenuContextProvider {
         }
 
         builder.append("\nDANH MỤC ĐANG CÓ:\n");
-        categoryNames.forEach(category -> builder.append("  - ").append(category).append("\n"));
+        categoryNames.forEach(
+                category -> builder.append("  - ").append(category).append("\n"));
     }
 
     private void appendMenuItemContext(StringBuilder builder, Map<String, List<MenuItem>> groupedItems) {

@@ -5,14 +5,13 @@ import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.service.MenuItemService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Map;
 
 /**
  * MenuItemController - Manages food and beverage menu items.
@@ -41,35 +40,30 @@ public class MenuItemController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<MenuItemResponse> getById(
-            @PathVariable @NonNull Long id) {
+    public ApiResponse<MenuItemResponse> getById(@PathVariable @NonNull Long id) {
         return ApiResponse.success(menuItemService.getById(id));
     }
 
     @PostMapping
-    public ApiResponse<MenuItemResponse> create(
-            @Valid @RequestBody @NonNull MenuItemRequest req) {
+    public ApiResponse<MenuItemResponse> create(@Valid @RequestBody @NonNull MenuItemRequest req) {
         return ApiResponse.success("Menu item created successfully", menuItemService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<MenuItemResponse> update(
-            @PathVariable @NonNull Long id,
-            @Valid @RequestBody @NonNull MenuItemRequest req) {
+            @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull MenuItemRequest req) {
         return ApiResponse.success("Menu item updated successfully", menuItemService.update(id, req));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(
-            @PathVariable @NonNull Long id) {
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
         menuItemService.delete(id);
         return ApiResponse.success("Menu item deleted successfully", null);
     }
 
     @PostMapping("/{id}/image")
     public ApiResponse<Map<String, String>> uploadImage(
-            @PathVariable @NonNull Long id,
-            @RequestParam("file") @NonNull MultipartFile file) {
+            @PathVariable @NonNull Long id, @RequestParam("file") @NonNull MultipartFile file) {
         return ApiResponse.success("Menu item image uploaded successfully", menuItemService.uploadImage(id, file));
     }
 }

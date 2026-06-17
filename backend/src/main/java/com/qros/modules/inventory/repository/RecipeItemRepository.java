@@ -1,29 +1,23 @@
 package com.qros.modules.inventory.repository;
 
 import com.qros.modules.inventory.model.RecipeItem;
+import java.util.List;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-
 public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
 
     boolean existsByMenuItem_IdAndInventoryItem_Id(Long menuItemId, Long inventoryItemId);
 
-    boolean existsByMenuItem_IdAndInventoryItem_IdAndIdNot(
-            Long menuItemId,
-            Long inventoryItemId,
-            Long id);
+    boolean existsByMenuItem_IdAndInventoryItem_IdAndIdNot(Long menuItemId, Long inventoryItemId, Long id);
 
     long countByMenuItem_Id(Long menuItemId);
 
-    @EntityGraph(attributePaths = {
-            "menuItem",
-            "inventoryItem"
-    })
-    @Query("""
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query(
+            """
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id = :menuItemId
@@ -31,11 +25,9 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
             """)
     List<RecipeItem> findByMenuItemId(@Param("menuItemId") Long menuItemId);
 
-    @EntityGraph(attributePaths = {
-            "menuItem",
-            "inventoryItem"
-    })
-    @Query("""
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query(
+            """
             SELECT r
             FROM RecipeItem r
             WHERE r.inventoryItem.id = :inventoryItemId
@@ -43,11 +35,9 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
             """)
     List<RecipeItem> findByInventoryItemId(@Param("inventoryItemId") Long inventoryItemId);
 
-    @EntityGraph(attributePaths = {
-            "menuItem",
-            "inventoryItem"
-    })
-    @Query("""
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query(
+            """
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id IN :menuItemIds

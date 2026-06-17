@@ -1,6 +1,9 @@
 package com.qros.service;
 
-import org.springframework.context.ApplicationEventPublisher;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.mapper.VoucherMapper;
 import com.qros.modules.promotion.model.Voucher;
@@ -10,17 +13,13 @@ import com.qros.modules.promotion.service.DiscountCalculator;
 import com.qros.modules.promotion.service.VoucherService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class DiscountServiceTest {
@@ -37,10 +36,7 @@ class DiscountServiceTest {
     @BeforeEach
     void setUp() {
         discountCalculator = new DiscountCalculator();
-        voucherService = new VoucherService(
-                voucherRepository,
-                new VoucherMapper(),
-                eventPublisher);
+        voucherService = new VoucherService(voucherRepository, new VoucherMapper(), eventPublisher);
     }
 
     @Test

@@ -21,5 +21,4 @@ public record OrderItemResponse(
         OrderItemStatus status,
         List<OrderItemOptionResponse> options,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
-}
+        LocalDateTime updatedAt) {}

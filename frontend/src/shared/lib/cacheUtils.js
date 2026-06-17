@@ -20,7 +20,7 @@ export const createCachedRequest = (fetchFn, cacheMs = 0) => {
           if (cacheMs > 0) {
             cache = {
               data: res,
-              expiresAt: Date.now() + cacheMs
+              expiresAt: Date.now() + cacheMs,
             };
           }
           return res;
@@ -48,7 +48,7 @@ export const createKeyedCachedRequest = (fetchFn, cacheMs = 0, keyFn = (args) =>
   const requestFn = (args, { force = false } = {}) => {
     const key = keyFn(args);
     const now = Date.now();
-    
+
     if (!force && cacheMs > 0 && cacheMap.has(key)) {
       const cached = cacheMap.get(key);
       if (cached.expiresAt > now) {
@@ -62,7 +62,7 @@ export const createKeyedCachedRequest = (fetchFn, cacheMs = 0, keyFn = (args) =>
           if (cacheMs > 0) {
             cacheMap.set(key, {
               data: res,
-              expiresAt: Date.now() + cacheMs
+              expiresAt: Date.now() + cacheMs,
             });
           }
           return res;

@@ -1,26 +1,23 @@
 package com.qros.modules.payment.model;
 
-import com.qros.shared.entity.BaseEntity;
 import com.qros.modules.order.model.Order;
-import com.qros.modules.user.model.User;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-
+import com.qros.modules.user.model.User;
+import com.qros.shared.entity.BaseEntity;
+import com.qros.shared.enums.PaymentMethod;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.Builder;
-import lombok.experimental.SuperBuilder;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
@@ -82,5 +79,4 @@ public class PaymentTransaction extends BaseEntity {
 
     @Column(length = 255)
     private String failureReason;
-
 }

@@ -9,6 +9,7 @@ import com.qros.modules.inventory.service.InventoryItemService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @Validated
 @RestController
 @RequestMapping("/api/inventory/items")
@@ -38,8 +37,7 @@ public class InventoryItemController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String stockFilter,
             Pageable pageable) {
-        return ApiResponse.success(
-                inventoryItemService.search(keyword, stockFilter, pageable));
+        return ApiResponse.success(inventoryItemService.search(keyword, stockFilter, pageable));
     }
 
     @GetMapping("/summary")
@@ -49,39 +47,30 @@ public class InventoryItemController {
 
     @GetMapping("/active")
     public ApiResponse<List<InventoryItemResponse>> activeItems() {
-        return ApiResponse.success(
-                inventoryItemService.findActiveItems());
+        return ApiResponse.success(inventoryItemService.findActiveItems());
     }
 
     @GetMapping("/low-stock")
     public ApiResponse<List<InventoryItemResponse>> lowStockItems() {
-        return ApiResponse.success(
-                inventoryItemService.findLowStockItems());
+        return ApiResponse.success(inventoryItemService.findLowStockItems());
     }
 
     @GetMapping("/{id}")
     public ApiResponse<InventoryItemResponse> get(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
-        return ApiResponse.success(
-                inventoryItemService.findById(id));
+        return ApiResponse.success(inventoryItemService.findById(id));
     }
 
     @PostMapping
-    public ApiResponse<InventoryItemResponse> create(
-            @Valid @RequestBody InventoryItemRequest request) {
-        return ApiResponse.success(
-                "Inventory item created successfully",
-                inventoryItemService.create(request));
+    public ApiResponse<InventoryItemResponse> create(@Valid @RequestBody InventoryItemRequest request) {
+        return ApiResponse.success("Inventory item created successfully", inventoryItemService.create(request));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<InventoryItemResponse> update(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
-
             @Valid @RequestBody InventoryItemRequest request) {
-        return ApiResponse.success(
-                "Inventory item updated successfully",
-                inventoryItemService.update(id, request));
+        return ApiResponse.success("Inventory item updated successfully", inventoryItemService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
@@ -89,28 +78,20 @@ public class InventoryItemController {
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
         inventoryItemService.delete(id);
 
-        return ApiResponse.success(
-                "Inventory item deleted successfully",
-                null);
+        return ApiResponse.success("Inventory item deleted successfully", null);
     }
 
     @PostMapping("/{id}/stock-in")
     public ApiResponse<InventoryItemResponse> stockIn(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
-
             @Valid @RequestBody StockInRequest request) {
-        return ApiResponse.success(
-                "Stock imported successfully",
-                inventoryItemService.stockIn(id, request));
+        return ApiResponse.success("Stock imported successfully", inventoryItemService.stockIn(id, request));
     }
 
     @PostMapping("/{id}/adjust")
     public ApiResponse<InventoryItemResponse> adjustStock(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
-
             @Valid @RequestBody StockAdjustmentRequest request) {
-        return ApiResponse.success(
-                "Stock adjusted successfully",
-                inventoryItemService.adjustStock(id, request));
+        return ApiResponse.success("Stock adjusted successfully", inventoryItemService.adjustStock(id, request));
     }
 }

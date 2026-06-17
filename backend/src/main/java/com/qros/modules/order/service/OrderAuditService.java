@@ -20,12 +20,7 @@ public class OrderAuditService {
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final OrderItemStatusHistoryRepository orderItemStatusHistoryRepository;
 
-    public void recordOrderStatus(
-            Order order,
-            OrderStatus from,
-            OrderStatus to,
-            User changedBy,
-            String reason) {
+    public void recordOrderStatus(Order order, OrderStatus from, OrderStatus to, User changedBy, String reason) {
         if (order == null || to == null || from == to) {
             return;
         }
@@ -41,11 +36,7 @@ public class OrderAuditService {
     }
 
     public void recordItemStatus(
-            OrderItem item,
-            OrderItemStatus from,
-            OrderItemStatus to,
-            User changedBy,
-            String reason) {
+            OrderItem item, OrderItemStatus from, OrderItemStatus to, User changedBy, String reason) {
         if (item == null || to == null || from == to) {
             return;
         }

@@ -15,7 +15,7 @@ const AI_COPY = {
     placeholder: 'Hỏi món, combo, danh mục...',
     fallbackReply: 'Xin lỗi, tôi không thể trả lời lúc này.',
     errorReply: 'Xin lỗi, đã có lỗi xảy ra. Bạn thử hỏi lại nhé!',
-    suggestions: ['Gợi ý món ngon đi', 'Có combo nào?', 'Có danh mục gì?']
+    suggestions: ['Gợi ý món ngon đi', 'Có combo nào?', 'Có danh mục gì?'],
   },
   en: {
     welcome: 'Hi! How can I help you today?',
@@ -28,8 +28,8 @@ const AI_COPY = {
     placeholder: 'Ask about dishes, combos, categories...',
     fallbackReply: 'Sorry, I cannot answer right now.',
     errorReply: 'Sorry, something went wrong. Please try again.',
-    suggestions: ['Recommend something tasty', 'Any combos?', 'What categories are available?']
-  }
+    suggestions: ['Recommend something tasty', 'Any combos?', 'What categories are available?'],
+  },
 };
 
 const LAUNCHER_SIZE = 64;
@@ -42,12 +42,12 @@ const clampLauncherPosition = (position) => {
   return {
     x: Math.min(
       Math.max(LAUNCHER_MARGIN, position.x),
-      window.innerWidth - LAUNCHER_SIZE - LAUNCHER_MARGIN
+      window.innerWidth - LAUNCHER_SIZE - LAUNCHER_MARGIN,
     ),
     y: Math.min(
       Math.max(LAUNCHER_MARGIN, position.y),
-      window.innerHeight - LAUNCHER_SIZE - LAUNCHER_MARGIN
-    )
+      window.innerHeight - LAUNCHER_SIZE - LAUNCHER_MARGIN,
+    ),
   };
 };
 
@@ -67,13 +67,16 @@ const getInitialLauncherPosition = () => {
 
   return clampLauncherPosition({
     x: window.innerWidth - LAUNCHER_SIZE - 20,
-    y: window.innerHeight - LAUNCHER_SIZE - 104
+    y: window.innerHeight - LAUNCHER_SIZE - 104,
   });
 };
 
 const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
   const copy = useMemo(() => AI_COPY[language] || AI_COPY.vi, [language]);
-  const welcomeMessage = useMemo(() => ({ role: 'assistant', content: copy.welcome }), [copy.welcome]);
+  const welcomeMessage = useMemo(
+    () => ({ role: 'assistant', content: copy.welcome }),
+    [copy.welcome],
+  );
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([welcomeMessage]);
   const [input, setInput] = useState('');
@@ -90,7 +93,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
     startY: 0,
     originX: 0,
     originY: 0,
-    moved: false
+    moved: false,
   });
 
   const scrollToBottom = useCallback(() => {
@@ -108,9 +111,13 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
   }, [isOpen]);
 
   useEffect(() => {
-    const knownWelcomeMessages = Object.values(AI_COPY).map(value => value.welcome);
-    setMessages(prev => {
-      if (prev.length === 1 && prev[0]?.role === 'assistant' && knownWelcomeMessages.includes(prev[0].content)) {
+    const knownWelcomeMessages = Object.values(AI_COPY).map((value) => value.welcome);
+    setMessages((prev) => {
+      if (
+        prev.length === 1 &&
+        prev[0]?.role === 'assistant' &&
+        knownWelcomeMessages.includes(prev[0].content)
+      ) {
         return [welcomeMessage];
       }
       return prev;
@@ -119,7 +126,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      setLauncherPosition(prev => clampLauncherPosition(prev));
+      setLauncherPosition((prev) => clampLauncherPosition(prev));
     };
 
     window.addEventListener('resize', handleResize);
@@ -176,7 +183,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
       startY: e.clientY,
       originX: launcherPosition.x,
       originY: launcherPosition.y,
-      moved: false
+      moved: false,
     };
     e.currentTarget.setPointerCapture?.(e.pointerId);
     setIsDraggingLauncher(true);
@@ -192,10 +199,12 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
       dragStateRef.current.moved = true;
     }
 
-    setLauncherPosition(clampLauncherPosition({
-      x: dragStateRef.current.originX + deltaX,
-      y: dragStateRef.current.originY + deltaY
-    }));
+    setLauncherPosition(
+      clampLauncherPosition({
+        x: dragStateRef.current.originX + deltaX,
+        y: dragStateRef.current.originY + deltaY,
+      }),
+    );
   };
 
   const finishLauncherPointer = (e) => {
@@ -220,10 +229,10 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
 
   const buildHistory = () => {
     return messages
-      .filter(m => !Object.values(AI_COPY).some(value => value.welcome === m.content))
-      .map(m => ({
+      .filter((m) => !Object.values(AI_COPY).some((value) => value.welcome === m.content))
+      .map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
-        content: m.content
+        content: m.content,
       }));
   };
 
@@ -232,7 +241,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
     if (!trimmed || isLoading) return;
 
     const userMessage = { role: 'user', content: trimmed };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
@@ -240,12 +249,15 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
       const history = buildHistory();
       const res = await menuService.sendAiChat(trimmed, history);
       const reply = res?.reply || copy.fallbackReply;
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: copy.errorReply
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: copy.errorReply,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -278,7 +290,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
           className="fixed z-[60]"
           style={{
             left: launcherPosition.x,
-            top: launcherPosition.y
+            top: launcherPosition.y,
           }}
         >
           <button
@@ -311,16 +323,18 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
           onClick={handleBackdropClick}
         >
           <div
-            className={`absolute bottom-0 right-0 w-full max-w-md h-[85vh] max-h-[700px] flex flex-col transition-all duration-300 ${isAnimating ? 'ai-chat-slide-up' : 'ai-chat-slide-down'
-              }`}
+            className={`absolute bottom-0 right-0 w-full max-w-md h-[85vh] max-h-[700px] flex flex-col transition-all duration-300 ${
+              isAnimating ? 'ai-chat-slide-up' : 'ai-chat-slide-down'
+            }`}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,248,240,0.98) 100%)',
+              background:
+                'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,248,240,0.98) 100%)',
               backdropFilter: 'blur(20px)',
               borderRadius: '1.5rem 1.5rem 0 0',
               boxShadow: '0 -8px 60px rgba(0,0,0,0.15), 0 -2px 20px rgba(249,115,22,0.1)',
               border: '1px solid rgba(255,255,255,0.6)',
-              borderBottom: 'none'
+              borderBottom: 'none',
             }}
           >
             {/* Header */}
@@ -328,7 +342,7 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
               className="flex items-center gap-3 px-5 py-4 flex-shrink-0 relative"
               style={{
                 background: 'linear-gradient(135deg, #0f126cff 0%, #7d80deff 100%)',
-                borderRadius: '1.5rem 1.5rem 0 0'
+                borderRadius: '1.5rem 1.5rem 0 0',
               }}
             >
               <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-inner">
@@ -338,7 +352,9 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
                 <h3 className="text-white font-bold text-sm tracking-tight">{copy.title}</h3>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  <span className="text-yellow-300 text-[10px]  font-bold uppercase tracking-wider">{copy.online}</span>
+                  <span className="text-yellow-300 text-[10px]  font-bold uppercase tracking-wider">
+                    {copy.online}
+                  </span>
                 </div>
               </div>
 
@@ -353,7 +369,10 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth" id="ai-chat-messages">
+            <div
+              className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth"
+              id="ai-chat-messages"
+            >
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -365,10 +384,11 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
-                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-md shadow-md'
-                      : 'bg-white text-gray-700 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80'
-                      }`}
+                    className={`max-w-[80%] px-4 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl rounded-br-md shadow-md'
+                        : 'bg-white text-gray-700 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80'
+                    }`}
                   >
                     {msg.content}
                   </div>
@@ -388,9 +408,18 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
                   </div>
                   <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-sm border border-gray-100/80">
                     <div className="flex gap-1.5">
-                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      <span
+                        className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '0ms' }}
+                      ></span>
+                      <span
+                        className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '150ms' }}
+                      ></span>
+                      <span
+                        className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
+                        style={{ animationDelay: '300ms' }}
+                      ></span>
                     </div>
                   </div>
                 </div>
@@ -415,7 +444,10 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
             </div>
 
             {/* Input Area */}
-            <div className="flex-shrink-0 px-4 py-3 border-t border-gray-100/80 bg-white/80 backdrop-blur-sm" style={{ borderRadius: '0' }}>
+            <div
+              className="flex-shrink-0 px-4 py-3 border-t border-gray-100/80 bg-white/80 backdrop-blur-sm"
+              style={{ borderRadius: '0' }}
+            >
               <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-1 border border-gray-200/60 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all duration-200">
                 <input
                   ref={inputRef}
@@ -433,24 +465,20 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
                   id="ai-chat-send"
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0 ${input.trim() && !isLoading
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md active:scale-90'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+                    input.trim() && !isLoading
+                      ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md active:scale-90'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
                   aria-label={copy.sendLabel}
                 >
-                  {isLoading ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Send size={16} />
-                  )}
+                  {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
     </>
   );
 };

@@ -4,9 +4,4 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record OrderDetailResponse(
-        Long orderId,
-        LocalDateTime paymentTime,
-        String userName,
-        BigDecimal finalAmount,
-        String tableNumber) {
-}
+        Long orderId, LocalDateTime paymentTime, String userName, BigDecimal finalAmount, String tableNumber) {}

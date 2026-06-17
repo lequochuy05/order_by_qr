@@ -2,8 +2,7 @@ package com.qros.shared.cache;
 
 public final class CacheNames {
 
-    private CacheNames() {
-    }
+    private CacheNames() {}
 
     public static final String MENU = "menu";
     public static final String PUBLIC_MENU = "publicMenu";

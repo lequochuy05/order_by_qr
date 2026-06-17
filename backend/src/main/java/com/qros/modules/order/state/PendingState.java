@@ -2,9 +2,8 @@ package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
-import org.springframework.stereotype.Component;
-
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * PendingState - Handles the initial state of an order upon creation.
@@ -13,7 +12,7 @@ import java.util.Set;
 public class PendingState implements OrderState {
 
     private static final Set<OrderStatus> ALLOWED_FROM = Set.of(); // PENDING is the initial state, not reached via
-                                                                   // transition
+    // transition
 
     /**
      * Sets the order status to PENDING.

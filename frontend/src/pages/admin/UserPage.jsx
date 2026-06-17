@@ -1,5 +1,5 @@
-import { UserManagement } from '@features/user-management'
+import { UserManagement } from '@features/user-management';
 
 export default function UserPage() {
-  return <UserManagement />
+  return <UserManagement />;
 }

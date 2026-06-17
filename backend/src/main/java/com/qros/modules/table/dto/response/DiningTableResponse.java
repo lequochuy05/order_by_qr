@@ -1,7 +1,6 @@
 package com.qros.modules.table.dto.response;
 
 import com.qros.modules.table.model.enums.TableStatus;
-
 import java.time.LocalDateTime;
 
 /**
@@ -15,5 +14,4 @@ public record DiningTableResponse(
         Integer capacity,
         String qrCodeUrl,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {
-}
+        LocalDateTime updatedAt) {}

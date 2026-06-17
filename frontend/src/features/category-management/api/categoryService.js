@@ -7,7 +7,10 @@ const stableStringify = (value) => {
   if (!value) return 'all';
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   if (typeof value === 'object') {
-    return `{${Object.keys(value).sort().map(k => `${k}:${stableStringify(value[k])}`).join(',')}}`;
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${k}:${stableStringify(value[k])}`)
+      .join(',')}}`;
   }
   return String(value);
 };
@@ -44,10 +47,11 @@ const normalizePage = (data, page = 0, size = 24) => {
 };
 
 const { requestFn: getCategoryList, clearCache: clearCategoryListCache } = createCachedRequest(
-  (options = {}) => categoryApi
-    .getAll({ size: 1000, sort: 'displayOrder,asc', ...options })
-    .then(normalizePageContent),
-  CATEGORY_LIST_CACHE_MS
+  (options = {}) =>
+    categoryApi
+      .getAll({ size: 1000, sort: 'displayOrder,asc', ...options })
+      .then(normalizePageContent),
+  CATEGORY_LIST_CACHE_MS,
 );
 
 const { requestFn: getCategoryPage, clearCache: clearCategoryPageCache } = createKeyedCachedRequest(
@@ -62,12 +66,10 @@ const { requestFn: getCategoryPage, clearCache: clearCategoryPageCache } = creat
     };
     if (!requestParams.q?.trim()) delete requestParams.q;
 
-    return categoryApi
-      .getPage(requestParams)
-      .then((data) => normalizePage(data, page, size));
+    return categoryApi.getPage(requestParams).then((data) => normalizePage(data, page, size));
   },
   CATEGORY_LIST_CACHE_MS,
-  stableStringify
+  stableStringify,
 );
 
 const clearCategoryCache = () => {
@@ -107,18 +109,14 @@ export const categoryService = {
 
   getPage: (params, options) => getCategoryPage(params, options),
 
-  search: (q, page = 0, size = 12) =>
-    categoryApi.search(q, page, size),
+  search: (q, page = 0, size = 12) => categoryApi.search(q, page, size),
 
-  create: (data) =>
-    mutateCategory(() => categoryApi.create(toCategoryPayload(data))),
+  create: (data) => mutateCategory(() => categoryApi.create(toCategoryPayload(data))),
 
-  update: (id, data) =>
-    mutateCategory(() => categoryApi.update(id, toCategoryPayload(data))),
+  update: (id, data) => mutateCategory(() => categoryApi.update(id, toCategoryPayload(data))),
 
   uploadImage: (id, file) =>
     mutateCategory(() => categoryApi.uploadImage(id, toImageFormData(file))),
 
-  delete: (id) =>
-    mutateCategory(() => categoryApi.delete(id)),
+  delete: (id) => mutateCategory(() => categoryApi.delete(id)),
 };

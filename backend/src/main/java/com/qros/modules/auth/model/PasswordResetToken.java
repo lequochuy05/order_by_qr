@@ -1,14 +1,13 @@
 package com.qros.modules.auth.model;
 
-import com.qros.shared.entity.BaseEntity;
 import com.qros.modules.user.model.User;
-import java.time.LocalDateTime;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
+import java.time.LocalDateTime;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -31,8 +30,7 @@ public class PasswordResetToken extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY)
+    @NotNull @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -40,8 +38,7 @@ public class PasswordResetToken extends BaseEntity {
     @Column(nullable = false, unique = true, length = 64)
     private String token;
 
-    @NotNull
-    @Column(nullable = false)
+    @NotNull @Column(nullable = false)
     private LocalDateTime expiryDate;
 
     @Builder.Default
@@ -51,13 +48,13 @@ public class PasswordResetToken extends BaseEntity {
     @Column(length = 64)
     private String otpCode;
 
-    @NotNull
-    @Builder.Default
+    @NotNull @Builder.Default
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Via via = Via.EMAIL;
 
     public enum Via {
-        EMAIL, PHONE
+        EMAIL,
+        PHONE
     }
 }

@@ -6,7 +6,7 @@ const PaginationControls = ({
   totalElements = 0,
   itemLabel = 'mục',
   loading = false,
-  onPageChange
+  onPageChange,
 }) => {
   if (totalPages <= 1) return null;
 
@@ -27,7 +27,9 @@ const PaginationControls = ({
       </button>
       <span className="px-4 text-sm font-bold text-gray-500">
         Trang {currentPage + 1} / {totalPages}
-        <span className="ml-2 font-medium text-gray-400">({totalElements} {itemLabel})</span>
+        <span className="ml-2 font-medium text-gray-400">
+          ({totalElements} {itemLabel})
+        </span>
       </span>
       <button
         type="button"

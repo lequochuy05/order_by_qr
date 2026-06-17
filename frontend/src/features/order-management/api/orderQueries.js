@@ -12,7 +12,14 @@ export const useOrdersHistoryQuery = (filters = {}, options = {}) =>
 
 export const useOrderAnalyticsQuery = (filters = {}, options = {}) =>
   useQuery({
-    queryKey: ['orders', 'analytics', filters.from, filters.to, filters.status, filters.tableNumber],
+    queryKey: [
+      'orders',
+      'analytics',
+      filters.from,
+      filters.to,
+      filters.status,
+      filters.tableNumber,
+    ],
     queryFn: () => orderService.getOrderAnalytics(filters),
     ...options,
   });

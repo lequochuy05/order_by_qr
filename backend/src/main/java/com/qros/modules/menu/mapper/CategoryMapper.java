@@ -4,11 +4,10 @@ import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.dto.summary.CategorySummary;
 import com.qros.modules.menu.model.Category;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
@@ -62,8 +61,6 @@ public class CategoryMapper {
             return null;
         }
 
-        return new CategorySummary(
-                category.getId(),
-                category.getName());
+        return new CategorySummary(category.getId(), category.getName());
     }
 }

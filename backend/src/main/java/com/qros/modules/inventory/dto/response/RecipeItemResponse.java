@@ -9,5 +9,4 @@ public record RecipeItemResponse(
         Long inventoryItemId,
         String inventoryItemName,
         String unit,
-        BigDecimal quantityRequired) {
-}
+        BigDecimal quantityRequired) {}

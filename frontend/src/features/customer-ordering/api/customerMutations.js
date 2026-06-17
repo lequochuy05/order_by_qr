@@ -11,10 +11,11 @@ export const createClientRequestId = () => {
 
 export const useSubmitOrderMutation = (options = {}) =>
   useMutation({
-    mutationFn: (data) => menuService.createOrder({
-      ...data,
-      clientRequestId: data?.clientRequestId || createClientRequestId(),
-    }),
+    mutationFn: (data) =>
+      menuService.createOrder({
+        ...data,
+        clientRequestId: data?.clientRequestId || createClientRequestId(),
+      }),
     onSuccess: (...args) => {
       // Typically we invalidate table session after submit
       // options.onSuccess will receive the arguments

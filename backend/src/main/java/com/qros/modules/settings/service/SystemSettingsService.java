@@ -1,7 +1,5 @@
 package com.qros.modules.settings.service;
 
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
@@ -9,9 +7,11 @@ import com.qros.modules.settings.mapper.SystemSettingsMapper;
 import com.qros.modules.settings.model.SystemSettings;
 import com.qros.modules.settings.repository.SystemSettingsRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +55,8 @@ public class SystemSettingsService {
 
     @Transactional
     public SystemSettings getOrCreateSettings() {
-        return settingsRepository.findById(SETTINGS_ID)
+        return settingsRepository
+                .findById(SETTINGS_ID)
                 .orElseGet(() -> settingsRepository.save(settingsMapper.defaultSettings()));
     }
 }

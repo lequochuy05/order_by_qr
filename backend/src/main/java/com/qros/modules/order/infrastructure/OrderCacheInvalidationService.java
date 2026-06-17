@@ -21,13 +21,13 @@ public class OrderCacheInvalidationService {
     /**
      * Evicts all caches affected by an order mutation (creation, update, status
      * change, deletion).
-     * 
+     *
      * @param orderId The ID of the mutated order
      */
     public void evictAfterOrderMutation(com.qros.modules.order.model.Order order) {
         if (order == null) return;
         evict(CacheNames.ORDER_BY_ID, order.getId());
-        
+
         if (order.getTable() != null) {
             String tableCode = order.getTable().getTableCode();
             evict(CacheNames.TABLES, "code_" + tableCode);

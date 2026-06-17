@@ -11,5 +11,4 @@ public record PublicSettingsResponse(
         LocalTime openingTime,
         LocalTime closingTime,
         Boolean orderingEnabled,
-        Boolean maintenanceMode) {
-}
+        Boolean maintenanceMode) {}

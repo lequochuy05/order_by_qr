@@ -2,22 +2,21 @@ package com.qros.modules.auth.service;
 
 import com.qros.infrastructure.mail.SmtpEmailService;
 import com.qros.modules.auth.model.PasswordResetToken;
-import com.qros.modules.user.model.User;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
+import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
-import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import com.qros.shared.transaction.TransactionSideEffectService;
+import java.security.SecureRandom;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
-import java.security.SecureRandom;
-import java.util.UUID;
 
 /**
  * PasswordResetService - Manages secure password recovery flows via Email
@@ -40,13 +39,13 @@ public class PasswordResetService {
     /**
      * Initiates a password reset flow by generating a unique token and sending it
      * via email.
-     * 
+     *
      * @param email The registered email address
      */
     @Transactional
     public void createPasswordResetToken(String email) {
         String normalizedEmail = email.trim().toLowerCase();
-        
+
         User user = userRepo.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_NOT_FOUND));
 
@@ -64,21 +63,21 @@ public class PasswordResetService {
         tokenRepo.save(resetToken);
 
         sideEffects.afterCommit(
-                () -> emailService.sendResetPasswordEmail(normalizedEmail, rawToken),
-                "send reset password email");
+                () -> emailService.sendResetPasswordEmail(normalizedEmail, rawToken), "send reset password email");
     }
 
     /**
      * Completes the password reset process using a valid security token.
-     * 
+     *
      * @param token  The reset token from email
      * @param newPassword The new plain text password
      */
     @Transactional
     public void resetPassword(String token, String newPassword) {
-        PasswordResetToken resetToken = tokenRepo.findByToken(sha256(token))
-                .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID,
-                        "Token invalid or expired"));
+        PasswordResetToken resetToken = tokenRepo
+                .findByToken(sha256(token))
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "Token invalid or expired"));
 
         if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(AppTime.now())) {
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "Token expired or already used");
@@ -90,13 +89,12 @@ public class PasswordResetService {
 
         resetToken.setUsed(true);
         tokenRepo.save(resetToken);
-
     }
 
     /**
      * Initiates a mobile-based password reset by generating and sending a 6-digit
      * OTP.
-     * 
+     *
      * @param phone The registered phone number
      */
     @Transactional
@@ -129,7 +127,7 @@ public class PasswordResetService {
 
     /**
      * Completes the password reset process using a valid OTP code.
-     * 
+     *
      * @param phone  The registered phone number
      * @param otpCode     The 6-digit OTP received via SMS
      * @param newPassword The new plain text password
@@ -138,16 +136,14 @@ public class PasswordResetService {
     public void resetPasswordWithOtp(String phone, String otpCode, String newPassword) {
         String normalizedPhone = normalizePhone(phone);
 
-        PasswordResetToken otpToken = tokenRepo.findFirstByUserPhoneAndUsedFalseAndExpiryDateAfterAndViaOrderByExpiryDateDesc(
-                normalizedPhone, AppTime.now(), PasswordResetToken.Via.PHONE)
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.PASSWORD_RESET_TOKEN_INVALID,
-                        "OTP invalid or expired"));
+        PasswordResetToken otpToken = tokenRepo
+                .findFirstByUserPhoneAndUsedFalseAndExpiryDateAfterAndViaOrderByExpiryDateDesc(
+                        normalizedPhone, AppTime.now(), PasswordResetToken.Via.PHONE)
+                .orElseThrow(
+                        () -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired"));
 
         if (!otpToken.getOtpCode().equals(sha256(otpCode))) {
-            throw new BusinessException(
-                    ErrorCode.PASSWORD_RESET_TOKEN_INVALID,
-                    "OTP invalid or expired");
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired");
         }
 
         User user = otpToken.getUser();

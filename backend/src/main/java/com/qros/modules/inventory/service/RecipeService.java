@@ -10,125 +10,119 @@ import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Caching;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class RecipeService {
 
-        private final RecipeItemRepository recipeItemRepository;
-        private final MenuItemRepository menuItemRepository;
-        private final InventoryItemRepository inventoryItemRepository;
-        private final RecipeMapper recipeMapper;
-        private final ApplicationEventPublisher eventPublisher;
+    private final RecipeItemRepository recipeItemRepository;
+    private final MenuItemRepository menuItemRepository;
+    private final InventoryItemRepository inventoryItemRepository;
+    private final RecipeMapper recipeMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
-        @Transactional(readOnly = true)
-        public List<RecipeItemResponse> getRecipeByMenuItemId(@NonNull Long menuItemId) {
-                return recipeMapper.toResponses(
-                                recipeItemRepository.findByMenuItemId(menuItemId));
+    @Transactional(readOnly = true)
+    public List<RecipeItemResponse> getRecipeByMenuItemId(@NonNull Long menuItemId) {
+        return recipeMapper.toResponses(recipeItemRepository.findByMenuItemId(menuItemId));
+    }
+
+    @Transactional
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public List<RecipeItemResponse> updateRecipe(@NonNull Long menuItemId, @NonNull RecipeUpdateRequest request) {
+        MenuItem menuItem = getMenuItem(menuItemId);
+
+        validateDuplicateInventoryItems(request.items());
+
+        List<RecipeItem> currentRecipeItems = recipeItemRepository.findByMenuItemId(menuItemId);
+
+        if (!currentRecipeItems.isEmpty()) {
+            recipeItemRepository.deleteAll(currentRecipeItems);
+            recipeItemRepository.flush();
         }
 
-        @Transactional
-        @Caching(evict = {
-                        @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-                        @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-                        @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-                        @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-        })
-        public List<RecipeItemResponse> updateRecipe(
-                        @NonNull Long menuItemId,
-                        @NonNull RecipeUpdateRequest request) {
-                MenuItem menuItem = getMenuItem(menuItemId);
+        List<RecipeItem> newRecipeItems = request.items().stream()
+                .map(itemRequest -> createRecipeItem(menuItem, itemRequest))
+                .toList();
 
-                validateDuplicateInventoryItems(request.items());
+        List<RecipeItem> savedRecipeItems = recipeItemRepository.saveAll(newRecipeItems);
 
-                List<RecipeItem> currentRecipeItems = recipeItemRepository.findByMenuItemId(menuItemId);
+        eventPublisher.publishEvent(new InventoryChangeEvent("recipe_updated", menuItemId));
+        eventPublisher.publishEvent(new MenuChangeEvent("recipe_updated", menuItemId));
 
-                if (!currentRecipeItems.isEmpty()) {
-                        recipeItemRepository.deleteAll(currentRecipeItems);
-                        recipeItemRepository.flush();
-                }
+        return recipeMapper.toResponses(savedRecipeItems);
+    }
 
-                List<RecipeItem> newRecipeItems = request.items()
-                                .stream()
-                                .map(itemRequest -> createRecipeItem(menuItem, itemRequest))
-                                .toList();
+    @Transactional
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public void deleteRecipe(@NonNull Long menuItemId) {
+        getMenuItem(menuItemId);
 
-                List<RecipeItem> savedRecipeItems = recipeItemRepository.saveAll(newRecipeItems);
+        List<RecipeItem> recipeItems = recipeItemRepository.findByMenuItemId(menuItemId);
 
-                eventPublisher.publishEvent(new InventoryChangeEvent("recipe_updated", menuItemId));
-                eventPublisher.publishEvent(new MenuChangeEvent("recipe_updated", menuItemId));
-
-                return recipeMapper.toResponses(savedRecipeItems);
+        if (!recipeItems.isEmpty()) {
+            recipeItemRepository.deleteAll(recipeItems);
         }
 
-        @Transactional
-        @Caching(evict = {
-                        @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
-                        @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
-                        @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
-                        @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
-        })
-        public void deleteRecipe(@NonNull Long menuItemId) {
-                getMenuItem(menuItemId);
+        eventPublisher.publishEvent(new InventoryChangeEvent("recipe_deleted", menuItemId));
+        eventPublisher.publishEvent(new MenuChangeEvent("recipe_deleted", menuItemId));
+    }
 
-                List<RecipeItem> recipeItems = recipeItemRepository.findByMenuItemId(menuItemId);
+    private RecipeItem createRecipeItem(MenuItem menuItem, RecipeItemRequest request) {
+        InventoryItem inventoryItem = getActiveInventoryItem(request.inventoryItemId());
 
-                if (!recipeItems.isEmpty()) {
-                        recipeItemRepository.deleteAll(recipeItems);
-                }
+        return recipeMapper.toEntity(menuItem, inventoryItem, request);
+    }
 
-                eventPublisher.publishEvent(new InventoryChangeEvent("recipe_deleted", menuItemId));
-                eventPublisher.publishEvent(new MenuChangeEvent("recipe_deleted", menuItemId));
+    private MenuItem getMenuItem(Long menuItemId) {
+        return menuItemRepository
+                .findById(menuItemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
+    }
+
+    private InventoryItem getActiveInventoryItem(Long inventoryItemId) {
+        return inventoryItemRepository
+                .findById(inventoryItemId)
+                .filter(item -> Boolean.TRUE.equals(item.getActive()))
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND));
+    }
+
+    private void validateDuplicateInventoryItems(List<RecipeItemRequest> items) {
+        if (items == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
-        private RecipeItem createRecipeItem(
-                        MenuItem menuItem,
-                        RecipeItemRequest request) {
-                InventoryItem inventoryItem = getActiveInventoryItem(request.inventoryItemId());
+        Set<Long> inventoryItemIds = new LinkedHashSet<>();
 
-                return recipeMapper.toEntity(
-                                menuItem,
-                                inventoryItem,
-                                request);
+        for (RecipeItemRequest item : items) {
+            if (!inventoryItemIds.add(item.inventoryItemId())) {
+                throw new BusinessException(ErrorCode.RECIPE_ITEM_DUPLICATED);
+            }
         }
-
-        private MenuItem getMenuItem(Long menuItemId) {
-                return menuItemRepository.findById(menuItemId)
-                                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
-        }
-
-        private InventoryItem getActiveInventoryItem(Long inventoryItemId) {
-                return inventoryItemRepository.findById(inventoryItemId)
-                                .filter(item -> Boolean.TRUE.equals(item.getActive()))
-                                .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND));
-        }
-
-        private void validateDuplicateInventoryItems(List<RecipeItemRequest> items) {
-                if (items == null) {
-                        throw new BusinessException(ErrorCode.INVALID_REQUEST);
-                }
-
-                Set<Long> inventoryItemIds = new LinkedHashSet<>();
-
-                for (RecipeItemRequest item : items) {
-                        if (!inventoryItemIds.add(item.inventoryItemId())) {
-                                throw new BusinessException(ErrorCode.RECIPE_ITEM_DUPLICATED);
-                        }
-                }
-        }
+    }
 }

@@ -1,8 +1,6 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.inventory.service.InventoryReservationService;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -17,15 +15,16 @@ import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -45,18 +44,15 @@ public class OrderStatusService {
     @Transactional
     public OrderResponse updateStatus(@NonNull Long id, @NonNull OrderStatus targetStatus) {
         if (targetStatus == OrderStatus.COMPLETED) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Use payment endpoint to complete an order");
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Use payment endpoint to complete an order");
         }
 
         if (targetStatus == OrderStatus.CANCELLED) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Use cancel endpoint to cancel an order");
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, "Use cancel endpoint to cancel an order");
         }
 
-        Order order = orderRepository.findByIdForUpdate(id)
+        Order order = orderRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         try {
@@ -70,12 +66,7 @@ public class OrderStatusService {
         OrderState state = orderStateFactory.getState(targetStatus);
         state.handleRequest(order);
 
-        orderAuditService.recordOrderStatus(
-                order,
-                fromStatus,
-                order.getStatus(),
-                null,
-                "manual-status-update");
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "manual-status-update");
 
         Order saved = orderRepository.save(order);
 
@@ -88,13 +79,12 @@ public class OrderStatusService {
 
     @Transactional
     public OrderResponse cancelOrder(@NonNull Long id) {
-        Order order = orderRepository.findByIdForUpdate(id)
+        Order order = orderRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (!order.canBeCancelled()) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Cannot cancel this order in current state");
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, "Cannot cancel this order in current state");
         }
 
         OrderStatus fromStatus = order.getStatus();
@@ -109,31 +99,20 @@ public class OrderStatusService {
                     item.markStatus(OrderItemStatus.CANCELLED);
 
                     orderAuditService.recordItemStatus(
-                            item,
-                            fromItemStatus,
-                            OrderItemStatus.CANCELLED,
-                            null,
-                            "order-cancelled");
+                            item, fromItemStatus, OrderItemStatus.CANCELLED, null, "order-cancelled");
                 });
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setPaymentStatus(PaymentStatus.CANCELLED);
 
-        orderAuditService.recordOrderStatus(
-                order,
-                fromStatus,
-                order.getStatus(),
-                null,
-                "order-cancelled");
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "order-cancelled");
 
         Order saved = orderRepository.save(order);
 
         orderTableSyncService.recalcTableStatus(saved);
         if (saved.getTableSession() != null) {
             tableSessionService.closeSession(
-                    saved.getTableSession().getId(),
-                    TableSessionStatus.CANCELLED,
-                    "Order cancelled");
+                    saved.getTableSession().getId(), TableSessionStatus.CANCELLED, "Order cancelled");
         }
         orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
@@ -143,7 +122,8 @@ public class OrderStatusService {
 
     @Transactional
     public void deleteOrder(@NonNull Long id) {
-        Order order = orderRepository.findByIdForUpdate(id)
+        Order order = orderRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         restoreReservableItems(order);
@@ -151,9 +131,7 @@ public class OrderStatusService {
         orderTableSyncService.releaseTable(order);
         if (order.getTableSession() != null) {
             tableSessionService.closeSession(
-                    order.getTableSession().getId(),
-                    TableSessionStatus.CANCELLED,
-                    "Order deleted");
+                    order.getTableSession().getId(), TableSessionStatus.CANCELLED, "Order deleted");
         }
 
         orderRepository.delete(order);
@@ -174,20 +152,18 @@ public class OrderStatusService {
             return;
         }
 
-        List<OrderItem> billableItems = order.getOrderItems().stream()
-                .filter(OrderItem::isBillable)
-                .toList();
+        List<OrderItem> billableItems =
+                order.getOrderItems().stream().filter(OrderItem::isBillable).toList();
 
         if (billableItems.isEmpty()) {
             return;
         }
 
-        boolean allDone = billableItems.stream()
-                .allMatch(item -> item.getStatus() == OrderItemStatus.FINISHED);
+        boolean allDone = billableItems.stream().allMatch(item -> item.getStatus() == OrderItemStatus.FINISHED);
 
         boolean anyCookingOrFinished = billableItems.stream()
-                .anyMatch(item -> item.getStatus() == OrderItemStatus.COOKING
-                        || item.getStatus() == OrderItemStatus.FINISHED);
+                .anyMatch(item ->
+                        item.getStatus() == OrderItemStatus.COOKING || item.getStatus() == OrderItemStatus.FINISHED);
 
         if (allDone && order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             applyAutoTransition(order, OrderStatus.AWAITING_PAYMENT, changedBy, "auto-all-items-done");
@@ -206,17 +182,11 @@ public class OrderStatusService {
         OrderState state = orderStateFactory.getState(targetStatus);
         state.handleRequest(order);
 
-        orderAuditService.recordOrderStatus(
-                order,
-                fromStatus,
-                order.getStatus(),
-                changedBy,
-                reason);
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, reason);
 
         orderRepository.save(order);
 
-        log.info("Order #{} auto-transitioned from {} to {} ({})",
-                order.getId(), fromStatus, targetStatus, reason);
+        log.info("Order #{} auto-transitioned from {} to {} ({})", order.getId(), fromStatus, targetStatus, reason);
     }
 
     private void restoreReservableItems(Order order) {

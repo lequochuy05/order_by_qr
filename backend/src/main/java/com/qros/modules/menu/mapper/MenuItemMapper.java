@@ -8,22 +8,21 @@ import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class MenuItemMapper {
 
     private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = Comparator.comparing(
-            (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder()).thenComparing(
-                    (ItemOption option) -> option.getName() == null ? "" : option.getName());
+                    (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder())
+            .thenComparing((ItemOption option) -> option.getName() == null ? "" : option.getName());
 
     private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR = Comparator.comparing(
-            (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder()).thenComparing(
-                    (ItemOptionValue value) -> value.getName() == null ? "" : value.getName());
+                    (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder())
+            .thenComparing((ItemOptionValue value) -> value.getName() == null ? "" : value.getName());
 
     public MenuItemResponse toResponse(MenuItem item) {
         if (item == null) {
@@ -101,10 +100,7 @@ public class MenuItemMapper {
         }
 
         return new ItemOptionValueResponse(
-                value.getId(),
-                value.getName(),
-                value.getExtraPrice(),
-                value.getDisplayOrder());
+                value.getId(), value.getName(), value.getExtraPrice(), value.getDisplayOrder());
     }
 
     private CategorySummary toCategorySummary(Category category) {
@@ -112,8 +108,6 @@ public class MenuItemMapper {
             return null;
         }
 
-        return new CategorySummary(
-                category.getId(),
-                category.getName());
+        return new CategorySummary(category.getId(), category.getName());
     }
 }

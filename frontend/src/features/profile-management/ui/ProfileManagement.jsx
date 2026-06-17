@@ -12,7 +12,7 @@ import {
   Save,
   ShieldCheck,
   Upload,
-  User
+  User,
 } from 'lucide-react';
 
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
@@ -25,27 +25,27 @@ const initialProfile = {
   email: '',
   phone: '',
   role: '',
-  avatarUrl: ''
+  avatarUrl: '',
 };
 
 const initialPassword = {
   currentPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 };
 
 const passwordRules = [
   { label: '6+ ký tự', test: (value) => value.length >= 6 },
   { label: 'Chữ hoa', test: (value) => /[A-Z]/.test(value) },
   { label: 'Chữ thường', test: (value) => /[a-z]/.test(value) },
-  { label: 'Số', test: (value) => /\d/.test(value) }
+  { label: 'Số', test: (value) => /\d/.test(value) },
 ];
 
 const strengthMeta = [
   { label: 'Yếu', barClass: 'bg-red-500', textClass: 'text-red-600' },
   { label: 'Trung bình', barClass: 'bg-orange-500', textClass: 'text-orange-600' },
   { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600' },
-  { label: 'Mạnh', barClass: 'bg-emerald-600', textClass: 'text-emerald-700' }
+  { label: 'Mạnh', barClass: 'bg-emerald-600', textClass: 'text-emerald-700' },
 ];
 
 const ProfilePage = () => {
@@ -85,7 +85,7 @@ const ProfilePage = () => {
         email: data.email || '',
         phone: data.phone || '',
         role: data.role || '',
-        avatarUrl: data.avatarUrl || ''
+        avatarUrl: data.avatarUrl || '',
       };
       setProfile(nextProfile);
       setAvatarPreview(nextProfile.avatarUrl);
@@ -94,7 +94,7 @@ const ProfilePage = () => {
         email: nextProfile.email,
         phone: nextProfile.phone,
         role: nextProfile.role,
-        avatarUrl: nextProfile.avatarUrl
+        avatarUrl: nextProfile.avatarUrl,
       });
     } catch (err) {
       if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
@@ -111,9 +111,12 @@ const ProfilePage = () => {
   }, [loadProfile]);
 
   const strength = useMemo(() => {
-    const passed = passwordRules.filter(rule => rule.test(passwordForm.newPassword)).length;
+    const passed = passwordRules.filter((rule) => rule.test(passwordForm.newPassword)).length;
     if (!passwordForm.newPassword) return { passed: 0, meta: strengthMeta[0] };
-    return { passed, meta: strengthMeta[Math.min(Math.max(passed - 1, 0), strengthMeta.length - 1)] };
+    return {
+      passed,
+      meta: strengthMeta[Math.min(Math.max(passed - 1, 0), strengthMeta.length - 1)],
+    };
   }, [passwordForm.newPassword]);
 
   const validateProfile = () => {
@@ -140,15 +143,15 @@ const ProfilePage = () => {
     try {
       const updated = await profileService.updateMe({
         fullName: profile.fullName.trim(),
-        phone: profile.phone.trim() || null
+        phone: profile.phone.trim() || null,
       });
-      setProfile(prev => ({ ...prev, ...updated, phone: updated.phone || '' }));
+      setProfile((prev) => ({ ...prev, ...updated, phone: updated.phone || '' }));
       updateUser({
         fullName: updated.fullName,
         phone: updated.phone || '',
         avatarUrl: updated.avatarUrl,
         role: updated.role,
-        email: updated.email
+        email: updated.email,
       });
       showSuccess('Thông tin cá nhân đã được cập nhật.');
     } catch (err) {
@@ -171,7 +174,7 @@ const ProfilePage = () => {
     setUploadingAvatar(true);
     try {
       const updated = await profileService.uploadAvatar(file);
-      setProfile(prev => ({ ...prev, avatarUrl: updated.avatarUrl || '' }));
+      setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || '' }));
       setAvatarPreview(updated.avatarUrl || '');
       updateUser({ avatarUrl: updated.avatarUrl || '' });
       showSuccess('Ảnh đại diện đã được cập nhật.');
@@ -211,7 +214,7 @@ const ProfilePage = () => {
     try {
       await profileService.changePassword({
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        newPassword: passwordForm.newPassword,
       });
       setPasswordForm(initialPassword);
       showSuccess('Mật khẩu đã được thay đổi.');
@@ -252,7 +255,11 @@ const ProfilePage = () => {
                 className="absolute bottom-1 right-1 flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
                 title="Đổi ảnh đại diện"
               >
-                {uploadingAvatar ? <Loader2 className="animate-spin" size={18} /> : <Camera size={18} />}
+                {uploadingAvatar ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <Camera size={18} />
+                )}
               </button>
             </div>
 
@@ -264,7 +271,9 @@ const ProfilePage = () => {
               onChange={handleAvatarChange}
             />
 
-            <h2 className="mt-5 text-xl font-black text-slate-900 dark:text-slate-100">{profile.fullName || user?.fullName}</h2>
+            <h2 className="mt-5 text-xl font-black text-slate-900 dark:text-slate-100">
+              {profile.fullName || user?.fullName}
+            </h2>
             <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-600 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
               <ShieldCheck size={14} />
               {fmtRole(profile.role || user?.role)}
@@ -288,45 +297,74 @@ const ProfilePage = () => {
               <User size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Thông tin cá nhân</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Cập nhật thông tin hiển thị trong hệ thống quản trị.</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                Thông tin cá nhân
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Cập nhật thông tin hiển thị trong hệ thống quản trị.
+              </p>
             </div>
           </div>
 
           <form onSubmit={handleProfileSubmit} className="grid gap-5 md:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Họ và tên</span>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                Họ và tên
+              </span>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <User
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   value={profile.fullName}
-                  onChange={(event) => setProfile(prev => ({ ...prev, fullName: event.target.value }))}
-                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${errors.fullName ? 'border-red-300 focus:border-red-400' : 'border-slate-200 focus:border-orange-400'
-                    } dark:border-slate-700`}
+                  onChange={(event) =>
+                    setProfile((prev) => ({ ...prev, fullName: event.target.value }))
+                  }
+                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
+                    errors.fullName
+                      ? 'border-red-300 focus:border-red-400'
+                      : 'border-slate-200 focus:border-orange-400'
+                  } dark:border-slate-700`}
                 />
               </div>
               {errors.fullName && <FieldError message={errors.fullName} />}
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Số điện thoại</span>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                Số điện thoại
+              </span>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Phone
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   value={profile.phone}
-                  onChange={(event) => setProfile(prev => ({ ...prev, phone: event.target.value }))}
+                  onChange={(event) =>
+                    setProfile((prev) => ({ ...prev, phone: event.target.value }))
+                  }
                   placeholder="VD: 0912345678"
-                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${errors.phone ? 'border-red-300 focus:border-red-400' : 'border-slate-200 focus:border-orange-400'
-                    } dark:border-slate-700`}
+                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
+                    errors.phone
+                      ? 'border-red-300 focus:border-red-400'
+                      : 'border-slate-200 focus:border-orange-400'
+                  } dark:border-slate-700`}
                 />
               </div>
               {errors.phone && <FieldError message={errors.phone} />}
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Email đăng nhập</span>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                Email đăng nhập
+              </span>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Mail
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   value={profile.email}
                   disabled
@@ -338,7 +376,10 @@ const ProfilePage = () => {
             <label className="space-y-2">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Vai trò</span>
               <div className="relative">
-                <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <ShieldCheck
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
                 <input
                   value={fmtRole(profile.role)}
                   disabled
@@ -353,7 +394,11 @@ const ProfilePage = () => {
                 disabled={savingProfile}
                 className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {savingProfile ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}
+                {savingProfile ? (
+                  <Loader2 className="animate-spin" size={17} />
+                ) : (
+                  <Save size={17} />
+                )}
                 Lưu thay đổi
               </button>
             </div>
@@ -368,14 +413,18 @@ const ProfilePage = () => {
               <Lock size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Đổi mật khẩu</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Yêu cầu mật khẩu hiện tại để bảo vệ tài khoản.</p>
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
+                Đổi mật khẩu
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Yêu cầu mật khẩu hiện tại để bảo vệ tài khoản.
+              </p>
             </div>
           </div>
 
           <button
             type="button"
-            onClick={() => setShowPasswords(prev => !prev)}
+            onClick={() => setShowPasswords((prev) => !prev)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             title={showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
           >
@@ -389,21 +438,21 @@ const ProfilePage = () => {
             value={passwordForm.currentPassword}
             visible={showPasswords}
             error={errors.currentPassword}
-            onChange={(value) => setPasswordForm(prev => ({ ...prev, currentPassword: value }))}
+            onChange={(value) => setPasswordForm((prev) => ({ ...prev, currentPassword: value }))}
           />
           <PasswordField
             label="Mật khẩu mới"
             value={passwordForm.newPassword}
             visible={showPasswords}
             error={errors.newPassword}
-            onChange={(value) => setPasswordForm(prev => ({ ...prev, newPassword: value }))}
+            onChange={(value) => setPasswordForm((prev) => ({ ...prev, newPassword: value }))}
           />
           <PasswordField
             label="Xác nhận mật khẩu"
             value={passwordForm.confirmPassword}
             visible={showPasswords}
             error={errors.confirmPassword}
-            onChange={(value) => setPasswordForm(prev => ({ ...prev, confirmPassword: value }))}
+            onChange={(value) => setPasswordForm((prev) => ({ ...prev, confirmPassword: value }))}
           />
 
           <div className="lg:col-span-3">
@@ -411,26 +460,31 @@ const ProfilePage = () => {
               <div>
                 <div className="mb-2 flex items-center justify-between text-xs font-bold">
                   <span className="text-slate-500 dark:text-slate-400">Độ mạnh mật khẩu</span>
-                  <span className={strength.meta.textClass}>{passwordForm.newPassword ? strength.meta.label : 'Chưa nhập'}</span>
+                  <span className={strength.meta.textClass}>
+                    {passwordForm.newPassword ? strength.meta.label : 'Chưa nhập'}
+                  </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
                     className={`h-full rounded-full transition-all ${strength.meta.barClass}`}
-                    style={{ width: `${Math.max(strength.passed, passwordForm.newPassword ? 1 : 0) * 25}%` }}
+                    style={{
+                      width: `${Math.max(strength.passed, passwordForm.newPassword ? 1 : 0) * 25}%`,
+                    }}
                   />
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {passwordRules.map(rule => {
+                {passwordRules.map((rule) => {
                   const passed = rule.test(passwordForm.newPassword);
                   return (
                     <span
                       key={rule.label}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${passed
-                        ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400'
-                        }`}
+                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
+                        passed
+                          ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400'
+                      }`}
                     >
                       <CheckCircle2 size={13} />
                       {rule.label}
@@ -471,8 +525,9 @@ const PasswordField = ({ label, value, visible, error, onChange }) => (
         type={visible ? 'text' : 'password'}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${error ? 'border-red-300 focus:border-red-400' : 'border-slate-200 focus:border-orange-400'
-          } dark:border-slate-700`}
+        className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
+          error ? 'border-red-300 focus:border-red-400' : 'border-slate-200 focus:border-orange-400'
+        } dark:border-slate-700`}
       />
     </div>
     {error && <FieldError message={error} />}

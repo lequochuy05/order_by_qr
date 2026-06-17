@@ -1,7 +1,10 @@
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
-import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from '@shared/lib/orderMoney.js';
+import {
+  getOrderDiscountAmount,
+  getOrderFinalAmount,
+  getOrderSubtotalAmount,
+} from '@shared/lib/orderMoney.js';
 import { X, Receipt, Clock, Utensils, Printer, RotateCw } from 'lucide-react';
-
 
 export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
   if (!isOpen || !order) return null;
@@ -12,13 +15,10 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end animate-in fade-in duration-200">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
-      />
+      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" />
 
       {/* Drawer Panel */}
       <div className="relative w-full max-w-md h-full bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 sm:rounded-l-2xl">
-
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center sm:rounded-tl-2xl">
           <div className="flex items-center gap-3">
@@ -26,10 +26,13 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
               <Receipt size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-800 tracking-tight">
-                Chi tiết đơn hàng
-              </h2>
-              <p className="text-gray-500 text-sm mt-0.5">Mã đơn: <span className="text-orange-600 font-mono font-medium">#{order.id?.toString().substring(0, 8).toUpperCase() || order.id}</span></p>
+              <h2 className="text-xl font-bold text-gray-800 tracking-tight">Chi tiết đơn hàng</h2>
+              <p className="text-gray-500 text-sm mt-0.5">
+                Mã đơn:{' '}
+                <span className="text-orange-600 font-mono font-medium">
+                  #{order.id?.toString().substring(0, 8).toUpperCase() || order.id}
+                </span>
+              </p>
             </div>
           </div>
           <button
@@ -42,14 +45,15 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
-
           {/* Order Info Summary */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <span className="block text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1">
                 <Clock size={12} /> THỜI GIAN
               </span>
-              <span className="text-gray-800 font-medium text-sm">{fmtDateTime(order.createdAt)}</span>
+              <span className="text-gray-800 font-medium text-sm">
+                {fmtDateTime(order.createdAt)}
+              </span>
             </div>
             <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
               <span className="block text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1">
@@ -62,7 +66,9 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                 <span className="block text-xs text-orange-600 font-medium mb-1.5 flex items-center gap-1">
                   THU NGÂN
                 </span>
-                <span className="text-orange-900 font-bold text-sm uppercase">{order.paidByName}</span>
+                <span className="text-orange-900 font-bold text-sm uppercase">
+                  {order.paidByName}
+                </span>
               </div>
             )}
             {order.paymentMethod && (
@@ -87,8 +93,15 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                 <div key={idx} className="flex justify-between items-start group">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-800 font-medium">{item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món không tên'}</span>
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md font-medium">x{item.quantity}</span>
+                      <span className="text-gray-800 font-medium">
+                        {item.itemNameSnapshot ||
+                          item.menuItem?.name ||
+                          item.combo?.name ||
+                          'Món không tên'}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md font-medium">
+                        x{item.quantity}
+                      </span>
                     </div>
                     {item.notes && (
                       <p className="text-xs text-orange-600 mt-1.5 flex gap-1.5 items-start bg-orange-50 inline-block px-2 py-1 rounded-md">
@@ -97,7 +110,9 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                       </p>
                     )}
                   </div>
-                  <span className="text-gray-700 font-medium whitespace-nowrap pl-4">{fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}</span>
+                  <span className="text-gray-700 font-medium whitespace-nowrap pl-4">
+                    {fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -141,7 +156,6 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
             </button>
           )}
         </div>
-
       </div>
     </div>
   );

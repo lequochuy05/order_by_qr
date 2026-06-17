@@ -5,6 +5,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import java.time.LocalTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,9 +14,6 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-
-import java.math.BigDecimal;
-import java.time.LocalTime;
 
 @Entity
 @Table(name = "system_settings")
@@ -26,7 +25,7 @@ import java.time.LocalTime;
 @SQLDelete(sql = "UPDATE system_settings SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 public class SystemSettings extends BaseEntity {
-    
+
     @Id
     private Long id;
 

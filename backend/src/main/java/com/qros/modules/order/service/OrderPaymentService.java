@@ -4,7 +4,6 @@ import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.payment.model.PaymentTransaction;
@@ -15,17 +14,16 @@ import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -48,7 +46,8 @@ public class OrderPaymentService {
 
     @Transactional
     public String payOrder(@NonNull Long id, Long userId, String voucherCode) {
-        Order order = orderRepository.findByIdForUpdate(id)
+        Order order = orderRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getPaymentStatus() == PaymentStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
@@ -68,11 +67,8 @@ public class OrderPaymentService {
         VoucherPaymentResult voucherResult = applyVoucher(order, voucherCode);
         BigDecimal finalAmount = currentFinalAmount(order);
 
-        PaymentTransaction transaction = createCashTransactionIfMissing(
-                order,
-                finalAmount,
-                currentUser,
-                "cash:order:" + order.getId());
+        PaymentTransaction transaction =
+                createCashTransactionIfMissing(order, finalAmount, currentUser, "cash:order:" + order.getId());
 
         paymentCompletionService.completeSuccessfulTransaction(transaction, voucherResult);
         cancelPendingOnlineTransactions(order.getId());
@@ -84,7 +80,8 @@ public class OrderPaymentService {
 
     @Transactional
     public OrderResponse confirmPaid(@NonNull Long id) {
-        Order order = orderRepository.findByIdForUpdate(id)
+        Order order = orderRepository
+                .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
@@ -102,11 +99,8 @@ public class OrderPaymentService {
 
         BigDecimal finalAmount = currentFinalAmount(order);
 
-        PaymentTransaction transaction = createCashTransactionIfMissing(
-                order,
-                finalAmount,
-                null,
-                "manual-confirm:order:" + order.getId());
+        PaymentTransaction transaction =
+                createCashTransactionIfMissing(order, finalAmount, null, "manual-confirm:order:" + order.getId());
 
         Order saved = paymentCompletionService.completeSuccessfulTransaction(transaction);
 
@@ -134,7 +128,8 @@ public class OrderPaymentService {
             return null;
         }
 
-        VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
+        VoucherPaymentResult voucherResult =
+                voucherCheckoutService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
         order.setVoucherCode(voucherResult.voucherCode());
         orderPricingService.setOrderMoney(order, currentSubtotalAmount(order), voucherResult.appliedDiscountAmount());
 
@@ -142,20 +137,15 @@ public class OrderPaymentService {
     }
 
     private PaymentTransaction createCashTransactionIfMissing(
-            Order order,
-            BigDecimal amount,
-            User createdBy,
-            String idempotencyKey) {
+            Order order, BigDecimal amount, User createdBy, String idempotencyKey) {
 
-        return transactionRepository.findFirstByIdempotencyKey(idempotencyKey)
+        return transactionRepository
+                .findFirstByIdempotencyKey(idempotencyKey)
                 .orElseGet(() -> createCashTransaction(order, amount, createdBy, idempotencyKey));
     }
 
     private PaymentTransaction createCashTransaction(
-            Order order,
-            BigDecimal amount,
-            User createdBy,
-            String idempotencyKey) {
+            Order order, BigDecimal amount, User createdBy, String idempotencyKey) {
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .amount(amount)

@@ -1,5 +1,12 @@
 package com.qros.service;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -15,21 +22,13 @@ import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-
-import java.util.Optional;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrderStatusServiceTest {
@@ -89,10 +88,12 @@ class OrderStatusServiceTest {
         when(orderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(order));
         when(orderStateFactory.getState(OrderStatus.SERVING)).thenReturn(servingState);
         doAnswer(invocation -> {
-            Order target = invocation.getArgument(0);
-            target.setStatus(OrderStatus.SERVING);
-            return null;
-        }).when(servingState).handleRequest(any(Order.class));
+                    Order target = invocation.getArgument(0);
+                    target.setStatus(OrderStatus.SERVING);
+                    return null;
+                })
+                .when(servingState)
+                .handleRequest(any(Order.class));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         orderStatusService.updateStatus(10L, OrderStatus.SERVING);
@@ -114,9 +115,6 @@ class OrderStatusServiceTest {
 
         orderStatusService.cancelOrder(11L);
 
-        verify(tableSessionService).closeSession(
-                eq(88L),
-                eq(TableSessionStatus.CANCELLED),
-                eq("Order cancelled"));
+        verify(tableSessionService).closeSession(eq(88L), eq(TableSessionStatus.CANCELLED), eq("Order cancelled"));
     }
 }

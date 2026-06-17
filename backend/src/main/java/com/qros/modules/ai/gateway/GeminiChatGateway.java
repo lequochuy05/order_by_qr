@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.modules.ai.config.GeminiProperties;
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.support.AiPromptBuilder;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -15,16 +19,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 @Slf4j
 @Component
 public class GeminiChatGateway implements AiChatGateway {
 
-    private static final String FALLBACK_REPLY = "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Bạn có thể xem thực đơn trực tiếp trên trang nhé! 😊";
+    private static final String FALLBACK_REPLY =
+            "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Bạn có thể xem thực đơn trực tiếp trên trang nhé! 😊";
 
     private final GeminiProperties properties;
     private final ObjectMapper objectMapper;
@@ -70,24 +70,22 @@ public class GeminiChatGateway implements AiChatGateway {
     }
 
     private Map<String, Object> buildPayload(AiChatRequest request, String menuContext) {
-        Map<String, Object> systemInstruction = Map.of(
-                "parts",
-                List.of(Map.of("text", promptBuilder.buildSystemPrompt(menuContext))));
+        Map<String, Object> systemInstruction =
+                Map.of("parts", List.of(Map.of("text", promptBuilder.buildSystemPrompt(menuContext))));
 
         List<Map<String, Object>> contents = new ArrayList<>();
 
         if (request.history() != null) {
             request.history().stream()
-                    .filter(message -> message.content() != null && !message.content().isBlank())
+                    .filter(message ->
+                            message.content() != null && !message.content().isBlank())
                     .limit(10)
                     .forEach(message -> contents.add(Map.of(
                             "role", toGeminiRole(message.role()),
                             "parts", List.of(Map.of("text", message.content())))));
         }
 
-        contents.add(Map.of(
-                "role", "user",
-                "parts", List.of(Map.of("text", request.message()))));
+        contents.add(Map.of("role", "user", "parts", List.of(Map.of("text", request.message()))));
 
         Map<String, Object> generationConfig = Map.of(
                 "temperature", properties.temperature(),
@@ -101,9 +99,7 @@ public class GeminiChatGateway implements AiChatGateway {
     }
 
     private String toGeminiRole(String role) {
-        return "assistant".equalsIgnoreCase(role) || "model".equalsIgnoreCase(role)
-                ? "model"
-                : "user";
+        return "assistant".equalsIgnoreCase(role) || "model".equalsIgnoreCase(role) ? "model" : "user";
     }
 
     private String extractText(String responseBody) {
@@ -115,8 +111,7 @@ public class GeminiChatGateway implements AiChatGateway {
                 JsonNode parts = candidates.get(0).path("content").path("parts");
 
                 if (parts.isArray() && !parts.isEmpty()) {
-                    return parts.get(0).path("text")
-                            .asText("Xin lỗi, tôi chưa hiểu ý bạn. Bạn muốn ăn gì nhỉ? 😊");
+                    return parts.get(0).path("text").asText("Xin lỗi, tôi chưa hiểu ý bạn. Bạn muốn ăn gì nhỉ? 😊");
                 }
             }
 

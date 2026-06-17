@@ -7,5 +7,4 @@ public record TableSessionStartResponse(
         Long sessionId,
         String sessionToken,
         String sessionStatus,
-        boolean canOrder) {
-}
+        boolean canOrder) {}

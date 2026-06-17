@@ -1,10 +1,9 @@
 package com.qros.modules.promotion.repository;
 
 import com.qros.modules.promotion.model.OrderDiscount;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OrderDiscountRepository extends JpaRepository<OrderDiscount, Long> {
 

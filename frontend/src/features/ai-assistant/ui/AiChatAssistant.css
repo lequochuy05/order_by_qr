@@ -31,12 +31,20 @@
   touch-action: none;
   user-select: none;
   background:
-    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.16) 19%, transparent 28%),
+    radial-gradient(
+      circle at 30% 24%,
+      rgba(255, 255, 255, 0.95),
+      rgba(255, 255, 255, 0.16) 19%,
+      transparent 28%
+    ),
     linear-gradient(145deg, #2563eb 0%, #4f46e5 48%, #f97316 100%);
   box-shadow:
     0 14px 34px rgba(37, 99, 235, 0.34),
     0 6px 18px rgba(249, 115, 22, 0.24);
-  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    filter 160ms ease;
 }
 
 .ai-chat-launcher:hover {
@@ -57,7 +65,13 @@
   position: absolute;
   inset: -7px;
   border-radius: inherit;
-  background: conic-gradient(from 180deg, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.35), rgba(249, 115, 22, 0.42), rgba(59, 130, 246, 0));
+  background: conic-gradient(
+    from 180deg,
+    rgba(59, 130, 246, 0),
+    rgba(59, 130, 246, 0.35),
+    rgba(249, 115, 22, 0.42),
+    rgba(59, 130, 246, 0)
+  );
   filter: blur(3px);
   opacity: 0.8;
   animation: ai-chat-halo-pulse 2.4s ease-in-out infinite;
@@ -98,52 +112,115 @@
 }
 
 @keyframes ai-chat-slide-up {
-  from { transform: translateY(100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes ai-chat-slide-down {
-  from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(100%); opacity: 0; }
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
 }
 
 @keyframes ai-chat-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes ai-chat-bounce-gentle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @keyframes ai-chat-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes ai-chat-alarm-wiggle {
-  0%, 44%, 100% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(-12deg) scale(1.04); }
-  56% { transform: rotate(10deg) scale(1.04); }
-  62% { transform: rotate(-8deg) scale(1.03); }
-  68% { transform: rotate(7deg) scale(1.02); }
-  74% { transform: rotate(0deg) scale(1); }
+  0%,
+  44%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(-12deg) scale(1.04);
+  }
+  56% {
+    transform: rotate(10deg) scale(1.04);
+  }
+  62% {
+    transform: rotate(-8deg) scale(1.03);
+  }
+  68% {
+    transform: rotate(7deg) scale(1.02);
+  }
+  74% {
+    transform: rotate(0deg) scale(1);
+  }
 }
 
 @keyframes ai-chat-halo-pulse {
-  0%, 100% { opacity: 0.48; transform: scale(0.96); }
-  50% { opacity: 0.9; transform: scale(1.04); }
+  0%,
+  100% {
+    opacity: 0.48;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.04);
+  }
 }
 
 @keyframes ai-chat-spark-pop {
-  0%, 100% { opacity: 0.75; transform: scale(0.92) rotate(0deg); }
-  45% { opacity: 1; transform: scale(1.18) rotate(14deg); }
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.92) rotate(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.18) rotate(14deg);
+  }
 }
 
 @keyframes ai-chat-status-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.78); opacity: 0.72; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.78);
+    opacity: 0.72;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.qros.shared.cache.CacheNames;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -19,10 +22,6 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * RedisConfig - Configuration for Redis caching and template.
  * Enables caching and sets up RedisTemplate with JSON serialization.
@@ -36,7 +35,8 @@ public class RedisConfig implements CachingConfigurer {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.warn("Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
+                log.warn(
+                        "Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
                         cache != null ? cache.getName() : "unknown",
                         key,
                         exception.getMessage());
@@ -69,9 +69,7 @@ public class RedisConfig implements CachingConfigurer {
         // RedisCache deserializes values as Object, so type metadata must also be
         // written for final DTOs/records returned by public APIs.
         mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.EVERYTHING,
-                JsonTypeInfo.As.PROPERTY);
+                mapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.EVERYTHING, JsonTypeInfo.As.PROPERTY);
         return mapper;
     }
 
@@ -126,5 +124,4 @@ public class RedisConfig implements CachingConfigurer {
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
     }
-
 }

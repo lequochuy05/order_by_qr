@@ -11,5 +11,4 @@ public record GeminiProperties(
         int readTimeoutSeconds,
         double temperature,
         double topP,
-        int maxOutputTokens) {
-}
+        int maxOutputTokens) {}

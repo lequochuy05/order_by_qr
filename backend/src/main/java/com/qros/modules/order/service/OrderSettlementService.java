@@ -1,7 +1,5 @@
 package com.qros.modules.order.service;
 
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
@@ -15,16 +13,17 @@ import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
 import com.qros.shared.enums.PaymentMethod;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -43,7 +42,8 @@ public class OrderSettlementService {
 
     @Transactional
     public Order loadForPayment(@NonNull Long orderId) {
-        return orderRepository.findByIdForUpdate(orderId)
+        return orderRepository
+                .findByIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
     }
 
@@ -53,15 +53,12 @@ public class OrderSettlementService {
         validatePayable(order);
 
         if (voucherCode != null && !voucherCode.isBlank()) {
-            VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(
-                    voucherCode,
-                    currentSubtotalAmount(order));
+            VoucherPaymentResult voucherResult =
+                    voucherCheckoutService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
 
             order.setVoucherCode(voucherResult.voucherCode());
             orderPricingService.setOrderMoney(
-                    order,
-                    currentSubtotalAmount(order),
-                    voucherResult.appliedDiscountAmount());
+                    order, currentSubtotalAmount(order), voucherResult.appliedDiscountAmount());
 
             order = orderRepository.save(order);
             orderCacheInvalidationService.evictAfterOrderMutation(order);
@@ -102,63 +99,43 @@ public class OrderSettlementService {
 
         Order savedOrder = orderRepository.save(order);
 
-        orderAuditService.recordOrderStatus(
-                savedOrder,
-                fromStatus,
-                savedOrder.getStatus(),
-                paidBy,
-                auditReason);
+        orderAuditService.recordOrderStatus(savedOrder, fromStatus, savedOrder.getStatus(), paidBy, auditReason);
 
         orderTableSyncService.recalcTableStatus(savedOrder);
         if (savedOrder.getTableSession() != null) {
             tableSessionService.closeSession(
-                    savedOrder.getTableSession().getId(),
-                    TableSessionStatus.CLOSED,
-                    "Order settled");
+                    savedOrder.getTableSession().getId(), TableSessionStatus.CLOSED, "Order settled");
         }
         orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
-        log.info(
-                "Order #{} successfully settled via {} payment",
-                savedOrder.getId(),
-                paymentMethod);
+        log.info("Order #{} successfully settled via {} payment", savedOrder.getId(), paymentMethod);
 
         return savedOrder;
     }
 
     private void validatePayable(Order order) {
-        if (order.getPaymentStatus() == PaymentStatus.PAID
-                || order.getStatus() == OrderStatus.COMPLETED) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_ALREADY_PAID,
-                    "This order is already settled");
+        if (order.getPaymentStatus() == PaymentStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "This order is already settled");
         }
 
         if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             throw new BusinessException(
                     ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order must be in AWAITING_PAYMENT status before payment. Current: "
-                            + order.getStatus());
+                    "Order must be in AWAITING_PAYMENT status before payment. Current: " + order.getStatus());
         }
 
         if (currentFinalAmount(order).compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order has no payable amount");
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Order has no payable amount");
         }
     }
 
     private BigDecimal currentFinalAmount(Order order) {
-        return order.getFinalAmount() != null
-                ? order.getFinalAmount()
-                : BigDecimal.ZERO;
+        return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
     }
 
     private BigDecimal currentSubtotalAmount(Order order) {
-        return order.getSubtotalAmount() != null
-                ? order.getSubtotalAmount()
-                : BigDecimal.ZERO;
+        return order.getSubtotalAmount() != null ? order.getSubtotalAmount() : BigDecimal.ZERO;
     }
 
     private void transitionToCompleted(Order order, OrderStatus fromStatus) {

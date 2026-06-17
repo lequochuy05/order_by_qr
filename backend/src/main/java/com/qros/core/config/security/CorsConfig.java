@@ -1,5 +1,6 @@
 package com.qros.core.config.security;
 
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,8 +8,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 public class CorsConfig {
@@ -22,12 +21,8 @@ public class CorsConfig {
 
         config.setAllowedOrigins(parseAllowedOrigins(allowedOrigins));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "Accept",
-                "X-Session-Token",
-                "X-Table-Token"));
+        config.setAllowedHeaders(
+                List.of("Authorization", "Content-Type", "Accept", "X-Session-Token", "X-Table-Token"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
@@ -39,10 +34,7 @@ public class CorsConfig {
 
     private static List<String> parseAllowedOrigins(String origins) {
         if (!StringUtils.hasText(origins)) {
-            return List.of(
-                    "http://localhost:5173",
-                    "https://order-by-qr.vercel.app"
-            );
+            return List.of("http://localhost:5173", "https://order-by-qr.vercel.app");
         }
         return List.of(origins.split("\\s*,\\s*"));
     }

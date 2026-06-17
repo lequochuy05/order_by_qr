@@ -4,10 +4,9 @@ import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemType;
-import org.springframework.stereotype.Component;
-
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class KitchenMapper {
@@ -19,8 +18,7 @@ public class KitchenMapper {
                 order.getFinalAmount(),
                 order.getTable() != null
                         ? new KitchenOrderResponse.TableSummary(
-                                order.getTable().getId(),
-                                order.getTable().getTableNumber())
+                                order.getTable().getId(), order.getTable().getTableNumber())
                         : null,
                 visibleItems.stream()
                         .sorted(Comparator.comparing(OrderItem::getCreatedAt))
@@ -64,10 +62,7 @@ public class KitchenMapper {
         }
 
         if (item.getItemType() == OrderItemType.MENU_ITEM) {
-            return new KitchenOrderResponse.MenuItemSummary(
-                    null,
-                    item.getItemNameSnapshot(),
-                    null);
+            return new KitchenOrderResponse.MenuItemSummary(null, item.getItemNameSnapshot(), null);
         }
 
         return null;
@@ -82,10 +77,7 @@ public class KitchenMapper {
         }
 
         if (item.getItemType() == OrderItemType.COMBO) {
-            return new KitchenOrderResponse.ComboSummary(
-                    null,
-                    item.getItemNameSnapshot(),
-                    item.getUnitPrice());
+            return new KitchenOrderResponse.ComboSummary(null, item.getItemNameSnapshot(), item.getUnitPrice());
         }
 
         return null;

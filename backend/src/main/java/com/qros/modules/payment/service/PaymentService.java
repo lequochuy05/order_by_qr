@@ -12,22 +12,21 @@ import com.qros.modules.payment.gateway.PaymentGateway;
 import com.qros.modules.payment.gateway.PaymentGatewayResolver;
 import com.qros.modules.payment.mapper.PaymentMapper;
 import com.qros.modules.payment.model.PaymentTransaction;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.Objects;
-import java.util.Optional;
 
 @Slf4j
 @Service
@@ -51,13 +50,11 @@ public class PaymentService {
 
         if (method == PaymentMethod.CASH) {
             throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "CASH payment must be settled through order payment API");
+                    ErrorCode.ORDER_PAYMENT_INVALID, "CASH payment must be settled through order payment API");
         }
 
         Order order = orderSettlementService.prepareForOnlinePayment(
-                Objects.requireNonNull(request.orderId()),
-                request.voucherCode());
+                Objects.requireNonNull(request.orderId()), request.voucherCode());
 
         PaymentGateway gateway = gatewayResolver.resolve(method);
         BigDecimal payableAmount = currentFinalAmount(order);
@@ -65,23 +62,17 @@ public class PaymentService {
         String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
 
         if (idempotencyKey != null) {
-            Optional<PaymentTransaction> existingByKey = transactionRepository
-                    .findFirstByIdempotencyKey(idempotencyKey);
+            Optional<PaymentTransaction> existingByKey =
+                    transactionRepository.findFirstByIdempotencyKey(idempotencyKey);
 
             if (existingByKey.isPresent()) {
-                return reuseIdempotentTransaction(
-                        existingByKey.get(),
-                        order,
-                        method,
-                        payableAmount);
+                return reuseIdempotentTransaction(existingByKey.get(), order, method, payableAmount);
             }
         }
 
-        Optional<PaymentTransaction> existingPending = transactionRepository
-                .findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-                        order.getId(),
-                        method,
-                        PaymentTransactionStatus.PENDING);
+        Optional<PaymentTransaction> existingPending =
+                transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
+                        order.getId(), method, PaymentTransactionStatus.PENDING);
 
         if (existingPending.isPresent()) {
             PaymentTransaction oldTransaction = existingPending.get();
@@ -138,14 +129,14 @@ public class PaymentService {
 
     @Transactional
     public void cancelPaymentLink(@NonNull Long transactionId, String reason) {
-        PaymentTransaction transaction = transactionRepository.findWithOrderByIdForUpdate(transactionId)
+        PaymentTransaction transaction = transactionRepository
+                .findWithOrderByIdForUpdate(transactionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
         lockTransactionOrder(transaction);
 
         if (transaction.getStatus() != PaymentTransactionStatus.PENDING) {
             throw new BusinessException(
-                    ErrorCode.PAYMENT_TRANSACTION_INVALID_STATE,
-                    "Only PENDING transactions can be cancelled");
+                    ErrorCode.PAYMENT_TRANSACTION_INVALID_STATE, "Only PENDING transactions can be cancelled");
         }
 
         String normalizedReason = normalizeCancelReason(reason);
@@ -162,7 +153,8 @@ public class PaymentService {
 
     @Transactional
     public PaymentTransactionResponse syncPaymentStatus(@NonNull Long transactionId) {
-        PaymentTransaction transaction = transactionRepository.findWithOrderByIdForUpdate(transactionId)
+        PaymentTransaction transaction = transactionRepository
+                .findWithOrderByIdForUpdate(transactionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
         lockTransactionOrder(transaction);
 
@@ -196,8 +188,7 @@ public class PaymentService {
 
         if (orderId == null) {
             throw new BusinessException(
-                    ErrorCode.ORDER_NOT_FOUND,
-                    "Payment transaction is not associated with an order");
+                    ErrorCode.ORDER_NOT_FOUND, "Payment transaction is not associated with an order");
         }
 
         Order lockedOrder = orderSettlementService.loadForPayment(orderId);
@@ -215,9 +206,7 @@ public class PaymentService {
         }
 
         if (transaction.getAmount().compareTo(webhookResult.amount()) != 0) {
-            throw new BusinessException(
-                    ErrorCode.PAYMENT_WEBHOOK_INVALID,
-                    "Webhook amount does not match transaction");
+            throw new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID, "Webhook amount does not match transaction");
         }
 
         transaction.setExternalReference(webhookResult.externalReference());
@@ -242,9 +231,7 @@ public class PaymentService {
         paymentCompletionService.completeSuccessfulTransaction(transaction);
     }
 
-    private void applyGatewayStatus(
-            PaymentTransaction transaction,
-            PaymentGatewayStatusResult result) {
+    private void applyGatewayStatus(PaymentTransaction transaction, PaymentGatewayStatusResult result) {
 
         if (result.status() == PaymentTransactionStatus.PAID) {
             transaction.setExternalReference(result.externalReference());
@@ -280,10 +267,7 @@ public class PaymentService {
     }
 
     private PaymentCreateResponse reuseIdempotentTransaction(
-            PaymentTransaction transaction,
-            Order order,
-            PaymentMethod method,
-            BigDecimal amount) {
+            PaymentTransaction transaction, Order order, PaymentMethod method, BigDecimal amount) {
 
         boolean sameOrder = transaction.getOrder() != null
                 && Objects.equals(transaction.getOrder().getId(), order.getId());
@@ -308,38 +292,34 @@ public class PaymentService {
         return paymentMapper.toCreateResponse(transaction);
     }
 
-    private void registerRollbackCancellation(
-            PaymentTransaction transaction,
-            PaymentGateway gateway) {
+    private void registerRollbackCancellation(PaymentTransaction transaction, PaymentGateway gateway) {
 
-        sideEffects.afterRollback(() -> {
-            try {
-                gateway.cancelPayment(
-                        transaction,
-                        "Local transaction rolled back after payment link creation");
-            } catch (Exception e) {
-                log.error(
-                        "Failed to cancel rolled back payment link {}: {}",
-                        transaction.getId(),
-                        e.getMessage());
-            }
-        }, "cancel rolled back payment link " + transaction.getId());
+        sideEffects.afterRollback(
+                () -> {
+                    try {
+                        gateway.cancelPayment(transaction, "Local transaction rolled back after payment link creation");
+                    } catch (Exception e) {
+                        log.error(
+                                "Failed to cancel rolled back payment link {}: {}",
+                                transaction.getId(),
+                                e.getMessage());
+                    }
+                },
+                "cancel rolled back payment link " + transaction.getId());
     }
 
     private void lockTransactionOrder(PaymentTransaction transaction) {
         if (transaction.getOrder() == null || transaction.getOrder().getId() == null) {
             throw new BusinessException(
-                    ErrorCode.ORDER_NOT_FOUND,
-                    "Payment transaction is not associated with an order");
+                    ErrorCode.ORDER_NOT_FOUND, "Payment transaction is not associated with an order");
         }
 
-        transaction.setOrder(orderSettlementService.loadForPayment(transaction.getOrder().getId()));
+        transaction.setOrder(
+                orderSettlementService.loadForPayment(transaction.getOrder().getId()));
     }
 
     private BigDecimal currentFinalAmount(Order order) {
-        return order.getFinalAmount() != null
-                ? order.getFinalAmount()
-                : BigDecimal.ZERO;
+        return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
     }
 
     private String normalizeIdempotencyKey(String key) {

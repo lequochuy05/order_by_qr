@@ -14,111 +14,93 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.time.Duration;
+import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
-import java.util.Arrays;
-
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-        private final AuthService authService;
-        private final RefreshTokenService refreshTokenService;
+    private final AuthService authService;
+    private final RefreshTokenService refreshTokenService;
 
-        @Value("${security.jwt.refresh-cookie-name}")
-        private String refreshCookieName;
+    @Value("${security.jwt.refresh-cookie-name}")
+    private String refreshCookieName;
 
-        @Value("${security.jwt.refresh-expiration-ms}")
-        private long refreshExpirationMs;
+    @Value("${security.jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
 
-        @Value("${security.jwt.refresh-cookie-secure}")
-        private boolean refreshCookieSecure;
+    @Value("${security.jwt.refresh-cookie-secure}")
+    private boolean refreshCookieSecure;
 
-        @PostMapping("/login")
-        public ApiResponse<LoginResponse> login(
-                        @Valid @RequestBody LoginRequest req,
-                        HttpServletResponse response) {
-                LoginResult result = authService.login(req);
+    @PostMapping("/login")
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletResponse response) {
+        LoginResult result = authService.login(req);
 
-                String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
+        String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
 
-                setRefreshCookie(
-                                response,
-                                refreshToken,
-                                Duration.ofMillis(refreshExpirationMs));
+        setRefreshCookie(response, refreshToken, Duration.ofMillis(refreshExpirationMs));
 
-                return ApiResponse.success("Login successful", result.response());
+        return ApiResponse.success("Login successful", result.response());
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String oldRefreshToken = extractRefreshToken(request);
+
+        RefreshResult result = refreshTokenService.refreshAccessToken(oldRefreshToken);
+
+        setRefreshCookie(response, result.refreshToken(), Duration.ofMillis(refreshExpirationMs));
+
+        return ApiResponse.success("Token refreshed", result.response());
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        if (request.getCookies() != null) {
+            Arrays.stream(request.getCookies())
+                    .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .ifPresent(refreshTokenService::revokeRefreshToken);
         }
 
-        @PostMapping("/refresh")
-        public ApiResponse<TokenResponse> refresh(
-                        HttpServletRequest request,
-                        HttpServletResponse response) {
-                String oldRefreshToken = extractRefreshToken(request);
+        clearRefreshCookie(response);
 
-                RefreshResult result = refreshTokenService.refreshAccessToken(oldRefreshToken);
+        return ApiResponse.success("Logout successful", null);
+    }
 
-                setRefreshCookie(
-                                response,
-                                result.refreshToken(),
-                                Duration.ofMillis(refreshExpirationMs));
-
-                return ApiResponse.success("Token refreshed", result.response());
+    private String extractRefreshToken(HttpServletRequest request) {
+        if (request.getCookies() == null) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing");
         }
 
-        @PostMapping("/logout")
-        public ApiResponse<Void> logout(
-                        HttpServletRequest request,
-                        HttpServletResponse response) {
-                if (request.getCookies() != null) {
-                        Arrays.stream(request.getCookies())
-                                        .filter(cookie -> refreshCookieName.equals(cookie.getName()))
-                                        .map(Cookie::getValue)
-                                        .findFirst()
-                                        .ifPresent(refreshTokenService::revokeRefreshToken);
-                }
+        return Arrays.stream(request.getCookies())
+                .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing"));
+    }
 
-                clearRefreshCookie(response);
+    private void setRefreshCookie(HttpServletResponse response, String token, Duration maxAge) {
+        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, token)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite(refreshCookieSecure ? "None" : "Lax")
+                .path("/api")
+                .maxAge(maxAge)
+                .build();
 
-                return ApiResponse.success("Logout successful", null);
-        }
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
-        private String extractRefreshToken(HttpServletRequest request) {
-                if (request.getCookies() == null) {
-                        throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing");
-                }
-
-                return Arrays.stream(request.getCookies())
-                                .filter(cookie -> refreshCookieName.equals(cookie.getName()))
-                                .map(Cookie::getValue)
-                                .findFirst()
-                                .orElseThrow(() -> new BusinessException(
-                                                ErrorCode.INVALID_REFRESH_TOKEN,
-                                                "Refresh token missing"));
-        }
-
-        private void setRefreshCookie(
-                        HttpServletResponse response,
-                        String token,
-                        Duration maxAge) {
-                ResponseCookie cookie = ResponseCookie.from(refreshCookieName, token)
-                                .httpOnly(true)
-                                .secure(refreshCookieSecure)
-                                .sameSite(refreshCookieSecure ? "None" : "Lax")
-                                .path("/api")
-                                .maxAge(maxAge)
-                                .build();
-
-                response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        }
-
-        private void clearRefreshCookie(HttpServletResponse response) {
-                setRefreshCookie(response, "", Duration.ZERO);
-        }
+    private void clearRefreshCookie(HttpServletResponse response) {
+        setRefreshCookie(response, "", Duration.ZERO);
+    }
 }

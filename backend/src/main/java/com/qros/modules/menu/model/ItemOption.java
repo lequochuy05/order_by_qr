@@ -1,17 +1,14 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
-
 import jakarta.persistence.*;
-
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.util.Set;
-import java.util.LinkedHashSet;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+
 /**
  * ItemOption - Entity representing a customizable choice for a menu item (e.g.,
  * Size, Toppings).

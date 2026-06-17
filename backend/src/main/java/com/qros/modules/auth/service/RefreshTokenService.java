@@ -10,14 +10,13 @@ import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -44,16 +43,10 @@ public class RefreshTokenService {
                 Map.of(
                         "uid", authUser.userId(),
                         "role", authUser.role().name(),
-                        "jti", jti
-                )
-        );
+                        "jti", jti));
 
         cacheService.set(
-                refreshTokenCacheKey(authUser.userId(), jti),
-                true,
-                refreshExpirationMs,
-                TimeUnit.MILLISECONDS
-        );
+                refreshTokenCacheKey(authUser.userId(), jti), true, refreshExpirationMs, TimeUnit.MILLISECONDS);
 
         return refreshToken;
     }
@@ -76,16 +69,14 @@ public class RefreshTokenService {
         String cacheKey = refreshTokenCacheKey(userId, jti);
 
         if (jti.isBlank() || !cacheService.hasKey(cacheKey)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REFRESH_TOKEN,
-                    "Refresh token has expired or was revoked"
-            );
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
 
         // Refresh token rotation: invalidate the current refresh token and issue a new one
         cacheService.delete(cacheKey);
 
-        User user = userRepository.findByEmailIgnoreCase(email)
+        User user = userRepository
+                .findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
 
         if (user.getStatus() != UserStatus.ACTIVE || !user.isEnabled()) {
@@ -96,24 +87,19 @@ public class RefreshTokenService {
                 user.getEmail(),
                 Map.of(
                         "uid", user.getId(),
-                        "role", user.getRole().name()
-                )
-        );
+                        "role", user.getRole().name()));
 
         AuthenticatedUser authUser = AuthenticatedUser.from(user);
         String newRefreshToken = createRefreshToken(authUser);
 
-        return new RefreshResult(
-                TokenResponse.of(user, newAccessToken),
-                newRefreshToken
-        );
+        return new RefreshResult(TokenResponse.of(user, newAccessToken), newRefreshToken);
     }
 
     /**
      * Revokes a refresh token, preventing it from being used for future access token
      * refreshes.
      * @param refreshToken The refresh token to revoke
-    */
+     */
     public void revokeRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank() || !jwtService.isRefreshToken(refreshToken)) {
             return;

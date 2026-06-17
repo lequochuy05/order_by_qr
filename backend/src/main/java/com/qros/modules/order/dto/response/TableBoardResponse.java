@@ -4,9 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record TableBoardResponse(
-        List<TableItem> tables,
-        List<ActiveOrder> activeOrders) {
+public record TableBoardResponse(List<TableItem> tables, List<ActiveOrder> activeOrders) {
 
     public record TableItem(
             Long id,
@@ -20,8 +18,7 @@ public record TableBoardResponse(
             LocalDateTime sessionOpenedAt,
             LocalDateTime sessionLastActivityAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
-    }
+            LocalDateTime updatedAt) {}
 
     public record ActiveOrder(
             Long id,
@@ -29,6 +26,5 @@ public record TableBoardResponse(
             BigDecimal finalAmount,
             Long tableId,
             String tableNumber,
-            LocalDateTime createdAt) {
-    }
+            LocalDateTime createdAt) {}
 }

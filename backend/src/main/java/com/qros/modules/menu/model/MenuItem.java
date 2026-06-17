@@ -1,17 +1,15 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
-
 import jakarta.persistence.*;
-
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
-
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+
 /**
  * MenuItem - Entity representing a single dish or beverage on the menu.
  * Includes details such as price, category, and customizable options.
@@ -67,5 +65,4 @@ public class MenuItem extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "menuItem", fetch = FetchType.LAZY)
     private Set<ComboItem> comboItems = new LinkedHashSet<>();
-
 }

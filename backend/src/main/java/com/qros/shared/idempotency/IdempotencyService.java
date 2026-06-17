@@ -4,10 +4,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.util.concurrent.TimeUnit;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class IdempotencyService {
@@ -34,9 +33,7 @@ public class IdempotencyService {
 
     private String normalize(String clientRequestId) {
         if (clientRequestId == null || clientRequestId.isBlank()) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_IDEMPOTENCY_CONFLICT,
-                    "Client request ID is required");
+            throw new BusinessException(ErrorCode.ORDER_IDEMPOTENCY_CONFLICT, "Client request ID is required");
         }
 
         return clientRequestId.trim();

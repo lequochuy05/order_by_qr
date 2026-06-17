@@ -11,34 +11,15 @@ import org.springframework.lang.NonNull;
 public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
 
     @Override
-    @NonNull
-    @EntityGraph(attributePaths = {
-            "inventoryItem",
-            "orderItem"
-    })
+    @NonNull @EntityGraph(attributePaths = {"inventoryItem", "orderItem"})
     Page<StockMovement> findAll(@NonNull Pageable pageable);
 
-    @EntityGraph(attributePaths = {
-            "inventoryItem",
-            "orderItem"
-    })
-    Page<StockMovement> findByInventoryItemIdOrderByIdDesc(
-            Long inventoryItemId,
-            Pageable pageable);
+    @EntityGraph(attributePaths = {"inventoryItem", "orderItem"})
+    Page<StockMovement> findByInventoryItemIdOrderByIdDesc(Long inventoryItemId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {
-            "inventoryItem",
-            "orderItem"
-    })
-    Page<StockMovement> findByOrderItemIdOrderByIdDesc(
-            Long orderItemId,
-            Pageable pageable);
+    @EntityGraph(attributePaths = {"inventoryItem", "orderItem"})
+    Page<StockMovement> findByOrderItemIdOrderByIdDesc(Long orderItemId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {
-            "inventoryItem",
-            "orderItem"
-    })
-    Page<StockMovement> findByTypeOrderByIdDesc(
-            StockMovementType type,
-            Pageable pageable);
+    @EntityGraph(attributePaths = {"inventoryItem", "orderItem"})
+    Page<StockMovement> findByTypeOrderByIdDesc(StockMovementType type, Pageable pageable);
 }

@@ -5,24 +5,23 @@ import com.qros.modules.promotion.dto.response.PromotionResponse;
 import com.qros.modules.promotion.mapper.PromotionMapper;
 import com.qros.modules.promotion.model.Promotion;
 import com.qros.modules.promotion.repository.PromotionRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.DayOfWeek;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -49,8 +48,7 @@ public class PromotionService {
 
     @Transactional(readOnly = true)
     public Promotion getEntityById(@NonNull Long id) {
-        return promotionRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROMOTION_NOT_FOUND));
+        return promotionRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.PROMOTION_NOT_FOUND));
     }
 
     @Transactional(readOnly = true)

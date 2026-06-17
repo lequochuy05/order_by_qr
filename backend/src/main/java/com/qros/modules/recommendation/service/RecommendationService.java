@@ -11,19 +11,18 @@ import com.qros.modules.recommendation.model.enums.RecommendationType;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,10 +36,10 @@ public class RecommendationService {
     private final RecommendationMapper recommendationMapper;
 
     @Transactional(readOnly = true)
-    @Cacheable(value = CacheNames.RECOMMENDATIONS, key = "'personalized:' + (#context != null ? #context.name() : 'ANY') + ':' + #limit")
-    public RecommendationResponse getPersonalizedRecommendations(
-            RecommendationContext context,
-            int limit) {
+    @Cacheable(
+            value = CacheNames.RECOMMENDATIONS,
+            key = "'personalized:' + (#context != null ? #context.name() : 'ANY') + ':' + #limit")
+    public RecommendationResponse getPersonalizedRecommendations(RecommendationContext context, int limit) {
         int safeLimit = sanitizeLimit(limit);
         RecommendationContext safeContext = context != null ? context : RecommendationContext.ANY;
 
@@ -48,11 +47,7 @@ public class RecommendationService {
         List<MenuItem> items = fillWithPopularItems(candidates, safeLimit);
 
         return recommendationMapper.toResponse(
-                RecommendationType.PERSONALIZED,
-                safeContext,
-                safeLimit,
-                items,
-                reasonForContext(safeContext));
+                RecommendationType.PERSONALIZED, safeContext, safeLimit, items, reasonForContext(safeContext));
     }
 
     @Transactional(readOnly = true)
@@ -60,37 +55,26 @@ public class RecommendationService {
     public RecommendationResponse getPopularItems(int limit) {
         int safeLimit = sanitizeLimit(limit);
 
-        List<MenuItem> items = orderItemRepository.findPopularAvailableMenuItems(
-                PageRequest.of(0, safeLimit));
+        List<MenuItem> items = orderItemRepository.findPopularAvailableMenuItems(PageRequest.of(0, safeLimit));
 
         if (items.isEmpty()) {
             items = findLatestAvailableItems(safeLimit);
         }
 
         return recommendationMapper.toResponse(
-                RecommendationType.POPULAR,
-                RecommendationContext.ANY,
-                safeLimit,
-                items,
-                "Món đang được gọi nhiều");
+                RecommendationType.POPULAR, RecommendationContext.ANY, safeLimit, items, "Món đang được gọi nhiều");
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.RECOMMENDATIONS, key = "'crossSell:' + #itemId + ':' + #limit")
-    public RecommendationResponse getCrossSellRecommendations(
-            @NonNull Long itemId,
-            int limit) {
+    public RecommendationResponse getCrossSellRecommendations(@NonNull Long itemId, int limit) {
         int safeLimit = sanitizeLimit(limit);
         MenuItem sourceItem = getPublicAvailableMenuItem(itemId);
 
-        List<MenuItem> candidates = orderItemRepository.findCrossSellAvailableMenuItems(
-                itemId,
-                PageRequest.of(0, safeLimit));
+        List<MenuItem> candidates =
+                orderItemRepository.findCrossSellAvailableMenuItems(itemId, PageRequest.of(0, safeLimit));
 
-        List<MenuItem> items = fillWithSimilarAndPopularItems(
-                candidates,
-                sourceItem,
-                safeLimit);
+        List<MenuItem> items = fillWithSimilarAndPopularItems(candidates, sourceItem, safeLimit);
 
         return recommendationMapper.toResponse(
                 RecommendationType.CROSS_SELL,
@@ -102,17 +86,12 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.RECOMMENDATIONS, key = "'similar:' + #itemId + ':' + #limit")
-    public RecommendationResponse getRecommendations(
-            @NonNull Long itemId,
-            int limit) {
+    public RecommendationResponse getRecommendations(@NonNull Long itemId, int limit) {
         int safeLimit = sanitizeLimit(limit);
         MenuItem sourceItem = getPublicAvailableMenuItem(itemId);
 
         List<MenuItem> candidates = findSimilarItems(sourceItem, safeLimit);
-        List<MenuItem> items = fillWithPopularItemsExcluding(
-                candidates,
-                sourceItem.getId(),
-                safeLimit);
+        List<MenuItem> items = fillWithPopularItemsExcluding(candidates, sourceItem.getId(), safeLimit);
 
         return recommendationMapper.toResponse(
                 RecommendationType.SIMILAR,
@@ -123,7 +102,8 @@ public class RecommendationService {
     }
 
     private MenuItem getPublicAvailableMenuItem(Long itemId) {
-        return menuItemRepository.findById(itemId)
+        return menuItemRepository
+                .findById(itemId)
                 .filter(this::isPublicAvailable)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
     }
@@ -150,15 +130,10 @@ public class RecommendationService {
         }
 
         return menuItemRepository.findSimilarAvailableItems(
-                category.getId(),
-                sourceItem.getId(),
-                PageRequest.of(0, limit));
+                category.getId(), sourceItem.getId(), PageRequest.of(0, limit));
     }
 
-    private List<MenuItem> fillWithSimilarAndPopularItems(
-            List<MenuItem> candidates,
-            MenuItem sourceItem,
-            int limit) {
+    private List<MenuItem> fillWithSimilarAndPopularItems(List<MenuItem> candidates, MenuItem sourceItem, int limit) {
         List<MenuItem> merged = new ArrayList<>(candidates);
 
         if (merged.size() < limit) {
@@ -180,10 +155,7 @@ public class RecommendationService {
         return fillWithPopularItemsExcluding(candidates, null, limit);
     }
 
-    private List<MenuItem> fillWithPopularItemsExcluding(
-            List<MenuItem> candidates,
-            Long excludedItemId,
-            int limit) {
+    private List<MenuItem> fillWithPopularItemsExcluding(List<MenuItem> candidates, Long excludedItemId, int limit) {
         List<MenuItem> merged = new ArrayList<>(candidates);
 
         if (merged.size() < limit) {
@@ -198,14 +170,10 @@ public class RecommendationService {
     }
 
     private List<MenuItem> findLatestAvailableItems(int limit) {
-        return menuItemRepository.findByActiveTrueAndAvailableTrueOrderByIdDesc(
-                PageRequest.of(0, limit));
+        return menuItemRepository.findByActiveTrueAndAvailableTrueOrderByIdDesc(PageRequest.of(0, limit));
     }
 
-    private List<MenuItem> distinctLimitExcluding(
-            List<MenuItem> items,
-            Long excludedItemId,
-            int limit) {
+    private List<MenuItem> distinctLimitExcluding(List<MenuItem> items, Long excludedItemId, int limit) {
         Map<Long, MenuItem> distinctItems = new LinkedHashMap<>();
 
         for (MenuItem item : items) {
@@ -251,42 +219,14 @@ public class RecommendationService {
         String categoryName = category != null ? normalize(category.getName()) : "";
 
         return switch (context) {
-            case MORNING -> containsAny(
-                    itemName,
-                    categoryName,
-                    "tra sua",
-                    "an vat",
-                    "soda",
-                    "nuoc",
-                    "my cay");
+            case MORNING -> containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay");
 
-            case LUNCH -> containsAny(
-                    itemName,
-                    categoryName,
-                    "tra sua",
-                    "an vat",
-                    "soda",
-                    "nuoc",
-                    "my cay");
+            case LUNCH -> containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay");
 
-            case AFTERNOON -> containsAny(
-                    itemName,
-                    categoryName,
-                    "tra sua",
-                    "an vat",
-                    "soda",
-                    "nuoc",
-                    "my cay");
+            case AFTERNOON -> containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay");
 
             case DINNER -> containsAny(
-                    itemName,
-                    categoryName,
-                    "tra sua",
-                    "an vat",
-                    "soda",
-                    "nuoc",
-                    "my cay",
-                    "giai khat");
+                    itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay", "giai khat");
 
             case ANY -> true;
         };
@@ -325,8 +265,7 @@ public class RecommendationService {
             return "";
         }
 
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
 
         return normalized.toLowerCase(Locale.ROOT);
     }

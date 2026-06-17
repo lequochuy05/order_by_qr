@@ -2,14 +2,12 @@ package com.qros.core.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.qros.shared.time.AppTime;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.TimeZone;
-
 import org.junit.jupiter.api.Test;
-
-import com.qros.shared.time.AppTime;
 
 class TimeZoneConfigTest {
 
@@ -45,6 +43,7 @@ class TimeZoneConfigTest {
 
         assertThat(properties).contains("spring.jackson.time-zone=Asia/Ho_Chi_Minh");
         assertThat(properties).contains("spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Ho_Chi_Minh");
-        assertThat(properties).contains("spring.datasource.hikari.connection-init-sql=SET TIME ZONE 'Asia/Ho_Chi_Minh'");
+        assertThat(properties)
+                .contains("spring.datasource.hikari.connection-init-sql=SET TIME ZONE 'Asia/Ho_Chi_Minh'");
     }
 }

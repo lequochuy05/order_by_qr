@@ -12,51 +12,51 @@ import { useLocation } from 'react-router-dom';
  * Giải quyết bài toán Realtime phân mảnh ở các Component nhỏ.
  */
 export const WebSocketInvalidator = () => {
-    const { user } = useAuth();
-    const location = useLocation();
-    const isAdminRoute = location.pathname.startsWith('/admin');
-    const canSubscribeOperations = Boolean(user) && isAdminRoute;
+  const { user } = useAuth();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const canSubscribeOperations = Boolean(user) && isAdminRoute;
 
-    // Lắng nghe /topic/tables (Cập nhật Bàn ăn / Order mới)
-    useWebSocket('/topic/tables', (message) => {
-        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-            // Khi có thay đổi bàn -> Invalidate tables board, detail và orders active
-            queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
-            queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
-            queryClient.invalidateQueries({ queryKey: ['tableSession'] });
-        }
-    });
+  // Lắng nghe /topic/tables (Cập nhật Bàn ăn / Order mới)
+  useWebSocket('/topic/tables', (message) => {
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      // Khi có thay đổi bàn -> Invalidate tables board, detail và orders active
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
+      queryClient.invalidateQueries({ queryKey: ['tableSession'] });
+    }
+  });
 
-    // Lắng nghe /topic/orders (Cập nhật Trạng thái đơn, Lịch sử)
-    useWebSocket(canSubscribeOperations ? '/topic/orders' : null, (message) => {
-        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-            // Có đơn mới / duyệt đơn -> Báo chuông cho Admin
-            playNotificationSound();
-            
-            // Cập nhật lại toàn bộ Lịch sử đơn hàng, Active orders, Table board
-            queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
-            queryClient.invalidateQueries({ queryKey: ['tableSession'] });
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
-            clearAnalyticsCache();
-        }
-    });
+  // Lắng nghe /topic/orders (Cập nhật Trạng thái đơn, Lịch sử)
+  useWebSocket(canSubscribeOperations ? '/topic/orders' : null, (message) => {
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      // Có đơn mới / duyệt đơn -> Báo chuông cho Admin
+      playNotificationSound();
 
-    // Lắng nghe /topic/menu (Cập nhật Thực đơn)
-    const handleCatalogUpdate = (message) => {
-        if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
-            queryClient.invalidateQueries({ queryKey: ['recommendations'] });
-        }
-    };
+      // Cập nhật lại toàn bộ Lịch sử đơn hàng, Active orders, Table board
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+      queryClient.invalidateQueries({ queryKey: ['tableSession'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+      clearAnalyticsCache();
+    }
+  });
 
-    useWebSocket('/topic/menu', handleCatalogUpdate);
-    useWebSocket('/topic/combos', handleCatalogUpdate);
-    useWebSocket('/topic/categories', handleCatalogUpdate);
-    useWebSocket('/topic/settings', handleCatalogUpdate);
+  // Lắng nghe /topic/menu (Cập nhật Thực đơn)
+  const handleCatalogUpdate = (message) => {
+    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
+      queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+    }
+  };
 
-    return null;
+  useWebSocket('/topic/menu', handleCatalogUpdate);
+  useWebSocket('/topic/combos', handleCatalogUpdate);
+  useWebSocket('/topic/categories', handleCatalogUpdate);
+  useWebSocket('/topic/settings', handleCatalogUpdate);
+
+  return null;
 };

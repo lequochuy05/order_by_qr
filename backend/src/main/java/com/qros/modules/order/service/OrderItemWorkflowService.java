@@ -1,8 +1,6 @@
 package com.qros.modules.order.service;
 
 import com.qros.modules.inventory.service.InventoryReservationService;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -15,9 +13,11 @@ import com.qros.modules.order.repository.OrderItemRepository;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +40,8 @@ public class OrderItemWorkflowService {
 
     @Transactional
     public void cancelOrderItem(@NonNull Long itemId) {
-        OrderItem item = orderItemRepository.findDetailByIdForUpdate(itemId)
+        OrderItem item = orderItemRepository
+                .findDetailByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         Order order = item.getOrder();
@@ -49,8 +50,7 @@ public class OrderItemWorkflowService {
 
         if (!item.canBeCancelled()) {
             throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Cannot cancel this item in current status: " + item.getStatus());
+                    ErrorCode.ORDER_INVALID_STATE, "Cannot cancel this item in current status: " + item.getStatus());
         }
 
         OrderItemStatus fromStatus = item.getStatus();
@@ -60,12 +60,7 @@ public class OrderItemWorkflowService {
         item.markStatus(OrderItemStatus.CANCELLED);
         orderItemRepository.saveAndFlush(item);
 
-        orderAuditService.recordItemStatus(
-                item,
-                fromStatus,
-                OrderItemStatus.CANCELLED,
-                null,
-                "item-cancelled");
+        orderAuditService.recordItemStatus(item, fromStatus, OrderItemStatus.CANCELLED, null, "item-cancelled");
 
         Order saved = reconcileOrderAfterItemMutation(order, null);
 
@@ -80,7 +75,8 @@ public class OrderItemWorkflowService {
 
     @Transactional
     public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus newStatus, Long userId) {
-        OrderItem item = orderItemRepository.findDetailByIdForUpdate(itemId)
+        OrderItem item = orderItemRepository
+                .findDetailByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         Order order = item.getOrder();
@@ -100,8 +96,7 @@ public class OrderItemWorkflowService {
         if (newStatus == OrderItemStatus.CANCELLED && fromStatus != OrderItemStatus.CANCELLED) {
             if (!item.canBeCancelled()) {
                 throw new BusinessException(
-                        ErrorCode.ORDER_INVALID_STATE,
-                        "Cannot cancel this item in current status: " + fromStatus);
+                        ErrorCode.ORDER_INVALID_STATE, "Cannot cancel this item in current status: " + fromStatus);
             }
 
             inventoryReservationService.restoreOrderItem(item);
@@ -114,12 +109,7 @@ public class OrderItemWorkflowService {
         item.markStatus(newStatus);
         orderItemRepository.saveAndFlush(item);
 
-        orderAuditService.recordItemStatus(
-                item,
-                fromStatus,
-                newStatus,
-                changedBy,
-                "kitchen-status-update");
+        orderAuditService.recordItemStatus(item, fromStatus, newStatus, changedBy, "kitchen-status-update");
 
         Order saved = reconcileOrderAfterItemMutation(order, changedBy);
 
@@ -139,7 +129,8 @@ public class OrderItemWorkflowService {
 
     @Transactional
     public OrderResponse updateOrderItem(@NonNull Long itemId, Integer quantity, String notes) {
-        OrderItem item = orderItemRepository.findDetailByIdForUpdate(itemId)
+        OrderItem item = orderItemRepository
+                .findDetailByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
 
         Order order = item.getOrder();
@@ -148,8 +139,7 @@ public class OrderItemWorkflowService {
 
         if (!item.canBeUpdated()) {
             throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Cannot update item in current status: " + item.getStatus());
+                    ErrorCode.ORDER_INVALID_STATE, "Cannot update item in current status: " + item.getStatus());
         }
 
         if (quantity != null) {
@@ -177,13 +167,13 @@ public class OrderItemWorkflowService {
     }
 
     private Order reconcileOrderAfterItemMutation(Order order, User changedBy) {
-        Order lockedOrder = orderRepository.findByIdForUpdate(order.getId())
+        Order lockedOrder = orderRepository
+                .findByIdForUpdate(order.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
         orderPricingService.recalculateOrderTotals(lockedOrder);
 
-        boolean hasBillableItems = lockedOrder.getOrderItems().stream()
-                .anyMatch(OrderItem::isBillable);
+        boolean hasBillableItems = lockedOrder.getOrderItems().stream().anyMatch(OrderItem::isBillable);
 
         if (!hasBillableItems) {
             OrderStatus fromStatus = lockedOrder.getStatus();
@@ -192,11 +182,7 @@ public class OrderItemWorkflowService {
             lockedOrder.setPaymentStatus(PaymentStatus.CANCELLED);
 
             orderAuditService.recordOrderStatus(
-                    lockedOrder,
-                    fromStatus,
-                    lockedOrder.getStatus(),
-                    changedBy,
-                    "all-items-cancelled");
+                    lockedOrder, fromStatus, lockedOrder.getStatus(), changedBy, "all-items-cancelled");
 
             Order saved = orderRepository.save(lockedOrder);
             orderTableSyncService.recalcTableStatus(saved);
@@ -211,11 +197,9 @@ public class OrderItemWorkflowService {
     }
 
     private void validateOrderMutable(Order order) {
-        if (order.getStatus() == OrderStatus.COMPLETED
-                || order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
             throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Cannot update items of a completed or cancelled order");
+                    ErrorCode.ORDER_INVALID_STATE, "Cannot update items of a completed or cancelled order");
         }
     }
 
@@ -232,17 +216,19 @@ public class OrderItemWorkflowService {
             return;
         }
 
-        boolean valid = switch (from) {
-            case PENDING -> to == OrderItemStatus.COOKING || to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
-            case COOKING -> to == OrderItemStatus.FINISHED;
-            case FINISHED -> false;
-            case CANCELLED -> false;
-        };
+        boolean valid =
+                switch (from) {
+                    case PENDING -> to == OrderItemStatus.COOKING
+                            || to == OrderItemStatus.FINISHED
+                            || to == OrderItemStatus.CANCELLED;
+                    case COOKING -> to == OrderItemStatus.FINISHED;
+                    case FINISHED -> false;
+                    case CANCELLED -> false;
+                };
 
         if (!valid) {
             throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_ITEM_STATUS,
-                    "Cannot transition item from " + from + " to " + to);
+                    ErrorCode.ORDER_INVALID_ITEM_STATUS, "Cannot transition item from " + from + " to " + to);
         }
     }
 }

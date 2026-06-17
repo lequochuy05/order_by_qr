@@ -8,9 +8,7 @@ const TERMINAL_SESSION_ERROR_CODES = new Set([
   'TABLE_SESSION_NOT_FOUND',
 ]);
 
-export const isTerminalSessionError = (error) => (
-  TERMINAL_SESSION_ERROR_CODES.has(error?.code)
-);
+export const isTerminalSessionError = (error) => TERMINAL_SESSION_ERROR_CODES.has(error?.code);
 
 const toRecommendationContext = (timeContext) => {
   switch (timeContext) {
@@ -42,7 +40,7 @@ export const useCustomerMenuQuery = (options = {}) =>
       return {
         categories: Array.isArray(categoriesRes) ? categoriesRes : [],
         menuItems: Array.isArray(menuRes) ? menuRes : [],
-        combos: (Array.isArray(combosRes) ? combosRes : []).filter(c => c.active !== false),
+        combos: (Array.isArray(combosRes) ? combosRes : []).filter((c) => c.active !== false),
         settings: settingsRes,
       };
     },
@@ -105,7 +103,7 @@ export const useRecommendationsQuery = (timeContext, weather, options = {}) =>
       try {
         const res = await menuService.getPersonalizedRecommendations(
           toRecommendationContext(timeContext),
-          weather
+          weather,
         );
         return Array.isArray(res) ? res : [];
       } catch {

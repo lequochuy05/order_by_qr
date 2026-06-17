@@ -8,6 +8,9 @@ import com.qros.modules.order.dto.response.TableBoardResponse;
 import com.qros.modules.order.service.OrderService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,10 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-
 /**
  * StaffOrderController - Staff/Admin order-level APIs.
  */
@@ -40,11 +39,8 @@ public class StaffOrderController {
     private final OrderService orderService;
 
     @PostMapping
-    public ApiResponse<OrderResponse> createStaffOrder(
-            @Valid @RequestBody @NonNull StaffCreateOrderRequest request) {
-        return ApiResponse.success(
-                "Đặt món thành công",
-                orderService.createStaffOrder(request));
+    public ApiResponse<OrderResponse> createStaffOrder(@Valid @RequestBody @NonNull StaffCreateOrderRequest request) {
+        return ApiResponse.success("Đặt món thành công", orderService.createStaffOrder(request));
     }
 
     @PostMapping("/preview")
@@ -60,8 +56,7 @@ public class StaffOrderController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<OrderResponse> getOrderById(
-            @PathVariable @NonNull Long id) {
+    public ApiResponse<OrderResponse> getOrderById(@PathVariable @NonNull Long id) {
         return ApiResponse.success(orderService.getOrderById(id));
     }
 
@@ -73,8 +68,7 @@ public class StaffOrderController {
             @RequestParam(required = false) String orderId,
             @RequestParam(required = false) String tableNumber,
             @PageableDefault(size = 15, sort = "createdAt", direction = Direction.DESC) @NonNull Pageable pageable) {
-        return ApiResponse.success(
-                orderService.getOrderHistory(status, from, to, orderId, tableNumber, pageable));
+        return ApiResponse.success(orderService.getOrderHistory(status, from, to, orderId, tableNumber, pageable));
     }
 
     @GetMapping("/analytics")
@@ -84,8 +78,7 @@ public class StaffOrderController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(required = false) String orderId,
             @RequestParam(required = false) String tableNumber) {
-        return ApiResponse.success(
-                orderService.getOrderAnalytics(status, from, to, orderId, tableNumber));
+        return ApiResponse.success(orderService.getOrderAnalytics(status, from, to, orderId, tableNumber));
     }
 
     @GetMapping("/active")
@@ -99,39 +92,31 @@ public class StaffOrderController {
     }
 
     @GetMapping("/table/{tableId}/current")
-    public ApiResponse<OrderResponse> getCurrentOrderByTable(
-            @PathVariable @NonNull Long tableId) {
-        return orderService.getCurrentOrderByTable(tableId)
+    public ApiResponse<OrderResponse> getCurrentOrderByTable(@PathVariable @NonNull Long tableId) {
+        return orderService
+                .getCurrentOrderByTable(tableId)
                 .map(ApiResponse::success)
                 .orElseGet(() -> ApiResponse.success(null));
     }
 
     @GetMapping("/table/{tableId}/preview")
-    public ApiResponse<OrderPreviewResponse> getOrderPreviewByTableId(
-            @PathVariable @NonNull Long tableId) {
+    public ApiResponse<OrderPreviewResponse> getOrderPreviewByTableId(@PathVariable @NonNull Long tableId) {
         return ApiResponse.success(orderService.getOrderPreviewByTableId(tableId));
     }
 
     @PatchMapping("/{orderId}/status")
     public ApiResponse<OrderResponse> updateStatus(
-            @PathVariable @NonNull Long orderId,
-            @Valid @RequestBody @NonNull OrderStatusUpdateRequest request) {
-        return ApiResponse.success(
-                "Update order status successfully",
-                orderService.updateStatus(orderId, request));
+            @PathVariable @NonNull Long orderId, @Valid @RequestBody @NonNull OrderStatusUpdateRequest request) {
+        return ApiResponse.success("Update order status successfully", orderService.updateStatus(orderId, request));
     }
 
     @PatchMapping("/{orderId}/cancel")
-    public ApiResponse<OrderResponse> cancelOrder(
-            @PathVariable @NonNull Long orderId) {
-        return ApiResponse.success(
-                "Cancel order successfully",
-                orderService.cancelOrder(orderId));
+    public ApiResponse<OrderResponse> cancelOrder(@PathVariable @NonNull Long orderId) {
+        return ApiResponse.success("Cancel order successfully", orderService.cancelOrder(orderId));
     }
 
     @DeleteMapping("/{orderId}")
-    public ApiResponse<Void> deleteOrder(
-            @PathVariable @NonNull Long orderId) {
+    public ApiResponse<Void> deleteOrder(@PathVariable @NonNull Long orderId) {
         orderService.deleteOrder(orderId);
         return ApiResponse.success("Delete order successfully", null);
     }

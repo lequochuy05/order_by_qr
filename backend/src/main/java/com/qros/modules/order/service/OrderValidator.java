@@ -23,14 +23,11 @@ public class OrderValidator {
 
         if (Boolean.TRUE.equals(settings.getMaintenanceMode())) {
             throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Ordering is disabled while the restaurant is in maintenance mode");
+                    ErrorCode.ORDER_INVALID_STATE, "Ordering is disabled while the restaurant is in maintenance mode");
         }
 
         if (!Boolean.TRUE.equals(settings.getOrderingEnabled())) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_INVALID_STATE,
-                    "Ordering is currently disabled");
+            throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, "Ordering is currently disabled");
         }
     }
 
@@ -38,9 +35,7 @@ public class OrderValidator {
         validateSystemAcceptsOrders();
 
         if (table.getStatus() == TableStatus.INACTIVE) {
-            throw new BusinessException(
-                    ErrorCode.TABLE_NOT_FOUND,
-                    "Table is inactive and cannot accept orders");
+            throw new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table is inactive and cannot accept orders");
         }
     }
 
@@ -50,17 +45,13 @@ public class OrderValidator {
 
     public void validateComboOrderable(@NonNull Combo combo) {
         if (!Boolean.TRUE.equals(combo.getActive()) || !Boolean.TRUE.equals(combo.getAvailable())) {
-            throw new BusinessException(
-                    ErrorCode.COMBO_NOT_FOUND,
-                    "Combo is not available for ordering");
+            throw new BusinessException(ErrorCode.COMBO_NOT_FOUND, "Combo is not available for ordering");
         }
 
         if (combo.getItems() != null) {
             combo.getItems().forEach(comboItem -> {
                 if (comboItem.getMenuItem() != null) {
-                    validateMenuItemOrderable(
-                            comboItem.getMenuItem(),
-                            "Combo contains an unavailable menu item");
+                    validateMenuItemOrderable(comboItem.getMenuItem(), "Combo contains an unavailable menu item");
                 }
             });
         }

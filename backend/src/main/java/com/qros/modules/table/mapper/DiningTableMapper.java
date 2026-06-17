@@ -1,7 +1,7 @@
 package com.qros.modules.table.mapper;
 
-import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.dto.response.DiningTableResponse;
+import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.model.DiningTable;
 import org.springframework.stereotype.Component;
 
@@ -21,8 +21,7 @@ public class DiningTableMapper {
                 table.getCapacity(),
                 table.getQrCodeUrl(),
                 table.getCreatedAt(),
-                table.getUpdatedAt()
-        );
+                table.getUpdatedAt());
     }
 
     public PublicTable toPublicTable(DiningTable table) {
@@ -30,9 +29,6 @@ public class DiningTableMapper {
             return null;
         }
 
-        return new PublicTable(
-                table.getId(),
-                table.getTableNumber()
-        );
+        return new PublicTable(table.getId(), table.getTableNumber());
     }
 }

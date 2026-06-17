@@ -4,10 +4,9 @@ import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.model.enums.VoucherType;
 import com.qros.modules.promotion.repository.projection.VoucherValidationProjection;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import org.springframework.stereotype.Service;
 
 @Service
 public class DiscountCalculator {
@@ -24,10 +23,7 @@ public class DiscountCalculator {
         }
 
         BigDecimal appliedDiscountAmount = calculateAppliedDiscount(
-                voucher.getType(),
-                voucher.getDiscountAmount(),
-                voucher.getDiscountPercent(),
-                safeSubtotal);
+                voucher.getType(), voucher.getDiscountAmount(), voucher.getDiscountPercent(), safeSubtotal);
 
         BigDecimal finalAmount = calculateFinalAmount(safeSubtotal, appliedDiscountAmount);
 
@@ -50,10 +46,7 @@ public class DiscountCalculator {
         }
 
         BigDecimal appliedDiscountAmount = calculateAppliedDiscount(
-                voucher.getType(),
-                voucher.getDiscountAmount(),
-                voucher.getDiscountPercent(),
-                safeSubtotal);
+                voucher.getType(), voucher.getDiscountAmount(), voucher.getDiscountPercent(), safeSubtotal);
 
         BigDecimal finalAmount = calculateFinalAmount(safeSubtotal, appliedDiscountAmount);
 
@@ -69,28 +62,24 @@ public class DiscountCalculator {
     }
 
     public BigDecimal calculateAppliedDiscount(
-            VoucherType type,
-            BigDecimal discountAmount,
-            BigDecimal discountPercent,
-            BigDecimal subtotal) {
+            VoucherType type, BigDecimal discountAmount, BigDecimal discountPercent, BigDecimal subtotal) {
         BigDecimal safeSubtotal = normalizeMoney(subtotal);
 
         if (safeSubtotal.compareTo(ZERO) <= 0 || type == null) {
             return ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
 
-        BigDecimal rawDiscount = switch (type) {
-            case FIXED_AMOUNT -> discountAmount != null ? discountAmount : ZERO;
-            case PERCENTAGE -> {
-                if (discountPercent == null) {
-                    yield ZERO;
-                }
+        BigDecimal rawDiscount =
+                switch (type) {
+                    case FIXED_AMOUNT -> discountAmount != null ? discountAmount : ZERO;
+                    case PERCENTAGE -> {
+                        if (discountPercent == null) {
+                            yield ZERO;
+                        }
 
-                yield safeSubtotal
-                        .multiply(discountPercent)
-                        .divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
-            }
-        };
+                        yield safeSubtotal.multiply(discountPercent).divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
+                    }
+                };
 
         if (rawDiscount.compareTo(ZERO) <= 0) {
             return ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);

@@ -4,4 +4,3 @@ public enum BatchSource {
     QR,
     STAFF
 }
- 

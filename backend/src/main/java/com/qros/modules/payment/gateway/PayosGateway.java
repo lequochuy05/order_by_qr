@@ -4,10 +4,11 @@ import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
 import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
 import com.qros.modules.payment.model.PaymentTransaction;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
+import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,8 +18,6 @@ import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.webhooks.Webhook;
 import vn.payos.model.webhooks.WebhookData;
-
-import java.math.BigDecimal;
 
 @Component
 @RequiredArgsConstructor
@@ -38,7 +37,8 @@ public class PayosGateway implements PaymentGateway {
     public PaymentGatewayCreateResult createPaymentLink(PaymentTransaction transaction) {
         try {
             String returnUrl = frontendUrl + "/admin/table-manager";
-            long expiredAt = transaction.getExpiresAt()
+            long expiredAt = transaction
+                    .getExpiresAt()
                     .atZone(java.time.ZoneId.systemDefault())
                     .toEpochSecond();
 
@@ -59,8 +59,7 @@ public class PayosGateway implements PaymentGateway {
                     response.getPaymentLinkId(),
                     providerPayload("PAYOS", "CREATE_LINK", response.getPaymentLinkId()));
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR,
-                    "PayOS Gateway error: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR, "PayOS Gateway error: " + e.getMessage(), e);
         }
     }
 
@@ -69,8 +68,8 @@ public class PayosGateway implements PaymentGateway {
         try {
             payOS.paymentRequests().cancel(transaction.getId(), reason);
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.PAYMENT_CANCELLATION_FAILED,
-                    "PayOS Cancellation error: " + e.getMessage(), e);
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_CANCELLATION_FAILED, "PayOS Cancellation error: " + e.getMessage(), e);
         }
     }
 
@@ -110,8 +109,8 @@ public class PayosGateway implements PaymentGateway {
                     providerPayload("PAYOS", "SYNC_PENDING", transaction.getExternalReference()),
                     null);
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR,
-                    "PayOS status sync failed: " + e.getMessage(), e);
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_GATEWAY_ERROR, "PayOS status sync failed: " + e.getMessage(), e);
         }
     }
 
@@ -132,8 +131,7 @@ public class PayosGateway implements PaymentGateway {
                     data.getPaymentLinkId(),
                     providerPayload("PAYOS", "WEBHOOK_PAID", data.getPaymentLinkId()));
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID,
-                    "Invalid PayOS webhook signature", e);
+            throw new BusinessException(ErrorCode.PAYMENT_WEBHOOK_INVALID, "Invalid PayOS webhook signature", e);
         }
     }
 

@@ -11,7 +11,7 @@ import {
   Settings,
   Sun,
   Volume2,
-  Wifi
+  Wifi,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -35,7 +35,7 @@ const defaultSettings = {
   openingTime: '',
   closingTime: '',
   orderingEnabled: true,
-  maintenanceMode: false
+  maintenanceMode: false,
 };
 
 const SettingsPage = () => {
@@ -53,16 +53,19 @@ const SettingsPage = () => {
 
   const normalizedServerSettings = useMemo(
     () => normalizeSettings(serverSettings || defaultSettings),
-    [serverSettings]
+    [serverSettings],
   );
   const [settingsDraft, setSettingsDraft] = useState(null);
   const settings = settingsDraft ?? normalizedServerSettings;
-  const setSettings = useCallback((updater) => {
-    setSettingsDraft(prev => {
-      const current = prev ?? normalizedServerSettings;
-      return typeof updater === 'function' ? updater(current) : updater;
-    });
-  }, [normalizedServerSettings]);
+  const setSettings = useCallback(
+    (updater) => {
+      setSettingsDraft((prev) => {
+        const current = prev ?? normalizedServerSettings;
+        return typeof updater === 'function' ? updater(current) : updater;
+      });
+    },
+    [normalizedServerSettings],
+  );
 
   const tabs = useMemo(() => {
     const personalTab = { id: 'preferences', label: copy.tabs.preferences, icon: Bell };
@@ -72,10 +75,10 @@ const SettingsPage = () => {
       { id: 'restaurant', label: copy.tabs.restaurant, icon: Building2 },
       { id: 'wifi', label: copy.tabs.wifi, icon: Wifi },
       { id: 'operation', label: copy.tabs.operation, icon: Settings },
-      personalTab
+      personalTab,
     ];
   }, [copy, isManager]);
-  const activeTabId = tabs.some(tab => tab.id === activeTab) ? activeTab : tabs[0].id;
+  const activeTabId = tabs.some((tab) => tab.id === activeTab) ? activeTab : tabs[0].id;
 
   const updateMutation = useUpdateSettingsMutation({
     onSuccess: (updated) => {
@@ -112,7 +115,7 @@ const SettingsPage = () => {
       taxPercent: Number(settings.taxPercent || 0),
       serviceChargePercent: Number(settings.serviceChargePercent || 0),
       orderingEnabled: Boolean(settings.orderingEnabled),
-      maintenanceMode: Boolean(settings.maintenanceMode)
+      maintenanceMode: Boolean(settings.maintenanceMode),
     });
   };
 
@@ -130,7 +133,7 @@ const SettingsPage = () => {
     <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
       <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
         <nav className="space-y-1">
-          {tabs.map(tab => {
+          {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTabId === tab.id;
             return (
@@ -138,10 +141,11 @@ const SettingsPage = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold transition ${selected
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold transition ${
+                  selected
                     ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
-                  }`}
+                }`}
               >
                 <Icon size={18} />
                 {tab.label}
@@ -153,7 +157,13 @@ const SettingsPage = () => {
 
       <main className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
         {activeTabId === 'restaurant' && (
-          <RestaurantTab settings={settings} setSettings={setSettings} saving={saving} onSave={handleSaveSettings} copy={copy} />
+          <RestaurantTab
+            settings={settings}
+            setSettings={setSettings}
+            saving={saving}
+            onSave={handleSaveSettings}
+            copy={copy}
+          />
         )}
 
         {activeTabId === 'wifi' && (
@@ -168,7 +178,13 @@ const SettingsPage = () => {
         )}
 
         {activeTabId === 'operation' && (
-          <OperationTab settings={settings} setSettings={setSettings} saving={saving} onSave={handleSaveSettings} copy={copy} />
+          <OperationTab
+            settings={settings}
+            setSettings={setSettings}
+            saving={saving}
+            onSave={handleSaveSettings}
+            copy={copy}
+          />
         )}
 
         {activeTabId === 'preferences' && (
@@ -181,16 +197,64 @@ const SettingsPage = () => {
 
 const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
   <section>
-    <SectionHeader icon={Building2} title={copy.restaurant.title} subtitle={copy.restaurant.subtitle} />
+    <SectionHeader
+      icon={Building2}
+      title={copy.restaurant.title}
+      subtitle={copy.restaurant.subtitle}
+    />
     <div className="grid gap-5 md:grid-cols-2">
-      <TextField label={copy.restaurant.name} value={settings.restaurantName} onChange={(value) => setSettingsValue(setSettings, 'restaurantName', value)} />
-      <TextField label={copy.restaurant.hotline} value={settings.restaurantPhone} onChange={(value) => setSettingsValue(setSettings, 'restaurantPhone', value)} />
-      <TextField label={copy.restaurant.email} type="email" value={settings.restaurantEmail} onChange={(value) => setSettingsValue(setSettings, 'restaurantEmail', value)} />
-      <TextField label={copy.restaurant.currency} maxLength="10" value={settings.currency} onChange={(value) => setSettingsValue(setSettings, 'currency', value)} />
-      <TextField label={copy.restaurant.address} value={settings.restaurantAddress} onChange={(value) => setSettingsValue(setSettings, 'restaurantAddress', value)} className="md:col-span-2" />
-      <TextField label={copy.restaurant.logoUrl} value={settings.logoUrl} onChange={(value) => setSettingsValue(setSettings, 'logoUrl', value)} className="md:col-span-2" />
-      <TextField label={copy.restaurant.taxPercent} type="number" min="0" max="100" step="0.01" value={settings.taxPercent} onChange={(value) => setSettingsValue(setSettings, 'taxPercent', value)} />
-      <TextField label={copy.restaurant.serviceChargePercent} type="number" min="0" max="100" step="0.01" value={settings.serviceChargePercent} onChange={(value) => setSettingsValue(setSettings, 'serviceChargePercent', value)} />
+      <TextField
+        label={copy.restaurant.name}
+        value={settings.restaurantName}
+        onChange={(value) => setSettingsValue(setSettings, 'restaurantName', value)}
+      />
+      <TextField
+        label={copy.restaurant.hotline}
+        value={settings.restaurantPhone}
+        onChange={(value) => setSettingsValue(setSettings, 'restaurantPhone', value)}
+      />
+      <TextField
+        label={copy.restaurant.email}
+        type="email"
+        value={settings.restaurantEmail}
+        onChange={(value) => setSettingsValue(setSettings, 'restaurantEmail', value)}
+      />
+      <TextField
+        label={copy.restaurant.currency}
+        maxLength="10"
+        value={settings.currency}
+        onChange={(value) => setSettingsValue(setSettings, 'currency', value)}
+      />
+      <TextField
+        label={copy.restaurant.address}
+        value={settings.restaurantAddress}
+        onChange={(value) => setSettingsValue(setSettings, 'restaurantAddress', value)}
+        className="md:col-span-2"
+      />
+      <TextField
+        label={copy.restaurant.logoUrl}
+        value={settings.logoUrl}
+        onChange={(value) => setSettingsValue(setSettings, 'logoUrl', value)}
+        className="md:col-span-2"
+      />
+      <TextField
+        label={copy.restaurant.taxPercent}
+        type="number"
+        min="0"
+        max="100"
+        step="0.01"
+        value={settings.taxPercent}
+        onChange={(value) => setSettingsValue(setSettings, 'taxPercent', value)}
+      />
+      <TextField
+        label={copy.restaurant.serviceChargePercent}
+        type="number"
+        min="0"
+        max="100"
+        step="0.01"
+        value={settings.serviceChargePercent}
+        onChange={(value) => setSettingsValue(setSettings, 'serviceChargePercent', value)}
+      />
     </div>
     <SaveButton saving={saving} onSave={onSave} label={copy.actions.save} />
   </section>
@@ -201,14 +265,24 @@ const WifiTab = ({ settings, setSettings, saving, onSave, wifiQrValue, copy }) =
     <SectionHeader icon={Wifi} title={copy.wifi.title} subtitle={copy.wifi.subtitle} />
     <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
       <div className="grid gap-5">
-        <TextField label={copy.wifi.ssid} value={settings.wifiName} onChange={(value) => setSettingsValue(setSettings, 'wifiName', value)} />
-        <TextField label={copy.wifi.password} value={settings.wifiPassword} onChange={(value) => setSettingsValue(setSettings, 'wifiPassword', value)} />
+        <TextField
+          label={copy.wifi.ssid}
+          value={settings.wifiName}
+          onChange={(value) => setSettingsValue(setSettings, 'wifiName', value)}
+        />
+        <TextField
+          label={copy.wifi.password}
+          value={settings.wifiPassword}
+          onChange={(value) => setSettingsValue(setSettings, 'wifiPassword', value)}
+        />
       </div>
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 transition-colors dark:border-slate-700 dark:bg-slate-950">
         {wifiQrValue ? (
           <>
             <QRCodeCanvas value={wifiQrValue} size={190} includeMargin />
-            <p className="mt-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">{copy.wifi.qrLabel}</p>
+            <p className="mt-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+              {copy.wifi.qrLabel}
+            </p>
           </>
         ) : (
           <div className="flex h-48 flex-col items-center justify-center text-slate-400 dark:text-slate-500">
@@ -224,14 +298,40 @@ const WifiTab = ({ settings, setSettings, saving, onSave, wifiQrValue, copy }) =
 
 const OperationTab = ({ settings, setSettings, saving, onSave, copy }) => (
   <section>
-    <SectionHeader icon={Settings} title={copy.operation.title} subtitle={copy.operation.subtitle} />
+    <SectionHeader
+      icon={Settings}
+      title={copy.operation.title}
+      subtitle={copy.operation.subtitle}
+    />
     <div className="grid gap-5">
       <div className="grid gap-5 md:grid-cols-2">
-        <TextField label={copy.operation.openingTime} type="time" value={settings.openingTime} onChange={(value) => setSettingsValue(setSettings, 'openingTime', value)} />
-        <TextField label={copy.operation.closingTime} type="time" value={settings.closingTime} onChange={(value) => setSettingsValue(setSettings, 'closingTime', value)} />
+        <TextField
+          label={copy.operation.openingTime}
+          type="time"
+          value={settings.openingTime}
+          onChange={(value) => setSettingsValue(setSettings, 'openingTime', value)}
+        />
+        <TextField
+          label={copy.operation.closingTime}
+          type="time"
+          value={settings.closingTime}
+          onChange={(value) => setSettingsValue(setSettings, 'closingTime', value)}
+        />
       </div>
-      <ToggleRow icon={Clock} title={copy.operation.orderingEnabled} description={copy.operation.orderingEnabledDesc} checked={settings.orderingEnabled} onChange={(value) => setSettingsValue(setSettings, 'orderingEnabled', value)} />
-      <ToggleRow icon={AlertTriangle} title={copy.operation.maintenanceMode} description={copy.operation.maintenanceModeDesc} checked={settings.maintenanceMode} onChange={(value) => setSettingsValue(setSettings, 'maintenanceMode', value)} />
+      <ToggleRow
+        icon={Clock}
+        title={copy.operation.orderingEnabled}
+        description={copy.operation.orderingEnabledDesc}
+        checked={settings.orderingEnabled}
+        onChange={(value) => setSettingsValue(setSettings, 'orderingEnabled', value)}
+      />
+      <ToggleRow
+        icon={AlertTriangle}
+        title={copy.operation.maintenanceMode}
+        description={copy.operation.maintenanceModeDesc}
+        checked={settings.maintenanceMode}
+        onChange={(value) => setSettingsValue(setSettings, 'maintenanceMode', value)}
+      />
     </div>
     <SaveButton saving={saving} onSave={onSave} label={copy.actions.save} />
   </section>
@@ -239,13 +339,37 @@ const OperationTab = ({ settings, setSettings, saving, onSave, copy }) => (
 
 const PreferencesTab = ({ preferences, setPreferences, copy }) => (
   <section>
-    <SectionHeader icon={Bell} title={copy.preferences.title} subtitle={copy.preferences.subtitle} />
+    <SectionHeader
+      icon={Bell}
+      title={copy.preferences.title}
+      subtitle={copy.preferences.subtitle}
+    />
     <div className="grid gap-4">
-      <ToggleRow icon={Volume2} title={copy.preferences.sound} description={copy.preferences.soundDesc} checked={preferences.notificationSound} onChange={(value) => setPreferenceValue(setPreferences, 'notificationSound', value)} />
-      <ToggleRow icon={Bell} title={copy.preferences.loudSound} description={copy.preferences.loudSoundDesc} checked={preferences.loudSound} onChange={(value) => setPreferenceValue(setPreferences, 'loudSound', value)} />
-      <ToggleRow icon={preferences.darkMode ? Moon : Sun} title={copy.preferences.darkMode} description={copy.preferences.darkModeDesc} checked={preferences.darkMode} onChange={(value) => setPreferenceValue(setPreferences, 'darkMode', value)} />
+      <ToggleRow
+        icon={Volume2}
+        title={copy.preferences.sound}
+        description={copy.preferences.soundDesc}
+        checked={preferences.notificationSound}
+        onChange={(value) => setPreferenceValue(setPreferences, 'notificationSound', value)}
+      />
+      <ToggleRow
+        icon={Bell}
+        title={copy.preferences.loudSound}
+        description={copy.preferences.loudSoundDesc}
+        checked={preferences.loudSound}
+        onChange={(value) => setPreferenceValue(setPreferences, 'loudSound', value)}
+      />
+      <ToggleRow
+        icon={preferences.darkMode ? Moon : Sun}
+        title={copy.preferences.darkMode}
+        description={copy.preferences.darkModeDesc}
+        checked={preferences.darkMode}
+        onChange={(value) => setPreferenceValue(setPreferences, 'darkMode', value)}
+      />
       <label className="grid gap-2 rounded-lg border border-slate-200 p-4 transition-colors dark:border-slate-800">
-        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{copy.preferences.language}</span>
+        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+          {copy.preferences.language}
+        </span>
         <select
           value={preferences.language}
           onChange={(event) => setPreferenceValue(setPreferences, 'language', event.target.value)}
@@ -327,15 +451,15 @@ const normalizeSettings = (data = {}) => ({
   closingTime: data.closingTime ?? '',
   orderingEnabled: data.orderingEnabled ?? data.autoApproveOrders ?? true,
   maintenanceMode: data.maintenanceMode ?? false,
-  wifiPassword: data.wifiPassword ?? ''
+  wifiPassword: data.wifiPassword ?? '',
 });
 
 const setSettingsValue = (setSettings, key, value) => {
-  setSettings(prev => ({ ...prev, [key]: value }));
+  setSettings((prev) => ({ ...prev, [key]: value }));
 };
 
 const setPreferenceValue = (setPreferences, key, value) => {
-  setPreferences(prev => ({ ...prev, [key]: value }));
+  setPreferences((prev) => ({ ...prev, [key]: value }));
 };
 
 const escapeWifi = (value) => String(value).replace(/([\\;,":])/g, '\\$1');
@@ -346,18 +470,18 @@ const settingsCopy = {
       restaurant: 'Thông tin quán',
       wifi: 'WiFi & QR',
       operation: 'Vận hành & thanh toán',
-      preferences: 'Cá nhân hóa'
+      preferences: 'Cá nhân hóa',
     },
     actions: {
-      save: 'Lưu cấu hình'
+      save: 'Lưu cấu hình',
     },
     success: {
-      saved: 'Cấu hình hệ thống đã được cập nhật.'
+      saved: 'Cấu hình hệ thống đã được cập nhật.',
     },
     errors: {
       load: 'Không thể tải cài đặt',
       invalidData: 'Dữ liệu chưa hợp lệ',
-      restaurantNameRequired: 'Tên quán không được để trống.'
+      restaurantNameRequired: 'Tên quán không được để trống.',
     },
     restaurant: {
       title: 'Thông tin quán',
@@ -369,7 +493,7 @@ const settingsCopy = {
       currency: 'Tiền tệ',
       logoUrl: 'Logo URL',
       taxPercent: 'Thuế (%)',
-      serviceChargePercent: 'Phí dịch vụ (%)'
+      serviceChargePercent: 'Phí dịch vụ (%)',
     },
     wifi: {
       title: 'WiFi & mã QR',
@@ -377,7 +501,7 @@ const settingsCopy = {
       ssid: 'Tên WiFi (SSID)',
       password: 'Mật khẩu WiFi',
       qrLabel: 'QR kết nối WiFi',
-      empty: 'Nhập SSID để tạo QR'
+      empty: 'Nhập SSID để tạo QR',
     },
     operation: {
       title: 'Vận hành & thanh toán',
@@ -387,7 +511,8 @@ const settingsCopy = {
       orderingEnabled: 'Nhận đơn từ khách',
       orderingEnabledDesc: 'Khi tắt, khách vẫn xem được menu nhưng không thể gửi đơn mới.',
       maintenanceMode: 'Chế độ bảo trì',
-      maintenanceModeDesc: 'Tạm khóa trải nghiệm đặt món khi quán cần bảo trì hoặc đồng bộ dữ liệu.'
+      maintenanceModeDesc:
+        'Tạm khóa trải nghiệm đặt món khi quán cần bảo trì hoặc đồng bộ dữ liệu.',
     },
     preferences: {
       title: 'Cá nhân hóa',
@@ -398,26 +523,26 @@ const settingsCopy = {
       loudSoundDesc: 'Phù hợp cho khu vực bếp hoặc môi trường ồn.',
       darkMode: 'Giao diện tối',
       darkModeDesc: 'Lưu lựa chọn giao diện cho trình duyệt hiện tại.',
-      language: 'Ngôn ngữ'
-    }
+      language: 'Ngôn ngữ',
+    },
   },
   en: {
     tabs: {
       restaurant: 'Restaurant Info',
       wifi: 'WiFi & QR',
       operation: 'Operations & Payments',
-      preferences: 'Preferences'
+      preferences: 'Preferences',
     },
     actions: {
-      save: 'Save settings'
+      save: 'Save settings',
     },
     success: {
-      saved: 'System settings have been updated.'
+      saved: 'System settings have been updated.',
     },
     errors: {
       load: 'Unable to load settings',
       invalidData: 'Invalid data',
-      restaurantNameRequired: 'Restaurant name is required.'
+      restaurantNameRequired: 'Restaurant name is required.',
     },
     restaurant: {
       title: 'Restaurant Info',
@@ -429,7 +554,7 @@ const settingsCopy = {
       currency: 'Currency',
       logoUrl: 'Logo URL',
       taxPercent: 'Tax (%)',
-      serviceChargePercent: 'Service charge (%)'
+      serviceChargePercent: 'Service charge (%)',
     },
     wifi: {
       title: 'WiFi & QR Code',
@@ -437,7 +562,7 @@ const settingsCopy = {
       ssid: 'WiFi name (SSID)',
       password: 'WiFi password',
       qrLabel: 'WiFi connection QR',
-      empty: 'Enter an SSID to generate QR'
+      empty: 'Enter an SSID to generate QR',
     },
     operation: {
       title: 'Operations & Payments',
@@ -445,9 +570,11 @@ const settingsCopy = {
       openingTime: 'Opening time',
       closingTime: 'Closing time',
       orderingEnabled: 'Accept customer orders',
-      orderingEnabledDesc: 'When disabled, customers can still view the menu but cannot submit new orders.',
+      orderingEnabledDesc:
+        'When disabled, customers can still view the menu but cannot submit new orders.',
       maintenanceMode: 'Maintenance mode',
-      maintenanceModeDesc: 'Temporarily lock ordering while the restaurant is under maintenance or syncing data.'
+      maintenanceModeDesc:
+        'Temporarily lock ordering while the restaurant is under maintenance or syncing data.',
     },
     preferences: {
       title: 'Preferences',
@@ -458,9 +585,9 @@ const settingsCopy = {
       loudSoundDesc: 'Useful for the kitchen or noisy environments.',
       darkMode: 'Dark mode',
       darkModeDesc: 'Save the display preference for this browser.',
-      language: 'Language'
-    }
-  }
+      language: 'Language',
+    },
+  },
 };
 
 export default SettingsPage;

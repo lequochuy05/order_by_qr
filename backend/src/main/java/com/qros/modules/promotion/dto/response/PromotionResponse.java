@@ -12,5 +12,4 @@ public record PromotionResponse(
         LocalTime startTime,
         LocalTime endTime,
         Set<DayOfWeek> daysOfWeek,
-        Boolean active) {
-}
+        Boolean active) {}

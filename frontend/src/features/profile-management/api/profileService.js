@@ -19,7 +19,7 @@ export const profileService = {
     formData.append('file', file);
 
     return await api.post('/users/me/avatar', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-  }
+  },
 };

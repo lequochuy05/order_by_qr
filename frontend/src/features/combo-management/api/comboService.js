@@ -6,7 +6,11 @@ const COMBO_DETAIL_CACHE_MS = 10_000;
 const stableStringify = (value) => {
   if (!value) return 'all';
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (typeof value === 'object') return `{${Object.keys(value).sort().map(k => `${k}:${stableStringify(value[k])}`).join(',')}}`;
+  if (typeof value === 'object')
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${k}:${stableStringify(value[k])}`)
+      .join(',')}}`;
   return String(value);
 };
 
@@ -19,7 +23,7 @@ const normalizePageContent = (data) => {
 let comboListRequest = null;
 let comboListCache = {
   data: null,
-  expiresAt: 0
+  expiresAt: 0,
 };
 const comboDetailRequests = new Map();
 const comboDetailCache = new Map();
@@ -30,7 +34,7 @@ const clearComboCache = () => {
   comboListRequest = null;
   comboListCache = {
     data: null,
-    expiresAt: 0
+    expiresAt: 0,
   };
   comboDetailRequests.clear();
   comboDetailCache.clear();
@@ -47,14 +51,15 @@ export const comboService = {
     }
 
     if (!comboListRequest) {
-      comboListRequest = api.get('/combos/management-summary', {
-        params: { size: 1000, sort: 'displayOrder,asc' }
-      })
+      comboListRequest = api
+        .get('/combos/management-summary', {
+          params: { size: 1000, sort: 'displayOrder,asc' },
+        })
         .then((res) => {
           const data = normalizePageContent(res);
           comboListCache = {
             data,
-            expiresAt: Date.now() + COMBO_LIST_CACHE_MS
+            expiresAt: Date.now() + COMBO_LIST_CACHE_MS,
           };
           return data;
         })
@@ -73,7 +78,7 @@ export const comboService = {
       page,
       size,
       sort: 'displayOrder,asc',
-      ...params
+      ...params,
     };
     const key = stableStringify(requestParams);
     const now = Date.now();
@@ -83,11 +88,12 @@ export const comboService = {
     }
 
     if (!comboPageRequests.has(key)) {
-      const request = api.get('/combos/management-summary', { params: requestParams })
+      const request = api
+        .get('/combos/management-summary', { params: requestParams })
         .then((res) => {
           comboPageCache.set(key, {
             data: res,
-            expiresAt: Date.now() + COMBO_LIST_CACHE_MS
+            expiresAt: Date.now() + COMBO_LIST_CACHE_MS,
           });
           return res;
         })
@@ -110,11 +116,12 @@ export const comboService = {
     }
 
     if (!comboDetailRequests.has(key)) {
-      const request = api.get(`/combos/${id}`)
+      const request = api
+        .get(`/combos/${id}`)
         .then((res) => {
           comboDetailCache.set(key, {
             data: res,
-            expiresAt: Date.now() + COMBO_DETAIL_CACHE_MS
+            expiresAt: Date.now() + COMBO_DETAIL_CACHE_MS,
           });
           return res;
         })
@@ -156,5 +163,5 @@ export const comboService = {
     const res = await api.patch(`/combos/${id}/toggle-active`);
     clearComboCache();
     return res;
-  }
+  },
 };

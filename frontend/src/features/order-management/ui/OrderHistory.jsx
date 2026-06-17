@@ -1,5 +1,17 @@
 import { useState, useCallback } from 'react';
-import { RefreshCcw, Search, Filter, Eye, Calendar, TrendingUp, ShoppingBag, DollarSign, Hash, Printer, RotateCw } from 'lucide-react';
+import {
+  RefreshCcw,
+  Search,
+  Filter,
+  Eye,
+  Calendar,
+  TrendingUp,
+  ShoppingBag,
+  DollarSign,
+  Hash,
+  Printer,
+  RotateCw,
+} from 'lucide-react';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
@@ -75,7 +87,7 @@ export default function OrderHistoryPage() {
       status: '',
       datePreset: 'today',
       startDate: range.startDate,
-      endDate: range.endDate
+      endDate: range.endDate,
     };
   });
 
@@ -103,13 +115,13 @@ export default function OrderHistoryPage() {
       status,
       datePreset,
       startDate: dateRange.startDate,
-      endDate: dateRange.endDate
+      endDate: dateRange.endDate,
     });
     setCurrentPage(0); // Reset to first page on new filter
   };
 
   const filterParams = getFilterParams();
-  
+
   const queryParams = {
     ...filterParams,
     page: currentPage,
@@ -117,19 +129,19 @@ export default function OrderHistoryPage() {
   };
 
   const { data: ordersData, isFetching: loadingOrders } = useOrdersHistoryQuery(queryParams);
-  const { data: analyticsData, isFetching: loadingAnalytics } = useOrderAnalyticsQuery(filterParams);
+  const { data: analyticsData, isFetching: loadingAnalytics } =
+    useOrderAnalyticsQuery(filterParams);
 
   const loading = loadingOrders || loadingAnalytics;
   const orders = ordersData?.content || [];
   const totalPages = ordersData?.totalPages || 0;
   const totalElements = ordersData?.totalElements || 0;
   const analytics = analyticsData || { totalOrders: 0, totalRevenue: 0 };
-  
+
   const refreshData = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.orders.history() });
     queryClient.invalidateQueries({ queryKey: ['orders', 'analytics'] });
   };
-
 
   const avgOrder = analytics.totalOrders > 0 ? analytics.totalRevenue / analytics.totalOrders : 0;
 
@@ -145,7 +157,7 @@ export default function OrderHistoryPage() {
       order,
       table: order.table,
       paidBy: order.paidByName || 'Nhân viên',
-      paidAt: order.paymentTime
+      paidAt: order.paymentTime,
     });
   };
 
@@ -163,25 +175,38 @@ export default function OrderHistoryPage() {
 
   return (
     <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-          <div className="p-3 bg-blue-50 rounded-xl"><ShoppingBag size={22} className="text-blue-500" /></div>
+          <div className="p-3 bg-blue-50 rounded-xl">
+            <ShoppingBag size={22} className="text-blue-500" />
+          </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Tổng đơn hàng</p>
-            <p className="text-2xl font-bold text-gray-800">{analytics.totalOrders?.toLocaleString() || 0}</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+              Tổng đơn hàng
+            </p>
+            <p className="text-2xl font-bold text-gray-800">
+              {analytics.totalOrders?.toLocaleString() || 0}
+            </p>
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-          <div className="p-3 bg-green-50 rounded-xl"><DollarSign size={22} className="text-green-500" /></div>
+          <div className="p-3 bg-green-50 rounded-xl">
+            <DollarSign size={22} className="text-green-500" />
+          </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Tổng doanh thu</p>
-            <p className="text-2xl font-bold text-gray-800">{fmtVND(analytics.totalRevenue || 0)}</p>
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+              Tổng doanh thu
+            </p>
+            <p className="text-2xl font-bold text-gray-800">
+              {fmtVND(analytics.totalRevenue || 0)}
+            </p>
           </div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">
-          <div className="p-3 bg-orange-50 rounded-xl"><TrendingUp size={22} className="text-orange-500" /></div>
+          <div className="p-3 bg-orange-50 rounded-xl">
+            <TrendingUp size={22} className="text-orange-500" />
+          </div>
           <div>
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">TB/Đơn</p>
             <p className="text-2xl font-bold text-gray-800">{fmtVND(avgOrder) || fmtVND(0)}</p>
@@ -193,14 +218,16 @@ export default function OrderHistoryPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         {/* Date Preset Tabs */}
         <div className="flex items-center gap-2 flex-wrap">
-          {DATE_PRESETS.map(p => (
+          {DATE_PRESETS.map((p) => (
             <button
               key={p.value}
               onClick={() => setDatePreset(p.value)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border
-                ${datePreset === p.value
-                  ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                ${
+                  datePreset === p.value
+                    ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
             >
               {p.label}
             </button>
@@ -208,9 +235,11 @@ export default function OrderHistoryPage() {
           <button
             onClick={() => setDatePreset('custom')}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border flex items-center gap-1.5
-              ${datePreset === 'custom'
-                ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
-                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+              ${
+                datePreset === 'custom'
+                  ? 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-200'
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}
           >
             <Calendar size={14} /> Tùy chọn
           </button>
@@ -229,7 +258,10 @@ export default function OrderHistoryPage() {
           onClick={() => refreshData({ force: true })}
           className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl transition-all shadow-sm border border-gray-200 font-medium"
         >
-          <RefreshCcw size={18} className={loading ? 'animate-spin text-orange-500' : 'text-gray-400'} />
+          <RefreshCcw
+            size={18}
+            className={loading ? 'animate-spin text-orange-500' : 'text-gray-400'}
+          />
           <span>Làm mới</span>
         </button>
       </div>
@@ -241,14 +273,14 @@ export default function OrderHistoryPage() {
           <input
             type="date"
             value={customStartDate}
-            onChange={e => setCustomStartDate(e.target.value)}
+            onChange={(e) => setCustomStartDate(e.target.value)}
             className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
           />
           <span className="text-gray-400">→</span>
           <input
             type="date"
             value={customEndDate}
-            onChange={e => setCustomEndDate(e.target.value)}
+            onChange={(e) => setCustomEndDate(e.target.value)}
             className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
           />
         </div>
@@ -258,7 +290,10 @@ export default function OrderHistoryPage() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm">
         {/* Order ID */}
         <div className="relative group md:col-span-3">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
+          <Search
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Mã ĐH..."
@@ -270,7 +305,10 @@ export default function OrderHistoryPage() {
 
         {/* Table Number */}
         <div className="relative group md:col-span-3">
-          <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
+          <Hash
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Số bàn..."
@@ -282,19 +320,23 @@ export default function OrderHistoryPage() {
 
         {/* Status */}
         <div className="relative group md:col-span-4">
-          <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
+          <Filter
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors"
+            size={18}
+          />
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-white text-gray-800 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all appearance-none text-sm cursor-pointer"
           >
             <option value="">Tất cả trạng thái</option>
-            {Object.keys(ORDER_STATUS).map(key => (
-              <option key={key} value={key}>{getOrderStatusMeta(key).label}</option>
+            {Object.keys(ORDER_STATUS).map((key) => (
+              <option key={key} value={key}>
+                {getOrderStatusMeta(key).label}
+              </option>
             ))}
           </select>
         </div>
-
       </div>
 
       {/* Data Table */}
@@ -341,12 +383,12 @@ export default function OrderHistoryPage() {
                       <span className="text-gray-400 mr-1">#</span>
                       {order.id?.toString().substring(0, 8).toUpperCase()}
                     </td>
-                    <td className="p-5 text-gray-600">
-                      {fmtDateTime(order.createdAt)}
-                    </td>
+                    <td className="p-5 text-gray-600">{fmtDateTime(order.createdAt)}</td>
                     <td className="p-5">
                       {order.table?.tableNumber || order.table?.name ? (
-                        <span className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-medium">{order.table.tableNumber || order.table.name}</span>
+                        <span className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg font-medium">
+                          {order.table.tableNumber || order.table.name}
+                        </span>
                       ) : (
                         <span className="text-gray-500 italic">Mang đi</span>
                       )}
@@ -355,7 +397,9 @@ export default function OrderHistoryPage() {
                       {fmtVND(getOrderFinalAmount(order))}
                     </td>
                     <td className="p-5">
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getOrderStatusMeta(order.status).classes}`}>
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full border ${getOrderStatusMeta(order.status).classes}`}
+                      >
                         {getOrderStatusMeta(order.status).label}
                       </span>
                     </td>
@@ -393,41 +437,39 @@ export default function OrderHistoryPage() {
             </tbody>
           </table>
         </div>
-      </div >
+      </div>
 
       {/* Pagination Controls */}
-      {
-        totalPages > 1 && (
-          <div className="flex justify-center items-center gap-3 pt-2">
-            <button
-              disabled={currentPage === 0}
-              onClick={() => setCurrentPage(prev => prev - 1)}
-              className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
-            >
-              Trước
-            </button>
-            <span className="text-gray-500 font-medium px-4">
-              Trang {currentPage + 1} / {totalPages}
-              <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
-            </span>
-            <button
-              disabled={currentPage >= totalPages - 1}
-              onClick={() => setCurrentPage(prev => prev + 1)}
-              className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
-            >
-              Sau
-            </button>
-          </div>
-        )
-      }
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-3 pt-2">
+          <button
+            disabled={currentPage === 0}
+            onClick={() => setCurrentPage((prev) => prev - 1)}
+            className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+          >
+            Trước
+          </button>
+          <span className="text-gray-500 font-medium px-4">
+            Trang {currentPage + 1} / {totalPages}
+            <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
+          </span>
+          <button
+            disabled={currentPage >= totalPages - 1}
+            onClick={() => setCurrentPage((prev) => prev + 1)}
+            className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+          >
+            Sau
+          </button>
+        </div>
+      )}
 
       <OrderDetailsModal
         isOpen={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
         order={selectedOrder}
-        onPrint={(order) => handlePrint({ stopPropagation: () => { } }, order)}
-        onReconcile={(orderId) => handleReconcile({ stopPropagation: () => { } }, orderId)}
+        onPrint={(order) => handlePrint({ stopPropagation: () => {} }, order)}
+        onReconcile={(orderId) => handleReconcile({ stopPropagation: () => {} }, orderId)}
       />
-    </div >
+    </div>
   );
 }

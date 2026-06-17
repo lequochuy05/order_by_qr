@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
     wsService.disconnect();
     setAccessToken(null);
     queryClient.clear();
-    authService.logout().catch(() => { });
+    authService.logout().catch(() => {});
     setUser(null);
   }, []);
 
@@ -27,7 +27,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     let mounted = true;
-    authService.refresh()
+    authService
+      .refresh()
       .then((data) => {
         if (!mounted) return;
         setAccessToken(data.accessToken);
@@ -77,12 +78,12 @@ export const AuthProvider = ({ children }) => {
       resetTimer();
     };
 
-    events.forEach(event => window.addEventListener(event, handleActivity));
+    events.forEach((event) => window.addEventListener(event, handleActivity));
 
     resetTimer(); // Bắt đầu đếm giờ ngay khi đăng nhập xong
 
     return () => {
-      events.forEach(event => window.removeEventListener(event, handleActivity));
+      events.forEach((event) => window.removeEventListener(event, handleActivity));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [user, resetTimer]);
@@ -99,7 +100,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = useCallback((updatedFields) => {
-    setUser(prev => {
+    setUser((prev) => {
       const newUser = { ...prev, ...updatedFields };
       return newUser;
     });

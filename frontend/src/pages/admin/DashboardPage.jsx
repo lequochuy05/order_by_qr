@@ -1,5 +1,5 @@
-import DashboardOverview from '@features/dashboard-overview'
+import DashboardOverview from '@features/dashboard-overview';
 
 export default function DashboardPage() {
-  return <DashboardOverview />
+  return <DashboardOverview />;
 }

@@ -8,5 +8,5 @@ export const settingsService = {
 
   update: async (data) => {
     return await api.put('/settings', data);
-  }
+  },
 };

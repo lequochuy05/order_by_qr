@@ -1,13 +1,11 @@
 package com.qros.modules.order.model;
 
-import com.qros.shared.entity.BaseEntity;
 import com.qros.modules.menu.model.ItemOptionValue;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.math.BigDecimal;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -15,7 +13,6 @@ import org.hibernate.annotations.SQLRestriction;
  * OrderItemOption - Snapshot entity representing a selected option/topping within an ordered item.
  * Stores values at the time of ordering to maintain historical integrity.
  */
-
 @Entity
 @Table(name = "order_item_options")
 @Getter

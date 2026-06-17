@@ -14,7 +14,7 @@ import {
   Save,
   Scale,
   SlidersHorizontal,
-  X
+  X,
 } from 'lucide-react';
 
 import { inventoryService } from '@features/inventory-management/api/inventoryService.js';
@@ -42,7 +42,7 @@ const movementLabels = {
   STOCK_IN: 'Nhập kho',
   ADJUSTMENT: 'Kiểm kê',
   ORDER_RESERVE: 'Trừ theo đơn',
-  ORDER_RELEASE: 'Hoàn theo đơn'
+  ORDER_RELEASE: 'Hoàn theo đơn',
 };
 
 const InventoryManagement = () => {
@@ -80,81 +80,95 @@ const InventoryManagement = () => {
   const movementFetchSeqRef = React.useRef(0);
   const pageSize = 24;
 
-  const fetchInventoryItems = useCallback(async (showLoading = false, { force = false } = {}) => {
-    const fetchSeq = ++inventoryFetchSeqRef.current;
-    if (showLoading) setLoading(true);
-    try {
-      const inventoryData = await inventoryService.getItemPage({
-        page: currentPage,
-        size: pageSize,
-        keyword: debouncedSearchTerm.trim() || undefined,
-        stockFilter,
-        force
-      });
-      if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
+  const fetchInventoryItems = useCallback(
+    async (showLoading = false, { force = false } = {}) => {
+      const fetchSeq = ++inventoryFetchSeqRef.current;
+      if (showLoading) setLoading(true);
+      try {
+        const inventoryData = await inventoryService.getItemPage({
+          page: currentPage,
+          size: pageSize,
+          keyword: debouncedSearchTerm.trim() || undefined,
+          stockFilter,
+          force,
+        });
+        if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
 
-      setItems(inventoryData.content || []);
-      setTotalPages(inventoryData.totalPages || 0);
-      setTotalElements(inventoryData.totalElements || 0);
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
-      showError(err);
-    } finally {
-      if (isMountedRef.current && fetchSeq === inventoryFetchSeqRef.current) {
-        setLoading(false);
+        setItems(inventoryData.content || []);
+        setTotalPages(inventoryData.totalPages || 0);
+        setTotalElements(inventoryData.totalElements || 0);
+      } catch (err) {
+        if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
+        showError(err);
+      } finally {
+        if (isMountedRef.current && fetchSeq === inventoryFetchSeqRef.current) {
+          setLoading(false);
+        }
       }
-    }
-  }, [currentPage, debouncedSearchTerm, showError, stockFilter]);
+    },
+    [currentPage, debouncedSearchTerm, showError, stockFilter],
+  );
 
-  const fetchInventorySummary = useCallback(async ({ force = false } = {}) => {
-    try {
-      const data = await inventoryService.getSummary({ force });
-      if (!isMountedRef.current) return;
-      setSummary(data);
-    } catch (err) {
-      if (!isMountedRef.current) return;
-      showError(err);
-    }
-  }, [showError]);
-
-  const fetchMovements = useCallback(async (showLoading = false, { force = false } = {}) => {
-    const fetchSeq = ++movementFetchSeqRef.current;
-    if (showLoading) setMovementsLoading(true);
-    try {
-      const movementData = await inventoryService.getMovements({ force });
-      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-
-      setMovements(movementData || []);
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-      showError(err);
-    } finally {
-      if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
-        setMovementsLoading(false);
+  const fetchInventorySummary = useCallback(
+    async ({ force = false } = {}) => {
+      try {
+        const data = await inventoryService.getSummary({ force });
+        if (!isMountedRef.current) return;
+        setSummary(data);
+      } catch (err) {
+        if (!isMountedRef.current) return;
+        showError(err);
       }
-    }
-  }, [showError]);
+    },
+    [showError],
+  );
 
-  const ensureMenuItems = useCallback(async ({ force = false } = {}) => {
-    if (!force && menuItems.length > 0) return menuItems;
+  const fetchMovements = useCallback(
+    async (showLoading = false, { force = false } = {}) => {
+      const fetchSeq = ++movementFetchSeqRef.current;
+      if (showLoading) setMovementsLoading(true);
+      try {
+        const movementData = await inventoryService.getMovements({ force });
+        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
 
-    setMenuItemsLoading(true);
-    try {
-      const menuData = await menuItemService.getAll(undefined, { force });
-      if (!isMountedRef.current) return menuData || [];
-
-      setMenuItems(menuData || []);
-      setSelectedMenuItemId((current) => current || (menuData?.length ? String(menuData[0].id) : ''));
-      return menuData || [];
-    } catch (err) {
-      showError(err);
-      return [];
-    } finally {
-      if (isMountedRef.current) {
-        setMenuItemsLoading(false);
+        setMovements(movementData || []);
+      } catch (err) {
+        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
+        showError(err);
+      } finally {
+        if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
+          setMovementsLoading(false);
+        }
       }
-    }
-  }, [menuItems, showError]);
+    },
+    [showError],
+  );
+
+  const ensureMenuItems = useCallback(
+    async ({ force = false } = {}) => {
+      if (!force && menuItems.length > 0) return menuItems;
+
+      setMenuItemsLoading(true);
+      try {
+        const menuData = await menuItemService.getAll(undefined, { force });
+        if (!isMountedRef.current) return menuData || [];
+
+        setMenuItems(menuData || []);
+        setSelectedMenuItemId(
+          (current) => current || (menuData?.length ? String(menuData[0].id) : ''),
+        );
+        return menuData || [];
+      } catch (err) {
+        showError(err);
+        return [];
+      } finally {
+        if (isMountedRef.current) {
+          setMenuItemsLoading(false);
+        }
+      }
+    },
+    [menuItems, showError],
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -235,16 +249,26 @@ const InventoryManagement = () => {
     setInventoryErrors({});
   }, [isInventorySubmitting]);
 
-  const refreshInventoryView = useCallback((showLoading = true) => {
-    fetchInventoryItems(showLoading, { force: true });
-    fetchInventorySummary({ force: true });
-    if (activeTab === 'history') {
-      fetchMovements(showLoading, { force: true });
-    }
-    if (menuItems.length > 0) {
-      ensureMenuItems({ force: true });
-    }
-  }, [activeTab, ensureMenuItems, fetchInventoryItems, fetchInventorySummary, fetchMovements, menuItems.length]);
+  const refreshInventoryView = useCallback(
+    (showLoading = true) => {
+      fetchInventoryItems(showLoading, { force: true });
+      fetchInventorySummary({ force: true });
+      if (activeTab === 'history') {
+        fetchMovements(showLoading, { force: true });
+      }
+      if (menuItems.length > 0) {
+        ensureMenuItems({ force: true });
+      }
+    },
+    [
+      activeTab,
+      ensureMenuItems,
+      fetchInventoryItems,
+      fetchInventorySummary,
+      fetchMovements,
+      menuItems.length,
+    ],
+  );
 
   const openCreate = () => {
     setEditingItem(null);
@@ -260,7 +284,7 @@ const InventoryManagement = () => {
       unit: item.unit || INVENTORY_UNITS[0],
       quantityOnHand: item.quantityOnHand,
       lowStockThreshold: item.lowStockThreshold,
-      active: item.active !== false
+      active: item.active !== false,
     });
     setInventoryErrors({});
     setInventoryModalOpen(true);
@@ -276,18 +300,19 @@ const InventoryManagement = () => {
       unit: inventoryForm.unit.trim(),
       quantityOnHand: Number(inventoryForm.quantityOnHand),
       lowStockThreshold: Number(inventoryForm.lowStockThreshold),
-      active: inventoryForm.active
+      active: inventoryForm.active,
     };
 
     setIsInventorySubmitting(true);
     try {
       if (editingItem?.id) {
         await inventoryService.updateItem(editingItem.id, payload);
-        const quantityDelta = Number(inventoryForm.quantityOnHand) - Number(editingItem.quantityOnHand || 0);
+        const quantityDelta =
+          Number(inventoryForm.quantityOnHand) - Number(editingItem.quantityOnHand || 0);
         if (quantityDelta !== 0) {
           await inventoryService.adjust(editingItem.id, {
             quantityDelta,
-            note: 'Cập nhật tồn kho từ form nguyên liệu'
+            note: 'Cập nhật tồn kho từ form nguyên liệu',
           });
         }
         showSuccess('Đã cập nhật nguyên liệu');
@@ -316,7 +341,7 @@ const InventoryManagement = () => {
     setStockForm({
       quantity: '',
       quantityOnHand: item.quantityOnHand,
-      note: ''
+      note: '',
     });
   };
 
@@ -328,11 +353,12 @@ const InventoryManagement = () => {
       if (stockAction.type === 'stock-in') {
         await inventoryService.stockIn(stockAction.item.id, {
           quantity: Number(stockForm.quantity),
-          note: stockForm.note
+          note: stockForm.note,
         });
         showSuccess('Đã nhập kho');
       } else {
-        const quantityDelta = Number(stockForm.quantityOnHand) - Number(stockAction.item.quantityOnHand || 0);
+        const quantityDelta =
+          Number(stockForm.quantityOnHand) - Number(stockAction.item.quantityOnHand || 0);
         if (quantityDelta === 0) {
           setStockAction(null);
           showSuccess('Tồn kho không thay đổi');
@@ -340,7 +366,7 @@ const InventoryManagement = () => {
         }
         await inventoryService.adjust(stockAction.item.id, {
           quantityDelta,
-          note: stockForm.note
+          note: stockForm.note,
         });
         showSuccess('Đã cập nhật kiểm kê');
       }
@@ -374,10 +400,12 @@ const InventoryManagement = () => {
     setRecipeLoading(true);
     try {
       const data = await inventoryService.getRecipe(menuItemId);
-      setRecipeItems((data || []).map((item) => ({
-        inventoryItemId: String(item.inventoryItemId),
-        quantityRequired: item.quantityRequired
-      })));
+      setRecipeItems(
+        (data || []).map((item) => ({
+          inventoryItemId: String(item.inventoryItemId),
+          quantityRequired: item.quantityRequired,
+        })),
+      );
     } catch (err) {
       showError(err);
     } finally {
@@ -386,9 +414,14 @@ const InventoryManagement = () => {
   };
 
   const addRecipeRow = () => {
-    const firstAvailable = items.find((item) => !recipeItems.some((row) => Number(row.inventoryItemId) === item.id));
+    const firstAvailable = items.find(
+      (item) => !recipeItems.some((row) => Number(row.inventoryItemId) === item.id),
+    );
     if (!firstAvailable) return;
-    setRecipeItems([...recipeItems, { inventoryItemId: String(firstAvailable.id), quantityRequired: 1 }]);
+    setRecipeItems([
+      ...recipeItems,
+      { inventoryItemId: String(firstAvailable.id), quantityRequired: 1 },
+    ]);
   };
 
   const saveRecipe = async (e) => {
@@ -399,8 +432,8 @@ const InventoryManagement = () => {
       await inventoryService.updateRecipe(selectedMenuItemId, {
         items: recipeItems.map((item) => ({
           inventoryItemId: Number(item.inventoryItemId),
-          quantityRequired: Number(item.quantityRequired)
-        }))
+          quantityRequired: Number(item.quantityRequired),
+        })),
       });
       showSuccess('Đã cập nhật định mức món');
       setRecipeOpen(false);
@@ -427,22 +460,47 @@ const InventoryManagement = () => {
         filterOptions={[
           { id: 'LOW', name: 'Sắp hết' },
           { id: 'OUT', name: 'Hết hàng' },
-          { id: 'INACTIVE', name: 'Tạm ngưng' }
+          { id: 'INACTIVE', name: 'Tạm ngưng' },
         ]}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <SummaryCard icon={Boxes} label="Nguyên liệu" value={summary?.totalItems || 0} />
-        <SummaryCard icon={PackageCheck} label="Đang dùng" value={summary?.activeItems || 0} tone="green" />
-        <SummaryCard icon={AlertTriangle} label="Sắp hết" value={summary?.lowStockItems || 0} tone="amber" />
-        <SummaryCard icon={Scale} label="Hết hàng" value={summary?.outOfStockItems || 0} tone="red" />
+        <SummaryCard
+          icon={PackageCheck}
+          label="Đang dùng"
+          value={summary?.activeItems || 0}
+          tone="green"
+        />
+        <SummaryCard
+          icon={AlertTriangle}
+          label="Sắp hết"
+          value={summary?.lowStockItems || 0}
+          tone="amber"
+        />
+        <SummaryCard
+          icon={Scale}
+          label="Hết hàng"
+          value={summary?.outOfStockItems || 0}
+          tone="red"
+        />
       </div>
 
       <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2 rounded-2xl bg-gray-50 p-1">
-            <TabButton active={activeTab === 'items'} icon={Boxes} label="Nguyên liệu" onClick={() => setActiveTab('items')} />
-            <TabButton active={activeTab === 'history'} icon={History} label="Lịch sử kho" onClick={() => setActiveTab('history')} />
+            <TabButton
+              active={activeTab === 'items'}
+              icon={Boxes}
+              label="Nguyên liệu"
+              onClick={() => setActiveTab('items')}
+            />
+            <TabButton
+              active={activeTab === 'history'}
+              icon={History}
+              label="Lịch sử kho"
+              onClick={() => setActiveTab('history')}
+            />
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -457,9 +515,13 @@ const InventoryManagement = () => {
               className="min-h-10 min-w-64 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-500 disabled:cursor-wait disabled:opacity-60"
             >
               {menuItemsLoading && <option value="">Đang tải món...</option>}
-              {!menuItemsLoading && menuItems.length === 0 && <option value="">Chọn món để định mức</option>}
+              {!menuItemsLoading && menuItems.length === 0 && (
+                <option value="">Chọn món để định mức</option>
+              )}
               {menuItems.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
               ))}
             </select>
             <button
@@ -468,7 +530,12 @@ const InventoryManagement = () => {
               disabled={menuItemsLoading}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-black text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
             >
-              {menuItemsLoading ? <Loader2 size={16} className="animate-spin" /> : <ClipboardList size={16} />} Định mức
+              {menuItemsLoading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <ClipboardList size={16} />
+              )}{' '}
+              Định mức
             </button>
             <button
               type="button"
@@ -551,8 +618,6 @@ const InventoryManagement = () => {
           loading={recipeLoading}
         />
       )}
-
-      
     </div>
   );
 };
@@ -562,7 +627,7 @@ const defaultInventoryForm = () => ({
   unit: INVENTORY_UNITS[0],
   quantityOnHand: 0,
   lowStockThreshold: 0,
-  active: true
+  active: true,
 });
 
 const SummaryCard = ({ icon, label, value, tone = 'orange' }) => {
@@ -570,7 +635,7 @@ const SummaryCard = ({ icon, label, value, tone = 'orange' }) => {
     orange: 'bg-orange-50 text-orange-600',
     green: 'bg-emerald-50 text-emerald-600',
     amber: 'bg-amber-50 text-amber-600',
-    red: 'bg-red-50 text-red-600'
+    red: 'bg-red-50 text-red-600',
   };
   return (
     <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
@@ -579,7 +644,9 @@ const SummaryCard = ({ icon, label, value, tone = 'orange' }) => {
           {React.createElement(icon, { size: 22 })}
         </div>
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">{label}</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">
+            {label}
+          </p>
           <p className="text-3xl font-black text-gray-800">{value}</p>
         </div>
       </div>
@@ -610,16 +677,28 @@ const InventoryGrid = ({ items, onEdit, onStockIn, onAdjust }) => {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {items.map((item) => (
-        <InventoryCard key={item.id} item={item} onEdit={onEdit} onStockIn={onStockIn} onAdjust={onAdjust} />
+        <InventoryCard
+          key={item.id}
+          item={item}
+          onEdit={onEdit}
+          onStockIn={onStockIn}
+          onAdjust={onAdjust}
+        />
       ))}
     </div>
   );
 };
 
 const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
-  const ratio = item.lowStockThreshold > 0
-    ? Math.min(100, Math.round((numberValue(item.quantityOnHand) / numberValue(item.lowStockThreshold)) * 100))
-    : 100;
+  const ratio =
+    item.lowStockThreshold > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (numberValue(item.quantityOnHand) / numberValue(item.lowStockThreshold)) * 100,
+          ),
+        )
+      : 100;
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-xl transition-all flex flex-col h-full relative overflow-hidden">
@@ -632,7 +711,9 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
             <Boxes size={22} />
           </div>
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold text-gray-800 group-hover:text-orange-600 transition-colors">{item.name}</h3>
+            <h3 className="truncate text-lg font-bold text-gray-800 group-hover:text-orange-600 transition-colors">
+              {item.name}
+            </h3>
             <p className="text-xs font-bold text-gray-400">{item.unit}</p>
           </div>
         </div>
@@ -640,9 +721,13 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
       </div>
 
       <div className="mb-4 relative z-10">
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">Tồn hiện tại</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">
+          Tồn hiện tại
+        </p>
         <div className="mt-1 flex items-end gap-2">
-          <span className="text-3xl font-black tracking-tight text-gray-900">{fmtQty(item.quantityOnHand)}</span>
+          <span className="text-3xl font-black tracking-tight text-gray-900">
+            {fmtQty(item.quantityOnHand)}
+          </span>
           <span className="pb-1 text-sm font-bold text-gray-400">{item.unit}</span>
         </div>
       </div>
@@ -650,7 +735,9 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
       <div className="mb-6 flex-grow relative z-10">
         <div className="mb-2 flex items-center justify-between text-xs font-bold">
           <span className="text-gray-400">Ngưỡng cảnh báo</span>
-          <span className="text-gray-700">{fmtQty(item.lowStockThreshold)} {item.unit}</span>
+          <span className="text-gray-700">
+            {fmtQty(item.lowStockThreshold)} {item.unit}
+          </span>
         </div>
         <div className="h-2 rounded-full bg-gray-100">
           <div
@@ -661,8 +748,18 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
       </div>
 
       <div className="flex gap-2 mt-auto relative z-10">
-        <ActionButton icon={PackagePlus} label="Nhập" onClick={() => onStockIn(item)} tone="orange" />
-        <ActionButton icon={SlidersHorizontal} label="Kiểm kê" onClick={() => onAdjust(item)} tone="slate" />
+        <ActionButton
+          icon={PackagePlus}
+          label="Nhập"
+          onClick={() => onStockIn(item)}
+          tone="orange"
+        />
+        <ActionButton
+          icon={SlidersHorizontal}
+          label="Kiểm kê"
+          onClick={() => onAdjust(item)}
+          tone="slate"
+        />
         <button
           type="button"
           title="Sửa"
@@ -677,9 +774,10 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
 };
 
 const ActionButton = ({ icon, label, onClick, tone }) => {
-  const classes = tone === 'orange'
-    ? 'bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-100'
-    : 'bg-slate-50 text-slate-600 hover:bg-slate-800 hover:text-white border border-slate-200';
+  const classes =
+    tone === 'orange'
+      ? 'bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-100'
+      : 'bg-slate-50 text-slate-600 hover:bg-slate-800 hover:text-white border border-slate-200';
   return (
     <button
       type="button"
@@ -692,10 +790,29 @@ const ActionButton = ({ icon, label, onClick, tone }) => {
 };
 
 const StockBadge = ({ item }) => {
-  if (item.active === false) return <span className="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-[10px] font-black uppercase text-gray-500">Tạm ngưng</span>;
-  if (item.outOfStock) return <span className="shrink-0 rounded-full bg-red-100 px-3 py-1 text-[10px] font-black uppercase text-red-600">Hết hàng</span>;
-  if (item.lowStock) return <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase text-amber-700">Sắp hết</span>;
-  return <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-emerald-700">Ổn định</span>;
+  if (item.active === false)
+    return (
+      <span className="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-[10px] font-black uppercase text-gray-500">
+        Tạm ngưng
+      </span>
+    );
+  if (item.outOfStock)
+    return (
+      <span className="shrink-0 rounded-full bg-red-100 px-3 py-1 text-[10px] font-black uppercase text-red-600">
+        Hết hàng
+      </span>
+    );
+  if (item.lowStock)
+    return (
+      <span className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase text-amber-700">
+        Sắp hết
+      </span>
+    );
+  return (
+    <span className="shrink-0 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase text-emerald-700">
+      Ổn định
+    </span>
+  );
 };
 
 const MovementList = ({ movements }) => (
@@ -705,19 +822,28 @@ const MovementList = ({ movements }) => (
     </div>
     <div className="divide-y divide-gray-100">
       {movements.map((movement) => (
-        <div key={movement.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm">
+        <div
+          key={movement.id}
+          className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm"
+        >
           <div className="flex min-w-0 items-center gap-3">
             <div className="rounded-2xl bg-gray-50 p-3 text-gray-500">
               <ClipboardList size={18} />
             </div>
             <div className="min-w-0">
               <p className="truncate font-black text-gray-800">{movement.inventoryItemName}</p>
-              <p className="text-xs font-bold text-gray-400">{movementLabels[movement.movementType] || movement.movementType}</p>
+              <p className="text-xs font-bold text-gray-400">
+                {movementLabels[movement.movementType] || movement.movementType}
+              </p>
             </div>
           </div>
           <div className="text-right">
-            <p className="font-black text-gray-800">{fmtQty(movement.quantity)} {movement.unit}</p>
-            <p className="text-xs font-bold text-gray-400">{fmtQty(movement.quantityBefore)} → {fmtQty(movement.quantityAfter)}</p>
+            <p className="font-black text-gray-800">
+              {fmtQty(movement.quantity)} {movement.unit}
+            </p>
+            <p className="text-xs font-bold text-gray-400">
+              {fmtQty(movement.quantityBefore)} → {fmtQty(movement.quantityAfter)}
+            </p>
           </div>
         </div>
       ))}
@@ -731,7 +857,16 @@ const MovementList = ({ movements }) => (
   </div>
 );
 
-const InventoryModal = ({ item, form, setForm, errors = {}, setErrors, onClose, onSubmit, isSubmitting = false }) => {
+const InventoryModal = ({
+  item,
+  form,
+  setForm,
+  errors = {},
+  setErrors,
+  onClose,
+  onSubmit,
+  isSubmitting = false,
+}) => {
   const unitOptions = getInventoryUnitOptions(form.unit);
   const isChanged = useMemo(() => {
     if (!item?.id) return true;
@@ -757,7 +892,11 @@ const InventoryModal = ({ item, form, setForm, errors = {}, setErrors, onClose, 
         disabled={isSubmitting}
       />
 
-      <form id="inventoryForm" onSubmit={onSubmit} className="space-y-6 overflow-y-auto p-8 custom-scrollbar">
+      <form
+        id="inventoryForm"
+        onSubmit={onSubmit}
+        className="space-y-6 overflow-y-auto p-8 custom-scrollbar"
+      >
         <TextInput
           label="Tên nguyên liệu"
           value={form.name}
@@ -774,13 +913,16 @@ const InventoryModal = ({ item, form, setForm, errors = {}, setErrors, onClose, 
           <select
             value={form.unit}
             onChange={(e) => updateField('unit', e.target.value)}
-            className={`w-full rounded-2xl border-2 bg-gray-50 px-5 py-3.5 text-sm font-bold outline-none transition-all ${errors.unit
-              ? 'border-red-500 ring-red-50'
-              : 'border-transparent focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
-              }`}
+            className={`w-full rounded-2xl border-2 bg-gray-50 px-5 py-3.5 text-sm font-bold outline-none transition-all ${
+              errors.unit
+                ? 'border-red-500 ring-red-50'
+                : 'border-transparent focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+            }`}
           >
             {unitOptions.map((unit) => (
-              <option key={unit} value={unit}>{unit}</option>
+              <option key={unit} value={unit}>
+                {unit}
+              </option>
             ))}
           </select>
           <FieldError message={errors.unit} />
@@ -816,7 +958,9 @@ const InventoryModal = ({ item, form, setForm, errors = {}, setErrors, onClose, 
             checked={form.active}
             onChange={(e) => updateField('active', e.target.checked)}
           />
-          <span className="text-xs font-black uppercase tracking-tight text-gray-600">Đang sử dụng</span>
+          <span className="text-xs font-black uppercase tracking-tight text-gray-600">
+            Đang sử dụng
+          </span>
         </label>
       </form>
 
@@ -834,36 +978,87 @@ const InventoryModal = ({ item, form, setForm, errors = {}, setErrors, onClose, 
 const StockModal = ({ action, form, setForm, onClose, onSubmit, isSubmitting = false }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
     <form onSubmit={onSubmit} className="w-full max-w-md rounded-[2rem] bg-white shadow-2xl">
-      <ModalHeader title={action.type === 'stock-in' ? 'Nhập kho' : 'Kiểm kê'} onClose={onClose} disabled={isSubmitting} />
+      <ModalHeader
+        title={action.type === 'stock-in' ? 'Nhập kho' : 'Kiểm kê'}
+        onClose={onClose}
+        disabled={isSubmitting}
+      />
       <div className="space-y-5 p-8">
         <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">
           {action.item.name}: {fmtQty(action.item.quantityOnHand)} {action.item.unit}
         </div>
         {action.type === 'stock-in' ? (
-          <TextInput type="number" min="0.001" step="0.001" label="Số lượng nhập thêm" value={form.quantity} onChange={(value) => setForm({ ...form, quantity: value })} required />
+          <TextInput
+            type="number"
+            min="0.001"
+            step="0.001"
+            label="Số lượng nhập thêm"
+            value={form.quantity}
+            onChange={(value) => setForm({ ...form, quantity: value })}
+            required
+          />
         ) : (
-          <TextInput type="number" min="0" step="0.001" label="Tồn thực tế sau kiểm kê" value={form.quantityOnHand} onChange={(value) => setForm({ ...form, quantityOnHand: value })} required />
+          <TextInput
+            type="number"
+            min="0"
+            step="0.001"
+            label="Tồn thực tế sau kiểm kê"
+            value={form.quantityOnHand}
+            onChange={(value) => setForm({ ...form, quantityOnHand: value })}
+            required
+          />
         )}
-        <TextInput label="Ghi chú" value={form.note} onChange={(value) => setForm({ ...form, note: value })} />
+        <TextInput
+          label="Ghi chú"
+          value={form.note}
+          onChange={(value) => setForm({ ...form, note: value })}
+        />
       </div>
       <ModalActions onClose={onClose} isSubmitting={isSubmitting} />
     </form>
   </div>
 );
 
-const RecipeModal = ({ menuItems, inventoryItems, selectedMenuItem, selectedMenuItemId, onSelectMenuItem, recipeItems, setRecipeItems, onAddRow, onClose, onSubmit, isSubmitting = false, loading = false }) => (
+const RecipeModal = ({
+  menuItems,
+  inventoryItems,
+  selectedMenuItem,
+  selectedMenuItemId,
+  onSelectMenuItem,
+  recipeItems,
+  setRecipeItems,
+  onAddRow,
+  onClose,
+  onSubmit,
+  isSubmitting = false,
+  loading = false,
+}) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-    <form onSubmit={onSubmit} className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-[2rem] bg-white shadow-2xl">
-      <ModalHeader title="Định mức nguyên liệu" subtitle={selectedMenuItem?.name} onClose={onClose} disabled={isSubmitting} />
+    <form
+      onSubmit={onSubmit}
+      className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-[2rem] bg-white shadow-2xl"
+    >
+      <ModalHeader
+        title="Định mức nguyên liệu"
+        subtitle={selectedMenuItem?.name}
+        onClose={onClose}
+        disabled={isSubmitting}
+      />
       <div className="space-y-5 overflow-y-auto p-8">
         <label className="block">
-          <span className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Món ăn</span>
+          <span className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+            Món ăn
+          </span>
           <select
             value={selectedMenuItemId}
             onChange={(e) => onSelectMenuItem(e.target.value)}
             className="w-full rounded-2xl border-2 border-transparent bg-gray-50 px-5 py-3.5 text-sm font-black text-gray-800 outline-none transition-all focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10"
           >
-            {menuItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            {menuItems.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -872,50 +1067,63 @@ const RecipeModal = ({ menuItems, inventoryItems, selectedMenuItem, selectedMenu
             <Loader2 size={28} className="animate-spin" />
           </div>
         ) : (
-        <div className="space-y-3">
-          {recipeItems.map((row, index) => {
-            const selectedInventory = inventoryItems.find((item) => String(item.id) === String(row.inventoryItemId));
-            return (
-              <div key={`${row.inventoryItemId}-${index}`} className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-[1fr_180px_44px] md:items-end">
-                <label className="block">
-                  <span className="mb-1 ml-1 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">Nguyên liệu</span>
-                  <select
-                    value={row.inventoryItemId}
-                    onChange={(e) => {
+          <div className="space-y-3">
+            {recipeItems.map((row, index) => {
+              const selectedInventory = inventoryItems.find(
+                (item) => String(item.id) === String(row.inventoryItemId),
+              );
+              return (
+                <div
+                  key={`${row.inventoryItemId}-${index}`}
+                  className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-[1fr_180px_44px] md:items-end"
+                >
+                  <label className="block">
+                    <span className="mb-1 ml-1 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-400">
+                      Nguyên liệu
+                    </span>
+                    <select
+                      value={row.inventoryItemId}
+                      onChange={(e) => {
+                        const next = [...recipeItems];
+                        next[index] = { ...row, inventoryItemId: e.target.value };
+                        setRecipeItems(next);
+                      }}
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-orange-500"
+                    >
+                      {inventoryItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name} ({item.unit})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <TextInput
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    label={`Lượng / món${selectedInventory ? ` (${selectedInventory.unit})` : ''}`}
+                    value={row.quantityRequired}
+                    onChange={(value) => {
                       const next = [...recipeItems];
-                      next[index] = { ...row, inventoryItemId: e.target.value };
+                      next[index] = { ...row, quantityRequired: value };
                       setRecipeItems(next);
                     }}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                  <button
+                    type="button"
+                    title="Xóa dòng"
+                    onClick={() =>
+                      setRecipeItems(recipeItems.filter((_, rowIndex) => rowIndex !== index))
+                    }
+                    className="flex h-[46px] items-center justify-center rounded-xl bg-red-50 text-red-600 transition-colors hover:bg-red-600 hover:text-white"
                   >
-                    {inventoryItems.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.unit})</option>)}
-                  </select>
-                </label>
-                <TextInput
-                  type="number"
-                  min="0.001"
-                  step="0.001"
-                  label={`Lượng / món${selectedInventory ? ` (${selectedInventory.unit})` : ''}`}
-                  value={row.quantityRequired}
-                  onChange={(value) => {
-                    const next = [...recipeItems];
-                    next[index] = { ...row, quantityRequired: value };
-                    setRecipeItems(next);
-                  }}
-                  required
-                />
-                <button
-                  type="button"
-                  title="Xóa dòng"
-                  onClick={() => setRecipeItems(recipeItems.filter((_, rowIndex) => rowIndex !== index))}
-                  className="flex h-[46px] items-center justify-center rounded-xl bg-red-50 text-red-600 transition-colors hover:bg-red-600 hover:text-white"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                    <X size={18} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {!loading && recipeItems.length === 0 && (
@@ -950,7 +1158,11 @@ const ModalHeader = ({ title, subtitle, onClose, disabled = false }) => (
   <div className="flex shrink-0 items-center justify-between border-b px-8 py-6">
     <div className="min-w-0">
       <h2 className="truncate text-xl font-black tracking-tight text-gray-800">{title}</h2>
-      {subtitle && <p className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-widest text-gray-400">{subtitle}</p>}
+      {subtitle && (
+        <p className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-widest text-gray-400">
+          {subtitle}
+        </p>
+      )}
     </div>
     <button
       type="button"
@@ -963,7 +1175,13 @@ const ModalHeader = ({ title, subtitle, onClose, disabled = false }) => (
   </div>
 );
 
-const ModalActions = ({ onClose, formId, submitLabel = 'Lưu', isSubmitting = false, disabled = false }) => (
+const ModalActions = ({
+  onClose,
+  formId,
+  submitLabel = 'Lưu',
+  isSubmitting = false,
+  disabled = false,
+}) => (
   <div className="flex shrink-0 gap-4 rounded-b-[2rem] border-t bg-gray-50/50 px-8 py-6">
     <button
       type="button"
@@ -978,10 +1196,10 @@ const ModalActions = ({ onClose, formId, submitLabel = 'Lưu', isSubmitting = fa
       type="submit"
       disabled={isSubmitting || disabled}
       className={`flex-[2] rounded-2xl py-4 text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${
-        (isSubmitting || disabled)
+        isSubmitting || disabled
           ? 'cursor-not-allowed bg-gray-300 text-gray-500 shadow-none'
           : 'bg-orange-500 text-white shadow-orange-200 hover:bg-orange-600'
-        }`}
+      }`}
     >
       <div className="flex items-center justify-center gap-2">
         {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <span>{submitLabel}</span>}
@@ -999,7 +1217,15 @@ const FieldError = ({ message }) => {
   );
 };
 
-const TextInput = ({ label, value, onChange, type = 'text', error, required = false, ...props }) => (
+const TextInput = ({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  error,
+  required = false,
+  ...props
+}) => (
   <label className="block">
     <span className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
       {label} {required && <span className="text-red-500">*</span>}
@@ -1009,10 +1235,11 @@ const TextInput = ({ label, value, onChange, type = 'text', error, required = fa
       value={value}
       onChange={(e) => onChange(e.target.value)}
       required={required}
-      className={`w-full rounded-2xl border-2 bg-gray-50 px-5 py-3.5 text-sm font-bold outline-none transition-all ${error
-        ? 'border-red-500 ring-red-50'
-        : 'border-transparent focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
-        }`}
+      className={`w-full rounded-2xl border-2 bg-gray-50 px-5 py-3.5 text-sm font-bold outline-none transition-all ${
+        error
+          ? 'border-red-500 ring-red-50'
+          : 'border-transparent focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-500/10'
+      }`}
       {...props}
     />
     <FieldError message={error} />

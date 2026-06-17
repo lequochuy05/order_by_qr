@@ -58,7 +58,8 @@ export const aiLocalService = {
     }
 
     const tensor = tfRuntime.tidy(() => {
-      return tfRuntime.browser.fromPixels(imgElement)
+      return tfRuntime.browser
+        .fromPixels(imgElement)
         .resizeBilinear([INPUT_SIZE, INPUT_SIZE])
         .toFloat()
         .div(255.0)
@@ -78,7 +79,7 @@ export const aiLocalService = {
         return {
           index: i,
           label: data?.name || `Class ${i}`,
-          confidence: p
+          confidence: p,
         };
       })
       .sort((a, b) => b.confidence - a.confidence)
@@ -87,12 +88,12 @@ export const aiLocalService = {
     const dishData = labels[String(maxIndex)];
 
     return {
-      name: dishData?.name || dishData || "NaN",
+      name: dishData?.name || dishData || 'NaN',
       categoryId: dishData?.categoryid || null,
       price: dishData?.price || null,
       confidence: maxProb,
       classId: maxIndex,
-      top3 // Bắt buộc phải có cái này
+      top3, // Bắt buộc phải có cái này
     };
   },
 
@@ -102,5 +103,5 @@ export const aiLocalService = {
       model = null;
       labels = null;
     }
-  }
+  },
 };

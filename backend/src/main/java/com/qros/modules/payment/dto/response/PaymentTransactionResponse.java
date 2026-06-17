@@ -1,8 +1,7 @@
 package com.qros.modules.payment.dto.response;
 
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-
+import com.qros.shared.enums.PaymentMethod;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,5 +19,4 @@ public record PaymentTransactionResponse(
         LocalDateTime expiresAt,
         LocalDateTime paidAt,
         LocalDate businessDate,
-        String failureReason) {
-}
+        String failureReason) {}

@@ -1,30 +1,29 @@
 package com.qros.modules.table.service;
 
-import com.qros.modules.table.dto.response.PublicTable;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.table.dto.internal.TableQrMedia;
 import com.qros.modules.table.dto.request.CreateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateTableStatusRequest;
 import com.qros.modules.table.dto.response.DiningTableResponse;
+import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.mapper.DiningTableMapper;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -47,8 +46,7 @@ public class DiningTableService {
     }
 
     public DiningTable getEntityById(@NonNull Long id) {
-        return tableRepo.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
+        return tableRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
     }
 
     public DiningTableResponse getById(@NonNull Long id) {
@@ -57,24 +55,26 @@ public class DiningTableService {
 
     @Cacheable(value = CacheNames.TABLES, key = "'code_' + #tableCode")
     public DiningTableResponse getByCode(@NonNull String tableCode) {
-        return tableRepo.findByTableCode(tableCode)
+        return tableRepo
+                .findByTableCode(tableCode)
                 .map(diningTableMapper::toResponse)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
     @Cacheable(value = CacheNames.TABLES, key = "'public_code_' + #tableCode")
     public PublicTable getPublicByCode(@NonNull String tableCode) {
-        return tableRepo.findByTableCode(tableCode)
+        return tableRepo
+                .findByTableCode(tableCode)
                 .map(diningTableMapper::toPublicTable)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
     public DiningTableResponse getByNumber(@NonNull String tableNumber) {
-        return tableRepo.findByTableNumberIgnoreCase(tableNumber)
+        return tableRepo
+                .findByTableNumberIgnoreCase(tableNumber)
                 .map(diningTableMapper::toResponse)
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.TABLE_NOT_FOUND,
-                        "Table number not found: " + tableNumber));
+                .orElseThrow(() ->
+                        new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table number not found: " + tableNumber));
     }
 
     public List<DiningTableResponse> getByStatus(@NonNull TableStatus status) {
@@ -84,7 +84,9 @@ public class DiningTableService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    @CacheEvict(
+            value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
+            allEntries = true)
     public DiningTableResponse create(@NonNull CreateDiningTableRequest req) {
         if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
@@ -94,8 +96,7 @@ public class DiningTableService {
         TableQrMedia qrMedia = tableQrService.generate(tableCode);
 
         sideEffects.afterRollback(
-                () -> tableQrService.delete(qrMedia.publicId()),
-                "delete rolled back table QR media " + tableCode);
+                () -> tableQrService.delete(qrMedia.publicId()), "delete rolled back table QR media " + tableCode);
 
         DiningTable table = DiningTable.builder()
                 .tableNumber(req.tableNumber())
@@ -113,9 +114,11 @@ public class DiningTableService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    @CacheEvict(
+            value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
+            allEntries = true)
     public DiningTableResponse update(@NonNull Long id, @NonNull UpdateDiningTableRequest req) {
-    DiningTable table = getEntityById(id);
+        DiningTable table = getEntityById(id);
         if (tableRepo.existsByTableNumberIgnoreCaseAndIdNot(req.tableNumber(), id)) {
             throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
         }
@@ -130,10 +133,10 @@ public class DiningTableService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
-    public DiningTableResponse updateStatus(
-            @NonNull Long id,
-            @NonNull UpdateTableStatusRequest req) {
+    @CacheEvict(
+            value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
+            allEntries = true)
+    public DiningTableResponse updateStatus(@NonNull Long id, @NonNull UpdateTableStatusRequest req) {
         DiningTable table = getEntityById(id);
 
         table.setStatus(req.status());
@@ -145,7 +148,9 @@ public class DiningTableService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    @CacheEvict(
+            value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
+            allEntries = true)
     public DiningTableResponse regenerateQrCode(@NonNull Long id) {
         DiningTable table = getEntityById(id);
 
@@ -164,9 +169,7 @@ public class DiningTableService {
 
         DiningTable saved = tableRepo.save(table);
 
-        sideEffects.afterCommit(
-                () -> tableQrService.delete(oldPublicId),
-                "delete old table QR media " + id);
+        sideEffects.afterCommit(() -> tableQrService.delete(oldPublicId), "delete old table QR media " + id);
 
         eventPublisher.publishEvent(new TableChangeEvent());
 
@@ -174,7 +177,9 @@ public class DiningTableService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.TABLES, CacheNames.STATS_DASHBOARD }, allEntries = true)
+    @CacheEvict(
+            value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
+            allEntries = true)
     public void delete(@NonNull Long id) {
         DiningTable table = getEntityById(id);
         String publicId = table.getQrCodePublicId();
@@ -182,8 +187,7 @@ public class DiningTableService {
         tableRepo.delete(table);
 
         sideEffects.afterCommit(
-                () -> tableQrService.delete(publicId),
-                "delete table QR media after table delete " + id);
+                () -> tableQrService.delete(publicId), "delete table QR media after table delete " + id);
 
         eventPublisher.publishEvent(new TableChangeEvent());
     }

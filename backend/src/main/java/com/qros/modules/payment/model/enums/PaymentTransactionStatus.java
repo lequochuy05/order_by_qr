@@ -6,4 +6,4 @@ public enum PaymentTransactionStatus {
     CANCELLED,
     EXPIRED,
     FAILED
-} 
+}

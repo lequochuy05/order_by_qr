@@ -222,6 +222,21 @@ Vì Hibernate chỉ validate schema, mọi thay đổi database nên đi qua Fly
 
 ## Kiểm thử và build
 
+### Format code
+
+Trước khi commit, maintainer nên chạy format cho phần code đã thay đổi:
+
+```bash
+cd frontend
+npx prettier --write .
+```
+
+```bash
+cd backend
+mvn spotless:apply
+mvn spotless:check
+```
+
 ### Backend
 
 ```bash

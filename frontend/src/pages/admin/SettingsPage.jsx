@@ -1,5 +1,5 @@
-import { SettingsManagement } from '@features/settings-management'
+import { SettingsManagement } from '@features/settings-management';
 
 export default function SettingsPage() {
-  return <SettingsManagement />
+  return <SettingsManagement />;
 }

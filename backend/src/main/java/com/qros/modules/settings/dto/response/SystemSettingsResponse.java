@@ -18,5 +18,4 @@ public record SystemSettingsResponse(
         BigDecimal taxPercent,
         BigDecimal serviceChargePercent,
         Boolean orderingEnabled,
-        Boolean maintenanceMode) {
-}
+        Boolean maintenanceMode) {}

@@ -21,11 +21,11 @@ const getErrorPayload = (err) => {
 const translateHttpTitle = (title) => {
   const titles = {
     'Bad Request': 'Yêu cầu không hợp lệ',
-    'Unauthorized': 'Chưa đăng nhập',
-    'Forbidden': 'Không có quyền truy cập',
+    Unauthorized: 'Chưa đăng nhập',
+    Forbidden: 'Không có quyền truy cập',
     'Not Found': 'Không tìm thấy',
-    'Conflict': 'Dữ liệu bị xung đột',
-    'Internal Server Error': 'Lỗi máy chủ'
+    Conflict: 'Dữ liệu bị xung đột',
+    'Internal Server Error': 'Lỗi máy chủ',
   };
 
   return titles[title] || title;
@@ -35,13 +35,14 @@ const translateErrorMessage = (msg) => {
   if (!msg) return msg;
 
   const messageMap = {
-    'Secure Table Code invalid': 'Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực.',
+    'Secure Table Code invalid':
+      'Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực.',
     'Table ID invalid': 'Không tìm thấy thông tin bàn.',
     'Table identification required for order creation': 'Vui lòng quét mã QR trên bàn để đặt món.',
     'Order content cannot be empty': 'Giỏ hàng của bạn đang trống. Hãy chọn món trước khi đặt.',
     'Menu item not found': 'Không tìm thấy món ăn.',
     'Combo not found': 'Không tìm thấy combo.',
-    'Network Error': 'Không thể kết nối đến máy chủ!'
+    'Network Error': 'Không thể kết nối đến máy chủ!',
   };
 
   if (messageMap[msg]) return messageMap[msg];
@@ -92,21 +93,23 @@ export const useStatusModalStore = create((set) => ({
   title: '',
   message: '',
 
-  showSuccess: (msg, title = 'Thành công!') => set({
-    isOpen: true,
-    type: 'success',
-    title: title,
-    message: msg
-  }),
+  showSuccess: (msg, title = 'Thành công!') =>
+    set({
+      isOpen: true,
+      type: 'success',
+      title: title,
+      message: msg,
+    }),
 
-  showError: (err, title = 'Thao tác thất bại') => set({
-    isOpen: true,
-    type: 'error',
-    title: title,
-    message: buildErrorMessage(err)
-  }),
+  showError: (err, title = 'Thao tác thất bại') =>
+    set({
+      isOpen: true,
+      type: 'error',
+      title: title,
+      message: buildErrorMessage(err),
+    }),
 
-  closeStatusModal: () => set({ isOpen: false })
+  closeStatusModal: () => set({ isOpen: false }),
 }));
 
 export const useStatusModal = () => {
@@ -117,10 +120,10 @@ export const useStatusModal = () => {
       isOpen: store.isOpen,
       type: store.type,
       title: store.title,
-      message: store.message
+      message: store.message,
     },
     showSuccess: store.showSuccess,
     showError: store.showError,
-    closeStatusModal: store.closeStatusModal
+    closeStatusModal: store.closeStatusModal,
   };
 };

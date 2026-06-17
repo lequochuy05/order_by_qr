@@ -1,17 +1,14 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
-
 import jakarta.persistence.*;
-
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Combo - Entity representing a promotional package containing multiple menu
@@ -46,7 +43,7 @@ public class Combo extends BaseEntity {
     private Boolean active = true;
 
     @Builder.Default
-    @Column(nullable = false)    
+    @Column(nullable = false)
     private Boolean available = true;
 
     @Builder.Default

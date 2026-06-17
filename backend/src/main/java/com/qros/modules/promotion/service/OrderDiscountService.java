@@ -6,13 +6,12 @@ import com.qros.modules.promotion.mapper.OrderDiscountMapper;
 import com.qros.modules.promotion.model.OrderDiscount;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.OrderDiscountRepository;
+import java.math.BigDecimal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -33,9 +32,7 @@ public class OrderDiscountService {
 
     @Transactional
     public OrderDiscount recordVoucherDiscount(
-            @NonNull Order order,
-            Voucher voucher,
-            @NonNull DiscountResult discountResult) {
+            @NonNull Order order, Voucher voucher, @NonNull DiscountResult discountResult) {
         if (voucher == null || discountResult.voucherCode() == null) {
             return null;
         }

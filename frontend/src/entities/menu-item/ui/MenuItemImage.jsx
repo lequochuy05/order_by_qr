@@ -8,6 +8,6 @@ const MenuItemImage = ({ src, alt = '', className = '' }) => (
       </div>
     )}
   </div>
-)
+);
 
-export default MenuItemImage
+export default MenuItemImage;

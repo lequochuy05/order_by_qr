@@ -2,24 +2,23 @@ package com.qros.modules.order.model;
 
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.user.model.User;
 import com.qros.shared.entity.BaseEntity;
+import com.qros.shared.enums.PaymentMethod;
 import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
-import org.hibernate.annotations.BatchSize;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Order - Entity representing a customer's order in the system.
@@ -148,19 +147,15 @@ public class Order extends BaseEntity {
     }
 
     public boolean isActive() {
-        return status == OrderStatus.PENDING
-                || status == OrderStatus.SERVING
-                || status == OrderStatus.AWAITING_PAYMENT;
+        return status == OrderStatus.PENDING || status == OrderStatus.SERVING || status == OrderStatus.AWAITING_PAYMENT;
     }
 
     public boolean canAcceptNewItems() {
-        return status == OrderStatus.PENDING
-                || status == OrderStatus.SERVING;
+        return status == OrderStatus.PENDING || status == OrderStatus.SERVING;
     }
 
     public boolean canBePaid() {
-        return status == OrderStatus.AWAITING_PAYMENT
-                && paymentStatus == PaymentStatus.PENDING;
+        return status == OrderStatus.AWAITING_PAYMENT && paymentStatus == PaymentStatus.PENDING;
     }
 
     public boolean canBeCancelled() {

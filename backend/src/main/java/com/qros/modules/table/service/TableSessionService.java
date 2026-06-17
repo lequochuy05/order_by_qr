@@ -17,6 +17,15 @@ import com.qros.shared.event.DomainEvents.TableChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,16 +36,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.HexFormat;
-import java.util.List;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -58,14 +57,13 @@ public class TableSessionService {
 
     @Transactional(readOnly = true)
     public TableSessionStateResponse getPublicState(@NonNull String tableCode) {
-        DiningTable table = tableRepository.findByTableCode(tableCode)
+        DiningTable table = tableRepository
+                .findByTableCode(tableCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
 
         boolean tableActive = table.getStatus() != TableStatus.INACTIVE;
         boolean hasOpenSession = sessionRepository
-                .findFirstByTableIdAndStatusOrderByOpenedAtDesc(
-                        table.getId(),
-                        TableSessionStatus.OPEN)
+                .findFirstByTableIdAndStatusOrderByOpenedAtDesc(table.getId(), TableSessionStatus.OPEN)
                 .isPresent();
 
         return new TableSessionStateResponse(
@@ -79,13 +77,13 @@ public class TableSessionService {
 
     @Transactional
     public TableSessionStartResponse startPublicSession(@NonNull String tableCode) {
-        DiningTable table = tableRepository.findByTableCodeForUpdate(tableCode)
+        DiningTable table = tableRepository
+                .findByTableCodeForUpdate(tableCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
 
         if (table.getStatus() == TableStatus.INACTIVE) {
             throw new BusinessException(
-                    ErrorCode.TABLE_SESSION_INVALID,
-                    "This table is inactive and cannot accept orders");
+                    ErrorCode.TABLE_SESSION_INVALID, "This table is inactive and cannot accept orders");
         }
 
         TableSession session = sessionRepository
@@ -126,9 +124,7 @@ public class TableSessionService {
     }
 
     @Transactional
-    public TableSession requireOpenSessionForOrdering(
-            @NonNull String tableCode,
-            @NonNull String sessionToken) {
+    public TableSession requireOpenSessionForOrdering(@NonNull String tableCode, @NonNull String sessionToken) {
         TableSession session = requireOpenSession(sessionToken);
 
         validateSessionBelongsToTable(session, tableCode);
@@ -138,9 +134,7 @@ public class TableSessionService {
     }
 
     @Transactional(readOnly = true)
-    public TableSession requireOpenSessionForRead(
-            @NonNull String tableCode,
-            @NonNull String sessionToken) {
+    public TableSession requireOpenSessionForRead(@NonNull String tableCode, @NonNull String sessionToken) {
         TableSession session = requireSessionForRead(tableCode, sessionToken);
         validateOpenSession(session);
 
@@ -148,9 +142,7 @@ public class TableSessionService {
     }
 
     @Transactional(readOnly = true)
-    public TableSession requireSessionForRead(
-            @NonNull String tableCode,
-            @NonNull String sessionToken) {
+    public TableSession requireSessionForRead(@NonNull String tableCode, @NonNull String sessionToken) {
         TableSessionToken token = requireActiveToken(sessionToken);
         TableSession session = token.getSession();
 
@@ -167,7 +159,8 @@ public class TableSessionService {
     public TableSession requireOpenSession(@NonNull String sessionToken) {
         TableSessionToken token = requireActiveToken(sessionToken);
 
-        TableSession session = sessionRepository.findByIdForUpdate(token.getSession().getId())
+        TableSession session = sessionRepository
+                .findByIdForUpdate(token.getSession().getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
 
         validateOpenSession(session);
@@ -192,17 +185,14 @@ public class TableSessionService {
             return;
         }
 
-        TableSessionStatus normalizedStatus = targetStatus == null
-                ? TableSessionStatus.CLOSED
-                : targetStatus;
+        TableSessionStatus normalizedStatus = targetStatus == null ? TableSessionStatus.CLOSED : targetStatus;
 
         if (normalizedStatus == TableSessionStatus.OPEN) {
-            throw new BusinessException(
-                    ErrorCode.TABLE_SESSION_INVALID,
-                    "Cannot close session with OPEN status");
+            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Cannot close session with OPEN status");
         }
 
-        TableSession session = sessionRepository.findByIdForUpdate(sessionId)
+        TableSession session = sessionRepository
+                .findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
 
         if (!session.isOpen()) {
@@ -222,8 +212,7 @@ public class TableSessionService {
     @Transactional
     public void expireStaleOpenSessionsWithoutOrders() {
         LocalDateTime cutoff = AppTime.now().minusMinutes(noOrderExpireMinutes);
-        List<TableSession> staleSessions = sessionRepository
-                .findStaleOpenSessionsWithoutOrdersForUpdate(cutoff);
+        List<TableSession> staleSessions = sessionRepository.findStaleOpenSessionsWithoutOrdersForUpdate(cutoff);
 
         if (staleSessions.isEmpty()) {
             return;
@@ -238,7 +227,7 @@ public class TableSessionService {
             DiningTable table = session.getTable();
             if (table != null && table.getStatus() != TableStatus.INACTIVE) {
                 boolean hasActiveOrders = activeOrderChecker.hasActiveOrders(table.getId());
-                
+
                 if (!hasActiveOrders) {
                     table.setStatus(TableStatus.AVAILABLE);
                     tableRepository.save(table);
@@ -278,10 +267,7 @@ public class TableSessionService {
         return rawToken;
     }
 
-    private TableSessionStartResponse toStartResponse(
-            DiningTable table,
-            TableSession session,
-            String rawToken) {
+    private TableSessionStartResponse toStartResponse(DiningTable table, TableSession session, String rawToken) {
         return new TableSessionStartResponse(
                 table.getTableCode(),
                 table.getTableNumber(),
@@ -305,17 +291,13 @@ public class TableSessionService {
 
         if (session.getTable() == null || session.getTable().getStatus() == TableStatus.INACTIVE) {
             throw new BusinessException(
-                    ErrorCode.TABLE_SESSION_INVALID,
-                    "This table is inactive and cannot accept orders");
+                    ErrorCode.TABLE_SESSION_INVALID, "This table is inactive and cannot accept orders");
         }
     }
 
     private void validateSessionBelongsToTable(TableSession session, String tableCode) {
-        if (session.getTable() == null
-                || !Objects.equals(session.getTable().getTableCode(), tableCode)) {
-            throw new BusinessException(
-                    ErrorCode.TABLE_SESSION_INVALID,
-                    "Session token does not belong to this table");
+        if (session.getTable() == null || !Objects.equals(session.getTable().getTableCode(), tableCode)) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Session token does not belong to this table");
         }
     }
 

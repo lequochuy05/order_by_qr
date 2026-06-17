@@ -11,26 +11,25 @@ import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.CategoryRepository;
 import com.qros.modules.menu.repository.ComboItemRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -55,7 +54,8 @@ public class MenuItemService {
 
     public Page<MenuItemResponse> searchManagementSummary(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return menuItemRepository.searchManagementSummaries(normalizedKeyword, categoryId, pageable)
+        return menuItemRepository
+                .searchManagementSummaries(normalizedKeyword, categoryId, pageable)
                 .map(menuItemMapper::toSummaryResponse);
     }
 
@@ -87,14 +87,19 @@ public class MenuItemService {
                 .map(publicMenuMapper::toMenuItem)
                 .forEach(item -> itemsById.put(item.id(), item));
 
-        return ids.stream()
-                .map(itemsById::get)
-                .filter(item -> item != null)
-                .toList();
+        return ids.stream().map(itemsById::get).filter(item -> item != null).toList();
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public MenuItemResponse create(@NonNull MenuItemRequest req) {
         String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
@@ -102,7 +107,8 @@ public class MenuItemService {
             throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS);
         }
 
-        Category category = categoryRepository.findById(req.categoryId())
+        Category category = categoryRepository
+                .findById(req.categoryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         menuItemOptionService.validateOptions(req.itemOptions());
@@ -119,7 +125,8 @@ public class MenuItemService {
                 .build();
 
         if (req.itemOptions() != null) {
-            req.itemOptions().forEach(optionReq -> item.getItemOptions().add(menuItemOptionService.buildItemOption(optionReq, item)));
+            req.itemOptions().forEach(optionReq -> item.getItemOptions()
+                    .add(menuItemOptionService.buildItemOption(optionReq, item)));
         }
 
         MenuItem saved = menuItemRepository.save(item);
@@ -129,18 +136,26 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public MenuItemResponse update(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = getEntityById(id);
 
         String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
-        if (!item.getName().equalsIgnoreCase(name)
-                && menuItemRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+        if (!item.getName().equalsIgnoreCase(name) && menuItemRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS);
         }
 
-        Category category = categoryRepository.findById(req.categoryId())
+        Category category = categoryRepository
+                .findById(req.categoryId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
 
         menuItemOptionService.validateOptions(req.itemOptions());
@@ -175,14 +190,21 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public void delete(@NonNull Long id) {
         MenuItem item = getEntityById(id);
 
         if (comboItemRepository.existsInActiveCombo(id)) {
             throw new BusinessException(
-                    ErrorCode.BUSINESS_ERROR,
-                    "Cannot delete menu item that is part of an active combo");
+                    ErrorCode.BUSINESS_ERROR, "Cannot delete menu item that is part of an active combo");
         }
 
         String oldImg = item.getImg();
@@ -191,15 +213,22 @@ public class MenuItemService {
 
         if (isCustomImage(oldImg)) {
             sideEffects.afterCommit(
-                    () -> storageService.delete(oldImg),
-                    "delete menu item image after item delete " + id);
+                    () -> storageService.delete(oldImg), "delete menu item image after item delete " + id);
         }
 
         eventPublisher.publishEvent(new MenuChangeEvent("deleted", id));
     }
 
     @Transactional
-    @CacheEvict(value = { CacheNames.MENU, CacheNames.CATEGORIES, CacheNames.COMBOS, CacheNames.RECOMMENDATIONS, CacheNames.POPULAR_ITEMS }, allEntries = true)
+    @CacheEvict(
+            value = {
+                CacheNames.MENU,
+                CacheNames.CATEGORIES,
+                CacheNames.COMBOS,
+                CacheNames.RECOMMENDATIONS,
+                CacheNames.POPULAR_ITEMS
+            },
+            allEntries = true)
     public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         if (file.isEmpty()) {
             throw new BusinessException(ErrorCode.FILE_INVALID);
@@ -211,17 +240,13 @@ public class MenuItemService {
         try {
             String newUrl = storageService.upload(file, MENU_ITEM_IMAGE_FOLDER);
 
-            sideEffects.afterRollback(
-                    () -> storageService.delete(newUrl),
-                    "delete rolled back menu item image " + id);
+            sideEffects.afterRollback(() -> storageService.delete(newUrl), "delete rolled back menu item image " + id);
 
             item.setImg(newUrl);
             menuItemRepository.save(item);
 
             if (isCustomImage(oldUrl)) {
-                sideEffects.afterCommit(
-                        () -> storageService.delete(oldUrl),
-                        "delete replaced menu item image " + id);
+                sideEffects.afterCommit(() -> storageService.delete(oldUrl), "delete replaced menu item image " + id);
             }
 
             eventPublisher.publishEvent(new MenuChangeEvent("image_updated", id));
@@ -236,8 +261,7 @@ public class MenuItemService {
     }
 
     private MenuItem getEntityById(Long id) {
-        return menuItemRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
+        return menuItemRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
     }
 
     private String normalizeBlank(String value) {
@@ -249,9 +273,6 @@ public class MenuItemService {
     }
 
     private boolean isCustomImage(String image) {
-        return image != null
-                && !image.isBlank()
-                && !DEFAULT_MENU_ITEM_IMAGE.equals(image)
-                && image.startsWith("http");
+        return image != null && !image.isBlank() && !DEFAULT_MENU_ITEM_IMAGE.equals(image) && image.startsWith("http");
     }
 }

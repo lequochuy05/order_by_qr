@@ -59,7 +59,8 @@ export const useMarkItemPreparedMutation = (options = {}) =>
 
 export const useUpdateItemStatusMutation = (options = {}) =>
   useMutation({
-    mutationFn: ({ itemId, status, userId }) => orderService.updateItemStatus(itemId, status, userId),
+    mutationFn: ({ itemId, status, userId }) =>
+      orderService.updateItemStatus(itemId, status, userId),
     onSuccess: (...args) => {
       invalidateOrders();
       options.onSuccess?.(...args);

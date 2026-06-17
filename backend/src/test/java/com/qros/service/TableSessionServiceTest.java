@@ -1,5 +1,13 @@
 package com.qros.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.model.DiningTable;
@@ -10,8 +18,9 @@ import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.modules.table.repository.TableSessionTokenRepository;
-import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.table.service.TableActiveOrderChecker;
+import com.qros.modules.table.service.TableSessionService;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,16 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TableSessionServiceTest {
@@ -56,12 +55,7 @@ class TableSessionServiceTest {
     @BeforeEach
     void setUp() {
         tableSessionService = new TableSessionService(
-                tableRepository,
-                sessionRepository,
-                tokenRepository,
-                cacheManager,
-                eventPublisher,
-                activeOrderChecker);
+                tableRepository, sessionRepository, tokenRepository, cacheManager, eventPublisher, activeOrderChecker);
     }
 
     @Test

@@ -1,3 +1,3 @@
-import useCartStore from './cartStore.js'
+import useCartStore from './cartStore.js';
 
-export const useCart = () => useCartStore()
+export const useCart = () => useCartStore();

@@ -7,11 +7,10 @@ import com.qros.modules.table.dto.response.DiningTableResponse;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * DiningTableController - Manages dining tables and their associated QR codes.
@@ -44,14 +43,14 @@ public class DiningTableController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<DiningTableResponse> update(@PathVariable @NonNull Long id,
-            @Valid @RequestBody @NonNull UpdateDiningTableRequest req) {
+    public ApiResponse<DiningTableResponse> update(
+            @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull UpdateDiningTableRequest req) {
         return ApiResponse.success("Table updated successfully", tableService.update(id, req));
     }
 
     @PatchMapping("/{id}/status")
-    public ApiResponse<DiningTableResponse> updateStatus(@PathVariable @NonNull Long id,
-            @Valid @RequestBody @NonNull UpdateTableStatusRequest req) {
+    public ApiResponse<DiningTableResponse> updateStatus(
+            @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull UpdateTableStatusRequest req) {
         return ApiResponse.success("Table status updated successfully", tableService.updateStatus(id, req));
     }
 

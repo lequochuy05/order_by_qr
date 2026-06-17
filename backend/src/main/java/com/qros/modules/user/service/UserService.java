@@ -1,25 +1,25 @@
 package com.qros.modules.user.service;
 
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.lang.NonNull;
 
-import java.util.Objects;
 /**
  * UserService - Core service for user management operations (CRUD).
  */
@@ -63,17 +63,15 @@ public class UserService {
     public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req) {
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!u.getEmail().equalsIgnoreCase(email)
-                && userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
+        if (!u.getEmail().equalsIgnoreCase(email) && userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
             throw new BusinessException(ErrorCode.EMAIL_EXISTS);
         }
 
         if (StringUtils.hasText(phone)
-            && !Objects.equals(u.getPhone(), phone)
-            && userRepository.existsByPhoneAndIdNot(phone, id)) {
+                && !Objects.equals(u.getPhone(), phone)
+                && userRepository.existsByPhoneAndIdNot(phone, id)) {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
@@ -97,8 +95,7 @@ public class UserService {
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public void delete(@NonNull Long id) {
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         userRepository.delete(u);
         // log.info("User with id {} deleted", id);
@@ -107,8 +104,7 @@ public class UserService {
 
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
-        User u = userRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         if (!StringUtils.hasText(newPassword)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "New password cannot be empty");

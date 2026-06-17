@@ -9,32 +9,24 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record VoucherRequest(
         @NotBlank(message = "Voucher code cannot be empty")
-        @Size(max = 50, message = "Voucher code cannot exceed 50 characters")
-        @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "Voucher code can only contain letters, numbers, underscore and hyphen")
-        String code,
-
-        @NotNull(message = "Voucher type cannot be empty")
-        VoucherType type,
-
-        @DecimalMin(value = "0.01", message = "Discount amount must be greater than 0")
-        BigDecimal discountAmount,
-
+                @Size(max = 50, message = "Voucher code cannot exceed 50 characters")
+                @Pattern(
+                        regexp = "^[A-Za-z0-9_-]+$",
+                        message = "Voucher code can only contain letters, numbers, underscore and hyphen")
+                String code,
+        @NotNull(message = "Voucher type cannot be empty") VoucherType type,
+        @DecimalMin(value = "0.01", message = "Discount amount must be greater than 0") BigDecimal discountAmount,
         @DecimalMin(value = "0.01", message = "Discount percentage must be greater than 0")
-        @DecimalMax(value = "100.00", message = "Discount percentage cannot exceed 100")
-        BigDecimal discountPercent,
-
+                @DecimalMax(value = "100.00", message = "Discount percentage cannot exceed 100")
+                BigDecimal discountPercent,
         Boolean active,
-
         @PositiveOrZero(message = "Usage limit cannot be negative") Integer usageLimit,
-
         @NotNull(message = "Valid from date cannot be empty") LocalDateTime validFrom,
-
         @NotNull(message = "Valid to date cannot be empty") LocalDateTime validTo) {
 
     @AssertTrue(message = "Valid to date must be after valid from date")

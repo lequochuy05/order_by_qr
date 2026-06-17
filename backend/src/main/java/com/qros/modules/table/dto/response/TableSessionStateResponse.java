@@ -6,5 +6,4 @@ public record TableSessionStateResponse(
         String tableStatus,
         boolean hasOpenSession,
         boolean canStartSession,
-        boolean canOrder) {
-}
+        boolean canOrder) {}

@@ -22,6 +22,7 @@ public class AiPromptBuilder {
 
                 THỰC ĐƠN HIỆN TẠI:
                 %s
-                """.formatted(menuContext);
+                """
+                .formatted(menuContext);
     }
 }

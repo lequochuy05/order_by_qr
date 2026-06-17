@@ -24,29 +24,24 @@ public class StockMovementController {
 
     @GetMapping
     public ApiResponse<Page<StockMovementResponse>> list(
-            @RequestParam(required = false) @Min(value = 1, message = "Inventory item id must be positive") Long inventoryItemId,
-
-            @RequestParam(required = false) @Min(value = 1, message = "Order item id must be positive") Long orderItemId,
-
+            @RequestParam(required = false) @Min(value = 1, message = "Inventory item id must be positive")
+                    Long inventoryItemId,
+            @RequestParam(required = false) @Min(value = 1, message = "Order item id must be positive")
+                    Long orderItemId,
             @RequestParam(required = false) StockMovementType type,
-
             Pageable pageable) {
         if (inventoryItemId != null) {
-            return ApiResponse.success(
-                    stockMovementService.findByInventoryItemId(inventoryItemId, pageable));
+            return ApiResponse.success(stockMovementService.findByInventoryItemId(inventoryItemId, pageable));
         }
 
         if (orderItemId != null) {
-            return ApiResponse.success(
-                    stockMovementService.findByOrderItemId(orderItemId, pageable));
+            return ApiResponse.success(stockMovementService.findByOrderItemId(orderItemId, pageable));
         }
 
         if (type != null) {
-            return ApiResponse.success(
-                    stockMovementService.findByType(type, pageable));
+            return ApiResponse.success(stockMovementService.findByType(type, pageable));
         }
 
-        return ApiResponse.success(
-                stockMovementService.findAll(pageable));
+        return ApiResponse.success(stockMovementService.findAll(pageable));
     }
 }

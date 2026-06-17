@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import org.junit.jupiter.api.Test;
 
 class SecurityConfigRegressionTest {
@@ -68,9 +67,7 @@ class SecurityConfigRegressionTest {
 
         String source = Files.readString(securityConfigPath);
 
-        assertThat(source.indexOf("STAFF_OPERATION_PATCH"))
-                .isLessThan(source.indexOf("MANAGER_PATCH"));
-        assertThat(source.indexOf("STAFF_OPERATION_DELETE"))
-                .isLessThan(source.indexOf("MANAGER_DELETE"));
+        assertThat(source.indexOf("STAFF_OPERATION_PATCH")).isLessThan(source.indexOf("MANAGER_PATCH"));
+        assertThat(source.indexOf("STAFF_OPERATION_DELETE")).isLessThan(source.indexOf("MANAGER_DELETE"));
     }
 }

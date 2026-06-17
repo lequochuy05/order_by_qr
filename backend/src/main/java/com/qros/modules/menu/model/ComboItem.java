@@ -1,14 +1,12 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
-
 import jakarta.persistence.*;
-
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+
 /**
  * ComboItem - Represents a specific menu item bundled within a combo meal.
  */
@@ -33,7 +31,6 @@ public class ComboItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id", nullable = false)
-
     private MenuItem menuItem;
 
     @Builder.Default

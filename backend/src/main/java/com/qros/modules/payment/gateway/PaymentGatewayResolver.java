@@ -3,11 +3,10 @@ package com.qros.modules.payment.gateway;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import org.springframework.stereotype.Component;
-
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 @Component
 public class PaymentGatewayResolver {
@@ -23,8 +22,7 @@ public class PaymentGatewayResolver {
     public PaymentGateway resolve(PaymentMethod method) {
         PaymentGateway gateway = gateways.get(method);
         if (gateway == null) {
-            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR,
-                    "Unsupported payment method: " + method);
+            throw new BusinessException(ErrorCode.PAYMENT_GATEWAY_ERROR, "Unsupported payment method: " + method);
         }
         return gateway;
     }

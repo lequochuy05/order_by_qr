@@ -1,18 +1,18 @@
 package com.qros.modules.promotion.service;
 
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.promotion.dto.request.VoucherRequest;
 import com.qros.modules.promotion.dto.response.VoucherResponse;
 import com.qros.modules.promotion.mapper.VoucherMapper;
 import com.qros.modules.promotion.model.Voucher;
 import com.qros.modules.promotion.repository.VoucherRepository;
+import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import com.qros.shared.cache.CacheNames;
 import com.qros.shared.time.AppTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -34,11 +34,8 @@ public class VoucherService {
                 ? null
                 : status.trim().toUpperCase();
 
-        return voucherRepository.searchForManagement(
-                        normalizedKeyword,
-                        normalizedStatus,
-                        AppTime.now(),
-                        pageable)
+        return voucherRepository
+                .searchForManagement(normalizedKeyword, normalizedStatus, AppTime.now(), pageable)
                 .map(voucherMapper::toResponse);
     }
 
@@ -49,8 +46,7 @@ public class VoucherService {
 
     @Transactional(readOnly = true)
     public Voucher getEntityById(@NonNull Long id) {
-        return voucherRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
+        return voucherRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
     }
 
     @Transactional
@@ -116,7 +112,8 @@ public class VoucherService {
             return;
         }
 
-        Voucher voucher = voucherRepository.findByCodeIgnoreCase(normalizedCode)
+        Voucher voucher = voucherRepository
+                .findByCodeIgnoreCase(normalizedCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
 
         incrementUsage(voucher.getId());

@@ -6,18 +6,15 @@ import com.qros.modules.inventory.model.OrderItemInventoryReservation;
 import com.qros.modules.inventory.model.enums.InventoryReservationStatus;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.shared.time.AppTime;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class InventoryReservationMapper {
 
     public OrderItemInventoryReservation toEntity(
-            OrderItem orderItem,
-            InventoryItem inventoryItem,
-            BigDecimal reservedQuantity) {
+            OrderItem orderItem, InventoryItem inventoryItem, BigDecimal reservedQuantity) {
         return OrderItemInventoryReservation.builder()
                 .orderItem(orderItem)
                 .inventoryItem(inventoryItem)
@@ -44,10 +41,7 @@ public class InventoryReservationMapper {
                 reservation.getConsumedAt());
     }
 
-    public List<InventoryReservationResponse> toResponses(
-            List<OrderItemInventoryReservation> reservations) {
-        return reservations.stream()
-                .map(this::toResponse)
-                .toList();
+    public List<InventoryReservationResponse> toResponses(List<OrderItemInventoryReservation> reservations) {
+        return reservations.stream().map(this::toResponse).toList();
     }
 }

@@ -14,7 +14,7 @@ const createQueryKeys = (entity) => ({
 
 export const queryKeys = {
   auth: createQueryKeys('auth'),
-  
+
   users: {
     all: ['users'],
     lists: () => [...queryKeys.users.all, 'list'],
@@ -52,13 +52,13 @@ export const queryKeys = {
     board: ['tables', 'board'],
     detail: (id) => ['tables', id],
   },
-  
+
   menu: {
     all: ['menu'],
     customer: ['menu', 'customer'],
     detail: (id) => ['menu', id],
   },
-  
+
   orders: {
     all: ['orders'],
     active: ['orders', 'active'],

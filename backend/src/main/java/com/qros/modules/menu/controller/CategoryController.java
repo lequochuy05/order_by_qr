@@ -1,19 +1,17 @@
 package com.qros.modules.menu.controller;
 
-
 import com.qros.modules.menu.dto.request.CategoryRequest;
 import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.service.CategoryService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -27,28 +25,19 @@ public class CategoryController {
         return ApiResponse.success(categoryService.getAllActive());
     }
 
-
-
     @GetMapping
-    public ApiResponse<Page<CategoryResponse>> search(
-            @RequestParam(required = false) String q,
-            Pageable pageable
-    ) {
+    public ApiResponse<Page<CategoryResponse>> search(@RequestParam(required = false) String q, Pageable pageable) {
         return ApiResponse.success(categoryService.search(q, pageable));
     }
 
     @PostMapping
-    public ApiResponse<CategoryResponse> create(
-            @Valid @RequestBody @NonNull CategoryRequest req
-    ) {
+    public ApiResponse<CategoryResponse> create(@Valid @RequestBody @NonNull CategoryRequest req) {
         return ApiResponse.success("Category created successfully", categoryService.create(req));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<CategoryResponse> update(
-            @PathVariable @NonNull Long id,
-            @Valid @RequestBody @NonNull CategoryRequest req
-    ) {
+            @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull CategoryRequest req) {
         return ApiResponse.success("Category updated successfully", categoryService.update(id, req));
     }
 
@@ -60,9 +49,7 @@ public class CategoryController {
 
     @PostMapping("/{id}/image")
     public ApiResponse<Map<String, String>> uploadImage(
-            @PathVariable @NonNull Long id,
-            @RequestParam("file") MultipartFile file
-    ) {
+            @PathVariable @NonNull Long id, @RequestParam("file") MultipartFile file) {
         return ApiResponse.success("Category image uploaded successfully", categoryService.uploadImage(id, file));
     }
 }

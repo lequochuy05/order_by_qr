@@ -1,13 +1,12 @@
 package com.qros.modules.menu.repository;
 
 import com.qros.modules.menu.model.Combo;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
-import java.util.Optional;
 
 public interface ComboRepository extends JpaRepository<Combo, Long> {
 
@@ -15,7 +14,8 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    @Query("""
+    @Query(
+            """
         SELECT c
         FROM Combo c
         WHERE (CAST(:keyword AS string) IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -23,11 +23,10 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
         ORDER BY c.displayOrder ASC, c.name ASC
     """)
     Page<Combo> searchManagementSummaries(
-            @Param("keyword") String keyword,
-            @Param("active") Boolean active,
-            Pageable pageable);
+            @Param("keyword") String keyword, @Param("active") Boolean active, Pageable pageable);
 
-    @Query("""
+    @Query(
+            """
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -37,7 +36,8 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     Optional<Combo> findByIdWithItems(@Param("id") Long id);
 
-    @Query("""
+    @Query(
+            """
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -47,7 +47,8 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     List<Combo> findAllByIdInWithItems(@Param("ids") List<Long> ids);
 
-    @Query("""
+    @Query(
+            """
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci

@@ -1,12 +1,20 @@
 import { AlertTriangle, X } from 'lucide-react';
 
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', loading = false }) => {
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = 'Xác nhận',
+  cancelText = 'Hủy',
+  loading = false,
+}) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 backdrop-blur-[2px] animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 dark:bg-slate-900">
-
         {/* Header Icon */}
         <div className="p-6 flex flex-col items-center justify-center text-center bg-amber-50 dark:bg-amber-500/10">
           <div className="p-3 rounded-full mb-3 bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">

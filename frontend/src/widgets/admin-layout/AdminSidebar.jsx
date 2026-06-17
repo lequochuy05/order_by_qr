@@ -16,7 +16,7 @@ import {
   ChevronDown,
   Settings,
   ChevronRight,
-  Circle
+  Circle,
 } from 'lucide-react';
 
 const menuItems = [
@@ -24,49 +24,49 @@ const menuItems = [
     title: 'Bảng điều khiển',
     path: '/admin/dashboard',
     icon: <LayoutDashboard size={22} />,
-    roles: ['MANAGER', 'STAFF', 'CHEF']
+    roles: ['MANAGER', 'STAFF', 'CHEF'],
   },
   {
     title: 'Quản lý bàn',
     path: '/admin/tables',
     icon: <Table size={22} />,
-    roles: ['MANAGER', 'STAFF']
+    roles: ['MANAGER', 'STAFF'],
   },
   {
     title: 'Nhà bếp',
     path: '/admin/kitchen',
     icon: <UtensilsCrossed size={22} />,
-    roles: ['MANAGER', 'CHEF']
+    roles: ['MANAGER', 'CHEF'],
   },
   {
     title: 'Quản lý danh mục',
     path: '/admin/categories',
     icon: <Layers size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   {
     title: 'Quản lý món ăn',
     path: '/admin/menu',
     icon: <UtensilsCrossed size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   {
     title: 'Quản lý combo',
     path: '/admin/combo',
     icon: <Package size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   {
     title: 'Quản lý kho',
     path: '/admin/inventory',
     icon: <Boxes size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   {
     title: 'Quản lý voucher',
     path: '/admin/voucher',
     icon: <TicketIcon size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   // {
   //   title: 'Quản lý khuyến mãi',
@@ -78,13 +78,13 @@ const menuItems = [
     title: 'Quản lý nhân viên',
     path: '/admin/staffs',
     icon: <Users size={22} />,
-    roles: ['MANAGER']
+    roles: ['MANAGER'],
   },
   {
     title: 'Lịch sử đơn hàng',
     path: '/admin/history',
     icon: <ClipboardList size={22} />,
-    roles: ['MANAGER', 'STAFF']
+    roles: ['MANAGER', 'STAFF'],
   },
 
   {
@@ -94,8 +94,8 @@ const menuItems = [
     children: [
       { title: 'Doanh thu', path: '/admin/statistics/revenue' },
       { title: 'Món ăn bán chạy', path: '/admin/statistics/top-dishes' },
-      { title: 'Nhân viên', path: '/admin/statistics/staff' }
-    ]
+      { title: 'Nhân viên', path: '/admin/statistics/staff' },
+    ],
   },
 
   {
@@ -105,9 +105,9 @@ const menuItems = [
     children: [
       { title: 'Thông tin cá nhân', path: '/admin/profile' },
       { title: 'Cài đặt nhà hàng', path: '/admin/settings', roles: ['MANAGER'] },
-      { title: 'Tùy chọn cá nhân', path: '/admin/settings', roles: ['STAFF', 'CHEF'] }
-    ]
-  }
+      { title: 'Tùy chọn cá nhân', path: '/admin/settings', roles: ['STAFF', 'CHEF'] },
+    ],
+  },
 ];
 
 const AdminSidebar = ({ isOpen }) => {
@@ -115,7 +115,6 @@ const AdminSidebar = ({ isOpen }) => {
   const { user } = useAuth();
   const [preferences] = useAdminPreferences();
   const label = (text) => getMenuLabel(text, preferences.language);
-
 
   // State để quản lý menu nào đang mở (lưu theo title)
   const [expandedMenu, setExpandedMenu] = useState(null);
@@ -131,9 +130,9 @@ const AdminSidebar = ({ isOpen }) => {
 
   // Tự động mở menu cha nếu đang ở trang con (UX tốt hơn)
   useEffect(() => {
-    menuItems.forEach(item => {
+    menuItems.forEach((item) => {
       if (item.children) {
-        const isChildActive = item.children.some(child => child.path === location.pathname);
+        const isChildActive = item.children.some((child) => child.path === location.pathname);
         if (isChildActive) {
           setExpandedMenu(item.title);
         }
@@ -144,9 +143,11 @@ const AdminSidebar = ({ isOpen }) => {
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col dark:bg-slate-950
-        ${isOpen
-          ? 'translate-x-0 w-64'
-          : '-translate-x-full lg:translate-x-0 w-0 lg:w-20 overflow-hidden lg:overflow-visible'}`}
+        ${
+          isOpen
+            ? 'translate-x-0 w-64'
+            : '-translate-x-full lg:translate-x-0 w-0 lg:w-20 overflow-hidden lg:overflow-visible'
+        }`}
     >
       {/* Header Sidebar */}
       <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0 dark:border-slate-900">
@@ -173,7 +174,7 @@ const AdminSidebar = ({ isOpen }) => {
           // Item được coi là active nếu đường dẫn trùng khớp HOẶC là cha của menu con đang active
           const isActive = !hasChildren
             ? location.pathname === item.path
-            : item.children.some(child => child.path === location.pathname);
+            : item.children.some((child) => child.path === location.pathname);
 
           return (
             <div key={index}>
@@ -186,7 +187,9 @@ const AdminSidebar = ({ isOpen }) => {
                     ${isParentExpanded ? 'bg-slate-800 text-white' : ''}
                   `}
                 >
-                  <div className={`${isActive ? 'text-orange-500' : 'text-slate-400 group-hover:text-orange-400'}`}>
+                  <div
+                    className={`${isActive ? 'text-orange-500' : 'text-slate-400 group-hover:text-orange-400'}`}
+                  >
                     {item.icon}
                   </div>
 
@@ -213,11 +216,15 @@ const AdminSidebar = ({ isOpen }) => {
                 <Link
                   to={item.path}
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative
-                    ${isActive
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                      : 'hover:bg-slate-800 hover:text-white'}`}
+                    ${
+                      isActive
+                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                        : 'hover:bg-slate-800 hover:text-white'
+                    }`}
                 >
-                  <div className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-400'}`}>
+                  <div
+                    className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-400'}`}
+                  >
                     {item.icon}
                   </div>
                   {isOpen && (
@@ -244,12 +251,17 @@ const AdminSidebar = ({ isOpen }) => {
                         key={childIndex}
                         to={child.path}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
-                          ${isChildActive
-                            ? 'text-orange-500 bg-slate-800 font-medium'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                          ${
+                            isChildActive
+                              ? 'text-orange-500 bg-slate-800 font-medium'
+                              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                          }`}
                       >
                         {/* Dấu chấm tròn nhỏ để trang trí */}
-                        <Circle size={8} className={isChildActive ? 'fill-orange-500' : 'fill-transparent'} />
+                        <Circle
+                          size={8}
+                          className={isChildActive ? 'fill-orange-500' : 'fill-transparent'}
+                        />
                         <span className="whitespace-nowrap">{label(child.title)}</span>
                       </Link>
                     );
@@ -281,7 +293,7 @@ const englishMenuLabels = {
   'Cài đặt': 'Settings',
   'Thông tin cá nhân': 'Profile',
   'Cài đặt nhà hàng': 'Restaurant settings',
-  'Tùy chọn cá nhân': 'Preferences'
+  'Tùy chọn cá nhân': 'Preferences',
 };
 
 const getMenuLabel = (text, language) => {

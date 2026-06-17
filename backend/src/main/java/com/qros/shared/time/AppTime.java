@@ -13,8 +13,7 @@ public final class AppTime {
     public static final String ZONE_ID = "Asia/Ho_Chi_Minh";
     public static final ZoneId ZONE = ZoneId.of(ZONE_ID);
 
-    private AppTime() {
-    }
+    private AppTime() {}
 
     public static LocalDate today() {
         return LocalDate.now(ZONE);

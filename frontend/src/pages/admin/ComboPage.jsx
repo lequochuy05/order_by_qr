@@ -1,5 +1,5 @@
-import { ComboManagement } from '@features/combo-management'
+import { ComboManagement } from '@features/combo-management';
 
 export default function ComboPage() {
-  return <ComboManagement />
+  return <ComboManagement />;
 }

@@ -5,7 +5,6 @@ import com.qros.modules.ai.dto.response.AiChatResponse;
 import com.qros.modules.ai.gateway.AiChatGateway;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,9 +15,7 @@ public class AiAssistantService {
     private final Counter aiRequestsCounter;
 
     public AiAssistantService(
-            MenuContextProvider menuContextProvider,
-            AiChatGateway aiChatGateway,
-            MeterRegistry meterRegistry) {
+            MenuContextProvider menuContextProvider, AiChatGateway aiChatGateway, MeterRegistry meterRegistry) {
         this.menuContextProvider = menuContextProvider;
         this.aiChatGateway = aiChatGateway;
         this.aiRequestsCounter = Counter.builder("ai.requests.total")

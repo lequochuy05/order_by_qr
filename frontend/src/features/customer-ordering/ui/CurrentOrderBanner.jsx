@@ -5,8 +5,11 @@ import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
 
-const countItems = (order) => (order?.items || order?.orderItems || [])
-  .reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+const countItems = (order) =>
+  (order?.items || order?.orderItems || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0),
+    0,
+  );
 
 const CurrentOrderBanner = ({ order, onClick }) => {
   if (!order) return null;
@@ -30,7 +33,9 @@ const CurrentOrderBanner = ({ order, onClick }) => {
             <p className="truncate text-[13px] font-black text-gray-900 dark:text-white">
               Đơn #{order.id}
             </p>
-            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold ${status.classes}`}>
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold ${status.classes}`}
+            >
               {status.label}
             </span>
           </div>

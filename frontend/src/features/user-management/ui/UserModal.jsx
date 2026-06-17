@@ -7,7 +7,7 @@ import FormError from '@shared/ui/FormError.jsx';
 
 const USER_STATUS_OPTIONS = Object.entries(USER_STATUS).map(([value, meta]) => ({
   value,
-  label: meta.label
+  label: meta.label,
 }));
 
 const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
@@ -20,7 +20,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
         phone: data.phone || '',
         role: data.role || 'STAFF',
         status: data.status || 'ACTIVE',
-        password: ''
+        password: '',
       };
     }
     return {
@@ -30,7 +30,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
       phone: '',
       role: 'STAFF',
       status: 'ACTIVE',
-      password: ''
+      password: '',
     };
   });
 
@@ -61,7 +61,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File ảnh quá lớn (Max 5MB)");
+        toast.error('File ảnh quá lớn (Max 5MB)');
         return;
       }
       setSelectedFile(file);
@@ -124,14 +124,16 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
         <h2 className="text-xl font-bold text-gray-800">
           {formData.id ? 'Cập nhật hồ sơ' : 'Thêm nhân viên mới'}
         </h2>
-        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+        >
           <X size={24} />
         </button>
       </div>
 
       <div className="p-8 overflow-y-auto custom-scrollbar">
         <form id="staffForm" onSubmit={handleSubmit} className="space-y-6" noValidate>
-
           <div className="flex justify-center mb-6">
             <div className="relative group">
               <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
@@ -145,14 +147,21 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
               </div>
               <label className="absolute bottom-0 right-0 bg-orange-500 text-white p-2 rounded-full cursor-pointer hover:bg-orange-600 shadow-md transition-transform hover:scale-110">
                 <Upload size={18} />
-                <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
               </label>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="col-span-2">
-              <label className="block text-sm font-bold text-gray-700 mb-2">Họ và tên <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Họ và tên <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <User size={18} className="absolute left-3 top-3.5 text-gray-400" />
                 <input
@@ -161,7 +170,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     ${errors.fullName ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                   placeholder="Nguyễn Văn A"
                   value={formData.fullName}
-                  onChange={e => {
+                  onChange={(e) => {
                     setFormData({ ...formData, fullName: e.target.value });
                     if (errors.fullName) setErrors({ ...errors, fullName: '' });
                   }}
@@ -171,7 +180,9 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Email <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Email <span className="text-red-500">*</span>
+              </label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-3.5 text-gray-400" />
                 <input
@@ -180,7 +191,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     ${errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                   placeholder="example@gmail.com"
                   value={formData.email}
-                  onChange={e => {
+                  onChange={(e) => {
                     setFormData({ ...formData, email: e.target.value });
                     if (errors.email) setErrors({ ...errors, email: '' });
                   }}
@@ -200,7 +211,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     ${errors.phone ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                   placeholder="070616xxxx"
                   value={formData.phone}
-                  onChange={e => {
+                  onChange={(e) => {
                     setFormData({ ...formData, phone: e.target.value });
                     if (errors.phone) setErrors({ ...errors, phone: '' });
                   }}
@@ -211,7 +222,9 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
 
             {!formData.id && (
               <div className="col-span-2">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Mật khẩu khởi tạo <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  Mật khẩu khởi tạo <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
                   <KeyRound size={18} className="absolute left-3 top-3.5 text-gray-400" />
                   <input
@@ -219,7 +232,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     className={`w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border outline-none transition-all
                       ${errors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-100 focus:ring-orange-500 focus:ring-2'}`}
                     value={formData.password}
-                    onChange={e => {
+                    onChange={(e) => {
                       setFormData({ ...formData, password: e.target.value });
                       if (errors.password) setErrors({ ...errors, password: '' });
                     }}
@@ -239,7 +252,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     <select
                       className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-gray-100 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer appearance-none"
                       value={formData.role}
-                      onChange={e => setFormData({ ...formData, role: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                     >
                       <option value="STAFF">Nhân viên</option>
                       <option value="MANAGER">Quản lý</option>
@@ -255,10 +268,12 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
                     <select
                       className="w-full pl-10 pr-4 py-3 bg-gray-50 rounded-xl border-gray-100 focus:ring-2 focus:ring-orange-500 outline-none cursor-pointer appearance-none"
                       value={formData.status}
-                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                     >
-                      {USER_STATUS_OPTIONS.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
+                      {USER_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -270,15 +285,22 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
       </div>
 
       <div className="px-8 py-5 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-3xl">
-        <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-gray-600 font-medium hover:bg-gray-200 transition-colors">Hủy bỏ</button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-6 py-2.5 rounded-xl text-gray-600 font-medium hover:bg-gray-200 transition-colors"
+        >
+          Hủy bỏ
+        </button>
         <button
           form="staffForm"
           type="submit"
           disabled={!isChanged}
-          className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${!isChanged
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-200'
-            }`}
+          className={`px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${
+            !isChanged
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+              : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-200'
+          }`}
         >
           {formData.id ? 'Lưu thay đổi' : 'Tạo nhân viên'}
         </button>

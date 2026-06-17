@@ -5,17 +5,13 @@ import com.qros.modules.inventory.dto.response.RecipeItemResponse;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.RecipeItem;
 import com.qros.modules.menu.model.MenuItem;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class RecipeMapper {
 
-    public RecipeItem toEntity(
-            MenuItem menuItem,
-            InventoryItem inventoryItem,
-            RecipeItemRequest request) {
+    public RecipeItem toEntity(MenuItem menuItem, InventoryItem inventoryItem, RecipeItemRequest request) {
         return RecipeItem.builder()
                 .menuItem(menuItem)
                 .inventoryItem(inventoryItem)
@@ -38,8 +34,6 @@ public class RecipeMapper {
     }
 
     public List<RecipeItemResponse> toResponses(List<RecipeItem> recipeItems) {
-        return recipeItems.stream()
-                .map(this::toResponse)
-                .toList();
+        return recipeItems.stream().map(this::toResponse).toList();
     }
 }

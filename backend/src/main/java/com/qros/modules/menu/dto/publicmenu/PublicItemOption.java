@@ -8,6 +8,4 @@ public record PublicItemOption(
         Boolean required,
         Integer maxSelection,
         Integer displayOrder,
-        List<PublicItemOptionValue> optionValues
-) {
-}
+        List<PublicItemOptionValue> optionValues) {}

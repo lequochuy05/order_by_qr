@@ -2,7 +2,6 @@ package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
-
 import java.util.Set;
 
 /**

@@ -19,7 +19,7 @@ import { USER_STATUS } from '@shared/lib/formatters.js';
 
 const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) => ({
   id,
-  name: meta.label
+  name: meta.label,
 }));
 
 const StaffManager = () => {
@@ -52,34 +52,37 @@ const StaffManager = () => {
     };
   }, []);
 
-  // Tải dữ liệu 
-  const fetchStaffs = useCallback(async (showLoading = false, { force = false } = {}) => {
-    const fetchSeq = ++fetchSeqRef.current;
-    if (showLoading) setLoading(true);
-    try {
-      const params = {
-        page: currentPage,
-        size: pageSize
-      };
-      if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
-      if (statusFilter !== 'ALL') params.status = statusFilter;
+  // Tải dữ liệu
+  const fetchStaffs = useCallback(
+    async (showLoading = false, { force = false } = {}) => {
+      const fetchSeq = ++fetchSeqRef.current;
+      if (showLoading) setLoading(true);
+      try {
+        const params = {
+          page: currentPage,
+          size: pageSize,
+        };
+        if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
+        if (statusFilter !== 'ALL') params.status = statusFilter;
 
-      const data = await userService.getPage(params, { force });
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      setStaffs(data.content || []);
-      setTotalPages(data.totalPages || 0);
-      setTotalElements(data.totalElements || 0);
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      console.error("Lỗi tải nhân viên:", err);
-    } finally {
-      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-        setLoading(false);
+        const data = await userService.getPage(params, { force });
+        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+        setStaffs(data.content || []);
+        setTotalPages(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
+      } catch (err) {
+        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
+        console.error('Lỗi tải nhân viên:', err);
+      } finally {
+        if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
+          setLoading(false);
+        }
       }
-    }
-  }, [currentPage, debouncedSearchTerm, statusFilter]);
+    },
+    [currentPage, debouncedSearchTerm, statusFilter],
+  );
 
-  // WebSocket Realtime 
+  // WebSocket Realtime
   useWebSocket('/topic/users', (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       playNotificationSound();
@@ -91,7 +94,9 @@ const StaffManager = () => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
 
-  useEffect(() => { fetchStaffs(true); }, [fetchStaffs]);
+  useEffect(() => {
+    fetchStaffs(true);
+  }, [fetchStaffs]);
 
   // Submit
   const handleSubmit = async (formData, selectedFile) => {
@@ -142,33 +147,31 @@ const StaffManager = () => {
       setIsModalOpen(false);
       showSuccess(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
       fetchStaffs(false, { force: true });
-
     } catch (err) {
       console.error('Error saving staff:', err);
       const errorMsg = err.message || '';
 
       const newErrors = {};
-      if (errorMsg.includes("Email already exists")) {
-        newErrors.email = "Email này đã tồn tại.";
-      }
-      else if (errorMsg.includes("Phone number already exists")) {
-        newErrors.phone = "Số điện thoại này đã tồn tại.";
+      if (errorMsg.includes('Email already exists')) {
+        newErrors.email = 'Email này đã tồn tại.';
+      } else if (errorMsg.includes('Phone number already exists')) {
+        newErrors.phone = 'Số điện thoại này đã tồn tại.';
       }
 
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
       } else {
-        showError(errorMsg || "Có lỗi xảy ra");
+        showError(errorMsg || 'Có lỗi xảy ra');
       }
     }
   };
-  //  Xóa 
+  //  Xóa
   const handleDelete = async (id) => {
     const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
     if (!confirmed) return;
     try {
       await userService.delete(id);
-      showSuccess("Đã xóa nhân viên thành công!");
+      showSuccess('Đã xóa nhân viên thành công!');
       fetchStaffs(false, { force: true });
     } catch (err) {
       showError(err);
@@ -200,11 +203,14 @@ const StaffManager = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {staffs.map(staff => (
+          {staffs.map((staff) => (
             <UserCard
               key={staff.id}
               staff={staff}
-              onEdit={() => { setEditingStaff(staff); setIsModalOpen(true); }}
+              onEdit={() => {
+                setEditingStaff(staff);
+                setIsModalOpen(true);
+              }}
               onDelete={() => handleDelete(staff.id)}
             />
           ))}
@@ -226,7 +232,7 @@ const StaffManager = () => {
 
       {/* Modal Thêm/Sửa */}
       <UserModal
-        key={isModalOpen ? (editingStaff?.id || 'new') : 'closed'}
+        key={isModalOpen ? editingStaff?.id || 'new' : 'closed'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         data={editingStaff}

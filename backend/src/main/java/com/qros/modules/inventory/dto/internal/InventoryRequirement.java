@@ -8,5 +8,4 @@ public record InventoryRequirement(
         String unit,
         BigDecimal requiredQuantity,
         BigDecimal availableQuantity,
-        boolean sufficient) {
-}
+        boolean sufficient) {}

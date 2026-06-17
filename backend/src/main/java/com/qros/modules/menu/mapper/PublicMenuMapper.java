@@ -10,28 +10,21 @@ import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
-import org.springframework.stereotype.Component;
-
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import org.springframework.stereotype.Component;
 
 @Component
 public class PublicMenuMapper {
 
-    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR =
-            Comparator.comparing(
-                    (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder()
-            ).thenComparing(
-                    (ItemOption option) -> option.getName() == null ? "" : option.getName()
-            );
+    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = Comparator.comparing(
+                    (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder())
+            .thenComparing((ItemOption option) -> option.getName() == null ? "" : option.getName());
 
-    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR =
-            Comparator.comparing(
-                    (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder()
-            ).thenComparing(
-                    (ItemOptionValue value) -> value.getName() == null ? "" : value.getName()
-            );
+    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR = Comparator.comparing(
+                    (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder())
+            .thenComparing((ItemOptionValue value) -> value.getName() == null ? "" : value.getName());
 
     public PublicCategoryItem toCategoryItem(Category category) {
         if (category == null) {
@@ -39,13 +32,8 @@ public class PublicMenuMapper {
         }
 
         return new PublicCategoryItem(
-                category.getId(),
-                category.getName(),
-                category.getImg(),
-                category.getDisplayOrder()
-        );
+                category.getId(), category.getName(), category.getImg(), category.getDisplayOrder());
     }
-
 
     public PublicMenuItem toMenuItem(MenuItem item) {
         if (item == null) {
@@ -69,13 +57,10 @@ public class PublicMenuMapper {
                 item.getCategory() == null
                         ? null
                         : new CategorySummary(
-                                item.getCategory().getId(),
-                                item.getCategory().getName()
-                        ),
+                                item.getCategory().getId(), item.getCategory().getName()),
                 options,
                 item.getAvailable(),
-                item.getDisplayOrder()
-        );
+                item.getDisplayOrder());
     }
 
     public PublicItemOption toItemOption(ItemOption option) {
@@ -97,8 +82,7 @@ public class PublicMenuMapper {
                 option.getRequired(),
                 option.getMaxSelection(),
                 option.getDisplayOrder(),
-                values
-        );
+                values);
     }
 
     public PublicItemOptionValue toItemOptionValue(ItemOptionValue value) {
@@ -107,11 +91,7 @@ public class PublicMenuMapper {
         }
 
         return new PublicItemOptionValue(
-                value.getId(),
-                value.getName(),
-                value.getExtraPrice(),
-                value.getDisplayOrder()
-        );
+                value.getId(), value.getName(), value.getExtraPrice(), value.getDisplayOrder());
     }
 
     public PublicComboItem toComboItem(Combo combo) {
@@ -128,10 +108,7 @@ public class PublicMenuMapper {
                                 ? ""
                                 : item.getMenuItem().getName()))
                         .map(item -> new PublicComboLine(
-                                item.getMenuItem().getName(),
-                                item.getMenuItem().getImg(),
-                                item.getQuantity()
-                        ))
+                                item.getMenuItem().getName(), item.getMenuItem().getImg(), item.getQuantity()))
                         .toList();
 
         return new PublicComboItem(
@@ -142,8 +119,7 @@ public class PublicMenuMapper {
                 combo.getPrice(),
                 lines,
                 combo.getAvailable(),
-                combo.getDisplayOrder()
-        );
+                combo.getDisplayOrder());
     }
 
     public PublicMenuItem fromMenuItemResponse(MenuItemResponse item) {
@@ -154,30 +130,20 @@ public class PublicMenuMapper {
         List<PublicItemOption> options = item.itemOptions() == null
                 ? Collections.emptyList()
                 : item.itemOptions().stream()
-                        .sorted(Comparator
-                                .comparing((ItemOptionResponse option) -> option.displayOrder() == null
-                                        ? 0
-                                        : option.displayOrder())
-                                .thenComparing((ItemOptionResponse option) -> option.name() == null
-                                        ? ""
-                                        : option.name()))
+                        .sorted(Comparator.comparing((ItemOptionResponse option) ->
+                                        option.displayOrder() == null ? 0 : option.displayOrder())
+                                .thenComparing(
+                                        (ItemOptionResponse option) -> option.name() == null ? "" : option.name()))
                         .map(option -> {
                             List<PublicItemOptionValue> values = option.optionValues() == null
                                     ? Collections.emptyList()
                                     : option.optionValues().stream()
-                                            .sorted(Comparator
-                                                    .comparing((ItemOptionValueResponse value) -> value.displayOrder() == null
-                                                            ? 0
-                                                            : value.displayOrder())
-                                                    .thenComparing((ItemOptionValueResponse value) -> value.name() == null
-                                                            ? ""
-                                                            : value.name()))
+                                            .sorted(Comparator.comparing((ItemOptionValueResponse value) ->
+                                                            value.displayOrder() == null ? 0 : value.displayOrder())
+                                                    .thenComparing((ItemOptionValueResponse value) ->
+                                                            value.name() == null ? "" : value.name()))
                                             .map(value -> new PublicItemOptionValue(
-                                                    value.id(),
-                                                    value.name(),
-                                                    value.extraPrice(),
-                                                    value.displayOrder()
-                                            ))
+                                                    value.id(), value.name(), value.extraPrice(), value.displayOrder()))
                                             .toList();
 
                             return new PublicItemOption(
@@ -186,8 +152,7 @@ public class PublicMenuMapper {
                                     option.required(),
                                     option.maxSelection(),
                                     option.displayOrder(),
-                                    values
-                            );
+                                    values);
                         })
                         .toList();
 
@@ -200,8 +165,7 @@ public class PublicMenuMapper {
                 item.category(),
                 options,
                 item.available(),
-                item.displayOrder()
-        );
+                item.displayOrder());
     }
 
     public PublicMenuItem withAvailability(PublicMenuItem item, boolean available) {
@@ -218,8 +182,7 @@ public class PublicMenuMapper {
                 item.category(),
                 item.itemOptions(),
                 available,
-                item.displayOrder()
-        );
+                item.displayOrder());
     }
 
     public PublicComboItem withAvailability(PublicComboItem combo, boolean available) {
@@ -235,7 +198,6 @@ public class PublicMenuMapper {
                 combo.price(),
                 combo.items(),
                 available,
-                combo.displayOrder()
-        );
+                combo.displayOrder());
     }
 }

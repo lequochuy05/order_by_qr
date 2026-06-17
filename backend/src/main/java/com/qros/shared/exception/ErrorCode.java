@@ -66,8 +66,8 @@ public enum ErrorCode {
     INVENTORY_ITEM_NAME_EXISTS(HttpStatus.CONFLICT, "Inventory item name already exists"),
     INVENTORY_ITEM_IN_USE(HttpStatus.CONFLICT, "Inventory item is being used in recipe"),
     INVENTORY_QUANTITY_INVALID(HttpStatus.BAD_REQUEST, "Inventory quantity is invalid"),
-    INVENTORY_QUANTITY_BELOW_RESERVED(HttpStatus.BAD_REQUEST,
-            "Quantity on hand cannot be lower than reserved quantity"),
+    INVENTORY_QUANTITY_BELOW_RESERVED(
+            HttpStatus.BAD_REQUEST, "Quantity on hand cannot be lower than reserved quantity"),
     INVENTORY_INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST, "Insufficient inventory stock"),
     RECIPE_ITEM_DUPLICATED(HttpStatus.BAD_REQUEST, "Recipe item is duplicated"),
     INVALID_DATE_RANGE(HttpStatus.BAD_REQUEST, "From date cannot be after to date"),

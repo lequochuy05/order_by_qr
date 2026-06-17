@@ -8,5 +8,4 @@ public record TopSellingItemResponse(
         String categoryName,
         String imageUrl,
         Long quantitySold,
-        BigDecimal revenue) {
-}
+        BigDecimal revenue) {}

@@ -1,6 +1,10 @@
-import { fmtVND } from "./formatters"
-import { getOrderDiscountAmount, getOrderFinalAmount, getOrderSubtotalAmount } from "./orderMoney.js"
-import useSettingsStore from "@shared/model/settingsStore.js"
+import { fmtVND } from './formatters';
+import {
+  getOrderDiscountAmount,
+  getOrderFinalAmount,
+  getOrderSubtotalAmount,
+} from './orderMoney.js';
+import useSettingsStore from '@shared/model/settingsStore.js';
 
 /**
  * Tạo chuỗi HTML hóa đơn chuyên nghiệp
@@ -26,7 +30,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const comboMap = {};
   const normalItems = [];
 
-  items.forEach(it => {
+  items.forEach((it) => {
     if (it.combo) {
       const key = it.combo.id;
       if (!comboMap[key]) {
@@ -35,19 +39,22 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
           qty: 0,
           price: it.unitPrice || it.combo.price || 0,
           originalPrice: it.combo.price || 0,
-          lineTotal: 0
+          lineTotal: 0,
         };
       }
-      comboMap[key].qty += (it.quantity || 1);
-      comboMap[key].lineTotal += Number(it.lineTotal ?? ((it.unitPrice || it.combo.price || 0) * (it.quantity || 1)));
+      comboMap[key].qty += it.quantity || 1;
+      comboMap[key].lineTotal += Number(
+        it.lineTotal ?? (it.unitPrice || it.combo.price || 0) * (it.quantity || 1),
+      );
     } else {
       normalItems.push(it);
     }
   });
 
   // 2. Render dòng Combo
-  const rowsCombo = Object.values(comboMap).map(c => {
-    return `
+  const rowsCombo = Object.values(comboMap)
+    .map((c) => {
+      return `
       <tr>
         <td style="padding: 10px 0;">
           <div style="font-weight: bold; color: #000;">[COMBO] ${c.name}</div>
@@ -57,24 +64,30 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
         <td style="text-align: right; padding: 10px 0; font-weight: bold;">${fmtVND(c.lineTotal)}</td>
       </tr>
     `;
-  }).join('');
+    })
+    .join('');
 
   // 3. Render dòng Món lẻ (Kèm Options)
-  const rowsNormal = normalItems.map(it => {
-    const name = it.itemNameSnapshot || it.menuItem?.name || 'Món không tên';
-    const price = it.unitPrice || 0;
-    const qty = it.quantity || 0;
-    const lineTotal = it.lineTotal ?? price * qty;
+  const rowsNormal = normalItems
+    .map((it) => {
+      const name = it.itemNameSnapshot || it.menuItem?.name || 'Món không tên';
+      const price = it.unitPrice || 0;
+      const qty = it.quantity || 0;
+      const lineTotal = it.lineTotal ?? price * qty;
 
-    // Xử lý Options (Topping/Lựa chọn)
-    const optionsHtml = (it.options || it.orderItemOptions || []).map(opt => {
-      const extra = opt.extraPrice > 0 ? ` (+${fmtVND(opt.extraPrice)})` : '';
-      return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${opt.optionName}: ${opt.optionValueName}${extra}</div>`;
-    }).join('');
+      // Xử lý Options (Topping/Lựa chọn)
+      const optionsHtml = (it.options || it.orderItemOptions || [])
+        .map((opt) => {
+          const extra = opt.extraPrice > 0 ? ` (+${fmtVND(opt.extraPrice)})` : '';
+          return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${opt.optionName}: ${opt.optionValueName}${extra}</div>`;
+        })
+        .join('');
 
-    const noteHtml = it.notes ? `<div style="font-size: 11px; color: #ef4444; font-style: italic; margin-left: 8px;">* Ghi chú: ${it.notes}</div>` : '';
+      const noteHtml = it.notes
+        ? `<div style="font-size: 11px; color: #ef4444; font-style: italic; margin-left: 8px;">* Ghi chú: ${it.notes}</div>`
+        : '';
 
-    return `
+      return `
       <tr>
         <td style="padding: 10px 0; border-bottom: 1px dashed #eee;">
           <div style="font-weight: 600; color: #1f2937;">${name}</div>
@@ -86,9 +99,12 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
         <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee; font-weight: bold;">${fmtVND(lineTotal)}</td>
       </tr>
     `;
-  }).join('');
+    })
+    .join('');
 
-  const timeStr = paidAt ? new Date(paidAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
+  const timeStr = paidAt
+    ? new Date(paidAt).toLocaleString('vi-VN')
+    : new Date().toLocaleString('vi-VN');
 
   // Wifi footer section (only if wifi configured)
   const wifiHtml = wifiSsid
@@ -162,12 +178,16 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
           <td style="padding: 3px 0;">Tổng cộng món:</td>
           <td style="text-align: right;">${fmtVND(subtotalAmount)}</td>
         </tr>
-        ${discountAmount > 0 ? `
+        ${
+          discountAmount > 0
+            ? `
         <tr>
           <td style="padding: 3px 0;">Giảm giá (Voucher):</td>
           <td style="text-align: right;">-${fmtVND(discountAmount)}</td>
         </tr>
-        ` : ''}
+        `
+            : ''
+        }
         <tr style="font-size: 16px; font-weight: bold;">
           <td style="padding: 10px 0;">TỔNG THANH TOÁN:</td>
           <td style="text-align: right; padding: 10px 0;">${fmtVND(finalAmount)}</td>

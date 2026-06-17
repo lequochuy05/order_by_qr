@@ -1,4 +1,4 @@
-import { ShoppingBasket } from 'lucide-react'
+import { ShoppingBasket } from 'lucide-react';
 
 const AddToCartButton = ({ onClick, disabled = false, label = 'Thêm vào giỏ' }) => (
   <button
@@ -10,6 +10,6 @@ const AddToCartButton = ({ onClick, disabled = false, label = 'Thêm vào giỏ'
     <ShoppingBasket size={18} />
     <span>{label}</span>
   </button>
-)
+);
 
-export default AddToCartButton
+export default AddToCartButton;

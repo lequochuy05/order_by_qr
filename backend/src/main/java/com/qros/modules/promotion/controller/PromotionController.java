@@ -5,6 +5,7 @@ import com.qros.modules.promotion.dto.response.PromotionResponse;
 import com.qros.modules.promotion.service.PromotionService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/promotions")
 @RequiredArgsConstructor
@@ -28,16 +27,13 @@ public class PromotionController {
     private final PromotionService promotionService;
 
     @GetMapping
-    public ApiResponse<Page<PromotionResponse>> search(
-            @RequestParam(required = false) String q,
-            Pageable pageable) {
+    public ApiResponse<Page<PromotionResponse>> search(@RequestParam(required = false) String q, Pageable pageable) {
         return ApiResponse.success(promotionService.searchForManagement(q, pageable));
     }
 
     @GetMapping("/management-summary")
     public ApiResponse<Page<PromotionResponse>> managementSummary(
-            @RequestParam(required = false) String q,
-            Pageable pageable) {
+            @RequestParam(required = false) String q, Pageable pageable) {
         return ApiResponse.success(promotionService.searchForManagement(q, pageable));
     }
 
@@ -53,18 +49,12 @@ public class PromotionController {
 
     @PostMapping
     public ApiResponse<PromotionResponse> create(@Valid @RequestBody PromotionRequest request) {
-        return ApiResponse.success(
-                "Promotion created successfully",
-                promotionService.create(request));
+        return ApiResponse.success("Promotion created successfully", promotionService.create(request));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<PromotionResponse> update(
-            @PathVariable Long id,
-            @Valid @RequestBody PromotionRequest request) {
-        return ApiResponse.success(
-                "Promotion updated successfully",
-                promotionService.update(id, request));
+    public ApiResponse<PromotionResponse> update(@PathVariable Long id, @Valid @RequestBody PromotionRequest request) {
+        return ApiResponse.success("Promotion updated successfully", promotionService.update(id, request));
     }
 
     @DeleteMapping("/{id}")

@@ -18,22 +18,17 @@ public class PublicTableSessionController {
     private final TableSessionService tableSessionService;
 
     @GetMapping("/tables/{tableCode}/session-state")
-    public ApiResponse<TableSessionStateResponse> getSessionState(
-            @PathVariable @NonNull String tableCode) {
+    public ApiResponse<TableSessionStateResponse> getSessionState(@PathVariable @NonNull String tableCode) {
         return ApiResponse.success(tableSessionService.getPublicState(tableCode));
     }
 
     @PostMapping("/tables/{tableCode}/start-session")
-    public ApiResponse<TableSessionStartResponse> startSession(
-            @PathVariable @NonNull String tableCode) {
-        return ApiResponse.success(
-                "Table session started",
-                tableSessionService.startPublicSession(tableCode));
+    public ApiResponse<TableSessionStartResponse> startSession(@PathVariable @NonNull String tableCode) {
+        return ApiResponse.success("Table session started", tableSessionService.startPublicSession(tableCode));
     }
 
     @PostMapping("/sessions/heartbeat")
-    public ApiResponse<Void> heartbeat(
-            @Valid @RequestBody @NonNull TableSessionHeartbeatRequest request) {
+    public ApiResponse<Void> heartbeat(@Valid @RequestBody @NonNull TableSessionHeartbeatRequest request) {
         tableSessionService.heartbeat(request);
         return ApiResponse.success(null);
     }

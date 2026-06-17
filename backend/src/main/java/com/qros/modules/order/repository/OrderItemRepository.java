@@ -3,6 +3,8 @@ package com.qros.modules.order.repository;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.OrderItem;
 import jakarta.persistence.LockModeType;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,35 +12,35 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
-
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-  @EntityGraph(attributePaths = {
-      "menuItem",
-      "combo",
-      "combo.items",
-      "combo.items.menuItem",
-      "orderItemOptions",
-      "orderItemOptions.itemOptionValue"
-  })
-  List<OrderItem> findByOrderId(Long orderId);
+    @EntityGraph(
+            attributePaths = {
+                "menuItem",
+                "combo",
+                "combo.items",
+                "combo.items.menuItem",
+                "orderItemOptions",
+                "orderItemOptions.itemOptionValue"
+            })
+    List<OrderItem> findByOrderId(Long orderId);
 
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT oi FROM OrderItem oi WHERE oi.id = :id")
-  @EntityGraph(attributePaths = {
-      "order",
-      "menuItem",
-      "combo",
-      "orderItemOptions",
-      "orderItemOptions.itemOptionValue",
-      "inventoryReservations",
-      "inventoryReservations.inventoryItem"
-  })
-  Optional<OrderItem> findDetailByIdForUpdate(@Param("id") Long id);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT oi FROM OrderItem oi WHERE oi.id = :id")
+    @EntityGraph(
+            attributePaths = {
+                "order",
+                "menuItem",
+                "combo",
+                "orderItemOptions",
+                "orderItemOptions.itemOptionValue",
+                "inventoryReservations",
+                "inventoryReservations.inventoryItem"
+            })
+    Optional<OrderItem> findDetailByIdForUpdate(@Param("id") Long id);
 
-  @Query("""
+    @Query(
+            """
           SELECT oi.menuItem
           FROM OrderItem oi
           JOIN oi.order o
@@ -53,9 +55,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
           GROUP BY oi.menuItem
           ORDER BY SUM(oi.quantity) DESC
           """)
-  List<MenuItem> findPopularAvailableMenuItems(Pageable pageable);
+    List<MenuItem> findPopularAvailableMenuItems(Pageable pageable);
 
-  @Query("""
+    @Query(
+            """
           SELECT other.menuItem
           FROM OrderItem base
           JOIN base.order o
@@ -75,7 +78,5 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
           GROUP BY other.menuItem
           ORDER BY COUNT(other.menuItem.id) DESC
           """)
-  List<MenuItem> findCrossSellAvailableMenuItems(
-      @Param("itemId") Long itemId,
-      Pageable pageable);
+    List<MenuItem> findCrossSellAvailableMenuItems(@Param("itemId") Long itemId, Pageable pageable);
 }

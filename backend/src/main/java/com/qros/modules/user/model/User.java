@@ -1,22 +1,21 @@
 package com.qros.modules.user.model;
 
-import com.qros.shared.entity.BaseEntity;
-import jakarta.persistence.*;
-import lombok.*;
-import lombok.experimental.SuperBuilder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.qros.modules.user.model.enums.UserRole;
+import com.qros.modules.user.model.enums.UserStatus;
+import com.qros.shared.entity.BaseEntity;
+import jakarta.persistence.*;
+import java.util.Collection;
+import java.util.Collections;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
 
-import java.util.Collection;
-import java.util.Collections;
-
-import com.qros.modules.user.model.enums.UserRole;
-import com.qros.modules.user.model.enums.UserStatus;
 /**
  * User - Entity representing a system user (Staff, Manager, or Chef).
  * Implements Spring Security's UserDetails for authentication and authorization.
@@ -30,7 +29,7 @@ import com.qros.modules.user.model.enums.UserStatus;
 @SuperBuilder
 @SQLDelete(sql = "UPDATE users SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User extends BaseEntity implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

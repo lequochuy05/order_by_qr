@@ -2,14 +2,11 @@ package com.qros.modules.order.service;
 
 import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.menu.model.Combo;
-import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.ItemOptionValueRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import com.qros.shared.event.DomainEvents.*;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
@@ -35,18 +32,13 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
@@ -57,6 +49,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -93,38 +91,26 @@ public class OrderCreationService {
     public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
-        TableSession session = tableSessionService.requireOpenSessionForOrdering(
-                request.tableCode(),
-                request.sessionToken());
+        TableSession session =
+                tableSessionService.requireOpenSessionForOrdering(request.tableCode(), request.sessionToken());
 
         DiningTable table = Optional.ofNullable(session.getTable())
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.TABLE_CODE_INVALID,
                         "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
 
-        return createOrder(
-                table,
-                session,
-                request.items(),
-                request.combos(),
-                BatchSource.QR);
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.QR);
     }
 
     @Transactional
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
-        DiningTable table = tableRepository.findByIdForUpdate(request.tableId())
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.TABLE_NOT_FOUND,
-                        "Không tìm thấy thông tin bàn."));
+        DiningTable table = tableRepository
+                .findByIdForUpdate(request.tableId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy thông tin bàn."));
 
-        return createOrder(
-                table,
-                null,
-                request.items(),
-                request.combos(),
-                BatchSource.STAFF);
+        return createOrder(table, null, request.items(), request.combos(), BatchSource.STAFF);
     }
 
     private OrderResponse createOrder(
@@ -137,10 +123,8 @@ public class OrderCreationService {
         ensureNoPaymentInProgress(order);
         orderValidator.validateTableAcceptsOrders(table);
 
-        OrderBatch batch = OrderBatch.builder()
-                .submittedAt(AppTime.now())
-                .source(source)
-                .build();
+        OrderBatch batch =
+                OrderBatch.builder().submittedAt(AppTime.now()).source(source).build();
 
         order.addBatch(batch);
 
@@ -173,13 +157,14 @@ public class OrderCreationService {
     private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {
         if (session != null) {
             List<Order> activeSessionOrders = orderRepository.findActiveByTableSessionIdForUpdate(
-                    session.getId(),
-                    List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+                    session.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
 
             if (!activeSessionOrders.isEmpty()) {
                 if (activeSessionOrders.size() > 1) {
-                    log.warn("Table session {} has {} active orders. Using the latest one.",
-                            session.getId(), activeSessionOrders.size());
+                    log.warn(
+                            "Table session {} has {} active orders. Using the latest one.",
+                            session.getId(),
+                            activeSessionOrders.size());
                 }
 
                 return activeSessionOrders.get(0);
@@ -187,13 +172,11 @@ public class OrderCreationService {
         }
 
         List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
-                table.getId(),
-                List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+                table.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
 
         if (!activeOrders.isEmpty()) {
             if (activeOrders.size() > 1) {
-                log.warn("Table {} has {} active orders. Using the latest one.",
-                        table.getId(), activeOrders.size());
+                log.warn("Table {} has {} active orders. Using the latest one.", table.getId(), activeOrders.size());
             }
 
             Order activeOrder = activeOrders.get(0);
@@ -223,9 +206,8 @@ public class OrderCreationService {
             return;
         }
 
-        boolean hasPendingPayment = paymentTransactionRepository.existsByOrderIdAndStatus(
-                order.getId(),
-                PaymentTransactionStatus.PENDING);
+        boolean hasPendingPayment =
+                paymentTransactionRepository.existsByOrderIdAndStatus(order.getId(), PaymentTransactionStatus.PENDING);
 
         if (hasPendingPayment) {
             throw new BusinessException(
@@ -239,8 +221,8 @@ public class OrderCreationService {
             return;
         }
 
-        for (PaymentTransaction transaction : paymentTransactionRepository
-                .findPendingOnlineTransactionsByOrderId(orderId)) {
+        for (PaymentTransaction transaction :
+                paymentTransactionRepository.findPendingOnlineTransactionsByOrderId(orderId)) {
             transaction.setStatus(PaymentTransactionStatus.EXPIRED);
             transaction.setFailureReason("Expired because the order changed after payment link creation");
             transaction.setUpdatedAt(AppTime.now());
@@ -257,18 +239,13 @@ public class OrderCreationService {
     }
 
     private void buildOrderItems(
-            List<OrderItemRequest> items,
-            Order order,
-            OrderBatch batch,
-            Map<OrderItem, Integer> quantitiesToReserve) {
+            List<OrderItemRequest> items, Order order, OrderBatch batch, Map<OrderItem, Integer> quantitiesToReserve) {
         if (items == null || items.isEmpty()) {
             return;
         }
 
-        Set<Long> menuItemIds = items.stream()
-                .map(OrderItemRequest::menuItemId)
-                .collect(Collectors.toSet());
-        
+        Set<Long> menuItemIds = items.stream().map(OrderItemRequest::menuItemId).collect(Collectors.toSet());
+
         Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
         Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
@@ -278,9 +255,8 @@ public class OrderCreationService {
                     .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
             orderValidator.validateMenuItemOrderable(menuItem);
 
-            List<Long> selectedOptionValueIds = itemRequest.selectedOptionValueIds() == null
-                    ? List.of()
-                    : itemRequest.selectedOptionValueIds();
+            List<Long> selectedOptionValueIds =
+                    itemRequest.selectedOptionValueIds() == null ? List.of() : itemRequest.selectedOptionValueIds();
 
             validateSelectedOptions(menuItem, selectedOptionValueIds);
 
@@ -298,8 +274,8 @@ public class OrderCreationService {
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getMenuItem() != null)
                     .filter(item -> Objects.equals(item.getMenuItem().getId(), menuItem.getId()))
-                    .filter(item -> Objects.equals(normalizeNotes(item.getNotes()),
-                            normalizeNotes(itemRequest.notes())))
+                    .filter(item ->
+                            Objects.equals(normalizeNotes(item.getNotes()), normalizeNotes(itemRequest.notes())))
                     .filter(item -> checkOptionsMatch(item.getOrderItemOptions(), selectedOptionValueIds))
                     .findFirst();
 
@@ -349,8 +325,7 @@ public class OrderCreationService {
     }
 
     private List<ItemOptionValue> resolveSelectedValues(
-            List<Long> selectedOptionValueIds,
-            Map<Long, ItemOptionValue> selectedValuesById) {
+            List<Long> selectedOptionValueIds, Map<Long, ItemOptionValue> selectedValuesById) {
         if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
             return List.of();
         }
@@ -370,10 +345,8 @@ public class OrderCreationService {
             return;
         }
 
-        List<Long> comboIds = combos.stream()
-                .map(OrderComboRequest::comboId)
-                .collect(Collectors.toList());
-                
+        List<Long> comboIds = combos.stream().map(OrderComboRequest::comboId).collect(Collectors.toList());
+
         java.util.Map<Long, Combo> combosMap = comboRepository.findAllByIdInWithItems(comboIds).stream()
                 .collect(Collectors.toMap(Combo::getId, c -> c));
 
@@ -386,8 +359,8 @@ public class OrderCreationService {
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getCombo() != null)
                     .filter(item -> Objects.equals(item.getCombo().getId(), combo.getId()))
-                    .filter(item -> Objects.equals(normalizeNotes(item.getNotes()),
-                            normalizeNotes(comboRequest.notes())))
+                    .filter(item ->
+                            Objects.equals(normalizeNotes(item.getNotes()), normalizeNotes(comboRequest.notes())))
                     .findFirst();
 
             if (existing.isPresent()) {
@@ -413,9 +386,7 @@ public class OrderCreationService {
     }
 
     private void mergeExistingItem(
-            OrderItem existingItem,
-            Integer additionalQuantity,
-            Map<OrderItem, Integer> quantitiesToReserve) {
+            OrderItem existingItem, Integer additionalQuantity, Map<OrderItem, Integer> quantitiesToReserve) {
 
         quantitiesToReserve.merge(existingItem, additionalQuantity, Integer::sum);
 
@@ -435,13 +406,12 @@ public class OrderCreationService {
         menuItem.getItemOptions().stream()
                 .filter(option -> Boolean.TRUE.equals(option.getRequired()))
                 .forEach(option -> {
-                    boolean selected = option.getOptionValues().stream()
-                            .anyMatch(value -> selectedIds.contains(value.getId()));
+                    boolean selected =
+                            option.getOptionValues().stream().anyMatch(value -> selectedIds.contains(value.getId()));
 
                     if (!selected) {
                         throw new BusinessException(
-                                ErrorCode.INVALID_REQUEST,
-                                "Required option selection missing: " + option.getName());
+                                ErrorCode.INVALID_REQUEST, "Required option selection missing: " + option.getName());
                     }
                 });
     }
@@ -455,8 +425,7 @@ public class OrderCreationService {
 
             if (selectedCount > maxSelection) {
                 throw new BusinessException(
-                        ErrorCode.INVALID_REQUEST,
-                        "Too many option selections for: " + option.getName());
+                        ErrorCode.INVALID_REQUEST, "Too many option selections for: " + option.getName());
             }
         });
     }
@@ -475,8 +444,7 @@ public class OrderCreationService {
 
         if (!allBelongToMenuItem) {
             throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST,
-                    "Selected option contains invalid value for this menu item.");
+                    ErrorCode.INVALID_REQUEST, "Selected option contains invalid value for this menu item.");
         }
     }
 
@@ -485,14 +453,10 @@ public class OrderCreationService {
             return;
         }
 
-        Set<Long> foundIds = selectedValues.stream()
-                .map(ItemOptionValue::getId)
-                .collect(Collectors.toSet());
+        Set<Long> foundIds = selectedValues.stream().map(ItemOptionValue::getId).collect(Collectors.toSet());
 
         if (!foundIds.containsAll(requestedIds)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST,
-                    "Selected option value does not exist.");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Selected option value does not exist.");
         }
     }
 
@@ -503,9 +467,7 @@ public class OrderCreationService {
                 .map(ItemOptionValue::getId)
                 .collect(Collectors.toSet());
 
-        Set<Long> incoming = incomingIds == null
-                ? Set.of()
-                : new HashSet<>(incomingIds);
+        Set<Long> incoming = incomingIds == null ? Set.of() : new HashSet<>(incomingIds);
 
         return existingIds.equals(incoming);
     }

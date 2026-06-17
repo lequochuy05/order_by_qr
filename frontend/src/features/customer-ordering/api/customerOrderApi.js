@@ -1,1 +1,1 @@
-export { menuService as customerOrderApi } from './menuService.js'
+export { menuService as customerOrderApi } from './menuService.js';

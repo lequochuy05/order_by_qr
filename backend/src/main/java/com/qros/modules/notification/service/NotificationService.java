@@ -14,7 +14,7 @@ public interface NotificationService {
 
     /**
      * Notifies admin clients of changes in the menu structure.
-     * 
+     *
      * @param type Change type (e.g., "created", "updated", "deleted")
      * @param id   The affected menu item identifier
      */
@@ -27,7 +27,7 @@ public interface NotificationService {
 
     /**
      * Notifies clients of category lifecycle events.
-     * 
+     *
      * @param event Event type
      * @param id    Category ID
      */
@@ -35,7 +35,7 @@ public interface NotificationService {
 
     /**
      * Notifies clients of combo lifecycle events.
-     * 
+     *
      * @param event Event type
      * @param id    Combo ID
      */
@@ -43,7 +43,7 @@ public interface NotificationService {
 
     /**
      * Notifies the specific table/order of a successful payment transaction.
-     * 
+     *
      * @param orderId       Target order
      * @param transactionId Successful transaction reference
      */

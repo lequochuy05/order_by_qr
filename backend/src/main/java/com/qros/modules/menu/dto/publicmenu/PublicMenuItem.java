@@ -1,7 +1,6 @@
 package com.qros.modules.menu.dto.publicmenu;
 
 import com.qros.modules.menu.dto.summary.CategorySummary;
-
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -14,6 +13,4 @@ public record PublicMenuItem(
         CategorySummary category,
         List<PublicItemOption> itemOptions,
         Boolean available,
-        Integer displayOrder
-) {
-}
+        Integer displayOrder) {}

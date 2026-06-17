@@ -1,19 +1,19 @@
 package com.qros.modules.order.model;
 
-import com.qros.shared.entity.BaseEntity;
+import com.qros.modules.inventory.model.OrderItemInventoryReservation;
+import com.qros.modules.menu.model.Combo;
+import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderItemType;
-import com.qros.modules.inventory.model.OrderItemInventoryReservation;
-import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.model.Combo;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import lombok.experimental.SuperBuilder;
-import java.util.Set;
-import java.util.LinkedHashSet;
 
 /**
  * OrderItem - Entity representing an individual line item within an order.

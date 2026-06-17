@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import com.qros.shared.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.simp.SimpMessageType;
@@ -15,8 +16,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import com.qros.shared.security.JwtService;
-
 class WebSocketConfigTest {
     private final WebSocketConfig config = new WebSocketConfig(mock(JwtService.class), mock(UserDetailsService.class));
 
@@ -24,7 +23,8 @@ class WebSocketConfigTest {
     void protectedTopicRequiresAuthenticatedUser() {
         Message<byte[]> message = subscribeMessage("/topic/kitchen", null);
 
-        assertThatThrownBy(() -> config.webSocketAuthInterceptor().preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+        assertThatThrownBy(() -> config.webSocketAuthInterceptor()
+                        .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessageContaining("Authentication required");
     }
@@ -35,7 +35,8 @@ class WebSocketConfigTest {
                 "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
         Message<byte[]> message = subscribeMessage("/topic/kitchen", auth);
 
-        assertThatCode(() -> config.webSocketAuthInterceptor().preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+        assertThatCode(() -> config.webSocketAuthInterceptor()
+                        .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .doesNotThrowAnyException();
     }
 
@@ -43,7 +44,8 @@ class WebSocketConfigTest {
     void publicTopicAllowsAnonymousSubscribe() {
         Message<byte[]> message = subscribeMessage("/topic/menu", null);
 
-        assertThatCode(() -> config.webSocketAuthInterceptor().preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+        assertThatCode(() -> config.webSocketAuthInterceptor()
+                        .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .doesNotThrowAnyException();
     }
 

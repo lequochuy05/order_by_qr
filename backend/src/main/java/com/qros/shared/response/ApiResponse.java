@@ -1,15 +1,15 @@
 package com.qros.shared.response;
 
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.time.Instant;
 
 /**
  * ApiResponse - Standardized API response structure for the entire system.
  * Ensures consistent data delivery, status reporting, and error handling.
- * 
+ *
  * @param <T> Type of the data payload
  */
 @Getter
@@ -46,7 +46,7 @@ public class ApiResponse<T> {
 
     /**
      * Creates a successful response with data and a default success message.
-     * 
+     *
      * @param data The data payload
      * @return ApiResponse instance
      */
@@ -61,7 +61,7 @@ public class ApiResponse<T> {
 
     /**
      * Creates a successful response with a custom message and data.
-     * 
+     *
      * @param message Custom success message
      * @param data    The data payload
      * @return ApiResponse instance
@@ -77,7 +77,7 @@ public class ApiResponse<T> {
 
     /**
      * Creates an error response with a specific status code and message.
-     * 
+     *
      * @param status  HTTP-like error status code
      * @param message Descriptive error message
      * @return ApiResponse instance
@@ -102,7 +102,7 @@ public class ApiResponse<T> {
     /**
      * Creates an error response with a custom message and error data (e.g.,
      * validation details).
-     * 
+     *
      * @param message Descriptive error message
      * @param data    Error data payload
      * @return ApiResponse instance
@@ -118,7 +118,7 @@ public class ApiResponse<T> {
 
     /**
      * Creates an error response with a custom message and default 500 status.
-     * 
+     *
      * @param message Descriptive error message
      * @return ApiResponse instance
      */

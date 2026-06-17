@@ -1,5 +1,12 @@
 package com.qros.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
@@ -19,22 +26,14 @@ import com.qros.modules.payment.service.PaymentService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.math.BigDecimal;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PayosServiceImplTest {
@@ -73,19 +72,14 @@ class PayosServiceImplTest {
     @Test
     void createPaymentLinkUsesOrderFinalAmountInsteadOfClientAmount() {
         Order order = payableOrder();
-        PaymentCreateRequest request = new PaymentCreateRequest(
-                1L,
-                PaymentMethod.PAYOS,
-                null,
-                "idem-1");
+        PaymentCreateRequest request = new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, "idem-1");
 
         when(orderSettlementService.prepareForOnlinePayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.empty());
         when(transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-                1L,
-                PaymentMethod.PAYOS,
-                PaymentTransactionStatus.PENDING)).thenReturn(Optional.empty());
+                        1L, PaymentMethod.PAYOS, PaymentTransactionStatus.PENDING))
+                .thenReturn(Optional.empty());
         when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction transaction = invocation.getArgument(0);
             if (transaction.getId() == null) {
@@ -130,11 +124,8 @@ class PayosServiceImplTest {
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
 
-        PaymentCreateResponse response = paymentService.createPaymentLink(new PaymentCreateRequest(
-                1L,
-                PaymentMethod.PAYOS,
-                null,
-                " idem-1 "));
+        PaymentCreateResponse response =
+                paymentService.createPaymentLink(new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, " idem-1 "));
 
         assertThat(response.transactionId()).isEqualTo(88L);
         assertThat(response.idempotencyKey()).isEqualTo("idem-1");
@@ -143,9 +134,7 @@ class PayosServiceImplTest {
 
     @Test
     void confirmPaymentFromWebhookLocksOrderBeforeTransaction() {
-        Order orderReference = Order.builder()
-                .id(1L)
-                .build();
+        Order orderReference = Order.builder().id(1L).build();
         Order lockedOrder = payableOrder();
         PaymentTransaction existing = PaymentTransaction.builder()
                 .id(99L)
@@ -166,11 +155,8 @@ class PayosServiceImplTest {
         when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
         when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(lockedTransaction));
 
-        paymentService.confirmPaymentFromWebhook(new PaymentWebhookResult(
-                99L,
-                BigDecimal.valueOf(125_000),
-                "payos-ref",
-                "{}"));
+        paymentService.confirmPaymentFromWebhook(
+                new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
 
         var ordered = inOrder(transactionRepository, orderSettlementService, paymentCompletionService);
         ordered.verify(transactionRepository).findWithOrderById(99L);
@@ -185,9 +171,7 @@ class PayosServiceImplTest {
 
     @Test
     void confirmPaymentFromWebhookIsIdempotentWhenAlreadyPaid() {
-        Order orderReference = Order.builder()
-                .id(1L)
-                .build();
+        Order orderReference = Order.builder().id(1L).build();
         PaymentTransaction existing = PaymentTransaction.builder()
                 .id(99L)
                 .order(orderReference)
@@ -200,11 +184,8 @@ class PayosServiceImplTest {
         when(orderSettlementService.loadForPayment(1L)).thenReturn(payableOrder());
         when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(existing));
 
-        paymentService.confirmPaymentFromWebhook(new PaymentWebhookResult(
-                99L,
-                BigDecimal.valueOf(125_000),
-                "payos-ref",
-                "{}"));
+        paymentService.confirmPaymentFromWebhook(
+                new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
 
         verify(paymentCompletionService, never()).completeSuccessfulTransaction(any(PaymentTransaction.class));
     }

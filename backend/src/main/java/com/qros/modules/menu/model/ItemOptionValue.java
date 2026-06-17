@@ -1,14 +1,10 @@
 package com.qros.modules.menu.model;
 
 import com.qros.shared.entity.BaseEntity;
-
 import jakarta.persistence.*;
-
+import java.math.BigDecimal;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
-import java.math.BigDecimal;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 

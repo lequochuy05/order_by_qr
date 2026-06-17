@@ -6,6 +6,5 @@ import jakarta.validation.constraints.NotNull;
 
 public record CreateDiningTableRequest(
         @NotBlank(message = "Table number is required") String tableNumber,
-
-        @NotNull(message = "Capacity is required") @Min(value = 1, message = "Capacity must be at least 1 person") Integer capacity) {
-}
+        @NotNull(message = "Capacity is required") @Min(value = 1, message = "Capacity must be at least 1 person")
+                Integer capacity) {}

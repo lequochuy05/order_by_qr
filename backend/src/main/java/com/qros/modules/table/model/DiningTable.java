@@ -1,15 +1,14 @@
 package com.qros.modules.table.model;
 
-import com.qros.shared.entity.BaseEntity;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.qros.modules.table.model.enums.TableStatus;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
-import com.qros.modules.table.model.enums.TableStatus;
 /**
  * DiningTable - Entity representing a physical table in the restaurant.
  * Linked to a unique QR code for customer ordering.
@@ -23,7 +22,7 @@ import com.qros.modules.table.model.enums.TableStatus;
 @AllArgsConstructor
 @SQLDelete(sql = "UPDATE tables SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class DiningTable extends BaseEntity {
 
     @Id

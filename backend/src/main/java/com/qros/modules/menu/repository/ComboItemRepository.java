@@ -9,7 +9,8 @@ public interface ComboItemRepository extends JpaRepository<ComboItem, Long> {
 
     @Modifying
     @Transactional
-    @Query("""
+    @Query(
+            """
         UPDATE ComboItem ci
         SET ci.isDeleted = true
         WHERE ci.combo.id = :comboId
@@ -17,7 +18,8 @@ public interface ComboItemRepository extends JpaRepository<ComboItem, Long> {
     """)
     void softDeleteByComboId(@Param("comboId") Long comboId);
 
-    @Query("""
+    @Query(
+            """
         SELECT COUNT(ci) > 0
         FROM ComboItem ci
         WHERE ci.menuItem.id = :menuItemId

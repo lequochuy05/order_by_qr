@@ -9,5 +9,4 @@ public record RecentOrderResponse(
         BigDecimal finalAmount,
         LocalDateTime createdAt,
         LocalDateTime paymentTime,
-        String tableNumber) {
-}
+        String tableNumber) {}
