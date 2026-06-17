@@ -119,9 +119,12 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        // String message = "Your OTP is: " + rawOtpCode + ". Valid for 5 minutes.";
-        // TODO: gửi SMS sau, hiện tại có thể log tạm khi dev
-        // log.info("OTP for {}: {}", normalizedPhone, rawOtpCode);
+        // TODO: Integrate actual SMS gateway (e.g. Twilio, AWS SNS) in production.
+        // For now, print to console to simulate sending.
+        log.warn("=========================================================");
+        log.warn("📱 SMS GATEWAY NOT CONFIGURED");
+        log.warn("📱 SIMULATED SMS TO {}: 'Your QROS password reset OTP is {}'", normalizedPhone, rawOtpCode);
+        log.warn("=========================================================");
     }
 
     /**

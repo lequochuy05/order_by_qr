@@ -64,15 +64,6 @@ public class PublicMenuController {
         );
     }
 
-    @GetMapping("/menu-items/category/{categoryId}")
-    public ApiResponse<List<PublicMenuItem>> getMenuItemsByCategory(
-            @PathVariable @NonNull Long categoryId
-    ) {
-        return ApiResponse.success(
-                withMenuAvailability(menuItemService.getPublicItemsByCategory(categoryId))
-        );
-    }
-
     @GetMapping("/combos")
     public ApiResponse<List<PublicComboItem>> getCombos() {
         return ApiResponse.success(getAvailableCombos());
