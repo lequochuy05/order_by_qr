@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect, useRef, useCallb
 import wsService from '@shared/lib/websocket.js';
 import { authService } from '@modules/auth/api/authService.js';
 import { setAccessToken } from '@shared/api/httpClient.js';
+import { queryClient } from '@shared/api/queryClient.js';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     wsService.disconnect();
     setAccessToken(null);
+    queryClient.clear();
     authService.logout().catch(() => { });
     setUser(null);
   }, []);

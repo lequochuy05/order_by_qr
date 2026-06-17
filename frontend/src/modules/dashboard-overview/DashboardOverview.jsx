@@ -6,7 +6,7 @@ import {
 import {
     TrendingUp, ShoppingBag, UtensilsCrossed, Clock, Loader2, Sparkles, Banknote
 } from 'lucide-react';
-import { statisticsService } from '@modules/statistics/api/statisticsService.js';
+import { analyticsService } from '@modules/analytics/api/analyticsService.js';
 import { fmtVND, fmtTime } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
@@ -14,7 +14,7 @@ import { addDaysToBusinessDate, getBusinessToday } from '@shared/lib/businessTim
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
-    const [businessToday, setBusinessToday] = useState(getBusinessToday);
+    const [businessToday, setBusinessToday] = useState(getBusinessToday());
 
     // Kpi data
     const [todayRevenue, setTodayRevenue] = useState(0);
@@ -57,7 +57,7 @@ const Dashboard = () => {
             setLoading(true);
             try {
                 const past7Start = addDaysToBusinessDate(businessToday, -6);
-                const dashboard = await statisticsService.getDashboardSummary(
+                const dashboard = await analyticsService.getDashboardSummary(
                     past7Start,
                     businessToday,
                     { signal: controller.signal }
