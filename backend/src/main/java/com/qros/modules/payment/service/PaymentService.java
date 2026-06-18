@@ -14,6 +14,8 @@ import com.qros.modules.payment.mapper.PaymentMapper;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.user.model.User;
+import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -41,19 +43,30 @@ public class PaymentService {
     private final PaymentMapper paymentMapper;
     private final PaymentCompletionService paymentCompletionService;
     private final OrderSettlementService orderSettlementService;
+    private final UserRepository userRepository;
 
     private final TransactionSideEffectService sideEffects;
 
     @Transactional
-    public PaymentCreateResponse createPaymentLink(@NonNull PaymentCreateRequest request) {
+    public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId) {
+        PaymentMethod method = request.paymentMethod();
+
+        if (method == PaymentMethod.CASH) {
+            return settleCashPayment(request, userId);
+        }
+
+        return createOnlinePayment(request);
+    }
+
+    private PaymentCreateResponse createOnlinePayment(@NonNull PaymentCreateRequest request) {
         PaymentMethod method = request.paymentMethod();
 
         if (method == PaymentMethod.CASH) {
             throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID, "CASH payment must be settled through order payment API");
+                    ErrorCode.ORDER_PAYMENT_INVALID, "CASH payment must be settled through payment API");
         }
 
-        Order order = orderSettlementService.prepareForOnlinePayment(
+        Order order = orderSettlementService.prepareForPayment(
                 Objects.requireNonNull(request.orderId()), request.voucherCode());
 
         PaymentGateway gateway = gatewayResolver.resolve(method);
@@ -125,6 +138,41 @@ public class PaymentService {
 
             throw e;
         }
+    }
+
+    private PaymentCreateResponse settleCashPayment(@NonNull PaymentCreateRequest request, Long userId) {
+        Long orderId = Objects.requireNonNull(request.orderId());
+        String idempotencyKey = cashIdempotencyKey(orderId, request.idempotencyKey());
+
+        Optional<PaymentTransaction> existingByKey = transactionRepository.findFirstByIdempotencyKey(idempotencyKey);
+        if (existingByKey.isPresent()) {
+            return reuseIdempotentTransaction(existingByKey.get(), orderId, PaymentMethod.CASH);
+        }
+
+        Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode());
+        BigDecimal payableAmount = currentFinalAmount(order);
+
+        User currentUser = resolveUser(userId);
+
+        PaymentTransaction transaction = PaymentTransaction.builder()
+                .order(order)
+                .amount(payableAmount)
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.CASH)
+                .createdBy(currentUser)
+                .businessDate(order.getBusinessDate() != null ? order.getBusinessDate() : AppTime.today())
+                .idempotencyKey(idempotencyKey)
+                .providerPayload("{\"provider\":\"CASH\",\"event\":\"MANUAL_PAYMENT\",\"reference\":\"\"}")
+                .build();
+
+        transaction = transactionRepository.save(transaction);
+
+        paymentCompletionService.completeSuccessfulTransaction(transaction);
+        cancelPendingOnlineTransactions(order.getId());
+
+        log.info("Order #{} settled via CASH through unified payment API", order.getId());
+
+        return paymentMapper.toCreateResponse(transaction);
     }
 
     @Transactional
@@ -290,6 +338,52 @@ public class PaymentService {
         }
 
         return paymentMapper.toCreateResponse(transaction);
+    }
+
+    private PaymentCreateResponse reuseIdempotentTransaction(
+            PaymentTransaction transaction, Long orderId, PaymentMethod method) {
+
+        boolean sameOrder = transaction.getOrder() != null
+                && Objects.equals(transaction.getOrder().getId(), orderId);
+
+        boolean sameMethod = transaction.getPaymentMethod() == method;
+
+        if (!sameOrder || !sameMethod) {
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
+                    "Idempotency key is already associated with another payment request");
+        }
+
+        if (transaction.getStatus() == PaymentTransactionStatus.FAILED
+                || transaction.getStatus() == PaymentTransactionStatus.CANCELLED
+                || transaction.getStatus() == PaymentTransactionStatus.EXPIRED) {
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
+                    "Idempotency key is already associated with an inactive payment transaction");
+        }
+
+        return paymentMapper.toCreateResponse(transaction);
+    }
+
+    private void cancelPendingOnlineTransactions(Long orderId) {
+        for (PaymentTransaction transaction : transactionRepository.findPendingOnlineTransactionsByOrderId(orderId)) {
+            transaction.setStatus(PaymentTransactionStatus.CANCELLED);
+            transaction.setFailureReason("Cancelled because order was paid by cash");
+            transaction.setUpdatedAt(AppTime.now());
+        }
+    }
+
+    private User resolveUser(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    private String cashIdempotencyKey(Long orderId, String requestedKey) {
+        String normalizedKey = normalizeIdempotencyKey(requestedKey);
+        return normalizedKey != null ? normalizedKey : "cash:order:" + orderId;
     }
 
     private void registerRollbackCancellation(PaymentTransaction transaction, PaymentGateway gateway) {

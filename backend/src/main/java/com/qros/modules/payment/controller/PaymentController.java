@@ -5,23 +5,29 @@ import com.qros.modules.payment.dto.request.PaymentCreateRequest;
 import com.qros.modules.payment.dto.response.PaymentCreateResponse;
 import com.qros.modules.payment.dto.response.PaymentTransactionResponse;
 import com.qros.modules.payment.service.PaymentService;
+import com.qros.modules.user.service.CurrentUserService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/payments")
+@RequestMapping(ApiRoutes.PAYMENTS)
 @RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final CurrentUserService currentUserService;
 
     @PostMapping
-    public ApiResponse<PaymentCreateResponse> createPaymentLink(
-            @Valid @RequestBody @NonNull PaymentCreateRequest request) {
-        return ApiResponse.success("Payment link initialized successfully", paymentService.createPaymentLink(request));
+    public ApiResponse<PaymentCreateResponse> createPayment(
+            @Valid @RequestBody @NonNull PaymentCreateRequest request, @NonNull Principal principal) {
+        Long currentUserId = currentUserService.getCurrentUserId(principal.getName());
+        return ApiResponse.success(
+                "Payment initialized successfully", paymentService.createPayment(request, currentUserId));
     }
 
     @PostMapping("/{transactionId}/cancel")

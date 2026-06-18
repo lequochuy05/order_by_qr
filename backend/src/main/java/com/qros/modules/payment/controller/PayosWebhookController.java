@@ -3,6 +3,7 @@ package com.qros.modules.payment.controller;
 import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
 import com.qros.modules.payment.gateway.PayosGateway;
 import com.qros.modules.payment.service.PaymentService;
+import com.qros.shared.constants.ApiRoutes;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +13,7 @@ import vn.payos.model.webhooks.Webhook;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/webhooks")
+@RequestMapping(ApiRoutes.WEBHOOKS)
 @RequiredArgsConstructor
 public class PayosWebhookController {
 
