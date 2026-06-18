@@ -16,6 +16,8 @@ import com.qros.modules.analytics.repository.projection.DashboardSummaryProjecti
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
 import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
+import com.qros.modules.order.dto.response.OrderResponse;
+import com.qros.modules.order.service.OrderService;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -24,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -45,6 +48,7 @@ public class AnalyticsService {
 
     private final AnalyticsQueryRepository analyticsQueryRepository;
     private final AnalyticsForecastService analyticsForecastService;
+    private final OrderService orderService;
 
     @Cacheable(value = CacheNames.ANALYTICS, key = "'dashboard:' + #from + ':' + #to")
     public DashboardSummaryResponse getDashboardSummary(LocalDate from, LocalDate to) {
@@ -149,6 +153,21 @@ public class AnalyticsService {
      */
     public List<PopularItemForecastResponse> getPopularItemsForecast() {
         return analyticsForecastService.getPopularItemsForecast();
+    }
+
+    public Page<OrderResponse> getOrderHistory(
+            String status,
+            LocalDate from,
+            LocalDate to,
+            String orderId,
+            String tableNumber,
+            @NonNull Pageable pageable) {
+        return orderService.getOrderHistory(status, from, to, orderId, tableNumber, pageable);
+    }
+
+    public Map<String, Object> getOrderAnalytics(
+            String status, LocalDate from, LocalDate to, String orderId, String tableNumber) {
+        return orderService.getOrderAnalytics(status, from, to, orderId, tableNumber);
     }
 
     private List<RecentOrderResponse> getRecentOrders(

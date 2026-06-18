@@ -2,21 +2,23 @@ package com.qros.modules.analytics.controller;
 
 import com.qros.modules.analytics.dto.response.DashboardSummaryResponse;
 import com.qros.modules.analytics.dto.response.OrderDetailResponse;
-import com.qros.modules.analytics.dto.response.PopularItemForecastResponse;
-import com.qros.modules.analytics.dto.response.RevenueForecastResponse;
 import com.qros.modules.analytics.dto.response.RevenuePointResponse;
 import com.qros.modules.analytics.dto.response.SalesTrendPointResponse;
 import com.qros.modules.analytics.dto.response.TopSellingItemResponse;
 import com.qros.modules.analytics.dto.response.UserPerformanceResponse;
 import com.qros.modules.analytics.service.AnalyticsService;
+import com.qros.modules.order.dto.response.OrderResponse;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
@@ -27,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/analytics")
+@RequestMapping(ApiRoutes.ANALYTICS)
 @RequiredArgsConstructor
 public class AnalyticsController {
 
@@ -84,13 +86,24 @@ public class AnalyticsController {
         return ApiResponse.success(analyticsService.getSalesTrend(from, to));
     }
 
-    @GetMapping("/forecast/revenue")
-    public ApiResponse<List<RevenueForecastResponse>> revenueForecast() {
-        return ApiResponse.success(analyticsService.getRevenueForecast());
+    @GetMapping("/orders/history")
+    public ApiResponse<Page<OrderResponse>> getOrderHistory(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Direction.DESC) Pageable pageable) {
+        return ApiResponse.success(analyticsService.getOrderHistory(status, from, to, orderId, tableNumber, pageable));
     }
 
-    @GetMapping("/forecast/popular-items")
-    public ApiResponse<List<PopularItemForecastResponse>> popularItemsForecast() {
-        return ApiResponse.success(analyticsService.getPopularItemsForecast());
+    @GetMapping("/orders/summary")
+    public ApiResponse<Map<String, Object>> getOrderAnalytics(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String orderId,
+            @RequestParam(required = false) String tableNumber) {
+        return ApiResponse.success(analyticsService.getOrderAnalytics(status, from, to, orderId, tableNumber));
     }
 }
