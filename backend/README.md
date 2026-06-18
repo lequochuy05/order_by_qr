@@ -180,33 +180,33 @@ Roles hiện có:
 
 Một số nhóm route theo `SecurityRoutes`:
 
-- Public: `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`, `/api/public/**`, `/api/webhooks/**`, `/ws/**`, `/actuator/health`.
-- Self profile: `/api/users/me`, `/api/users/me/password`, `/api/users/me/avatar`.
+- Public: `/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/logout`, `/api/v1/public/**`, `/api/v1/webhooks/**`, `/ws/**`, `/actuator/health`.
+- Self profile: `/api/v1/users/me`, `/api/v1/users/me/password`, `/api/v1/users/me/avatar`.
 - Manager-only write: user, menu, category, combo, inventory, table, voucher, settings, AI chat.
 - Operation: orders, tables, kitchen, inventory, analytics.
-- Payment: `/api/payments/**`.
+- Payment: `/api/v1/payments/**`.
 
 ## API map
 
 | Nhóm | Endpoint chính | Mô tả |
 | --- | --- | --- |
-| Auth | `/api/auth/*` | Login, refresh, logout, reset mật khẩu email/phone |
-| Public customer | `/api/public/*` | Menu public, table by code, table session, current order, order preview/create |
-| AI | `POST /api/ai/chat` | Chat gợi ý món qua Gemini |
-| Categories | `/api/categories` | CRUD danh mục, search, upload ảnh |
-| Menu items | `/api/menu-items` | CRUD món, lọc theo danh mục, upload ảnh |
-| Combos | `/api/combos` | CRUD combo, active combos, toggle active |
-| Inventory | `/api/inventory/*` | Nguyên liệu, công thức, nhập/xuất kho, reservation |
-| Tables | `/api/tables` | CRUD bàn, lấy theo code, regenerate QR |
-| Orders | `/api/orders` | Tạo đơn, history, analytics, active, current order, preview, pay, reconcile |
-| Kitchen | `/api/kitchen` | Danh sách món bếp, update item status/prepared |
-| Payments | `/api/payments/payos` | Tạo link PayOS, hủy link, đồng bộ trạng thái |
-| Webhooks | `/api/webhooks/payos` | PayOS callback |
-| Vouchers | `/api/vouchers` | CRUD voucher, validate code |
-| Analytics | `/api/analytics` | Doanh thu, nhân viên, đơn, top món, trend, forecast, dashboard |
-| Settings | `/api/settings` | Xem/cập nhật cấu hình nhà hàng |
-| Users | `/api/users` | Hồ sơ cá nhân, avatar, nhân viên, reset password |
-| Recommendations | `/api/recommendations` | API recommendation public/admin |
+| Auth | `/api/v1/auth/*` | Login, refresh, logout, reset mật khẩu email/phone |
+| Public customer | `/api/v1/public/*` | Menu public, table by code, table session, current order, order preview/create |
+| AI | `POST /api/v1/ai/chat` | Chat gợi ý món qua Gemini |
+| Categories | `/api/v1/categories` | CRUD danh mục, search, upload ảnh |
+| Menu items | `/api/v1/menu-items` | CRUD món, lọc theo danh mục, upload ảnh |
+| Combos | `/api/v1/combos` | CRUD combo, active combos, toggle active |
+| Inventory | `/api/v1/inventory/*` | Nguyên liệu, công thức, nhập/xuất kho, reservation |
+| Tables | `/api/v1/tables` | CRUD bàn, lấy theo code, regenerate QR |
+| Orders | `/api/v1/orders` | Tạo đơn, active, current order, preview, reconcile |
+| Kitchen | `/api/v1/kitchen` | Danh sách món bếp, update item status/prepared |
+| Payments | `/api/v1/payments` | Thanh toán tiền mặt/PayOS, hủy link, đồng bộ trạng thái |
+| Webhooks | `/api/v1/webhooks/payos` | PayOS callback |
+| Vouchers | `/api/v1/vouchers` | CRUD voucher, validate code |
+| Analytics | `/api/v1/analytics` | Doanh thu, nhân viên, đơn, top món, trend, forecast, dashboard |
+| Settings | `/api/v1/settings` | Xem/cập nhật cấu hình nhà hàng |
+| Users | `/api/v1/users` | Hồ sơ cá nhân, avatar, nhân viên, reset password |
+| Recommendations | `/api/v1/recommendations` | API recommendation public/admin |
 
 Mọi response chuẩn được bọc bởi `ApiResponse<T>` trừ webhook PayOS trả `ResponseEntity<Map<...>>`.
 
@@ -256,18 +256,23 @@ Các protected topic sẽ từ chối subscribe nếu thiếu token hoặc role 
 
 ## Thanh toán
 
-PayOS flow chính:
+Payment flow chính:
 
-- `POST /api/payments/payos`: tạo payment link cho order.
-- `GET /api/payments/payos/{transactionId}`: đồng bộ trạng thái từ PayOS.
-- `POST /api/payments/payos/{transactionId}/cancellation`: hủy link thanh toán.
-- `POST /api/webhooks/payos`: nhận webhook PayOS.
+- `POST /api/v1/payments`: tạo thanh toán với `paymentMethod` là `PAYOS` hoặc `CASH`.
+- `GET /api/v1/payments/{transactionId}`: đồng bộ trạng thái giao dịch online.
+- `POST /api/v1/payments/{transactionId}/cancel`: hủy link thanh toán online.
+- `POST /api/v1/webhooks/payos`: nhận webhook PayOS.
 - `PaymentCleanupService`: chạy mỗi 5 phút để xử lý giao dịch `PENDING` bị treo.
 
-Thanh toán tiền mặt dùng:
+Thanh toán tiền mặt dùng cùng endpoint:
 
 ```text
-POST /api/orders/{orderId}/pay
+POST /api/v1/payments
+{
+  "orderId": 123,
+  "paymentMethod": "CASH",
+  "voucherCode": null
+}
 ```
 
 ## Trạng thái đơn và món

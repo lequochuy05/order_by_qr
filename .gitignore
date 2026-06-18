@@ -15,6 +15,7 @@ buildNumber.properties
 node_modules/
 dist/
 dist-ssr/
+dev-dist/
 *.local
 .eslintcache
 .stylelintcache

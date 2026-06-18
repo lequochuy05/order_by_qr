@@ -192,14 +192,14 @@ npm run dev
 
 | Nhóm | Endpoint |
 | --- | --- |
-| Auth | `/api/auth/*` |
-| Public customer | `/api/public/*` |
-| AI | `/api/ai/*` |
-| Menu/category/combo | `/api/categories`, `/api/menu-items`, `/api/combos` |
-| Table/order/kitchen | `/api/tables`, `/api/orders`, `/api/kitchen` |
-| Payment | `/api/payments/payos`, `/api/webhooks/payos` |
-| Inventory | `/api/inventory/*` |
-| Voucher/analytics/settings/users | `/api/vouchers`, `/api/analytics`, `/api/settings`, `/api/users` |
+| Auth | `/api/v1/auth/*` |
+| Public customer | `/api/v1/public/*` |
+| AI | `/api/v1/ai/*` |
+| Menu/category/combo | `/api/v1/categories`, `/api/v1/menu-items`, `/api/v1/combos` |
+| Table/order/kitchen | `/api/v1/tables`, `/api/v1/orders`, `/api/v1/kitchen` |
+| Payment | `/api/v1/payments`, `/api/v1/webhooks/payos` |
+| Inventory | `/api/v1/inventory/*` |
+| Voucher/analytics/settings/users | `/api/v1/vouchers`, `/api/v1/analytics`, `/api/v1/settings`, `/api/v1/users` |
 
 ## Database và migration
 
