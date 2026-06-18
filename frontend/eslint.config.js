@@ -30,7 +30,7 @@ const layerImportRule = (restrictedLayers) => [
 ]
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'dev-dist']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

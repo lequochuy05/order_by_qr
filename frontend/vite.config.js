@@ -1,13 +1,105 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const isPublicApiGetRequest = ({ request, url }) =>
+  request.method === 'GET' &&
+  (url.pathname.startsWith('/api/v1/public/') ||
+    url.pathname.startsWith('/api/v1/recommendations/'));
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-*.png'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
+        runtimeCaching: [
+          {
+            urlPattern: isPublicApiGetRequest,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'public-api-cache',
+              networkTimeoutSeconds: 10,
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60,
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/res\.cloudinary\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cloudinary-images',
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/ui-avatars\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'ui-avatars',
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+        ],
+      },
+      manifest: {
+        name: 'Order by QR - Hệ thống gọi món thông minh',
+        short_name: 'Order by QR',
+        description: 'Hệ thống gọi món bằng mã QR cho nhà hàng',
+        theme_color: '#EA580C',
+        background_color: '#FAFAFA',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        scope: '/',
+        start_url: '/',
+        lang: 'vi',
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: '/pwa-512x512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -29,7 +121,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (id.includes('/@tensorflow/')) return 'vendor-tensorflow';
           if (
             id.includes('/react/') ||
             id.includes('/react-dom/') ||
