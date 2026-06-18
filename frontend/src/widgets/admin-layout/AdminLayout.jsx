@@ -5,8 +5,9 @@ import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import AdminFooter from './AdminFooter';
+import { ErrorBoundary } from '@shared/ui';
 
-const AdminLayout = () => {
+const AdminLayoutContent = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -42,5 +43,11 @@ const AdminLayout = () => {
     </div>
   );
 };
+
+const AdminLayout = () => (
+  <ErrorBoundary>
+    <AdminLayoutContent />
+  </ErrorBoundary>
+);
 
 export default AdminLayout;

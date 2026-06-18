@@ -2,9 +2,14 @@ import axios from 'axios';
 
 let accessToken = null;
 let refreshPromise = null;
+const API_PREFIX = '/api/v1';
+const configuredApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const API_BASE_URL = configuredApiUrl.endsWith(API_PREFIX)
+  ? configuredApiUrl
+  : `${configuredApiUrl}${API_PREFIX}`;
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -12,7 +17,7 @@ const api = axios.create({
 });
 
 const authClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -25,25 +30,12 @@ export const setAccessToken = (token) => {
 
 export const getAccessToken = () => accessToken;
 
-const normalizeApiUrl = (config) => {
-  if (config.url && !config.url.startsWith('/api') && !config.url.startsWith('http')) {
-    config.url = '/api' + (config.url.startsWith('/') ? '' : '/') + config.url;
-  }
-};
-
 api.interceptors.request.use((config) => {
-  normalizeApiUrl(config);
-
   if (config.skipAuth) {
     delete config.headers.Authorization;
   } else if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
-  return config;
-});
-
-authClient.interceptors.request.use((config) => {
-  normalizeApiUrl(config);
   return config;
 });
 
@@ -110,12 +102,7 @@ export const refreshAccessToken = async () => {
 };
 
 const isAuthEndpoint = (url = '') =>
-  url.includes('/auth/login') ||
-  url.includes('/auth/refresh') ||
-  url.includes('/auth/logout') ||
-  url.includes('/users/login') ||
-  url.includes('/users/refresh') ||
-  url.includes('/users/logout');
+  url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout');
 
 // Response interceptor: Tự động bóc tách ApiResponse<T>
 api.interceptors.response.use(unwrapApiResponse, async (error) => {

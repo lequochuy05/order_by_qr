@@ -22,9 +22,10 @@ import {
   getOrderSubtotalAmount,
 } from '@shared/lib/orderMoney.js';
 import SharedModal from '@shared/ui/SharedModal.jsx';
+import { ErrorBoundary } from '@shared/ui';
 import { toast } from 'react-hot-toast';
 
-const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
+const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
   const [voucherCode, setVoucherCode] = useState('');
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -190,7 +191,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     setPayosLoading(true);
     setError('');
     try {
-      const data = await paymentService.createPaymentLink(order.id, voucherCode);
+      const data = await paymentService.createPayment(order.id, 'PAYOS', voucherCode || null);
       setPayosData(data);
       setPayosStatus('waiting');
       setPaymentMethod('PAYOS');
@@ -377,7 +378,7 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     if (!confirmed) return;
     try {
       const finalVoucher = voucherCode.trim() === '' ? null : voucherCode;
-      await orderService.payOrder(order.id, finalVoucher);
+      await paymentService.createPayment(order.id, 'CASH', finalVoucher);
       await finishPayment('CASH');
     } catch (e) {
       toast.error('Thanh toán thất bại: ' + (e.response?.data?.message || e.message));
@@ -624,5 +625,11 @@ const PaymentModal = ({ isOpen, onClose, table, order, currentUser, onPaymentSuc
     </SharedModal>
   );
 };
+
+const PaymentModal = (props) => (
+  <ErrorBoundary>
+    <PaymentModalContent {...props} />
+  </ErrorBoundary>
+);
 
 export default PaymentModal;

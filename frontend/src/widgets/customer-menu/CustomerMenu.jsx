@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Loader2, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import wsService from '@shared/lib/websocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { fmtVND } from '@shared/lib/formatters.js';
+import { ErrorBoundary } from '@shared/ui';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import {
@@ -48,7 +49,7 @@ const normalizeRestaurantSettings = (settings = {}) => ({
 
 const sessionStorageKey = (tableCode) => `qros:table-session:${tableCode}`;
 
-const MenuPage = () => {
+const CustomerMenuContent = () => {
   const { tableCode: routeTableCode } = useParams();
   const [searchParams] = useSearchParams();
   const tableCode = routeTableCode || searchParams.get('tableCode');
@@ -85,10 +86,33 @@ const MenuPage = () => {
   const { data: recommendationsData } = useRecommendationsQuery(timeContext, weather);
 
   const categories = menuData?.categories || [];
-  const menuItems = menuData?.menuItems || [];
+  const menuItems = useMemo(() => menuData?.menuItems || [], [menuData?.menuItems]);
   const combos = menuData?.combos || [];
   const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
-  const recommendations = recommendationsData || [];
+  const menuItemsById = useMemo(
+    () => new Map(menuItems.map((item) => [item.id, item])),
+    [menuItems],
+  );
+  const hydrateRecommendationItems = useCallback(
+    (items) =>
+      (Array.isArray(items) ? items : [])
+        .map((recommendation) => {
+          const menuItem = menuItemsById.get(recommendation.id);
+          return menuItem
+            ? {
+                ...menuItem,
+                recommendationReason: recommendation.reason,
+                recommendationType: recommendation.type,
+              }
+            : null;
+        })
+        .filter(Boolean),
+    [menuItemsById],
+  );
+  const recommendations = useMemo(
+    () => hydrateRecommendationItems(recommendationsData),
+    [hydrateRecommendationItems, recommendationsData],
+  );
 
   const tableInfo = sessionData?.tableInfo;
   const sessionState = sessionData?.sessionState;
@@ -111,35 +135,38 @@ const MenuPage = () => {
       .reduce((sum, i) => sum + i.qty, 0);
   };
 
-  const loadCrossSellRecommendations = useCallback((itemId) => {
-    if (!itemId) return;
+  const loadCrossSellRecommendations = useCallback(
+    (itemId) => {
+      if (!itemId) return;
 
-    const cached = crossSellCacheRef.current.get(itemId);
-    if (Array.isArray(cached)) {
-      setCrossSellItems(cached);
-      return;
-    }
+      const cached = crossSellCacheRef.current.get(itemId);
+      if (Array.isArray(cached)) {
+        setCrossSellItems(cached);
+        return;
+      }
 
-    if (cached?.then) {
-      cached.then(setCrossSellItems).catch(() => {});
-      return;
-    }
+      if (cached?.then) {
+        cached.then(setCrossSellItems).catch(() => {});
+        return;
+      }
 
-    const request = menuService
-      .getCrossSellRecommendations(itemId)
-      .then((res) => {
-        const items = Array.isArray(res) ? res : [];
-        crossSellCacheRef.current.set(itemId, items);
-        return items;
-      })
-      .catch((error) => {
-        crossSellCacheRef.current.delete(itemId);
-        throw error;
-      });
+      const request = menuService
+        .getCrossSellRecommendations(itemId)
+        .then((res) => {
+          const items = hydrateRecommendationItems(res);
+          crossSellCacheRef.current.set(itemId, items);
+          return items;
+        })
+        .catch((error) => {
+          crossSellCacheRef.current.delete(itemId);
+          throw error;
+        });
 
-    crossSellCacheRef.current.set(itemId, request);
-    request.then(setCrossSellItems).catch(() => {});
-  }, []);
+      crossSellCacheRef.current.set(itemId, request);
+      request.then(setCrossSellItems).catch(() => {});
+    },
+    [hydrateRecommendationItems],
+  );
 
   // WS status via listener (no polling)
   useEffect(() => {
@@ -697,4 +724,10 @@ const MenuPage = () => {
   );
 };
 
-export default MenuPage;
+const CustomerMenu = () => (
+  <ErrorBoundary fullScreen>
+    <CustomerMenuContent />
+  </ErrorBoundary>
+);
+
+export default CustomerMenu;

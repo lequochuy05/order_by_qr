@@ -1,4 +1,3 @@
-export { customerOrderApi } from './api/customerOrderApi.js';
 export { menuService } from './api/menuService.js';
 export { default as AddToCartButton } from './ui/AddToCartButton.jsx';
 export { default as CartModal } from './ui/CartModal.jsx';
@@ -11,5 +10,3 @@ export { default as SubmitOrderButton } from './ui/SubmitOrderButton.jsx';
 export * from './api/customerQueries.js';
 export * from './api/customerMutations.js';
 export * from './model/useCart.js';
-export * from './model/useCreateOrder.js';
-export * from './model/useCurrentOrder.js';

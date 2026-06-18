@@ -9,17 +9,17 @@ Frontend QROS là React/Vite SPA cho hai nhóm người dùng:
 
 ## Công nghệ
 
-| Nhóm | Công nghệ |
-| --- | --- |
-| Core | React 19.2, React DOM 19.2, Vite 7.2 |
-| Routing | React Router DOM 7 |
-| UI | Tailwind CSS 4, lucide-react, react-icons, react-hot-toast |
-| Data | TanStack Query 5, Axios, Zustand |
-| Realtime | `@stomp/stompjs`, SockJS |
-| Chart | Recharts |
-| QR | qrcode.react |
-| AI local | TensorFlow.js, optional dish classifier model |
-| Tooling | ESLint 9, Vite manual chunks |
+| Nhóm     | Công nghệ                                                  |
+| -------- | ---------------------------------------------------------- |
+| Core     | React 19.2, React DOM 19.2, Vite 7.2                       |
+| Routing  | React Router DOM 7                                         |
+| UI       | Tailwind CSS 4, lucide-react, react-icons, react-hot-toast |
+| Data     | TanStack Query 5, Axios, Zustand                           |
+| Realtime | `@stomp/stompjs`, SockJS                                   |
+| Chart    | Recharts                                                   |
+| QR       | qrcode.react                                               |
+| AI local | TensorFlow.js, optional dish classifier model              |
+| Tooling  | ESLint 9, Vite manual chunks                               |
 
 ## Cấu trúc
 
@@ -69,10 +69,10 @@ Alias trong `vite.config.js`:
 
 Frontend dùng biến Vite:
 
-| Biến | Mô tả |
-| --- | --- |
-| `VITE_API_URL` | Base URL backend, ví dụ `http://localhost:8080` |
-| `VITE_WS_URL` | SockJS endpoint, ví dụ `http://localhost:8080/ws` |
+| Biến           | Mô tả                                                                  |
+| -------------- | ---------------------------------------------------------------------- |
+| `VITE_API_URL` | Origin backend, ví dụ `http://localhost:8080`; client tự nối `/api/v1` |
+| `VITE_WS_URL`  | SockJS endpoint, ví dụ `http://localhost:8080/ws`                      |
 
 Local development hiện dùng:
 
@@ -88,7 +88,7 @@ VITE_API_URL=https://order-by-qr.onrender.com
 VITE_WS_URL=https://order-by-qr.onrender.com/ws
 ```
 
-Nếu không đặt `VITE_API_URL`, Axios sẽ gọi relative path `/api/...`; Vite dev server đã proxy `/api` và `/ws` sang `http://localhost:8080`.
+Nếu không đặt `VITE_API_URL`, Axios sẽ gọi relative path `/api/v1/...`; Vite dev server đã proxy `/api/v1` và `/ws` sang `http://localhost:8080`.
 
 ## Cài đặt và chạy local
 
@@ -111,25 +111,25 @@ http://localhost:8080
 
 Trang thường dùng:
 
-| URL | Mục đích |
-| --- | --- |
-| `/menu?tableCode=<ma-ban>` | Giao diện khách hàng |
-| `/login` | Đăng nhập quản trị |
-| `/admin/dashboard` | Dashboard |
-| `/admin/tables` | Sơ đồ bàn và thanh toán |
-| `/admin/kitchen` | Bảng bếp |
-| `/admin/inventory` | Quản lý kho |
+| URL                        | Mục đích                |
+| -------------------------- | ----------------------- |
+| `/menu?tableCode=<ma-ban>` | Giao diện khách hàng    |
+| `/login`                   | Đăng nhập quản trị      |
+| `/admin/dashboard`         | Dashboard               |
+| `/admin/tables`            | Sơ đồ bàn và thanh toán |
+| `/admin/kitchen`           | Bảng bếp                |
+| `/admin/inventory`         | Quản lý kho             |
 
-Route `/` hiện redirect về `/menu?tableCode=478cae34fafc4030ac69`. Đây là mã bàn mẫu trong router, nên đổi khi triển khai thực tế nếu cần.
+Route `/` hiển thị landing page hướng dẫn khách quét mã QR tại bàn.
 
 ## Scripts
 
-| Lệnh | Mô tả |
-| --- | --- |
-| `npm run dev` | Chạy Vite dev server |
-| `npm run build` | Build production vào `dist/` |
-| `npm run preview` | Preview bản build |
-| `npm run lint` | Chạy ESLint |
+| Lệnh              | Mô tả                        |
+| ----------------- | ---------------------------- |
+| `npm run dev`     | Chạy Vite dev server         |
+| `npm run build`   | Build production vào `dist/` |
+| `npm run preview` | Preview bản build            |
+| `npm run lint`    | Chạy ESLint                  |
 
 Hiện `package.json` chưa có script test tự động.
 
@@ -137,25 +137,25 @@ Hiện `package.json` chưa có script test tự động.
 
 Routes chính lấy từ `src/app/router.jsx`:
 
-| Route | Role |
-| --- | --- |
-| `/menu` | Public |
-| `/login` | Public |
-| `/admin/dashboard` | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/profile` | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/settings` | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/categories` | `MANAGER` |
-| `/admin/menu` | `MANAGER` |
-| `/admin/combo` | `MANAGER` |
-| `/admin/inventory` | `MANAGER` |
-| `/admin/voucher` | `MANAGER` |
-| `/admin/staffs` | `MANAGER` |
-| `/admin/statistics/revenue` | `MANAGER` |
-| `/admin/statistics/top-dishes` | `MANAGER` |
-| `/admin/statistics/staff` | `MANAGER` |
-| `/admin/tables` | `MANAGER`, `STAFF` |
-| `/admin/history` | `MANAGER`, `STAFF` |
-| `/admin/kitchen` | `MANAGER`, `CHEF` |
+| Route                          | Role                       |
+| ------------------------------ | -------------------------- |
+| `/menu`                        | Public                     |
+| `/login`                       | Public                     |
+| `/admin/dashboard`             | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/profile`               | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/settings`              | `MANAGER`, `STAFF`, `CHEF` |
+| `/admin/categories`            | `MANAGER`                  |
+| `/admin/menu`                  | `MANAGER`                  |
+| `/admin/combo`                 | `MANAGER`                  |
+| `/admin/inventory`             | `MANAGER`                  |
+| `/admin/voucher`               | `MANAGER`                  |
+| `/admin/staffs`                | `MANAGER`                  |
+| `/admin/statistics/revenue`    | `MANAGER`                  |
+| `/admin/statistics/top-dishes` | `MANAGER`                  |
+| `/admin/statistics/staff`      | `MANAGER`                  |
+| `/admin/tables`                | `MANAGER`, `STAFF`         |
+| `/admin/history`               | `MANAGER`, `STAFF`         |
+| `/admin/kitchen`               | `MANAGER`, `CHEF`          |
 
 `ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển đến `/unauthorized`.
 
@@ -206,17 +206,17 @@ Cấu hình:
 
 Topics frontend đang dùng:
 
-| Topic | Nơi dùng |
-| --- | --- |
-| `/topic/tables` | Sơ đồ bàn, payment modal, menu khách |
-| `/topic/kitchen` | Bảng bếp |
-| `/topic/menu` | Quản lý menu, menu khách |
-| `/topic/categories` | Quản lý danh mục, menu khách |
-| `/topic/combos` | Quản lý combo, menu khách |
-| `/topic/vouchers` | Quản lý voucher |
-| `/topic/users` | Quản lý nhân viên |
-| `/topic/settings` | Settings và menu khách |
-| `/topic/orders` | Menu khách/current order updates |
+| Topic               | Nơi dùng                             |
+| ------------------- | ------------------------------------ |
+| `/topic/tables`     | Sơ đồ bàn, payment modal, menu khách |
+| `/topic/kitchen`    | Bảng bếp                             |
+| `/topic/menu`       | Quản lý menu, menu khách             |
+| `/topic/categories` | Quản lý danh mục, menu khách         |
+| `/topic/combos`     | Quản lý combo, menu khách            |
+| `/topic/vouchers`   | Quản lý voucher                      |
+| `/topic/users`      | Quản lý nhân viên                    |
+| `/topic/settings`   | Settings và menu khách               |
+| `/topic/orders`     | Menu khách/current order updates     |
 
 ## State management
 
@@ -224,32 +224,31 @@ Zustand đang được dùng cho:
 
 - `features/customer-ordering/model/cartStore.js`: giỏ hàng khách.
 - `shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
-- `entities/category/model/categoryStore.js`: state danh mục local thuần.
 
 Auth user state dùng React Context thay vì Zustand.
 
 ## Các feature chức năng
 
-| Module | Mô tả |
-| --- | --- |
-| `customer-ordering` | Menu khách, cart, tạo đơn, đơn hiện tại |
-| `ai-assistant` | Chat Gemini qua backend và classifier local tùy chọn |
-| `auth` | Login, refresh session, protected route |
-| `dashboard-overview` | Tổng quan vận hành cho dashboard |
-| `table-management` | Sơ đồ bàn, modal thanh toán, in hóa đơn, QR |
-| `kitchen-board` | Board bếp realtime |
-| `menu-management` | CRUD món và upload ảnh |
-| `category-management` | CRUD/search danh mục và upload ảnh |
-| `combo-management` | CRUD combo |
+| Module                 | Mô tả                                                    |
+| ---------------------- | -------------------------------------------------------- |
+| `customer-ordering`    | Menu khách, cart, tạo đơn, đơn hiện tại                  |
+| `ai-assistant`         | Chat Gemini qua backend và classifier local tùy chọn     |
+| `auth`                 | Login, refresh session, protected route                  |
+| `dashboard-overview`   | Tổng quan vận hành cho dashboard                         |
+| `table-management`     | Sơ đồ bàn, modal thanh toán, in hóa đơn, QR              |
+| `kitchen-board`        | Board bếp realtime                                       |
+| `menu-management`      | CRUD món và upload ảnh                                   |
+| `category-management`  | CRUD/search danh mục và upload ảnh                       |
+| `combo-management`     | CRUD combo                                               |
 | `inventory-management` | Quản lý nguyên liệu, tồn kho, công thức và nhập/xuất kho |
-| `voucher-management` | CRUD voucher |
-| `user-management` | CRUD nhân viên và avatar |
-| `profile-management` | Hồ sơ cá nhân, đổi mật khẩu, avatar |
-| `settings-management` | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI |
-| `analytics` | Doanh thu, top món, hiệu suất nhân viên, forecast |
-| `order-management` | Lịch sử đơn và chi tiết đơn |
-| `payment` | Gọi API thanh toán |
-| `notifications` | Âm báo và browser notification |
+| `voucher-management`   | CRUD voucher                                             |
+| `user-management`      | CRUD nhân viên và avatar                                 |
+| `profile-management`   | Hồ sơ cá nhân, đổi mật khẩu, avatar                      |
+| `settings-management`  | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI     |
+| `analytics`            | Doanh thu, top món, hiệu suất nhân viên, forecast        |
+| `order-management`     | Lịch sử đơn và chi tiết đơn                              |
+| `payment`              | Gọi API thanh toán                                       |
+| `notifications`        | Âm báo và browser notification                           |
 
 ## Build và preview
 

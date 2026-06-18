@@ -1,16 +1,13 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -31,8 +28,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (id.includes('/@tensorflow/')) return 'vendor-tensorflow'
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/@tensorflow/')) return 'vendor-tensorflow';
           if (
             id.includes('/react/') ||
             id.includes('/react-dom/') ||
@@ -40,11 +37,12 @@ export default defineConfig({
             id.includes('/react-router-dom/') ||
             id.includes('/scheduler/') ||
             id.includes('/use-sync-external-store/')
-          ) return 'vendor-react'
-          if (id.includes('/lucide-react/') || id.includes('/react-icons/')) return 'vendor-icons'
-          if (id.includes('/qrcode.react/')) return 'vendor-qrcode'
-          if (id.includes('/axios/') || id.includes('/zustand/')) return 'vendor-data'
-          return undefined
+          )
+            return 'vendor-react';
+          if (id.includes('/lucide-react/') || id.includes('/react-icons/')) return 'vendor-icons';
+          if (id.includes('/qrcode.react/')) return 'vendor-qrcode';
+          if (id.includes('/axios/') || id.includes('/zustand/')) return 'vendor-data';
+          return undefined;
         },
       },
     },
@@ -52,7 +50,7 @@ export default defineConfig({
   server: {
     proxy: {
       // Bắt các request API đẩy sang Spring Boot
-      '/api': {
+      '/api/v1': {
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
@@ -60,7 +58,7 @@ export default defineConfig({
       '/ws': {
         target: 'http://localhost:8080',
         ws: true, // Quan trọng: Bật chế độ proxy cho WebSocket
-      }
-    }
-  }
-})
+      },
+    },
+  },
+});

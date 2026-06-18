@@ -4,6 +4,7 @@ import { LogIn, QrCode, ScanLine, Utensils } from 'lucide-react';
 
 import { ProtectedRoute } from '@features/auth';
 import AdminLayout from '@widgets/admin-layout/AdminLayout.jsx';
+import { ErrorBoundary } from '@shared/ui';
 
 const LoginPage = lazy(() => import('@pages/auth/LoginPage.jsx'));
 const OrderingPage = lazy(() => import('@pages/customer/OrderingPage.jsx'));
@@ -81,47 +82,67 @@ const LandingPage = () => (
   </div>
 );
 
+const AuthRoute = () => (
+  <ErrorBoundary fullScreen>
+    <LoginPage />
+  </ErrorBoundary>
+);
+
+const CustomerOrderingRoute = () => (
+  <ErrorBoundary fullScreen>
+    <OrderingPage />
+  </ErrorBoundary>
+);
+
 const AppRouter = () => (
-  <Suspense fallback={<LoadingScreen />}>
-    <Routes>
-      <Route path="/:tableCode/menu" element={<OrderingPage />} />
-      <Route path="/menu" element={<OrderingPage />} />
-      <Route path="/login" element={<LoginPage />} />
+  <ErrorBoundary fullScreen>
+    <Suspense fallback={<LoadingScreen />}>
+      <Routes>
+        <Route path="/:tableCode/menu" element={<CustomerOrderingRoute />} />
+        <Route path="/menu" element={<CustomerOrderingRoute />} />
+        <Route path="/login" element={<AuthRoute />} />
 
-      <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />}>
-        <Route element={<AdminLayout />}>
-          <Route path="/admin/dashboard" element={<DashboardPage />} />
-          <Route path="/admin/profile" element={<ProfilePage />} />
-          <Route path="/admin/settings" element={<SettingsPage />} />
+        <Route
+          element={
+            <ErrorBoundary fullScreen>
+              <ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />
+            </ErrorBoundary>
+          }
+        >
+          <Route element={<AdminLayout />}>
+            <Route path="/admin/dashboard" element={<DashboardPage />} />
+            <Route path="/admin/profile" element={<ProfilePage />} />
+            <Route path="/admin/settings" element={<SettingsPage />} />
 
-          <Route element={<ProtectedRoute allowedRoles={['MANAGER']} />}>
-            <Route path="/admin/categories" element={<CategoryPage />} />
-            <Route path="/admin/menu" element={<MenuPage />} />
-            <Route path="/admin/combo" element={<ComboPage />} />
-            <Route path="/admin/inventory" element={<InventoryPage />} />
-            <Route path="/admin/voucher" element={<VoucherPage />} />
-            <Route path="/admin/staffs" element={<UserPage />} />
-            <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
-            <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
-            <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRoles={['MANAGER']} />}>
+              <Route path="/admin/categories" element={<CategoryPage />} />
+              <Route path="/admin/menu" element={<MenuPage />} />
+              <Route path="/admin/combo" element={<ComboPage />} />
+              <Route path="/admin/inventory" element={<InventoryPage />} />
+              <Route path="/admin/voucher" element={<VoucherPage />} />
+              <Route path="/admin/staffs" element={<UserPage />} />
+              <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
+              <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
+              <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
-            <Route path="/admin/tables" element={<TableMapPage />} />
-            <Route path="/admin/history" element={<OrderHistoryPage />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
+              <Route path="/admin/tables" element={<TableMapPage />} />
+              <Route path="/admin/history" element={<OrderHistoryPage />} />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>
-            <Route path="/admin/kitchen" element={<KitchenPage />} />
+            <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>
+              <Route path="/admin/kitchen" element={<KitchenPage />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      <Route path="*" element={<div>Trang không tồn tại</div>} />
-    </Routes>
-  </Suspense>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="*" element={<div>Trang không tồn tại</div>} />
+      </Routes>
+    </Suspense>
+  </ErrorBoundary>
 );
 
 export default AppRouter;

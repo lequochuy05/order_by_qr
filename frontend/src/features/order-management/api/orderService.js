@@ -58,7 +58,7 @@ export const orderService = {
       orderHistoryRequests.set(
         key,
         api
-          .get('/orders/history', { params })
+          .get('/analytics/orders/history', { params })
           .then((res) => {
             setCacheWithLimit(orderHistoryCache, key, {
               data: res,
@@ -88,7 +88,7 @@ export const orderService = {
       orderAnalyticsRequests.set(
         key,
         api
-          .get('/orders/analytics', { params })
+          .get('/analytics/orders/summary', { params })
           .then((res) => {
             setCacheWithLimit(orderAnalyticsCache, key, {
               data: res,
@@ -183,18 +183,6 @@ export const orderService = {
     }
 
     return previewRequests.get(key);
-  },
-
-  // Thanh toán
-  payOrder: async (orderId, voucherCode = null) => {
-    const payload = {};
-    if (voucherCode) {
-      payload.voucherCode = voucherCode;
-    }
-    clearOrderQueryCache();
-    const res = await api.post(`/orders/${orderId}/pay`, payload);
-    clearOrderQueryCache();
-    return res;
   },
 
   // Lấy danh sách đơn cho nhà bếp

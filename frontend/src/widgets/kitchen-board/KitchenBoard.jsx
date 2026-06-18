@@ -20,10 +20,11 @@ import KitchenColumn from './KitchenColumn';
 import { playNotificationSound, playLoudSound } from '@shared/lib/notificationSound.js';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { useAuth } from '@features/auth';
+import { ErrorBoundary } from '@shared/ui';
 
 const OVERDUE_MINUTES = 20;
 
-const KitchenManager = () => {
+const KitchenBoardContent = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -413,4 +414,10 @@ const FilterButton = ({ active, onClick, label, icon }) => (
   </button>
 );
 
-export default KitchenManager;
+const KitchenBoard = () => (
+  <ErrorBoundary>
+    <KitchenBoardContent />
+  </ErrorBoundary>
+);
+
+export default KitchenBoard;

@@ -70,18 +70,6 @@ export const useUpdateItemStatusMutation = (options = {}) =>
     },
   });
 
-export const usePayOrderMutation = (options = {}) =>
-  useMutation({
-    mutationFn: ({ orderId, voucherCode }) => orderService.payOrder(orderId, voucherCode),
-    onSuccess: (...args) => {
-      invalidateOrders();
-      options.onSuccess?.(...args);
-    },
-    onError: (...args) => {
-      options.onError?.(...args);
-    },
-  });
-
 export const useReconcileOrderMutation = (options = {}) =>
   useMutation({
     mutationFn: (orderId) => orderService.reconcileOrder(orderId),

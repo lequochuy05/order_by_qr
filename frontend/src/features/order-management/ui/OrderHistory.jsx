@@ -22,6 +22,7 @@ import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { useOrdersHistoryQuery, useOrderAnalyticsQuery } from '../api/orderQueries.js';
 import { useReconcileOrderMutation } from '../api/orderMutations.js';
+import { ErrorBoundary } from '@shared/ui';
 
 const DATE_PRESETS = [
   { label: 'Tất cả', value: 'all' },
@@ -63,7 +64,7 @@ function getDateRange(preset) {
   }
 }
 
-export default function OrderHistoryPage() {
+function OrderHistoryContent() {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Server-side pagination state
@@ -471,5 +472,13 @@ export default function OrderHistoryPage() {
         onReconcile={(orderId) => handleReconcile({ stopPropagation: () => {} }, orderId)}
       />
     </div>
+  );
+}
+
+export default function OrderHistory() {
+  return (
+    <ErrorBoundary>
+      <OrderHistoryContent />
+    </ErrorBoundary>
   );
 }

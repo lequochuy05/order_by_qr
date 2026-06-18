@@ -1,13 +1,16 @@
 import api from '@shared/api/httpClient.js';
 
+const createIdempotencyKey = () =>
+  crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
 export const paymentService = {
-  createPaymentLink: async (orderId, voucherCode = null) => {
-    const idempotencyKey = crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+  createPayment: async (orderId, paymentMethod, voucherCode = null) => {
+    const idempotencyKey = paymentMethod === 'PAYOS' ? createIdempotencyKey() : undefined;
     const res = await api.post('/payments', {
       orderId,
-      paymentMethod: 'PAYOS',
+      paymentMethod,
       voucherCode,
       idempotencyKey,
     });
