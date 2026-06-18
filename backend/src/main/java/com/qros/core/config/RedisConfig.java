@@ -4,10 +4,13 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.qros.shared.cache.CacheNames;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,16 +22,11 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * RedisConfig - Configuration for Redis caching and template.
  * Enables caching and sets up RedisTemplate with JSON serialization.
  */
 @Configuration
-@EnableCaching
 @Slf4j
 public class RedisConfig implements CachingConfigurer {
 
@@ -37,7 +35,14 @@ public class RedisConfig implements CachingConfigurer {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
-                log.error("Redis Cache GET failed for key {}: {}", key, exception.getMessage());
+                log.warn(
+                        "Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
+                        cache != null ? cache.getName() : "unknown",
+                        key,
+                        exception.getMessage());
+                if (cache != null && key != null) {
+                    cache.evictIfPresent(key);
+                }
             }
 
             @Override
@@ -61,13 +66,10 @@ public class RedisConfig implements CachingConfigurer {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        // NON_FINAL is safer than EVERYTHING: it still serializes type info for
-        // polymorphic deserialization but limits it to non-final classes, avoiding
-        // deserialization attack vectors through final/critical JDK types.
+        // RedisCache deserializes values as Object, so type metadata must also be
+        // written for final DTOs/records returned by public APIs.
         mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY);
+                mapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.EVERYTHING, JsonTypeInfo.As.PROPERTY);
         return mapper;
     }
 
@@ -95,35 +97,31 @@ public class RedisConfig implements CachingConfigurer {
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(1))
+                .prefixCacheNameWith("qros:v3:")
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put("categories", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("menu", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("combos", config.entryTtl(Duration.ofHours(6)));
-        cacheConfigurations.put("qrcodes", config.entryTtl(Duration.ofDays(7)));
-        cacheConfigurations.put("tables", config.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigurations.put("vouchers", config.entryTtl(Duration.ofMinutes(15)));
-        cacheConfigurations.put("recommendations", config.entryTtl(Duration.ofMinutes(30)));
-        cacheConfigurations.put("popularItems", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_revenue", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_emp_performance", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_top_dishes", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("stats_dish_trend", config.entryTtl(Duration.ofMinutes(10)));
-        cacheConfigurations.put("settings", config.entryTtl(Duration.ofHours(1)));
-
-        // New performance caches
-        cacheConfigurations.put("order_by_id", config.entryTtl(Duration.ofMinutes(2)));
-        cacheConfigurations.put("order_stats", config.entryTtl(Duration.ofMinutes(2)));
-        cacheConfigurations.put("stats_dashboard", config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.CATEGORIES, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.MENU, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.PUBLIC_MENU, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.COMBOS, config.entryTtl(Duration.ofHours(6)));
+        cacheConfigurations.put(CacheNames.TABLES, config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.STATS_DASHBOARD, config.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put(CacheNames.VOUCHERS, config.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigurations.put(CacheNames.RECOMMENDATIONS, config.entryTtl(Duration.ofMinutes(30)));
+        cacheConfigurations.put(CacheNames.POPULAR_ITEMS, config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put(CacheNames.ANALYTICS, config.entryTtl(Duration.ofMinutes(10)));
+        cacheConfigurations.put(CacheNames.SETTINGS, config.entryTtl(Duration.ofHours(1)));
+        cacheConfigurations.put(CacheNames.ORDER_ID_CACHE, config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put(CacheNames.MENU_AVAILABILITY, config.entryTtl(Duration.ofSeconds(60)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
     }
-
 }

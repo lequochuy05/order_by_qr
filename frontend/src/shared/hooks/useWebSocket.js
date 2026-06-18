@@ -2,42 +2,45 @@ import { useEffect, useRef } from 'react';
 import wsService from '@shared/lib/websocket.js';
 
 export const useWebSocket = (topic, onMessage) => {
-    const subscriptionRef = useRef(null);
-    const onMessageRef = useRef(onMessage);
+  const subscriptionRef = useRef(null);
+  const onMessageRef = useRef(onMessage);
 
-    useEffect(() => {
-        onMessageRef.current = onMessage;
-    }, [onMessage]);
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
-    useEffect(() => {
-        wsService.connect();
+  useEffect(() => {
+    if (!topic) {
+      return undefined;
+    }
 
-        const doSubscribe = () => {
-            if (!topic) return; // Không subscribe nếu không có topic
-            if (subscriptionRef.current) {
-                subscriptionRef.current.unsubscribe();
-            }
-            subscriptionRef.current = wsService.subscribe(topic, (msg) => {
-                if (onMessageRef.current) {
-                    onMessageRef.current(msg);
-                }
-            });
-        };
+    wsService.connect();
 
-        const removeConnectListener = wsService.addConnectListener(doSubscribe);
-
-        if (wsService.isConnected()) {
-            doSubscribe();
+    const doSubscribe = () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+      }
+      subscriptionRef.current = wsService.subscribe(topic, (msg) => {
+        if (onMessageRef.current) {
+          onMessageRef.current(msg);
         }
+      });
+    };
 
-        return () => {
-            if (subscriptionRef.current) {
-                subscriptionRef.current.unsubscribe();
-                subscriptionRef.current = null;
-            }
-            removeConnectListener();
-        };
-    }, [topic]); // Cập nhật khi topic đổi
+    const removeConnectListener = wsService.addConnectListener(doSubscribe);
 
-    return wsService;
+    if (wsService.isConnected()) {
+      doSubscribe();
+    }
+
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      removeConnectListener();
+    };
+  }, [topic]); // Cập nhật khi topic đổi
+
+  return wsService;
 };

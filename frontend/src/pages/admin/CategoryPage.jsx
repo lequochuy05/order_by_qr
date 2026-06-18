@@ -1,5 +1,5 @@
-import CategoryManagement from '@modules/category-management/ui/CategoryManagement.jsx'
+import { CategoryManagement } from '@features/category-management';
 
 export default function CategoryPage() {
-  return <CategoryManagement />
+  return <CategoryManagement />;
 }

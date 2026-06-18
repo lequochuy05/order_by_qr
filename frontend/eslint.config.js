@@ -3,6 +3,7 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
+import eslintConfigPrettier from 'eslint-config-prettier' 
 
 const deepRelativeImportPatterns = [
   '../../*',
@@ -18,24 +19,25 @@ const layerImportRule = (restrictedLayers) => [
     patterns: [
       {
         group: deepRelativeImportPatterns,
-        message: 'Use layer aliases such as @shared, @entities, @modules, @widgets, or @pages instead of deep relative imports.',
+        message: 'Use layer aliases such as @shared, @entities, @features, @widgets, or @pages instead of deep relative imports.',
       },
       ...restrictedLayers.map((layer) => ({
         group: [`${layer}/*`],
-        message: `This layer must not import from ${layer}. Follow app -> pages -> widgets -> modules -> entities -> shared.`,
+        message: `This layer must not import from ${layer}. Follow app -> pages -> widgets -> features -> entities -> shared.`,
       })),
     ],
   },
 ]
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'dev-dist']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
+      eslintConfigPrettier,
     ],
     languageOptions: {
       ecmaVersion: 2020,
@@ -53,17 +55,17 @@ export default defineConfig([
   {
     files: ['src/shared/**/*.{js,jsx}'],
     rules: {
-      'no-restricted-imports': layerImportRule(['@app', '@pages', '@widgets', '@modules', '@entities']),
+      'no-restricted-imports': layerImportRule(['@app', '@pages', '@widgets', '@features', '@modules', '@entities']),
     },
   },
   {
     files: ['src/entities/**/*.{js,jsx}'],
     rules: {
-      'no-restricted-imports': layerImportRule(['@app', '@pages', '@widgets', '@modules']),
+      'no-restricted-imports': layerImportRule(['@app', '@pages', '@widgets', '@features', '@modules']),
     },
   },
   {
-    files: ['src/modules/**/*.{js,jsx}'],
+    files: ['src/features/**/*.{js,jsx}'],
     rules: {
       'no-restricted-imports': layerImportRule(['@app', '@pages', '@widgets']),
     },

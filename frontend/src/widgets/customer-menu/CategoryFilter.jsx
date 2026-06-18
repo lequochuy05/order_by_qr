@@ -12,7 +12,7 @@ const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }) => {
         >
           Tất cả
         </button>
-        
+
         {categories.map((category) => (
           <button
             key={category.id}

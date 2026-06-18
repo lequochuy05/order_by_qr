@@ -1,74 +1,71 @@
 package com.qros.modules.settings.model;
 
-import com.qros.shared.util.AppTime;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import lombok.*;
-
+import com.qros.shared.entity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
-/**
- * SystemSettings - Single-row restaurant and operation configuration.
- */
 @Entity
 @Table(name = "system_settings")
 @Getter
 @Setter
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SystemSettings {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+@SQLDelete(sql = "UPDATE system_settings SET is_deleted = true WHERE id = ?")
+@SQLRestriction("is_deleted = false")
+public class SystemSettings extends BaseEntity {
 
-    @NotBlank(message = "Restaurant name cannot be empty")
-    @Column(nullable = false, length = 100)
+    @Id
+    private Long id;
+
+    @Column(nullable = false, length = 150)
     private String restaurantName;
 
-    @Column(columnDefinition = "TEXT")
-    private String restaurantAddress;
-
-    @Column(length = 20)
+    @Column(length = 30)
     private String restaurantPhone;
 
-    @Column(columnDefinition = "TEXT")
-    private String restaurantLogoUrl;
+    @Column(length = 150)
+    private String restaurantEmail;
 
-    @Builder.Default
-    @DecimalMin(value = "0.0", message = "VAT rate cannot be negative")
-    @Column(precision = 5, scale = 2)
-    private BigDecimal vatRate = BigDecimal.ZERO;
+    @Column(length = 255)
+    private String restaurantAddress;
 
-    @Column(length = 50)
-    private String wifiSsid;
+    @Column(length = 500)
+    private String logoUrl;
 
-    @Column(length = 50)
+    @Column(length = 100)
+    private String wifiName;
+
+    @Column(length = 255)
     private String wifiPassword;
 
-    @Builder.Default
+    private LocalTime openingTime;
+
+    private LocalTime closingTime;
+
+    @Column(nullable = false, length = 10)
+    private String currency;
+
+    @Column(nullable = false, precision = 5, scale = 2)
+    private BigDecimal taxPercent;
+
+    @Column(nullable = false, precision = 5, scale = 2)
+    private BigDecimal serviceChargePercent;
+
     @Column(nullable = false)
-    private Boolean autoApproveOrders = true;
+    private Boolean orderingEnabled;
 
-    @Builder.Default
     @Column(nullable = false)
-    private Boolean enableAiAssistant = true;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean enablePayos = true;
-
-    @Builder.Default
-    @Column(nullable = false)
-    private Boolean enableCash = true;
-
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    @PreUpdate
-    void touchUpdatedAt() {
-        updatedAt = AppTime.now();
-    }
+    private Boolean maintenanceMode;
 }

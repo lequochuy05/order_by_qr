@@ -1,9 +1,8 @@
-package com.qros.config;
+package com.qros.modules.payment.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import vn.payos.PayOS;
 import vn.payos.core.ClientOptions;
 
@@ -34,7 +33,7 @@ public class PayOSConfig {
 
     /**
      * Create PayOS client instance.
-     * 
+     *
      * @return PayOS client instance
      */
     @Bean

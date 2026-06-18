@@ -1,19 +1,19 @@
 package com.qros.modules.order.model;
 
-import com.qros.shared.entity.BaseEntity;
-import com.qros.modules.menu.model.MenuItem;
+import com.qros.modules.inventory.model.OrderItemInventoryReservation;
 import com.qros.modules.menu.model.Combo;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.qros.modules.menu.model.MenuItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import com.qros.modules.order.model.enums.OrderItemType;
+import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import lombok.experimental.SuperBuilder;
-import java.util.Set;
-import java.util.LinkedHashSet;
 
 /**
  * OrderItem - Entity representing an individual line item within an order.
@@ -28,121 +28,128 @@ import java.util.LinkedHashSet;
 @AllArgsConstructor
 @SQLDelete(sql = "UPDATE order_item SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class OrderItem extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * The parent order this item belongs to.
-     */
-    @NotNull(message = "Order cannot be empty")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
-    @JsonIgnoreProperties("orderItems")
     private Order order;
 
-    /**
-     * The submission batch that introduced this line item.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "batch_id")
-    @JsonIgnoreProperties("orderItems")
     private OrderBatch batch;
 
-    /**
-     * The specific menu item being ordered (if applicable).
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
-    @JsonIgnoreProperties({ "itemOptions", "comboItems" })
     private MenuItem menuItem;
 
-    /**
-     * The specific combo package being ordered (if applicable).
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
-    @JsonIgnoreProperties({ "items" })
     private Combo combo;
 
-    /**
-     * Price of the item at the time of ordering.
-     */
-    @NotNull(message = "Unit price cannot be empty")
     @Column(nullable = false, precision = 15, scale = 2)
-    @Min(0)
-    private BigDecimal unitPrice;
-
-    /**
-     * Captured display name at the time of ordering.
-     */
-    @Column(length = 150)
-    private String itemNameSnapshot;
-
-    /**
-     * Captured product type at the time of ordering.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private OrderItemType itemType;
-
-    /**
-     * Number of units ordered.
-     */
-    @NotNull(message = "Quantity cannot be empty")
-    @Column(nullable = false)
-    @Min(value = 1, message = "Quantity must be at least 1")
-    private int quantity;
-
-    /**
-     * Captured line total at the time of ordering.
-     */
-    @Column(precision = 15, scale = 2)
-    @Min(0)
-    private BigDecimal lineTotal;
-
-    /**
-     * Customer's special instructions for this item.
-     */
     @Builder.Default
+    private BigDecimal unitPrice = BigDecimal.ZERO;
+
+    @Column(length = 150, nullable = false)
+    @Builder.Default
+    private String itemNameSnapshot = "";
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    @Builder.Default
+    private OrderItemType itemType = OrderItemType.MENU_ITEM;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer quantity = 1;
+
+    @Column(precision = 15, scale = 2, nullable = false)
+    @Builder.Default
+    private BigDecimal lineTotal = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(length = 255)
     private String notes = "";
 
-    /**
-     * Flag indicating if the kitchen has finished preparing this item.
-     */
     @Builder.Default
     private boolean prepared = false;
 
-    /**
-     * Current workflow status of the individual item.
-     */
-    @NotNull(message = "Item status cannot be empty")
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(length = 20, nullable = false)
     private OrderItemStatus status = OrderItemStatus.PENDING;
 
-    /**
-     * Collection of selected options and toppings for this order item.
-     */
     @Builder.Default
     @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties({ "orderItem" })
     private Set<OrderItemOption> orderItemOptions = new LinkedHashSet<>();
 
-    /**
-     * Enum for individual order item states.
-     */
-    public enum OrderItemStatus {
-        PENDING, COOKING, FINISHED, CANCELLED
+    @Builder.Default
+    @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OrderItemInventoryReservation> inventoryReservations = new LinkedHashSet<>();
+
+    public void addOption(OrderItemOption option) {
+        if (option == null) {
+            return;
+        }
+
+        orderItemOptions.add(option);
+        option.setOrderItem(this);
     }
 
-    /**
-     * Enum for the kind of product captured by this order line.
-     */
-    public enum OrderItemType {
-        MENU_ITEM, COMBO
+    public void addInventoryReservation(OrderItemInventoryReservation reservation) {
+        if (reservation == null) {
+            return;
+        }
+
+        inventoryReservations.add(reservation);
+        reservation.setOrderItem(this);
+    }
+
+    public boolean isMenuItem() {
+        return itemType == OrderItemType.MENU_ITEM;
+    }
+
+    public boolean isCombo() {
+        return itemType == OrderItemType.COMBO;
+    }
+
+    public boolean isPending() {
+        return status == OrderItemStatus.PENDING;
+    }
+
+    public boolean isCooking() {
+        return status == OrderItemStatus.COOKING;
+    }
+
+    public boolean isFinished() {
+        return status == OrderItemStatus.FINISHED;
+    }
+
+    public boolean isCancelled() {
+        return status == OrderItemStatus.CANCELLED;
+    }
+
+    public boolean isBillable() {
+        return status != OrderItemStatus.CANCELLED;
+    }
+
+    public boolean canBeMerged() {
+        return status == OrderItemStatus.PENDING;
+    }
+
+    public boolean canBeUpdated() {
+        return status == OrderItemStatus.PENDING;
+    }
+
+    public boolean canBeCancelled() {
+        return status == OrderItemStatus.PENDING;
+    }
+
+    public void markStatus(OrderItemStatus newStatus) {
+        this.status = newStatus;
+        this.prepared = newStatus == OrderItemStatus.FINISHED;
     }
 }

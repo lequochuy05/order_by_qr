@@ -3,15 +3,15 @@ package com.qros.modules.notification.event;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.util.StringUtils;
-import java.util.Objects;
 
 /**
  * WebSocketEventListener - Listens for internal WebSocketEvent and pushes them to the messaging template.
@@ -83,8 +83,13 @@ public class WebSocketEventListener {
                 lastException = e;
                 if (attempt < MAX_RETRIES) {
                     long delay = BASE_DELAY_MS * (1L << (attempt - 1)); // 100ms, 200ms, 400ms
-                    log.warn("[WS Notification] Retry {}/{} after send failure to {}: {} (retrying in {}ms)",
-                            attempt, MAX_RETRIES, destination, e.getMessage(), delay);
+                    log.warn(
+                            "[WS Notification] Retry {}/{} after send failure to {}: {} (retrying in {}ms)",
+                            attempt,
+                            MAX_RETRIES,
+                            destination,
+                            e.getMessage(),
+                            delay);
                     try {
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {
@@ -98,7 +103,10 @@ public class WebSocketEventListener {
 
         // All retries exhausted
         failedCounter.increment();
-        log.error("[WS Notification] Failed to send to {} after {} attempts: {}",
-                destination, MAX_RETRIES, lastException != null ? lastException.getMessage() : "unknown");
+        log.error(
+                "[WS Notification] Failed to send to {} after {} attempts: {}",
+                destination,
+                MAX_RETRIES,
+                lastException != null ? lastException.getMessage() : "unknown");
     }
 }

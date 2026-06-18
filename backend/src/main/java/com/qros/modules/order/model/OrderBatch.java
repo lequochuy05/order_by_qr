@@ -1,13 +1,13 @@
 package com.qros.modules.order.model;
 
+import com.qros.modules.order.model.enums.BatchSource;
 import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "order_batches")
@@ -27,17 +27,15 @@ public class OrderBatch extends BaseEntity {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
+    @Builder.Default
     @Column(nullable = false)
-    private LocalDateTime submittedAt;
+    private LocalDateTime submittedAt = LocalDateTime.now();
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private BatchSource source;
+    @Column(length = 20, nullable = false)
+    @Builder.Default
+    private BatchSource source = BatchSource.QR;
 
     @Column(length = 255)
     private String note;
-
-    public enum BatchSource {
-        QR, STAFF
-    }
 }

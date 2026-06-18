@@ -1,117 +1,74 @@
 package com.qros.modules.kitchen.service;
 
-import com.qros.modules.kitchen.dto.KitchenOrderDto;
+import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
+import com.qros.modules.kitchen.mapper.KitchenMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.order.service.OrderStatusService;
-import com.qros.shared.util.AppTime;
-import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
+import com.qros.modules.order.service.OrderService;
+import com.qros.shared.time.AppTime;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class KitchenService {
 
     private final OrderRepository orderRepository;
-    private final OrderStatusService orderStatusService;
+    private final OrderService orderService;
+    private final KitchenMapper kitchenMapper;
 
     @Transactional(readOnly = true)
-    public List<KitchenOrderDto> getKitchenOrders() {
+    public List<KitchenOrderResponse> getKitchenOrders() {
         LocalDateTime recentlyFinishedCutoff = AppTime.now().minusMinutes(15);
 
-        return orderRepository.findByStatusIn(List.of(
-                Order.OrderStatus.PENDING,
-                Order.OrderStatus.SERVING,
-                Order.OrderStatus.AWAITING_PAYMENT)).stream()
-                .filter(order -> order.getOrderItems().stream()
-                        .anyMatch(item -> item.getStatus() == OrderItem.OrderItemStatus.PENDING
-                                || item.getStatus() == OrderItem.OrderItemStatus.COOKING
-                                || isRecentlyFinished(item, recentlyFinishedCutoff)))
-                .sorted(Comparator.comparing(Order::getCreatedAt))
-                .map(this::toKitchenOrderDto)
+        return orderRepository
+                .findKitchenOrders(
+                        List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT),
+                        List.of(OrderItemStatus.PENDING, OrderItemStatus.COOKING),
+                        OrderItemStatus.FINISHED,
+                        recentlyFinishedCutoff)
+                .stream()
+                .map(order -> toVisibleKitchenOrder(order, recentlyFinishedCutoff))
+                .filter(response -> !response.orderItems().isEmpty())
+                .sorted(Comparator.comparing(KitchenOrderResponse::createdAt))
                 .toList();
     }
 
     @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
-    public void updateItemStatus(@NonNull Long itemId, @NonNull String status) {
-        orderStatusService.updateItemStatus(itemId, status);
-    }
-
-    @Transactional
-    @CacheEvict(value = "tables", allEntries = true)
-    public void updateItemStatus(@NonNull Long itemId, @NonNull String status, Long userId) {
-        orderStatusService.updateItemStatus(itemId, status, userId);
-    }
-
-    @Transactional
-    public void markItemPrepared(@NonNull Long itemId) {
-        orderStatusService.markItemPrepared(itemId);
+    public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status, Long userId) {
+        orderService.updateItemStatus(itemId, status, userId);
     }
 
     @Transactional
     public void markItemPrepared(@NonNull Long itemId, Long userId) {
-        orderStatusService.markItemPrepared(itemId, userId);
+        orderService.markItemPrepared(itemId, userId);
+    }
+
+    private KitchenOrderResponse toVisibleKitchenOrder(Order order, LocalDateTime cutoff) {
+        List<OrderItem> visibleItems = order.getOrderItems().stream()
+                .filter(item -> isVisibleOnKitchen(item, cutoff))
+                .toList();
+
+        return kitchenMapper.toResponse(order, visibleItems);
+    }
+
+    private boolean isVisibleOnKitchen(OrderItem item, LocalDateTime cutoff) {
+        return item.getStatus() == OrderItemStatus.PENDING
+                || item.getStatus() == OrderItemStatus.COOKING
+                || isRecentlyFinished(item, cutoff);
     }
 
     private boolean isRecentlyFinished(OrderItem item, LocalDateTime cutoff) {
-        return item.getStatus() == OrderItem.OrderItemStatus.FINISHED
+        return item.getStatus() == OrderItemStatus.FINISHED
                 && item.getUpdatedAt() != null
                 && !item.getUpdatedAt().isBefore(cutoff);
-    }
-
-    private KitchenOrderDto toKitchenOrderDto(Order order) {
-        return new KitchenOrderDto(
-                order.getId(),
-                order.getStatus().name(),
-                order.getFinalAmount(),
-                order.getTable() != null
-                        ? new KitchenOrderDto.TableSummary(order.getTable().getId(), order.getTable().getTableNumber())
-                        : null,
-                order.getOrderItems().stream().map(item -> new KitchenOrderDto.KitchenOrderItemDto(
-                        item.getId(),
-                        item.getMenuItem() != null ? new KitchenOrderDto.MenuItemSummary(
-                                item.getMenuItem().getId(),
-                                item.getMenuItem().getName(),
-                                item.getMenuItem().getCategory() != null
-                                        ? new KitchenOrderDto.CategorySummary(item.getMenuItem().getCategory().getName())
-                                        : null)
-                                : item.getItemType() == OrderItem.OrderItemType.MENU_ITEM
-                                        ? new KitchenOrderDto.MenuItemSummary(null, item.getItemNameSnapshot(), null)
-                                : null,
-                        item.getCombo() != null ? new KitchenOrderDto.ComboSummary(
-                                item.getCombo().getId(),
-                                item.getCombo().getName(),
-                                item.getCombo().getPrice())
-                                : item.getItemType() == OrderItem.OrderItemType.COMBO
-                                        ? new KitchenOrderDto.ComboSummary(null, item.getItemNameSnapshot(),
-                                                item.getUnitPrice())
-                                        : null,
-                        item.getUnitPrice(),
-                        item.getQuantity(),
-                        item.getNotes(),
-                        item.isPrepared(),
-                        item.getStatus().name(),
-                        item.getOrderItemOptions().stream()
-                                .map(option -> new KitchenOrderDto.KitchenOrderItemOptionDto(
-                                        option.getItemOptionValue() != null
-                                                ? option.getItemOptionValue().getId()
-                                                : null,
-                                        option.getOptionName(),
-                                        option.getOptionValueName(),
-                                        option.getExtraPrice()))
-                                .toList(),
-                        item.getCreatedAt(),
-                        item.getUpdatedAt()))
-                        .toList(),
-                order.getCreatedAt());
     }
 }

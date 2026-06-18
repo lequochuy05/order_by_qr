@@ -1,0 +1,11 @@
+dist/
+build/
+node_modules/
+coverage/
+*.min.js
+*.map
+target/
+.git/
+.agent/
+frontend/.vercel/
+*.lock

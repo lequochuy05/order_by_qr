@@ -1,88 +1,64 @@
 package com.qros.modules.recommendation.controller;
 
-import com.qros.shared.response.ApiResponse;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.recommendation.dto.response.RecommendationResponse;
+import com.qros.modules.recommendation.model.enums.RecommendationContext;
 import com.qros.modules.recommendation.service.RecommendationService;
+import com.qros.shared.constants.ApiRoutes;
+import com.qros.shared.response.ApiResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
-/**
- * RecommendationController - Provides intelligent food recommendations based on
- * behavior and context.
- */
+@Validated
 @RestController
-@RequestMapping("/api/recommendations")
+@RequestMapping(ApiRoutes.RECOMMENDATIONS)
 @RequiredArgsConstructor
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
 
-    /**
-     * Retrieves personalized food recommendations based on time of day and item
-     * popularity.
-     * 
-     * @param timeContext Optional time of day (e.g., Morning, Afternoon, Evening)
-     * @param limit       Maximum number of items to return
-     * @return List of recommended MenuItemResponse objects
-     */
     @GetMapping("/personalized")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getPersonalizedRecommendations(
-            @RequestParam(defaultValue = "Morning") String timeContext,
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse
-                .success(recommendationService.getPersonalizedRecommendations(timeContext, limit).stream()
-                        .map(PublicMenuResponse::fromMenuItemResponse)
-                        .toList());
+    public ApiResponse<RecommendationResponse> getPersonalizedRecommendations(
+            @RequestParam(defaultValue = "ANY") RecommendationContext context,
+            @RequestParam(defaultValue = "5")
+                    @Min(value = 1, message = "Limit must be at least 1")
+                    @Max(value = 20, message = "Limit cannot exceed 20")
+                    int limit) {
+        return ApiResponse.success(recommendationService.getPersonalizedRecommendations(context, limit));
     }
 
-    /**
-     * Retrieves cross-sell recommendations (items often bought together with the
-     * given item).
-     * 
-     * @param itemId ID of the reference menu item
-     * @param limit  Maximum number of items to return
-     * @return List of cross-sell MenuItemResponse objects
-     */
-    @GetMapping("/cross-sell/{itemId}")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getCrossSellRecommendations(
-            @PathVariable @NonNull Long itemId,
-            @RequestParam(defaultValue = "3") int limit) {
-        return ApiResponse.success(recommendationService.getCrossSellRecommendations(itemId, limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
-    }
-
-    /**
-     * Retrieves the most popular food items in the system.
-     * 
-     * @param limit Maximum number of items to return
-     * @return List of popular MenuItemResponse objects
-     */
     @GetMapping("/popular")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getPopularItems(
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(recommendationService.getPopularItems(limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+    public ApiResponse<RecommendationResponse> getPopularItems(
+            @RequestParam(defaultValue = "5")
+                    @Min(value = 1, message = "Limit must be at least 1")
+                    @Max(value = 20, message = "Limit cannot exceed 20")
+                    int limit) {
+        return ApiResponse.success(recommendationService.getPopularItems(limit));
     }
 
-    /**
-     * Retrieves similar items based on the category and attributes of the given
-     * item ID.
-     * 
-     * @param itemId ID of the reference menu item
-     * @param limit  Maximum number of items to return
-     * @return List of similar MenuItemResponse objects
-     */
+    @GetMapping("/cross-sell/{itemId}")
+    public ApiResponse<RecommendationResponse> getCrossSellRecommendations(
+            @PathVariable @Min(value = 1, message = "Item id must be positive") Long itemId,
+            @RequestParam(defaultValue = "3")
+                    @Min(value = 1, message = "Limit must be at least 1")
+                    @Max(value = 20, message = "Limit cannot exceed 20")
+                    int limit) {
+        return ApiResponse.success(recommendationService.getCrossSellRecommendations(itemId, limit));
+    }
+
     @GetMapping("/item/{itemId}")
-    public ApiResponse<List<PublicMenuResponse.MenuItemItem>> getRecommendations(
-            @PathVariable @NonNull Long itemId,
-            @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(recommendationService.getRecommendations(itemId, limit).stream()
-                .map(PublicMenuResponse::fromMenuItemResponse)
-                .toList());
+    public ApiResponse<RecommendationResponse> getRecommendations(
+            @PathVariable @Min(value = 1, message = "Item id must be positive") Long itemId,
+            @RequestParam(defaultValue = "5")
+                    @Min(value = 1, message = "Limit must be at least 1")
+                    @Max(value = 20, message = "Limit cannot exceed 20")
+                    int limit) {
+        return ApiResponse.success(recommendationService.getRecommendations(itemId, limit));
     }
 }

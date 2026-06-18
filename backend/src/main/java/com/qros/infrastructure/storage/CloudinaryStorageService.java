@@ -2,15 +2,14 @@ package com.qros.infrastructure.storage;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * CloudinaryStorageService - Wrapper for Cloudinary API to manage cloud-based image storage.
@@ -18,7 +17,7 @@ import java.util.Objects;
  */
 @Slf4j
 @Service
-public class CloudinaryStorageService {
+public class CloudinaryStorageService implements StorageService {
 
     private final Cloudinary cloudinary;
 
@@ -39,7 +38,7 @@ public class CloudinaryStorageService {
 
     /**
      * Uploads a file from a MultipartFile request to a specific cloud folder.
-     * 
+     *
      * @param file The image file to upload
      * @param folder Target folder in Cloudinary
      * @return The secure URL of the uploaded image
@@ -49,10 +48,9 @@ public class CloudinaryStorageService {
         try {
             log.info("Initiating cloud upload to folder: {}", folder);
             @SuppressWarnings("unchecked")
-            Map<String, Object> uploadResult = (Map<String, Object>) cloudinary.uploader().upload(file.getBytes(),
-                    ObjectUtils.asMap(
-                            "folder", folder,
-                            "resource_type", "auto"));
+            Map<String, Object> uploadResult = (Map<String, Object>) cloudinary
+                    .uploader()
+                    .upload(file.getBytes(), ObjectUtils.asMap("folder", folder, "resource_type", "auto"));
             String url = Objects.requireNonNull(uploadResult.get("secure_url")).toString();
             log.info("Successfully uploaded image to Cloudinary. URL: {}", url);
             return url;
@@ -64,12 +62,11 @@ public class CloudinaryStorageService {
 
     /**
      * Deletes an image from cloud storage using its Public ID.
-     * 
+     *
      * @param publicId Cloudinary public identifier
      */
     public void deleteByPublicId(String publicId) {
-        if (publicId == null || publicId.isBlank() || "PENDING".equals(publicId))
-            return;
+        if (publicId == null || publicId.isBlank() || "PENDING".equals(publicId)) return;
         try {
             log.info("Attempting to delete cloud image with PublicID: {}", publicId);
             cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
@@ -80,12 +77,11 @@ public class CloudinaryStorageService {
 
     /**
      * Deletes an image based on either its Public ID or its full URL.
-     * 
+     *
      * @param idOrUrl The cloud identifier or secure URL
      */
     public void delete(String idOrUrl) {
-        if (idOrUrl == null || idOrUrl.isBlank() || "PENDING".equals(idOrUrl))
-            return;
+        if (idOrUrl == null || idOrUrl.isBlank() || "PENDING".equals(idOrUrl)) return;
 
         try {
             String publicId = idOrUrl.contains("/upload/") ? extractPublicId(idOrUrl) : idOrUrl;
@@ -97,7 +93,7 @@ public class CloudinaryStorageService {
 
     /**
      * Replaces an existing cloud image with a new upload.
-     * 
+     *
      * @param newFile The new image file
      * @param oldUrl URL of the image to be replaced
      * @param folder Target cloud folder
@@ -132,7 +128,7 @@ public class CloudinaryStorageService {
 
     /**
      * Directly uploads a byte array to cloud storage. Useful for generated content like QR codes.
-     * 
+     *
      * @param data Byte array of the image
      * @param folder Target cloud folder
      * @param publicId Desired public identifier for the file
@@ -143,10 +139,14 @@ public class CloudinaryStorageService {
         try {
             log.info("Uploading raw byte data to Cloudinary (PublicID: {})", publicId);
             @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) cloudinary.uploader().upload(data, ObjectUtils.asMap(
-                    "folder", folder,
-                    "public_id", publicId,
-                    "resource_type", "image"));
+            Map<String, Object> result = (Map<String, Object>) cloudinary
+                    .uploader()
+                    .upload(
+                            data,
+                            ObjectUtils.asMap(
+                                    "folder", folder,
+                                    "public_id", publicId,
+                                    "resource_type", "image"));
             return result;
         } catch (Exception e) {
             log.error("Failed to upload raw byte data to Cloudinary: {}", e.getMessage());

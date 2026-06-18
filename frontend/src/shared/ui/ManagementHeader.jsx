@@ -2,20 +2,19 @@ import { Plus, Search } from 'lucide-react';
 
 const ManagementHeader = ({
   // Các Props để tùy chỉnh
-  searchPlaceholder = "Tìm kiếm...",
+  searchPlaceholder = 'Tìm kiếm...',
   searchTerm,
   setSearchTerm,
   onAddClick,
-  addButtonText = "Thêm mới",
+  addButtonText = 'Thêm mới',
   addButtonIcon: AddButtonIcon,
 
-
-  // Phần mở rộng cho bộ lọc 
+  // Phần mở rộng cho bộ lọc
   showFilter = false,
-  filterAllLabel = "Tất cả danh mục",
+  filterAllLabel = 'Tất cả danh mục',
   filterValue,
   setFilterValue,
-  filterOptions = []
+  filterOptions = [],
 }) => (
   <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
     <div className="flex items-center gap-4">
@@ -38,11 +37,13 @@ const ManagementHeader = ({
         <select
           className="px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
           value={filterValue}
-          onChange={e => setFilterValue(e.target.value)}
+          onChange={(e) => setFilterValue(e.target.value)}
         >
           <option value="ALL">{filterAllLabel}</option>
-          {filterOptions.map(opt => (
-            <option key={opt.id} value={opt.id}>{opt.name}</option>
+          {filterOptions.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.name}
+            </option>
           ))}
         </select>
       )}

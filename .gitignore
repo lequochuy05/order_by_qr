@@ -15,6 +15,7 @@ buildNumber.properties
 node_modules/
 dist/
 dist-ssr/
+dev-dist/
 *.local
 .eslintcache
 .stylelintcache
@@ -33,6 +34,7 @@ out/
 
 # VS Code
 .vscode/*
+!.vscode/
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json

@@ -1,13 +1,62 @@
 package com.qros.modules.settings.service;
 
-import com.qros.modules.settings.dto.SystemSettingsDto;
-import com.qros.modules.menu.dto.PublicMenuResponse;
+import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
+import com.qros.modules.settings.dto.response.PublicSettingsResponse;
+import com.qros.modules.settings.dto.response.SystemSettingsResponse;
+import com.qros.modules.settings.mapper.SystemSettingsMapper;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.repository.SystemSettingsRepository;
+import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public interface SystemSettingsService {
-    SystemSettingsDto getCurrent(boolean includeSensitive);
+@Service
+@RequiredArgsConstructor
+public class SystemSettingsService {
 
-    PublicMenuResponse.Settings getPublicSettings();
+    private static final Long SETTINGS_ID = 1L;
 
-    SystemSettingsDto update(@NonNull SystemSettingsDto request);
+    private final SystemSettingsRepository settingsRepository;
+    private final SystemSettingsMapper settingsMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = CacheNames.SETTINGS, key = "'admin'")
+    public SystemSettingsResponse getSettings() {
+        return settingsMapper.toResponse(getOrCreateSettings());
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = CacheNames.SETTINGS, key = "'public'")
+    public PublicSettingsResponse getPublicSettings() {
+        return settingsMapper.toPublicResponse(getOrCreateSettings());
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.SETTINGS, allEntries = true)
+    public SystemSettingsResponse updateSettings(@NonNull SystemSettingsUpdateRequest request) {
+        SystemSettings settings = getOrCreateSettings();
+
+        settingsMapper.updateEntity(settings, request);
+
+        SystemSettings saved = settingsRepository.save(settings);
+        PublicSettingsResponse publicSettings = settingsMapper.toPublicResponse(saved);
+
+        eventPublisher.publishEvent(new SettingsChangeEvent(publicSettings));
+
+        return settingsMapper.toResponse(saved);
+    }
+
+    @Transactional
+    public SystemSettings getOrCreateSettings() {
+        return settingsRepository
+                .findById(SETTINGS_ID)
+                .orElseGet(() -> settingsRepository.save(settingsMapper.defaultSettings()));
+    }
 }

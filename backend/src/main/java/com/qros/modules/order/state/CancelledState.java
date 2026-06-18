@@ -1,9 +1,9 @@
 package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
-import org.springframework.stereotype.Component;
-
+import com.qros.modules.order.model.enums.OrderStatus;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * CancelledState - Handles the logic for orders that have been cancelled.
@@ -12,11 +12,8 @@ import java.util.Set;
 @Component
 public class CancelledState implements OrderState {
 
-    private static final Set<Order.OrderStatus> ALLOWED_FROM = Set.of(
-            Order.OrderStatus.PENDING,
-            Order.OrderStatus.SERVING,
-            Order.OrderStatus.AWAITING_PAYMENT
-    );
+    private static final Set<OrderStatus> ALLOWED_FROM =
+            Set.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
 
     /**
      * Transitions the order status to CANCELLED.
@@ -30,12 +27,12 @@ public class CancelledState implements OrderState {
     }
 
     @Override
-    public Order.OrderStatus getStatus() {
-        return Order.OrderStatus.CANCELLED;
+    public OrderStatus getStatus() {
+        return OrderStatus.CANCELLED;
     }
 
     @Override
-    public Set<Order.OrderStatus> allowedTransitionsFrom() {
+    public Set<OrderStatus> allowedTransitionsFrom() {
         return ALLOWED_FROM;
     }
 }

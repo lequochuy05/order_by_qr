@@ -1,43 +1,21 @@
 import api from '@shared/api/httpClient.js';
 
 export const categoryService = {
+  getAll: (params = {}) => api.get('/categories', { params }),
 
-    getAll: async () => {
-        const res = await api.get('/categories');
-        return res;
-    },
-    
-    // Tìm kiếm và phân trang
-    search: async (q, page = 0, size = 12) => {
-        const params = { q, page, size, sort: 'name,asc' };
-        const res = await api.get('/categories/search', { params });
-        return res;
-    },
+  getPage: (params = {}) => api.get('/categories', { params }),
 
-    // Tạo mới danh mục
-    create: async (name) => {
-        const res = await api.post('/categories', { name });
-        return res;
-    },
+  search: (q, page = 0, size = 12) =>
+    api.get('/categories', { params: { q, page, size, sort: 'name,asc' } }),
 
-    // Cập nhật danh mục
-    update: async (id, name) => {
-        const res = await api.put(`/categories/${id}`, { name });
-        return res;
-    },
+  create: (payload) => api.post('/categories', payload),
 
-    // Upload ảnh
-    uploadImage: async (id, file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await api.post(`/categories/${id}/image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        return res;
-    },
+  update: (id, payload) => api.put(`/categories/${id}`, payload),
 
-    // Xóa danh mục
-    delete: async (id) => {
-        await api.delete(`/categories/${id}`);
-    }
+  uploadImage: (id, formData) =>
+    api.post(`/categories/${id}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
+  delete: (id) => api.delete(`/categories/${id}`),
 };

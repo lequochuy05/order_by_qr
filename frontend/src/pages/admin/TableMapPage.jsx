@@ -1,5 +1,5 @@
-import TableManagement from '@modules/table-management/ui/TableManagement.jsx'
+import { TableManagement } from '@features/table-management';
 
 export default function TableMapPage() {
-  return <TableManagement />
+  return <TableManagement />;
 }

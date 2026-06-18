@@ -1,36 +1,59 @@
-import { useState, useCallback } from 'react';
+import { create } from 'zustand';
 
-export const useConfirmModal = () => {
-  const [state, setState] = useState({
-    isOpen: false,
-    title: '',
-    message: '',
-    onConfirm: null,
-    loading: false,
-  });
+const closedState = {
+  isOpen: false,
+  title: '',
+  message: '',
+  onConfirm: null,
+  loading: false,
+  resolveConfirm: null,
+};
 
-  const confirm = useCallback((title, message) => {
+export const useConfirmModalStore = create((set, get) => ({
+  isOpen: false,
+  title: '',
+  message: '',
+  onConfirm: null,
+  loading: false,
+  resolveConfirm: null,
+
+  confirm: (title, message) => {
     return new Promise((resolve) => {
-      setState({
+      get().resolveConfirm?.(false);
+      set({
         isOpen: true,
         title,
         message,
         loading: false,
+        resolveConfirm: resolve,
         onConfirm: () => {
-          setState(prev => ({ ...prev, isOpen: false }));
-          resolve(true);
+          const resolveConfirm = get().resolveConfirm;
+          set(closedState);
+          resolveConfirm?.(true);
         },
       });
     });
-  }, []);
+  },
 
-  const closeConfirm = useCallback(() => {
-    setState(prev => ({ ...prev, isOpen: false }));
-  }, []);
+  closeConfirm: () => {
+    const resolveConfirm = get().resolveConfirm;
+    set(closedState);
+    resolveConfirm?.(false);
+  },
+}));
+
+export const useConfirmModal = () => {
+  const store = useConfirmModalStore();
 
   return {
-    confirmModal: state,
-    confirm,
-    closeConfirm,
+    confirmModal: {
+      isOpen: store.isOpen,
+      title: store.title,
+      message: store.message,
+      onConfirm: store.onConfirm,
+      loading: store.loading,
+    },
+    confirm: store.confirm,
+    closeConfirm: store.closeConfirm,
   };
 };

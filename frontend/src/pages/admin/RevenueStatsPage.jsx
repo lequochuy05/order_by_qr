@@ -1,5 +1,5 @@
-import RevenueStats from '@modules/statistics/ui/RevenueStats.jsx'
+import { RevenueStats } from '@features/analytics';
 
 export default function RevenueStatsPage() {
-  return <RevenueStats />
+  return <RevenueStats />;
 }

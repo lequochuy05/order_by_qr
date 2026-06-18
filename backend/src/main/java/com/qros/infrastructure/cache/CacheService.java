@@ -1,7 +1,6 @@
 package com.qros.infrastructure.cache;
 
 import java.util.concurrent.TimeUnit;
-
 import org.springframework.lang.NonNull;
 
 /**
@@ -12,7 +11,7 @@ public interface CacheService {
 
     /**
      * Stores a value in cache with a specific key and expiration.
-     * 
+     *
      * @param key     Key to store
      * @param value   Value to store
      * @param timeout Time to live
@@ -22,22 +21,22 @@ public interface CacheService {
 
     /**
      * Retrieves a value from cache by key.
-     * 
+     *
      * @param key Key to lookup
      * @return Cached object or null if not found
      */
-    Object get(@NonNull String key);
+    <T> T get(String key, Class<T> type);
 
     /**
      * Removes a value from cache by key.
-     * 
+     *
      * @param key Key to delete
      */
     void delete(@NonNull String key);
 
     /**
      * Checks if a key exists in cache.
-     * 
+     *
      * @param key Key to check
      * @return true if exists, false otherwise
      */

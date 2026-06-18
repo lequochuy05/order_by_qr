@@ -5,15 +5,30 @@ const defaultSettings = {
   restaurantName: 'Sắc Màu Quán',
   restaurantAddress: '',
   restaurantPhone: '',
-  restaurantLogoUrl: '',
-  wifiSsid: '',
+  restaurantEmail: '',
+  logoUrl: '',
+  wifiName: '',
   wifiPassword: '',
-  vatRate: 0,
-  autoApproveOrders: true,
-  enableAiAssistant: true,
-  enablePayos: true,
-  enableCash: true,
+  openingTime: '',
+  closingTime: '',
+  currency: 'VND',
+  taxPercent: 0,
+  serviceChargePercent: 0,
+  orderingEnabled: true,
+  maintenanceMode: false,
 };
+
+const normalizeSettings = (data = {}) => ({
+  ...defaultSettings,
+  ...data,
+  logoUrl: data.logoUrl ?? data.restaurantLogoUrl ?? '',
+  wifiName: data.wifiName ?? data.wifiSsid ?? '',
+  taxPercent: data.taxPercent ?? data.vatRate ?? 0,
+  serviceChargePercent: data.serviceChargePercent ?? 0,
+  orderingEnabled: data.orderingEnabled ?? data.autoApproveOrders ?? true,
+  maintenanceMode: data.maintenanceMode ?? false,
+  wifiPassword: data.wifiPassword ?? '',
+});
 
 const useSettingsStore = create((set, get) => ({
   settings: defaultSettings,
@@ -23,7 +38,7 @@ const useSettingsStore = create((set, get) => ({
     if (get().loaded && !force) return get().settings;
     try {
       const data = await settingsService.get();
-      const merged = { ...defaultSettings, ...data };
+      const merged = normalizeSettings(data);
       set({ settings: merged, loaded: true });
       return merged;
     } catch (err) {

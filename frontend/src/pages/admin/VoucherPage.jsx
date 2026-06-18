@@ -1,5 +1,5 @@
-import VoucherManagement from '@modules/voucher-management/ui/VoucherManagement.jsx'
+import { VoucherManagement } from '@features/voucher-management';
 
 export default function VoucherPage() {
-  return <VoucherManagement />
+  return <VoucherManagement />;
 }

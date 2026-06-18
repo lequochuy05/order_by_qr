@@ -1,10 +1,9 @@
 package com.qros.shared.response;
 
-import lombok.Builder;
-import lombok.Value;
-
 import java.time.Instant;
 import java.util.Map;
+import lombok.Builder;
+import lombok.Value;
 
 @Value
 @Builder

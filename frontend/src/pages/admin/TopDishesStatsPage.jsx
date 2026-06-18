@@ -1,5 +1,5 @@
-import TopDishesStats from '@modules/statistics/ui/TopDishesStats.jsx'
+import { TopDishesStats } from '@features/analytics';
 
 export default function TopDishesStatsPage() {
-  return <TopDishesStats />
+  return <TopDishesStats />;
 }

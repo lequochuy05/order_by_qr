@@ -1,15 +1,20 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.menu.dto.PublicMenuResponse;
-import com.qros.modules.order.dto.OrderPreviewResponse;
-import com.qros.modules.order.dto.OrderResponse;
+import com.qros.modules.order.dto.response.OrderPreviewResponse;
+import com.qros.modules.order.dto.response.OrderResponse;
+import com.qros.modules.order.dto.response.PublicOrderResponse;
+import com.qros.modules.order.dto.response.TableBoardResponse;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.payment.model.PaymentTransaction;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
-import com.qros.modules.payment.service.PayosService;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.TableSession;
+import com.qros.modules.table.model.enums.TableSessionStatus;
+import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableSessionRepository;
+import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import jakarta.persistence.EntityManager;
@@ -20,6 +25,16 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,17 +46,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -49,38 +53,30 @@ import java.util.stream.Collectors;
 public class OrderQueryService {
 
     private final OrderRepository orderRepository;
-    private final PaymentTransactionRepository transactionRepository;
-    private final PayosService payosService;
     private final OrderMapper orderMapper;
+    private final DiningTableRepository tableRepository;
+    private final TableSessionService tableSessionService;
+    private final TableSessionRepository tableSessionRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
 
-    public List<OrderResponse> getAllOrders() {
-        return orderRepository.findAllWithDetails().stream()
-                .map(orderMapper::toResponse)
-                .toList();
-    }
+    /**
+     * Temporary full list query.
+     * Prefer getOrderHistory(...) with Pageable for admin screens.
+     */
+    public Page<OrderResponse> getAllOrders(@NonNull Pageable pageable) {
+        Page<Order> orderPage = orderRepository.findAll(pageable);
 
-    public Page<OrderResponse> getOrderHistory(String status, LocalDate startDate,
-            LocalDate endDate, String orderId, String tableNumber, @NonNull Pageable pageable) {
-        Specification<Order> spec = (root, query, cb) -> {
-            List<Predicate> predicates = buildPredicates(root, query, cb, status, startDate, endDate, orderId,
-                    tableNumber);
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        Page<Order> orderPage = orderRepository.findAll(spec, pageable);
-        List<Long> orderIds = orderPage.getContent().stream()
-                .map(Order::getId)
-                .toList();
+        List<Long> orderIds = orderPage.getContent().stream().map(Order::getId).toList();
 
         if (orderIds.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, orderPage.getTotalElements());
         }
 
         Map<Long, Order> ordersById = orderRepository.findDistinctByIdIn(orderIds).stream()
-                .collect(Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+                .collect(
+                        Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
         List<OrderResponse> responses = orderIds.stream()
                 .map(ordersById::get)
@@ -91,18 +87,50 @@ public class OrderQueryService {
         return new PageImpl<>(responses, pageable, orderPage.getTotalElements());
     }
 
-    @Cacheable(value = "order_stats")
-    public Map<String, Object> getOrderStats(String status, LocalDate startDate, LocalDate endDate, String orderId,
-            String tableNumber) {
+    public Page<OrderResponse> getOrderHistory(
+            String status,
+            LocalDate from,
+            LocalDate to,
+            String orderId,
+            String tableNumber,
+            @NonNull Pageable pageable) {
+        Specification<Order> spec = (root, query, cb) -> {
+            List<Predicate> predicates = buildPredicates(root, query, cb, status, from, to, orderId, tableNumber);
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Order> orderPage = orderRepository.findAll(spec, pageable);
+
+        List<Long> orderIds = orderPage.getContent().stream().map(Order::getId).toList();
+
+        if (orderIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, orderPage.getTotalElements());
+        }
+
+        Map<Long, Order> ordersById = orderRepository.findDistinctByIdIn(orderIds).stream()
+                .collect(
+                        Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        List<OrderResponse> responses = orderIds.stream()
+                .map(ordersById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(orderMapper::toResponse)
+                .toList();
+
+        return new PageImpl<>(responses, pageable, orderPage.getTotalElements());
+    }
+
+    @Cacheable(value = CacheNames.ORDER_STATS)
+    public Map<String, Object> getOrderAnalytics(
+            String status, LocalDate from, LocalDate to, String orderId, String tableNumber) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Object[]> cq = cb.createQuery(Object[].class);
         Root<Order> root = cq.from(Order.class);
 
-        List<Predicate> predicates = buildPredicates(root, cq, cb, status, startDate, endDate, orderId, tableNumber);
+        List<Predicate> predicates = buildPredicates(root, cq, cb, status, from, to, orderId, tableNumber);
 
-        cq.multiselect(
-                cb.count(root),
-                cb.coalesce(cb.sum(root.get("finalAmount")), BigDecimal.ZERO));
+        cq.multiselect(cb.count(root), cb.coalesce(cb.sum(root.get("finalAmount")), BigDecimal.ZERO));
 
         if (!predicates.isEmpty()) {
             cq.where(cb.and(predicates.toArray(new Predicate[0])));
@@ -113,29 +141,8 @@ public class OrderQueryService {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", result[0]);
         stats.put("totalRevenue", result[1]);
+
         return stats;
-    }
-
-    @Transactional
-    public OrderResponse reconcileOrder(@NonNull Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
-
-        if (order.getStatus() == Order.OrderStatus.COMPLETED || order.getStatus() == Order.OrderStatus.CANCELLED) {
-            return orderMapper.toResponse(order);
-        }
-
-        Optional<PaymentTransaction> latestTx = transactionRepository.findFirstByOrderIdOrderByCreatedAtDesc(order.getId());
-        if (latestTx.isPresent()) {
-            PaymentTransaction tx = latestTx.get();
-            if (tx.getPaymentMethod() == PaymentTransaction.PaymentMethod.PAYOS
-                    && tx.getStatus() == PaymentTransaction.TransactionStatus.PENDING) {
-                payosService.syncPaymentStatus(tx.getId());
-                order = orderRepository.findById(id).orElse(order);
-            }
-        }
-
-        return orderMapper.toResponse(order);
     }
 
     public List<OrderResponse> getActiveOrders() {
@@ -144,52 +151,133 @@ public class OrderQueryService {
                 .toList();
     }
 
+    public TableBoardResponse getTableBoard() {
+        Map<Long, TableSession> openSessionsByTableId =
+                tableSessionRepository.findByStatus(TableSessionStatus.OPEN).stream()
+                        .filter(session -> session.getTable() != null)
+                        .collect(Collectors.toMap(
+                                session -> session.getTable().getId(), Function.identity(), (left, right) -> left));
+
+        List<TableBoardResponse.TableItem> tables = tableRepository.findAllByOrderByTableNumberAsc().stream()
+                .map(table -> {
+                    TableSession session = openSessionsByTableId.get(table.getId());
+
+                    return new TableBoardResponse.TableItem(
+                            table.getId(),
+                            table.getTableNumber(),
+                            table.getTableCode(),
+                            table.getStatus().name(),
+                            table.getCapacity(),
+                            table.getQrCodeUrl(),
+                            session != null,
+                            session != null ? session.getStatus().name() : null,
+                            session != null ? session.getOpenedAt() : null,
+                            session != null ? session.getLastActivityAt() : null,
+                            table.getCreatedAt(),
+                            table.getUpdatedAt());
+                })
+                .toList();
+
+        List<TableBoardResponse.ActiveOrder> activeOrders =
+                orderRepository.findActiveOrderSummariesForTableBoard().stream()
+                        .map(order -> new TableBoardResponse.ActiveOrder(
+                                order.getId(),
+                                order.getStatus(),
+                                order.getFinalAmount(),
+                                order.getTableId(),
+                                order.getTableNumber(),
+                                order.getCreatedAt()))
+                        .toList();
+
+        return new TableBoardResponse(tables, activeOrders);
+    }
+
     public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
         return orderRepository
                 .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
                 .map(orderMapper::toResponse);
     }
 
-    public Optional<PublicMenuResponse.Order> getPublicCurrentOrderByTable(@NonNull Long tableId) {
+    public Optional<PublicOrderResponse> getPublicCurrentOrderByTableCode(@NonNull String tableCode) {
+        return orderRepository
+                .findFirstByTable_TableCodeAndStatusInOrderByCreatedAtDesc(tableCode, activeStatuses())
+                .map(orderMapper::toPublicResponse);
+    }
+
+    public Optional<PublicOrderResponse> getPublicCurrentOrderBySession(
+            @NonNull String tableCode, @NonNull String sessionToken) {
+        TableSession session = tableSessionService.requireSessionForRead(tableCode, sessionToken);
+
+        if (!session.isOpen()) {
+            return Optional.empty();
+        }
+
+        return orderRepository
+                .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(session.getId(), activeStatuses())
+                .map(orderMapper::toPublicResponse);
+    }
+
+    public Optional<PublicOrderResponse> getPublicCurrentOrderByTable(@NonNull Long tableId) {
         return orderRepository
                 .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
                 .map(orderMapper::toPublicResponse);
     }
 
-    @Cacheable(value = "order_by_id", key = "#id")
+    @Cacheable(value = CacheNames.ORDER_ID_CACHE, key = "#id")
     public OrderResponse getOrderById(@NonNull Long id) {
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+        Order order =
+                orderRepository.findDetailById(id).orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
         return orderMapper.toResponse(order);
     }
 
     public OrderPreviewResponse getOrderPreviewByTableId(@NonNull Long tableId) {
-        Order order = orderRepository.findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND,
-                        "No active session for this table"));
+        Order order = orderRepository
+                .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
+                .orElseThrow(
+                        () -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "No active session for this table"));
 
-        return OrderPreviewResponse.builder()
-                .subtotalAmount(order.getSubtotalAmount())
-                .discountAmount(order.getDiscountAmount())
-                .finalAmount(order.getFinalAmount())
-                .build();
+        BigDecimal subtotalAmount = safe(order.getSubtotalAmount());
+        BigDecimal discountAmount = safe(order.getDiscountAmount());
+        BigDecimal finalAmount = safe(order.getFinalAmount());
+
+        return new OrderPreviewResponse(
+                subtotalAmount,
+                BigDecimal.ZERO,
+                subtotalAmount,
+                discountAmount,
+                finalAmount,
+                false,
+                "",
+                discountAmount);
     }
 
-    private List<Predicate> buildPredicates(Root<Order> root, CriteriaQuery<?> query, CriteriaBuilder cb, String status,
-            LocalDate startDate, LocalDate endDate, String orderId, String tableNumber) {
+    private List<Predicate> buildPredicates(
+            Root<Order> root,
+            CriteriaQuery<?> query,
+            CriteriaBuilder cb,
+            String status,
+            LocalDate from,
+            LocalDate to,
+            String orderId,
+            String tableNumber) {
         List<Predicate> predicates = new ArrayList<>();
+
         if (status != null && !status.isBlank()) {
             try {
-                predicates.add(cb.equal(root.get("status"), Order.OrderStatus.valueOf(status.toUpperCase())));
+                predicates.add(cb.equal(
+                        root.get("status"), OrderStatus.valueOf(status.trim().toUpperCase())));
             } catch (IllegalArgumentException e) {
                 log.warn("Invalid order status: {}", status);
             }
         }
-        if (startDate != null) {
-            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), startDate.atStartOfDay()));
+
+        if (from != null) {
+            predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), from.atStartOfDay()));
         }
-        if (endDate != null) {
-            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate.atTime(23, 59, 59)));
+
+        if (to != null) {
+            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), to.atTime(23, 59, 59)));
         }
 
         if (orderId != null && !orderId.isBlank()) {
@@ -208,15 +296,19 @@ public class OrderQueryService {
             Root<Order> subRoot = subquery.from(Order.class);
             Join<Order, DiningTable> subTable = subRoot.join("table");
 
-            subquery.select(subRoot.get("id"))
-                    .where(cb.like(cb.lower(subTable.get("tableNumber")), pattern));
+            subquery.select(subRoot.get("id")).where(cb.like(cb.lower(subTable.get("tableNumber")), pattern));
 
             predicates.add(root.get("id").in(subquery));
         }
+
         return predicates;
     }
 
-    private List<Order.OrderStatus> activeStatuses() {
-        return List.of(Order.OrderStatus.PENDING, Order.OrderStatus.SERVING, Order.OrderStatus.AWAITING_PAYMENT);
+    private List<OrderStatus> activeStatuses() {
+        return List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
+    }
+
+    private BigDecimal safe(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

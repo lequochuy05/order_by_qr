@@ -1,5 +1,5 @@
-import StaffStats from '@modules/statistics/ui/StaffStats.jsx'
+import { StaffStats } from '@features/analytics';
 
 export default function StaffStatsPage() {
-  return <StaffStats />
+  return <StaffStats />;
 }

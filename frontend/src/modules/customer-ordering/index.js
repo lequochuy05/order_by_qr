@@ -1,8 +1,0 @@
-export { customerOrderApi } from './api/customerOrderApi.js'
-export { default as AddToCartButton } from './ui/AddToCartButton.jsx'
-export { default as CartModal } from './ui/CartModal.jsx'
-export { default as CurrentOrderBanner } from './ui/CurrentOrderBanner.jsx'
-export { default as ItemOptionsModal } from './ui/ItemOptionsModal.jsx'
-export { default as QuantityStepper } from './ui/QuantityStepper.jsx'
-export { default as ShoppingCart } from './ui/ShoppingCart.jsx'
-export { default as SubmitOrderButton } from './ui/SubmitOrderButton.jsx'

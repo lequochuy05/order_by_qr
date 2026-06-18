@@ -14,7 +14,7 @@ public class AuthConfig {
     /**
      * PasswordEncoder bean for secure password hashing and verification.
      * Uses BCryptPasswordEncoder with a work factor of 10.
-     * 
+     *
      * @return BCryptPasswordEncoder instance
      */
     @Bean

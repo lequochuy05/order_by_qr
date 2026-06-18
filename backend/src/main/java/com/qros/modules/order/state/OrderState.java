@@ -1,10 +1,13 @@
 package com.qros.modules.order.state;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.enums.OrderStatus;
+import java.util.Set;
 
 /**
  * OrderState - Common interface for all order states.
- * Implements the State Pattern to handle transitions between different order statuses.
+ * Implements the State Pattern to handle transitions between different order
+ * statuses.
  */
 public interface OrderState {
     /**
@@ -19,7 +22,7 @@ public interface OrderState {
      *
      * @return The OrderStatus enum value
      */
-    Order.OrderStatus getStatus();
+    OrderStatus getStatus();
 
     /**
      * Returns the set of statuses that are allowed to transition into this state.
@@ -28,5 +31,5 @@ public interface OrderState {
      *
      * @return Set of source OrderStatus values that can transition to this state
      */
-    java.util.Set<Order.OrderStatus> allowedTransitionsFrom();
+    Set<OrderStatus> allowedTransitionsFrom();
 }

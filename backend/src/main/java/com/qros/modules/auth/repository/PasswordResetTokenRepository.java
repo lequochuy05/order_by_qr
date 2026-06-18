@@ -1,19 +1,25 @@
 package com.qros.modules.auth.repository;
 
+import com.qros.modules.auth.model.PasswordResetToken;
+import java.time.LocalDateTime;
 import java.util.Optional;
-
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import com.qros.modules.auth.model.PasswordResetToken;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
     Optional<PasswordResetToken> findByToken(String token);
 
-    Optional<PasswordResetToken> findByOtpCodeAndUser_Phone(String otpCode, String phone);
+    Optional<PasswordResetToken> findFirstByUserPhoneAndUsedFalseAndExpiryDateAfterAndViaOrderByExpiryDateDesc(
+            String phone, LocalDateTime now, @Param("via") PasswordResetToken.Via via);
 
-    @Query("SELECT t FROM PasswordResetToken t WHERE t.otpCode = :otp AND t.user.phone = :phone AND t.used = false AND t.expiryDate > CURRENT_TIMESTAMP")
-    Optional<PasswordResetToken> findValidOtp(@Param("otp") String otp, @Param("phone") String phone);
-
+    @Modifying
+    @Query(
+            """
+                        UPDATE PasswordResetToken t
+                        SET t.used = true
+                        WHERE t.user.id = :userId AND t.used = false
+                        """)
+    void markAllActiveTokensUsedByUserId(@Param("userId") Long userId);
 }

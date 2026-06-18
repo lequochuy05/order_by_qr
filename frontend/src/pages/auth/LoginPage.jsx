@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@modules/auth/model/AuthContext.jsx';
-import { authService } from '@modules/auth/api/authService.js';
-import { Lock, Mail, Loader2, AlertCircle} from 'lucide-react';
+import { authService, useAuth } from '@features/auth';
+import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import { FaGoogle, FaFacebook, FaTwitter } from 'react-icons/fa';
 
 const LoginPage = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +17,7 @@ const LoginPage = () => {
     setError('');
     setIsSubmitting(true);
 
-    // Kiểm tra nhập liệu 
+    // Kiểm tra nhập liệu
     if (!credentials.email || !credentials.password) {
       setError('Vui lòng nhập đầy đủ Email và Mật khẩu');
       setIsSubmitting(false);
@@ -28,14 +27,14 @@ const LoginPage = () => {
     try {
       // Gọi API login từ UserController
       const data = await authService.login(credentials.email, credentials.password);
-      
+
       // Lưu access token trong memory; refresh token nằm trong httpOnly cookie.
-      login(data); 
-      
+      login(data);
+
       // Điều hướng
-      navigate('/admin/dashboard'); 
+      navigate('/admin/dashboard');
     } catch (err) {
-      // Xử lý lỗi 401/403 
+      // Xử lý lỗi 401/403
       const msg = err.response?.status === 401 ? 'Sai email hoặc mật khẩu' : 'Đăng nhập thất bại';
       setError(msg);
     } finally {
@@ -46,10 +45,8 @@ const LoginPage = () => {
   return (
     // Background
     <div className="min-h-screen bg-gradient-to-br from-[#74ebd5] to-[#ACB6E5] flex items-center justify-center p-4">
-      
       {/* Container chính */}
       <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 md:p-12 animate-in fade-in zoom-in duration-300">
-        
         {/* Tiêu đề */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-[#e74c3c] tracking-tight">Đăng Nhập</h1>
@@ -69,12 +66,12 @@ const LoginPage = () => {
             <label className="text-sm font-semibold text-gray-600 ml-1">Email</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
+              <input
                 type="email"
                 required
                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
                 placeholder="abc@xyz.com"
-                onChange={(e) => setCredentials({...credentials, email: e.target.value})}
+                onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
               />
             </div>
           </div>
@@ -86,28 +83,28 @@ const LoginPage = () => {
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input 
+              <input
                 type="password"
                 required
                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
                 placeholder="••••••••"
-                onChange={(e) => setCredentials({...credentials, password: e.target.value})}
+                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
               />
             </div>
-                <div className="flex justify-end">
-                    <a href="#" className="text-xs text-emerald-600 hover:underline">
-                    Quên mật khẩu?
-                    </a>
-                </div>
+            <div className="flex justify-end">
+              <a href="#" className="text-xs text-emerald-600 hover:underline">
+                Quên mật khẩu?
+              </a>
+            </div>
           </div>
 
           {/* Nút Đăng nhập */}
-          <button 
+          <button
             type="submit"
             disabled={isSubmitting}
             className="w-full bg-[#3498db] hover:bg-[#2980b9] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
           >
-            {isSubmitting ? <Loader2 className="animate-spin" /> : "ĐĂNG NHẬP NGAY"}
+            {isSubmitting ? <Loader2 className="animate-spin" /> : 'ĐĂNG NHẬP NGAY'}
           </button>
         </form>
 
@@ -115,27 +112,32 @@ const LoginPage = () => {
         <div className="mt-8">
           <div className="relative flex py-3 items-center">
             <div className="flex-grow border-t border-gray-200"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-sm italic">Hoặc đăng nhập bằng</span>
+            <span className="flex-shrink mx-4 text-gray-400 text-sm italic">
+              Hoặc đăng nhập bằng
+            </span>
             <div className="flex-grow border-t border-gray-200"></div>
           </div>
-          
+
           <div className="flex justify-center gap-6 mt-4">
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#DB4437]">
-                    <FaGoogle size={24} /> {/* Gọi trực tiếp như một Component */}
-                </button>
-                
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#4267B2]">
-                    <FaFacebook size={24} />
-                </button>
-                
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#1DA1F2]">
-                    <FaTwitter size={24} />
-                </button>
-            </div>
+            <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#DB4437]">
+              <FaGoogle size={24} /> {/* Gọi trực tiếp như một Component */}
+            </button>
+
+            <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#4267B2]">
+              <FaFacebook size={24} />
+            </button>
+
+            <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#1DA1F2]">
+              <FaTwitter size={24} />
+            </button>
+          </div>
         </div>
 
         <p className="text-center mt-8 text-sm text-gray-500">
-          Chưa có tài khoản? <a href="#" className="text-emerald-600 font-bold hover:underline">Đăng ký ngay</a>
+          Chưa có tài khoản?{' '}
+          <a href="#" className="text-emerald-600 font-bold hover:underline">
+            Đăng ký ngay
+          </a>
         </p>
       </div>
     </div>

@@ -7,14 +7,14 @@ export const defaultAdminPreferences = {
   notificationSound: true,
   loudSound: false,
   darkMode: false,
-  language: 'vi'
+  language: 'vi',
 };
 
 export const readAdminPreferences = () => {
   try {
     return {
       ...defaultAdminPreferences,
-      ...JSON.parse(localStorage.getItem(adminPreferencesStorageKey) || '{}')
+      ...JSON.parse(localStorage.getItem(adminPreferencesStorageKey) || '{}'),
     };
   } catch {
     return defaultAdminPreferences;
@@ -30,7 +30,7 @@ export const useAdminPreferences = () => {
   const [preferences, setPreferenceState] = useState(() => readAdminPreferences());
 
   const setPreferences = useCallback((updater) => {
-    setPreferenceState(prev => {
+    setPreferenceState((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       persistAdminPreferences(next);
       return next;

@@ -1,19 +1,18 @@
 package com.qros.architecture;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
+import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
-import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 @AnalyzeClasses(packages = "com.qros", importOptions = ImportOption.DoNotIncludeTests.class)
 class BackendDependencyRulesTest {
@@ -26,8 +25,11 @@ class BackendDependencyRulesTest {
     @ArchTest
     void menu_must_not_depend_on_order(JavaClasses classes) {
         noClasses()
-                .that().resideInAPackage("..modules.menu..")
-                .should().dependOnClassesThat().resideInAPackage("..modules.order..")
+                .that()
+                .resideInAPackage("..modules.menu..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules.order..")
                 .because("menu is a catalog owner and must not know order workflows")
                 .check(classes);
     }
@@ -35,8 +37,11 @@ class BackendDependencyRulesTest {
     @ArchTest
     void table_must_not_depend_on_order(JavaClasses classes) {
         noClasses()
-                .that().resideInAPackage("..modules.table..")
-                .should().dependOnClassesThat().resideInAPackage("..modules.order..")
+                .that()
+                .resideInAPackage("..modules.table..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules.order..")
                 .because("orders may use tables, but tables must stay independent from orders")
                 .check(classes);
     }
@@ -44,23 +49,57 @@ class BackendDependencyRulesTest {
     @ArchTest
     void kitchen_and_payment_must_not_depend_on_each_other(JavaClasses classes) {
         noClasses()
-                .that().resideInAPackage("..modules.payment..")
-                .should().dependOnClassesThat().resideInAPackage("..modules.kitchen..")
+                .that()
+                .resideInAPackage("..modules.payment..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules.kitchen..")
                 .because("payment and kitchen workflows communicate through order state, not directly")
                 .check(classes);
 
         noClasses()
-                .that().resideInAPackage("..modules.kitchen..")
-                .should().dependOnClassesThat().resideInAPackage("..modules.payment..")
+                .that()
+                .resideInAPackage("..modules.kitchen..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules.payment..")
                 .because("payment and kitchen workflows communicate through order state, not directly")
+                .check(classes);
+    }
+
+    @ArchTest
+    void payment_must_not_depend_on_order_repository_or_infrastructure(JavaClasses classes) {
+        noClasses()
+                .that()
+                .resideInAPackage("..modules.payment..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("..modules.order.repository..", "..modules.order.infrastructure..")
+                .because("payment should cross into order through the order service boundary")
+                .check(classes);
+    }
+
+    @ArchTest
+    void inventory_must_not_depend_on_order_repositories(JavaClasses classes) {
+        noClasses()
+                .that()
+                .resideInAPackage("..modules.inventory..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules.order.repository..")
+                .because(
+                        "order item loading belongs to the order workflow; inventory should receive loaded order items")
                 .check(classes);
     }
 
     @ArchTest
     void shared_must_not_depend_on_modules(JavaClasses classes) {
         noClasses()
-                .that().resideInAPackage("..shared..")
-                .should().dependOnClassesThat().resideInAPackage("..modules..")
+                .that()
+                .resideInAPackage("..shared..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAPackage("..modules..")
                 .because("shared is the lowest backend layer")
                 .check(classes);
     }
@@ -68,7 +107,8 @@ class BackendDependencyRulesTest {
     @ArchTest
     void controllers_must_not_depend_on_repositories_from_other_modules(JavaClasses classes) {
         noClasses()
-                .that().resideInAPackage("..modules..controller..")
+                .that()
+                .resideInAPackage("..modules..controller..")
                 .should(dependOnRepositoriesFromOtherModules())
                 .because("controllers must talk to their own service boundary instead of another module repository")
                 .check(classes);
@@ -87,8 +127,8 @@ class BackendDependencyRulesTest {
                     JavaClass target = dependency.getTargetClass();
                     String targetModule = moduleFrom(target.getPackageName(), MODULE_REPOSITORY_PACKAGE);
                     if (targetModule != null && !targetModule.equals(sourceModule)) {
-                        events.add(SimpleConditionEvent.violated(item,
-                                item.getName() + " depends on " + target.getName()));
+                        events.add(SimpleConditionEvent.violated(
+                                item, item.getName() + " depends on " + target.getName()));
                     }
                 }
             }
