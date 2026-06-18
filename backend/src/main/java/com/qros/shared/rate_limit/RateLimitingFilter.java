@@ -2,6 +2,7 @@ package com.qros.shared.rate_limit;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.qros.shared.constants.ApiRoutes;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -40,12 +42,13 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        boolean isAiChat = "/api/ai/chat".equals(path) && "POST".equalsIgnoreCase(method);
-        boolean isPublicOrder = path.startsWith("/api/public/orders") && "POST".equalsIgnoreCase(method);
-        boolean isStartSession =
-                path.matches("^/api/public/tables/[^/]+/start-session$") && "POST".equalsIgnoreCase(method);
-        boolean isHeartbeat = "/api/public/sessions/heartbeat".equals(path) && "POST".equalsIgnoreCase(method);
-        boolean isRecommendation = path.startsWith("/api/public/recommendations") && "GET".equalsIgnoreCase(method);
+        boolean isAiChat = (ApiRoutes.AI + "/chat").equals(path) && "POST".equalsIgnoreCase(method);
+        boolean isPublicOrder = path.startsWith(ApiRoutes.PUBLIC + "/orders") && "POST".equalsIgnoreCase(method);
+        boolean isStartSession = path.matches("^" + Pattern.quote(ApiRoutes.PUBLIC) + "/tables/[^/]+/start-session$")
+                && "POST".equalsIgnoreCase(method);
+        boolean isHeartbeat =
+                (ApiRoutes.PUBLIC + "/sessions/heartbeat").equals(path) && "POST".equalsIgnoreCase(method);
+        boolean isRecommendation = path.startsWith(ApiRoutes.RECOMMENDATIONS) && "GET".equalsIgnoreCase(method);
 
         if (!isAiChat && !isPublicOrder && !isStartSession && !isHeartbeat && !isRecommendation) {
             filterChain.doFilter(request, response);

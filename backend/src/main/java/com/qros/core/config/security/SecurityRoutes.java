@@ -1,5 +1,7 @@
 package com.qros.core.config.security;
 
+import com.qros.shared.constants.ApiRoutes;
+
 public final class SecurityRoutes {
 
     private SecurityRoutes() {}
@@ -7,115 +9,121 @@ public final class SecurityRoutes {
     public static final String[] STATIC_AND_SYSTEM = {"/error", "/ws/**", "/actuator/health"};
 
     public static final String[] AUTH_PUBLIC_POST = {
-        "/api/auth/login",
-        "/api/auth/refresh",
-        "/api/auth/logout",
-        "/api/auth/forgot-password-email",
-        "/api/auth/reset-password-email",
-        "/api/auth/forgot-password-phone",
-        "/api/auth/reset-password-phone"
+        ApiRoutes.AUTH + "/login",
+        ApiRoutes.AUTH + "/refresh",
+        ApiRoutes.AUTH + "/logout",
+        ApiRoutes.AUTH + "/forgot-password-email",
+        ApiRoutes.AUTH + "/reset-password-email",
+        ApiRoutes.AUTH + "/forgot-password-phone",
+        ApiRoutes.AUTH + "/reset-password-phone"
     };
 
-    public static final String[] PUBLIC_GET = {"/api/public/**", "/api/vouchers/validate", "/api/recommendations/**"};
+    public static final String[] PUBLIC_GET = {
+        ApiRoutes.PUBLIC + "/**", ApiRoutes.VOUCHERS + "/validate", ApiRoutes.RECOMMENDATIONS + "/**"
+    };
 
     public static final String[] PUBLIC_POST = {
-        "/api/public/orders",
-        "/api/public/orders/preview",
-        "/api/public/tables/*/start-session",
-        "/api/public/sessions/heartbeat",
-        "/api/webhooks/**"
+        ApiRoutes.PUBLIC + "/orders",
+        ApiRoutes.PUBLIC + "/orders/preview",
+        ApiRoutes.PUBLIC + "/tables/*/start-session",
+        ApiRoutes.PUBLIC + "/sessions/heartbeat",
+        ApiRoutes.WEBHOOKS + "/**"
     };
 
-    public static final String[] SELF_GET = {"/api/users/me"};
+    public static final String[] SELF_GET = {ApiRoutes.USERS + "/me"};
 
-    public static final String[] SELF_PATCH = {"/api/users/me", "/api/users/me/password"};
+    public static final String[] SELF_PATCH = {ApiRoutes.USERS + "/me", ApiRoutes.USERS + "/me/password"};
 
-    public static final String[] SELF_POST = {"/api/users/me/avatar"};
+    public static final String[] SELF_POST = {ApiRoutes.USERS + "/me/avatar"};
 
-    public static final String[] MANAGER_GET = {"/api/users", "/api/users/*", "/api/settings", "/actuator/prometheus"};
+    public static final String[] MANAGER_GET = {
+        ApiRoutes.USERS, ApiRoutes.USERS + "/*", ApiRoutes.SETTINGS, "/actuator/prometheus"
+    };
 
     public static final String[] STAFF_READ_GET = {
-        "/api/categories/**", "/api/menu-items/**", "/api/combos/**", "/api/vouchers/**", "/api/promotions/**"
+        ApiRoutes.CATEGORIES + "/**",
+        ApiRoutes.MENU_ITEMS + "/**",
+        ApiRoutes.COMBOS + "/**",
+        ApiRoutes.VOUCHERS + "/**",
+        ApiRoutes.PROMOTIONS + "/**"
     };
 
     public static final String[] OPERATION_GET = {
-        "/api/orders",
-        "/api/orders/*",
-        "/api/orders/table-board",
-        "/api/orders/table/*/current",
-        "/api/orders/table/*/preview",
-        "/api/tables/**",
-        "/api/orders/history",
-        "/api/orders/active",
-        "/api/kitchen/orders",
-        "/api/inventory/**",
-        "/api/orders/analytics",
-        "/api/analytics/**"
+        ApiRoutes.ORDERS,
+        ApiRoutes.ORDERS + "/*",
+        ApiRoutes.ORDERS + "/table-board",
+        ApiRoutes.ORDERS + "/table/*/current",
+        ApiRoutes.ORDERS + "/table/*/preview",
+        ApiRoutes.TABLES + "/**",
+        ApiRoutes.ORDERS + "/active",
+        ApiRoutes.KITCHEN + "/orders",
+        ApiRoutes.INVENTORY + "/**",
+        ApiRoutes.FORECAST + "/**",
+        ApiRoutes.ANALYTICS + "/**"
     };
 
     public static final String[] MANAGER_POST = {
-        "/api/users",
-        "/api/users/*/avatar",
-        "/api/categories/**",
-        "/api/menu-items/**",
-        "/api/combos/**",
-        "/api/inventory/**",
-        "/api/tables/**",
-        "/api/vouchers/**",
-        "/api/promotions/**",
-        "/api/ai/chat"
+        ApiRoutes.USERS,
+        ApiRoutes.USERS + "/*/avatar",
+        ApiRoutes.CATEGORIES + "/**",
+        ApiRoutes.MENU_ITEMS + "/**",
+        ApiRoutes.COMBOS + "/**",
+        ApiRoutes.INVENTORY + "/**",
+        ApiRoutes.TABLES + "/**",
+        ApiRoutes.VOUCHERS + "/**",
+        ApiRoutes.PROMOTIONS + "/**",
+        ApiRoutes.AI + "/chat"
     };
 
     public static final String[] MANAGER_PUT = {
-        "/api/users/**",
-        "/api/categories/**",
-        "/api/menu-items/**",
-        "/api/combos/**",
-        "/api/inventory/**",
-        "/api/tables/**",
-        "/api/vouchers/**",
-        "/api/promotions/**",
-        "/api/settings"
+        ApiRoutes.USERS + "/**",
+        ApiRoutes.CATEGORIES + "/**",
+        ApiRoutes.MENU_ITEMS + "/**",
+        ApiRoutes.COMBOS + "/**",
+        ApiRoutes.INVENTORY + "/**",
+        ApiRoutes.TABLES + "/**",
+        ApiRoutes.VOUCHERS + "/**",
+        ApiRoutes.PROMOTIONS + "/**",
+        ApiRoutes.SETTINGS
     };
 
     public static final String[] MANAGER_PATCH = {
-        "/api/categories/**",
-        "/api/menu-items/**",
-        "/api/tables/**",
-        "/api/vouchers/**",
-        "/api/promotions/**",
-        "/api/users/*/reset-password",
-        "/api/users/**",
-        "/api/orders/*/cancel",
-        "/api/combos/**"
+        ApiRoutes.CATEGORIES + "/**",
+        ApiRoutes.MENU_ITEMS + "/**",
+        ApiRoutes.TABLES + "/**",
+        ApiRoutes.VOUCHERS + "/**",
+        ApiRoutes.PROMOTIONS + "/**",
+        ApiRoutes.USERS + "/*/reset-password",
+        ApiRoutes.USERS + "/**",
+        ApiRoutes.ORDERS + "/*/cancel",
+        ApiRoutes.COMBOS + "/**"
     };
 
     public static final String[] MANAGER_DELETE = {
-        "/api/orders/**",
-        "/api/users/**",
-        "/api/categories/**",
-        "/api/menu-items/**",
-        "/api/inventory/**",
-        "/api/tables/**",
-        "/api/vouchers/**",
-        "/api/promotions/**",
-        "/api/combos/**",
-        "/api/settings/**"
+        ApiRoutes.ORDERS + "/**",
+        ApiRoutes.USERS + "/**",
+        ApiRoutes.CATEGORIES + "/**",
+        ApiRoutes.MENU_ITEMS + "/**",
+        ApiRoutes.INVENTORY + "/**",
+        ApiRoutes.TABLES + "/**",
+        ApiRoutes.VOUCHERS + "/**",
+        ApiRoutes.PROMOTIONS + "/**",
+        ApiRoutes.COMBOS + "/**",
+        ApiRoutes.SETTINGS + "/**"
     };
 
-    public static final String[] KITCHEN_PATCH = {"/api/kitchen/items/*/status", "/api/kitchen/items/*/prepared"};
+    public static final String[] KITCHEN_PATCH = {
+        ApiRoutes.KITCHEN + "/items/*/status", ApiRoutes.KITCHEN + "/items/*/prepared"
+    };
 
     public static final String[] STAFF_OPERATION_POST = {
-        "/api/orders",
-        "/api/orders/preview",
-        "/api/orders/*/pay",
-        "/api/orders/*/confirm-paid",
-        "/api/orders/*/reconcile"
+        ApiRoutes.ORDERS, ApiRoutes.ORDERS + "/preview", ApiRoutes.ORDERS + "/*/reconcile"
     };
 
-    public static final String[] STAFF_OPERATION_DELETE = {"/api/orders/items/*"};
+    public static final String[] STAFF_OPERATION_DELETE = {ApiRoutes.ORDER_ITEMS + "/*"};
 
-    public static final String[] STAFF_OPERATION_PATCH = {"/api/orders/*/status", "/api/orders/items/**"};
+    public static final String[] STAFF_OPERATION_PATCH = {ApiRoutes.ORDERS + "/*/status", ApiRoutes.ORDER_ITEMS + "/**"
+    };
 
-    public static final String[] PAYMENT_ROUTES = {"/api/payments/**"};
+    public static final String[] PAYMENT_ROUTES = {ApiRoutes.PAYMENTS, ApiRoutes.PAYMENTS + "/**"};
 }

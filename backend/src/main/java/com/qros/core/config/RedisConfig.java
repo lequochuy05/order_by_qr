@@ -115,7 +115,7 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put(CacheNames.POPULAR_ITEMS, config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put(CacheNames.ANALYTICS, config.entryTtl(Duration.ofMinutes(10)));
         cacheConfigurations.put(CacheNames.SETTINGS, config.entryTtl(Duration.ofHours(1)));
-        cacheConfigurations.put(CacheNames.ORDER_BY_ID, config.entryTtl(Duration.ofMinutes(2)));
+        cacheConfigurations.put(CacheNames.ORDER_ID_CACHE, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.MENU_AVAILABILITY, config.entryTtl(Duration.ofSeconds(60)));
 
