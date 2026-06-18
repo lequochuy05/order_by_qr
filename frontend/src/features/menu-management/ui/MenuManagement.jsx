@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
@@ -11,7 +11,6 @@ import { useMenuPageQuery } from '../api/menuQueries.js';
 import { useCategoriesPageQuery } from '@features/category-management/api/categoryQueries.js';
 
 import { menuItemService } from '@features/menu-management/api/menuService.js';
-import { aiLocalService } from '@features/ai-assistant/api/aiLocalService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -62,7 +61,6 @@ const MenuManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [aiScanning, setAiScanning] = useState(false);
   const [detailLoadingId, setDetailLoadingId] = useState(null);
 
   const [formData, setFormData] = useState(emptyMenuForm);
@@ -105,34 +103,6 @@ const MenuManager = () => {
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, filterCate]);
-
-  // AI Magic Scan
-  const handleAiScan = useCallback(async () => {
-    if (!preview) return;
-    setAiScanning(true);
-    try {
-      const result = await aiLocalService.analyzeDish(preview);
-
-      if (result.confidence < 0.4) {
-        showError(
-          `AI không chắc chắn (${(result.confidence * 100).toFixed(0)}%). Hãy thử ảnh rõ hơn.`,
-        );
-        return;
-      }
-
-      setFormData((prev) => ({
-        ...prev,
-        name: result.name,
-        categoryId: result.categoryId,
-        price: result.price,
-      }));
-      showSuccess(`Nhận diện: ${result.name}`);
-    } catch (err) {
-      showError('Lỗi AI: ' + err.message);
-    } finally {
-      setAiScanning(false);
-    }
-  }, [preview, showSuccess, showError]);
 
   // SUBMIT
   const handleSubmit = async (e) => {
@@ -278,7 +248,6 @@ const MenuManager = () => {
         setFormData={setFormData}
         preview={preview}
         isSubmitting={isSubmitting}
-        aiScanning={aiScanning}
         initialFormData={initialFormData}
         selectedFile={selectedFile}
         errors={errors}
@@ -290,7 +259,6 @@ const MenuManager = () => {
             setPreview(URL.createObjectURL(f));
           }
         }}
-        onAiScan={handleAiScan}
       />
     </div>
   );

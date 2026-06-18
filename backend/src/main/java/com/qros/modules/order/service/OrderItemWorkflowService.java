@@ -69,11 +69,6 @@ public class OrderItemWorkflowService {
     }
 
     @Transactional
-    public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus newStatus) {
-        updateItemStatus(itemId, newStatus, null);
-    }
-
-    @Transactional
     public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus newStatus, Long userId) {
         OrderItem item = orderItemRepository
                 .findDetailByIdForUpdate(itemId)
@@ -115,11 +110,6 @@ public class OrderItemWorkflowService {
 
         orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
-    }
-
-    @Transactional
-    public void markItemPrepared(@NonNull Long itemId) {
-        updateItemStatus(itemId, OrderItemStatus.FINISHED);
     }
 
     @Transactional
