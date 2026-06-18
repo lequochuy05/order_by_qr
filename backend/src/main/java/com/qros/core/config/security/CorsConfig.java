@@ -34,7 +34,7 @@ public class CorsConfig {
 
     private static List<String> parseAllowedOrigins(String origins) {
         if (!StringUtils.hasText(origins)) {
-            return List.of("http://localhost:5173", "http://localhost:4173", "https://order-by-qr.vercel.app");
+            return List.of("http://localhost:5173", "https://localhost", "https://order-by-qr.vercel.app");
         }
         return List.of(origins.split("\\s*,\\s*"));
     }
