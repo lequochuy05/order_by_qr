@@ -3,6 +3,7 @@ package com.qros.modules.settings.controller;
 import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
 import com.qros.modules.settings.service.SystemSettingsService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/settings")
+@RequestMapping(ApiRoutes.SETTINGS)
 @RequiredArgsConstructor
 public class SystemSettingsController {
 

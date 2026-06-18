@@ -3,6 +3,7 @@ package com.qros.modules.recommendation.controller;
 import com.qros.modules.recommendation.dto.response.RecommendationResponse;
 import com.qros.modules.recommendation.model.enums.RecommendationContext;
 import com.qros.modules.recommendation.service.RecommendationService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/recommendations")
+@RequestMapping(ApiRoutes.RECOMMENDATIONS)
 @RequiredArgsConstructor
 public class RecommendationController {
 

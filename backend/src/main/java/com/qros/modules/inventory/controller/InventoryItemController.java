@@ -6,6 +6,7 @@ import com.qros.modules.inventory.dto.request.StockInRequest;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
 import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.service.InventoryItemService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/inventory/items")
+@RequestMapping(ApiRoutes.INVENTORY_ITEMS)
 @RequiredArgsConstructor
 public class InventoryItemController {
 

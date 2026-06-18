@@ -16,7 +16,6 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -75,19 +74,6 @@ public class MenuItemService {
         return menuItemRepository.findPublicAvailableItemsByCategoryId(categoryId).stream()
                 .map(publicMenuMapper::toMenuItem)
                 .toList();
-    }
-
-    public List<PublicMenuItem> getPublicMenuItemsByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return List.of();
-        }
-
-        Map<Long, PublicMenuItem> itemsById = new HashMap<>();
-        menuItemRepository.findPublicAvailableItemsByIds(ids).stream()
-                .map(publicMenuMapper::toMenuItem)
-                .forEach(item -> itemsById.put(item.id(), item));
-
-        return ids.stream().map(itemsById::get).filter(item -> item != null).toList();
     }
 
     @Transactional

@@ -3,6 +3,7 @@ package com.qros.modules.promotion.controller;
 import com.qros.modules.promotion.dto.request.PromotionRequest;
 import com.qros.modules.promotion.dto.response.PromotionResponse;
 import com.qros.modules.promotion.service.PromotionService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/promotions")
+@RequestMapping(ApiRoutes.PROMOTIONS)
 @RequiredArgsConstructor
 public class PromotionController {
 

@@ -2,11 +2,15 @@ package com.qros.modules.auth.controller;
 
 import com.qros.modules.auth.dto.internal.LoginResult;
 import com.qros.modules.auth.dto.internal.RefreshResult;
+import com.qros.modules.auth.dto.request.EmailPasswordResetRequest;
 import com.qros.modules.auth.dto.request.LoginRequest;
+import com.qros.modules.auth.dto.request.PhonePasswordResetRequest;
 import com.qros.modules.auth.dto.response.LoginResponse;
 import com.qros.modules.auth.dto.response.TokenResponse;
 import com.qros.modules.auth.service.AuthService;
+import com.qros.modules.auth.service.PasswordResetService;
 import com.qros.modules.auth.service.RefreshTokenService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
@@ -20,15 +24,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping(ApiRoutes.AUTH)
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordResetService passwordResetService;
 
     @Value("${security.jwt.refresh-cookie-name}")
     private String refreshCookieName;
@@ -76,6 +82,39 @@ public class AuthController {
         return ApiResponse.success("Logout successful", null);
     }
 
+    @PostMapping("/forgot-password-email")
+    public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email) {
+        try {
+            passwordResetService.createPasswordResetToken(email);
+        } catch (Exception ignored) {
+            // Keep the response generic to avoid revealing whether an account exists.
+        }
+        return ApiResponse.success(
+                "If your email exists in our system, you will receive password reset instructions.", null);
+    }
+
+    @PostMapping("/reset-password-email")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody @NonNull EmailPasswordResetRequest req) {
+        passwordResetService.resetPassword(req.token(), req.newPassword());
+        return ApiResponse.success("Password reset successfully.", null);
+    }
+
+    @PostMapping("/forgot-password-phone")
+    public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone) {
+        try {
+            passwordResetService.createOtpAndSendOtp(phone);
+        } catch (Exception ignored) {
+            // Keep the response generic to avoid revealing whether an account exists.
+        }
+        return ApiResponse.success("If the phone number exists, an OTP code has been sent.", null);
+    }
+
+    @PostMapping("/reset-password-phone")
+    public ApiResponse<Void> resetPasswordPhone(@Valid @RequestBody @NonNull PhonePasswordResetRequest req) {
+        passwordResetService.resetPasswordWithOtp(req.phone(), req.otp(), req.newPassword());
+        return ApiResponse.success("Password reset successfully.", null);
+    }
+
     private String extractRefreshToken(HttpServletRequest request) {
         if (request.getCookies() == null) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing");
@@ -93,7 +132,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(refreshCookieSecure)
                 .sameSite(refreshCookieSecure ? "None" : "Lax")
-                .path("/api")
+                .path(ApiRoutes.PREFIX)
                 .maxAge(maxAge)
                 .build();
 

@@ -4,6 +4,7 @@ import com.qros.modules.kitchen.dto.request.KitchenItemStatusRequest;
 import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.kitchen.service.KitchenService;
 import com.qros.modules.user.service.CurrentUserService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -20,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/kitchen")
+@RequestMapping(ApiRoutes.KITCHEN)
 @RequiredArgsConstructor
 public class KitchenController {
 

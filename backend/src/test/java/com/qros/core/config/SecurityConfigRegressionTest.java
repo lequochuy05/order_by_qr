@@ -21,13 +21,12 @@ class SecurityConfigRegressionTest {
         String publicPostBlock = source.substring(
                 source.indexOf("public static final String[] PUBLIC_POST"),
                 source.indexOf("public static final String[] SELF_GET"));
-        assertThat(publicPostBlock).doesNotContain("\"/api/orders\"");
-        assertThat(publicPostBlock).doesNotContain("\"/api/orders/**\"");
-        assertThat(publicPostBlock).doesNotContain("\"/api/orders/preview\"");
-        assertThat(publicPostBlock).doesNotContain("\"/api/ai/chat\"");
-        assertThat(publicPostBlock).doesNotContain("\"/api/payments/**\"");
+        assertThat(publicPostBlock).doesNotContain("ApiRoutes.ORDERS");
+        assertThat(publicPostBlock).doesNotContain("ApiRoutes.AI");
+        assertThat(publicPostBlock).doesNotContain("ApiRoutes.PAYMENTS");
 
-        assertThat(source).contains("\"/api/orders\"");
+        assertThat(source).contains("ApiRoutes.ORDERS");
+        assertThat(source).doesNotContain("\"/api/");
     }
 
     @Test
@@ -54,8 +53,8 @@ class SecurityConfigRegressionTest {
                 source.indexOf("public static final String[] MANAGER_PUT"),
                 source.indexOf("public static final String[] MANAGER_PATCH"));
 
-        assertThat(managerPutBlock).contains("\"/api/users/**\"");
-        assertThat(managerPutBlock).contains("\"/api/tables/**\"");
+        assertThat(managerPutBlock).contains("ApiRoutes.USERS + \"/**\"");
+        assertThat(managerPutBlock).contains("ApiRoutes.TABLES + \"/**\"");
     }
 
     @Test

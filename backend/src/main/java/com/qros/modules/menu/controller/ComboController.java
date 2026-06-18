@@ -3,6 +3,7 @@ package com.qros.modules.menu.controller;
 import com.qros.modules.menu.dto.request.ComboRequest;
 import com.qros.modules.menu.dto.response.ComboResponse;
 import com.qros.modules.menu.service.ComboService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -13,7 +14,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/combos")
+@RequestMapping(ApiRoutes.COMBOS)
 @RequiredArgsConstructor
 public class ComboController {
 

@@ -19,7 +19,7 @@ public final class CacheNames {
     public static final String AI_MENU_CONTEXT = "aiMenuContext";
     public static final String ANALYTICS = "analytics";
     public static final String INVENTORY = "inventory";
-    public static final String ORDER_BY_ID = "order_by_id";
+    public static final String ORDER_ID_CACHE = "order_by_id";
     public static final String ORDER_STATS = "order_stats";
     public static final String MENU_AVAILABILITY = "menu_availability";
 }

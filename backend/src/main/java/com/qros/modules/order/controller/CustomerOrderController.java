@@ -5,6 +5,7 @@ import com.qros.modules.order.dto.response.OrderPreviewResponse;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.dto.response.PublicOrderResponse;
 import com.qros.modules.order.service.OrderService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.idempotency.IdempotencyService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/public")
+@RequestMapping(ApiRoutes.PUBLIC)
 @RequiredArgsConstructor
 public class CustomerOrderController {
 

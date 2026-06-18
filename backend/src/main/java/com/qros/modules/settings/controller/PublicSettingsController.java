@@ -2,6 +2,7 @@ package com.qros.modules.settings.controller;
 
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.service.SystemSettingsService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/public/settings")
+@RequestMapping(ApiRoutes.PUBLIC_SETTINGS)
 @RequiredArgsConstructor
 public class PublicSettingsController {
 

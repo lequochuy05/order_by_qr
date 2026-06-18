@@ -26,7 +26,7 @@ public class OrderCacheInvalidationService {
      */
     public void evictAfterOrderMutation(com.qros.modules.order.model.Order order) {
         if (order == null) return;
-        evict(CacheNames.ORDER_BY_ID, order.getId());
+        evict(CacheNames.ORDER_ID_CACHE, order.getId());
 
         if (order.getTable() != null) {
             String tableCode = order.getTable().getTableCode();

@@ -9,20 +9,17 @@ import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.service.CategoryService;
 import com.qros.modules.menu.service.ComboService;
 import com.qros.modules.menu.service.MenuItemService;
-import com.qros.modules.recommendation.dto.response.RecommendationItemResponse;
-import com.qros.modules.recommendation.model.enums.RecommendationContext;
-import com.qros.modules.recommendation.service.RecommendationService;
 import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.service.DiningTableService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import java.util.List;
-import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/public")
+@RequestMapping(ApiRoutes.PUBLIC)
 @RequiredArgsConstructor
 public class PublicMenuController {
 
@@ -30,7 +27,6 @@ public class PublicMenuController {
     private final MenuItemService menuItemService;
     private final ComboService comboService;
     private final DiningTableService tableService;
-    private final RecommendationService recommendationService;
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final PublicMenuMapper publicMenuMapper;
 
@@ -66,42 +62,6 @@ public class PublicMenuController {
         return ApiResponse.success(tableService.getPublicByCode(tableCode));
     }
 
-    @GetMapping("/recommendations/personalized")
-    public ApiResponse<List<PublicMenuItem>> getPersonalizedRecommendations(
-            @RequestParam(defaultValue = "Morning") String timeContext, @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(hydrateRecommendedItems(recommendationService
-                .getPersonalizedRecommendations(parseRecommendationContext(timeContext), limit)
-                .items()));
-    }
-
-    @GetMapping("/recommendations/cross-sell/{itemId}")
-    public ApiResponse<List<PublicMenuItem>> getCrossSellRecommendations(
-            @PathVariable @NonNull Long itemId, @RequestParam(defaultValue = "3") int limit) {
-        return ApiResponse.success(hydrateRecommendedItems(
-                recommendationService.getCrossSellRecommendations(itemId, limit).items()));
-    }
-
-    @GetMapping("/recommendations/popular")
-    public ApiResponse<List<PublicMenuItem>> getPopularItems(@RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(hydrateRecommendedItems(
-                recommendationService.getPopularItems(limit).items()));
-    }
-
-    @GetMapping("/recommendations/items/{itemId}")
-    public ApiResponse<List<PublicMenuItem>> getRecommendations(
-            @PathVariable @NonNull Long itemId, @RequestParam(defaultValue = "5") int limit) {
-        return ApiResponse.success(hydrateRecommendedItems(
-                recommendationService.getRecommendations(itemId, limit).items()));
-    }
-
-    private List<PublicMenuItem> hydrateRecommendedItems(List<RecommendationItemResponse> items) {
-        List<Long> itemIds = items == null
-                ? List.of()
-                : items.stream().map(RecommendationItemResponse::id).toList();
-
-        return withMenuAvailability(menuItemService.getPublicMenuItemsByIds(itemIds));
-    }
-
     private List<PublicComboItem> getAvailableCombos() {
         var combos = comboService.getPublicActive();
         var comboIds = combos.stream().map(PublicComboItem::id).toList();
@@ -120,17 +80,5 @@ public class PublicMenuController {
         return items.stream()
                 .map(item -> publicMenuMapper.withAvailability(item, availability.getOrDefault(item.id(), true)))
                 .toList();
-    }
-
-    private RecommendationContext parseRecommendationContext(String value) {
-        if (value == null || value.isBlank()) {
-            return RecommendationContext.ANY;
-        }
-
-        try {
-            return RecommendationContext.valueOf(value.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException e) {
-            return RecommendationContext.ANY;
-        }
     }
 }

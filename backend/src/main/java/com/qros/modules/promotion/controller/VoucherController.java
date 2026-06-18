@@ -5,6 +5,7 @@ import com.qros.modules.promotion.dto.response.VoucherResponse;
 import com.qros.modules.promotion.dto.response.VoucherValidateResponse;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.promotion.service.VoucherService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
@@ -26,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/vouchers")
+@RequestMapping(ApiRoutes.VOUCHERS)
 @RequiredArgsConstructor
 public class VoucherController {
 

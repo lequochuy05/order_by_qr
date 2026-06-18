@@ -87,18 +87,6 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
       """)
     List<MenuItem> findPublicAvailableItemsByCategoryId(@Param("categoryId") Long categoryId);
 
-    @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
-    @Query(
-            """
-          SELECT DISTINCT m
-          FROM MenuItem m
-          WHERE m.id IN :ids
-            AND m.active = true
-            AND m.available = true
-            AND m.category.active = true
-      """)
-    List<MenuItem> findPublicAvailableItemsByIds(@Param("ids") List<Long> ids);
-
     @EntityGraph(attributePaths = {"category"})
     List<MenuItem> findByActiveTrueAndAvailableTrueOrderByIdDesc(Pageable pageable);
 

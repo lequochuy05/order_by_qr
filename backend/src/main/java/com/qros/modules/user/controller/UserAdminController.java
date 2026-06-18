@@ -6,6 +6,7 @@ import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.service.UserAvatarService;
 import com.qros.modules.user.service.UserQueryService;
 import com.qros.modules.user.service.UserService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
  * UserAdminController - Handles user account management.
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping(ApiRoutes.USERS)
 @RequiredArgsConstructor
 public class UserAdminController {
 

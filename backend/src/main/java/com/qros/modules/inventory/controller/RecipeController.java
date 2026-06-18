@@ -3,6 +3,7 @@ package com.qros.modules.inventory.controller;
 import com.qros.modules.inventory.dto.request.RecipeUpdateRequest;
 import com.qros.modules.inventory.dto.response.RecipeItemResponse;
 import com.qros.modules.inventory.service.RecipeService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/inventory/recipes")
+@RequestMapping(ApiRoutes.INVENTORY_RECIPES)
 @RequiredArgsConstructor
 public class RecipeController {
 

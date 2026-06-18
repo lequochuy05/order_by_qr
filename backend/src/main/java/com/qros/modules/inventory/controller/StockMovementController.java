@@ -3,6 +3,7 @@ package com.qros.modules.inventory.controller;
 import com.qros.modules.inventory.dto.response.StockMovementResponse;
 import com.qros.modules.inventory.model.enums.StockMovementType;
 import com.qros.modules.inventory.service.StockMovementService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/inventory/movements")
+@RequestMapping(ApiRoutes.INVENTORY_MOVEMENTS)
 @RequiredArgsConstructor
 public class StockMovementController {
 

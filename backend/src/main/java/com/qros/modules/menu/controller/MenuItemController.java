@@ -3,6 +3,7 @@ package com.qros.modules.menu.controller;
 import com.qros.modules.menu.dto.request.MenuItemRequest;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.service.MenuItemService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -17,7 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
  * MenuItemController - Manages food and beverage menu items.
  */
 @RestController
-@RequestMapping("/api/menu-items")
+@RequestMapping(ApiRoutes.MENU_ITEMS)
 @RequiredArgsConstructor
 public class MenuItemController {
 

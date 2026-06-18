@@ -4,6 +4,7 @@ import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.service.CurrentUserService;
 import com.qros.modules.user.service.UserAvatarService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
@@ -16,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
  * CurrentUserController - Handles current user profile management.
  */
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping(ApiRoutes.USERS)
 @RequiredArgsConstructor
 public class CurrentUserController {
 

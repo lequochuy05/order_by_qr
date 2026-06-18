@@ -23,10 +23,13 @@ import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
 import com.qros.modules.payment.service.PaymentService;
+import com.qros.modules.user.model.User;
+import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,6 +57,9 @@ class PayosServiceImplTest {
     PaymentCompletionService paymentCompletionService;
 
     @Mock
+    UserRepository userRepository;
+
+    @Mock
     TransactionSideEffectService sideEffects;
 
     private PaymentService paymentService;
@@ -66,6 +72,7 @@ class PayosServiceImplTest {
                 new PaymentMapper(),
                 paymentCompletionService,
                 orderSettlementService,
+                userRepository,
                 sideEffects);
     }
 
@@ -74,7 +81,7 @@ class PayosServiceImplTest {
         Order order = payableOrder();
         PaymentCreateRequest request = new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, "idem-1");
 
-        when(orderSettlementService.prepareForOnlinePayment(1L, null)).thenReturn(order);
+        when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.empty());
         when(transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
@@ -90,7 +97,7 @@ class PayosServiceImplTest {
         when(gateway.createPaymentLink(any(PaymentTransaction.class)))
                 .thenReturn(new PaymentGatewayCreateResult("checkout", "qr", "payos-ref", "{}"));
 
-        PaymentCreateResponse response = paymentService.createPaymentLink(request);
+        PaymentCreateResponse response = paymentService.createPayment(request, null);
 
         ArgumentCaptor<PaymentTransaction> transactionCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
         verify(transactionRepository, org.mockito.Mockito.atLeastOnce()).save(transactionCaptor.capture());
@@ -120,15 +127,95 @@ class PayosServiceImplTest {
                 .idempotencyKey("idem-1")
                 .build();
 
-        when(orderSettlementService.prepareForOnlinePayment(1L, null)).thenReturn(order);
+        when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
 
         PaymentCreateResponse response =
-                paymentService.createPaymentLink(new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, " idem-1 "));
+                paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, " idem-1 "), null);
 
         assertThat(response.transactionId()).isEqualTo(88L);
         assertThat(response.idempotencyKey()).isEqualTo("idem-1");
+        verify(transactionRepository, never()).save(any(PaymentTransaction.class));
+    }
+
+    @Test
+    void createPaymentSettlesCashImmediatelyWithUnifiedResponse() {
+        Order order = payableOrder();
+        User cashier = User.builder()
+                .id(7L)
+                .email("staff@example.com")
+                .fullName("Staff")
+                .password("pw")
+                .build();
+        PaymentTransaction pendingOnline = PaymentTransaction.builder()
+                .id(77L)
+                .order(order)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .build();
+
+        when(transactionRepository.findFirstByIdempotencyKey("cash-idem")).thenReturn(Optional.empty());
+        when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
+        when(userRepository.findById(7L)).thenReturn(Optional.of(cashier));
+        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
+            PaymentTransaction transaction = invocation.getArgument(0);
+            if (transaction.getId() == null) {
+                transaction.setId(100L);
+            }
+            return transaction;
+        });
+        when(paymentCompletionService.completeSuccessfulTransaction(any(PaymentTransaction.class)))
+                .thenAnswer(invocation -> {
+                    PaymentTransaction transaction = invocation.getArgument(0);
+                    transaction.setStatus(PaymentTransactionStatus.PAID);
+                    transaction.setPaidAt(AppTime.now());
+                    return order;
+                });
+        when(transactionRepository.findPendingOnlineTransactionsByOrderId(1L)).thenReturn(List.of(pendingOnline));
+
+        PaymentCreateResponse response =
+                paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.CASH, null, "cash-idem"), 7L);
+
+        ArgumentCaptor<PaymentTransaction> transactionCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
+        verify(transactionRepository).save(transactionCaptor.capture());
+
+        PaymentTransaction cashTransaction = transactionCaptor.getValue();
+        assertThat(cashTransaction.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
+        assertThat(cashTransaction.getCreatedBy()).isSameAs(cashier);
+        assertThat(cashTransaction.getIdempotencyKey()).isEqualTo("cash-idem");
+
+        assertThat(response.transactionId()).isEqualTo(100L);
+        assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+        assertThat(response.status()).isEqualTo(PaymentTransactionStatus.PAID);
+        assertThat(response.checkoutUrl()).isNull();
+        assertThat(response.qrCode()).isNull();
+        assertThat(response.amount()).isEqualByComparingTo("125000");
+        assertThat(pendingOnline.getStatus()).isEqualTo(PaymentTransactionStatus.CANCELLED);
+    }
+
+    @Test
+    void createPaymentReusesDefaultCashIdempotencyKeyBeforeOrderValidation() {
+        Order order = payableOrder();
+        PaymentTransaction existing = PaymentTransaction.builder()
+                .id(101L)
+                .order(order)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PAID)
+                .paymentMethod(PaymentMethod.CASH)
+                .idempotencyKey("cash:order:1")
+                .build();
+
+        when(transactionRepository.findFirstByIdempotencyKey("cash:order:1")).thenReturn(Optional.of(existing));
+
+        PaymentCreateResponse response =
+                paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.CASH, null, null), 7L);
+
+        assertThat(response.transactionId()).isEqualTo(101L);
+        assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+        assertThat(response.status()).isEqualTo(PaymentTransactionStatus.PAID);
+        verify(orderSettlementService, never()).prepareForPayment(any(), any());
         verify(transactionRepository, never()).save(any(PaymentTransaction.class));
     }
 

@@ -5,6 +5,7 @@ import com.qros.modules.table.dto.request.UpdateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateTableStatusRequest;
 import com.qros.modules.table.dto.response.DiningTableResponse;
 import com.qros.modules.table.service.DiningTableService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * DiningTableController - Manages dining tables and their associated QR codes.
  */
 @RestController
-@RequestMapping("/api/tables")
+@RequestMapping(ApiRoutes.TABLES)
 @RequiredArgsConstructor
 public class DiningTableController {
 

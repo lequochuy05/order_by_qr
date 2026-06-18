@@ -3,6 +3,7 @@ package com.qros.modules.menu.controller;
 import com.qros.modules.menu.dto.request.CategoryRequest;
 import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.service.CategoryService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping(ApiRoutes.CATEGORIES)
 @RequiredArgsConstructor
 public class CategoryController {
 

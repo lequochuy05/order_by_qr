@@ -48,7 +48,7 @@ public class OrderSettlementService {
     }
 
     @Transactional
-    public Order prepareForOnlinePayment(@NonNull Long orderId, String voucherCode) {
+    public Order prepareForPayment(@NonNull Long orderId, String voucherCode) {
         Order order = loadForPayment(orderId);
         validatePayable(order);
 

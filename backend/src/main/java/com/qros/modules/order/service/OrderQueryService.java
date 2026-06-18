@@ -8,10 +8,6 @@ import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.payment.model.PaymentTransaction;
-import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
-import com.qros.modules.payment.service.PaymentService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.enums.TableSessionStatus;
@@ -19,7 +15,6 @@ import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.cache.CacheNames;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import jakarta.persistence.EntityManager;
@@ -58,8 +53,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderQueryService {
 
     private final OrderRepository orderRepository;
-    private final PaymentTransactionRepository transactionRepository;
-    private final PaymentService paymentService;
     private final OrderMapper orderMapper;
     private final DiningTableRepository tableRepository;
     private final TableSessionService tableSessionService;
@@ -152,28 +145,6 @@ public class OrderQueryService {
         return stats;
     }
 
-    @Transactional
-    public OrderResponse reconcileOrder(@NonNull Long id) {
-        Order order =
-                orderRepository.findDetailById(id).orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
-
-        if (order.getStatus() == OrderStatus.COMPLETED || order.getStatus() == OrderStatus.CANCELLED) {
-            return orderMapper.toResponse(order);
-        }
-
-        Optional<PaymentTransaction> latestTx =
-                transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-                        order.getId(), PaymentMethod.PAYOS, PaymentTransactionStatus.PENDING);
-
-        if (latestTx.isPresent()) {
-            paymentService.syncPaymentStatus(latestTx.get().getId());
-
-            order = orderRepository.findDetailById(id).orElse(order);
-        }
-
-        return orderMapper.toResponse(order);
-    }
-
     public List<OrderResponse> getActiveOrders() {
         return orderRepository.findByStatusIn(activeStatuses()).stream()
                 .map(orderMapper::toResponse)
@@ -252,7 +223,7 @@ public class OrderQueryService {
                 .map(orderMapper::toPublicResponse);
     }
 
-    @Cacheable(value = CacheNames.ORDER_BY_ID, key = "#id")
+    @Cacheable(value = CacheNames.ORDER_ID_CACHE, key = "#id")
     public OrderResponse getOrderById(@NonNull Long id) {
         Order order =
                 orderRepository.findDetailById(id).orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));

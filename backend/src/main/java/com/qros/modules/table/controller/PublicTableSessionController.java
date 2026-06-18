@@ -4,6 +4,7 @@ import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.dto.response.TableSessionStateResponse;
 import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/public")
+@RequestMapping(ApiRoutes.PUBLIC)
 @RequiredArgsConstructor
 public class PublicTableSessionController {
 

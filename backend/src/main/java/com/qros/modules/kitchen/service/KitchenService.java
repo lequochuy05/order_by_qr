@@ -43,18 +43,8 @@ public class KitchenService {
     }
 
     @Transactional
-    public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status) {
-        orderService.updateItemStatus(itemId, status);
-    }
-
-    @Transactional
     public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status, Long userId) {
         orderService.updateItemStatus(itemId, status, userId);
-    }
-
-    @Transactional
-    public void markItemPrepared(@NonNull Long itemId) {
-        orderService.markItemPrepared(itemId);
     }
 
     @Transactional
