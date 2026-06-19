@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Loader2, Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
+import { Wifi, WifiOff, Sparkles, Moon, Sun } from 'lucide-react';
 
 import wsService from '@shared/lib/websocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { ErrorBoundary } from '@shared/ui';
+import { ErrorBoundary, PullToRefresh } from '@shared/ui';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import {
@@ -26,8 +26,8 @@ import {
 import MenuCard from './MenuCard';
 import ComboCard from './ComboCard';
 import CategoryFilter from './CategoryFilter';
+import CustomerMenuSkeleton from './CustomerMenuSkeleton';
 import { AiChatAssistant } from '@features/ai-assistant';
-import { useAuth } from '@features/auth';
 
 const defaultRestaurantSettings = {
   restaurantName: 'Sắc Màu Quán',
@@ -53,7 +53,6 @@ const CustomerMenuContent = () => {
   const { tableCode: routeTableCode } = useParams();
   const [searchParams] = useSearchParams();
   const tableCode = routeTableCode || searchParams.get('tableCode');
-  const { user } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -78,12 +77,23 @@ const CustomerMenuContent = () => {
   const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
 
   // React Query Hooks
-  const { data: menuData, isLoading: loadingMenu } = useCustomerMenuQuery();
-  const { data: sessionData, isLoading: loadingSession } = useTableSessionQuery(
-    tableCode,
-    sessionToken,
+  const { data: menuData, isLoading: loadingMenu, refetch: refetchMenu } = useCustomerMenuQuery();
+  const {
+    data: sessionData,
+    isLoading: loadingSession,
+    refetch: refetchSession,
+  } = useTableSessionQuery(tableCode, sessionToken);
+  const { data: recommendationsData, refetch: refetchRecommendations } = useRecommendationsQuery(
+    timeContext,
+    weather,
   );
-  const { data: recommendationsData } = useRecommendationsQuery(timeContext, weather);
+
+  const handleRefresh = useCallback(async () => {
+    crossSellCacheRef.current.clear();
+    setCrossSellItems([]);
+
+    await Promise.allSettled([refetchMenu(), refetchSession(), refetchRecommendations()]);
+  }, [refetchMenu, refetchRecommendations, refetchSession]);
 
   const categories = menuData?.categories || [];
   const menuItems = useMemo(() => menuData?.menuItems || [], [menuData?.menuItems]);
@@ -124,7 +134,7 @@ const CustomerMenuContent = () => {
 
   const orderingUnavailable =
     restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
-  const canUseAiAssistant = Boolean(user) && restaurantSettings.enableAiAssistant !== false;
+  const canUseAiAssistant = restaurantSettings.enableAiAssistant !== false;
   // AWAITING_PAYMENT only means every current item is finished. Customers may
   // still add another batch; the backend will reopen the order to SERVING.
   // Only lock ordering after the backend confirms a payment transaction is active.
@@ -471,15 +481,7 @@ const CustomerMenuContent = () => {
     }
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-orange-500 bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="animate-spin mb-2 mx-auto" size={40} />
-          <p className="text-gray-500 font-medium text-sm">Đang tải thực đơn...</p>
-        </div>
-      </div>
-    );
+  if (loading) return <CustomerMenuSkeleton />;
 
   const displayItems =
     selectedCategory === 'all'
@@ -488,151 +490,166 @@ const CustomerMenuContent = () => {
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
-      <div className="min-h-screen bg-gray-100 dark:bg-slate-950 flex justify-center transition-colors duration-500">
-        <div className="w-full max-w-md bg-white dark:bg-slate-900 min-h-screen shadow-2xl relative flex flex-col transition-colors duration-500">
-          {/* Header Section */}
-          <div className="bg-orange-500 text-white p-5 rounded-b-[2.5rem] shadow-lg">
-            <div className="flex justify-between items-start">
-              <div className="flex items-start gap-3 min-w-0">
-                {restaurantSettings.logoUrl && (
-                  <img
-                    src={restaurantSettings.logoUrl}
-                    alt={restaurantSettings.restaurantName}
-                    className="h-10 w-10 rounded-xl border border-white/30 bg-white/20 object-cover"
-                  />
-                )}
-                <div className="min-w-0">
-                  <h1 className="text-xl font-black uppercase tracking-tighter truncate">
-                    {restaurantSettings.restaurantName || 'Sắc Màu Quán'}
-                  </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
-                      Bàn số: {tableInfo?.tableNumber || 'NaN'}
-                    </span>
-                    {/* {restaurantSettings.restaurantPhone && (    // Tạm thời ẩn số điện thoại
+      <div className="flex h-dvh min-h-dvh justify-center overflow-hidden bg-gray-100 transition-colors duration-500 dark:bg-slate-950">
+        <div className="safe-left safe-right relative flex h-dvh min-h-0 w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl transition-colors duration-500 dark:bg-slate-900">
+          <PullToRefresh
+            className="flex-1"
+            contentClassName="pb-[calc(8rem+var(--safe-area-inset-bottom))]"
+            onRefresh={handleRefresh}
+            disabled={
+              showOrderModal ||
+              showCurrentOrderSheet ||
+              statusModal.isOpen ||
+              Boolean(selectedItemForOptions)
+            }
+          >
+            {/* Header Section */}
+            <div
+              className="rounded-b-[2.5rem] bg-orange-500 p-5 text-white shadow-lg"
+              style={{ paddingTop: 'calc(1.25rem + var(--safe-area-inset-top))' }}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex items-start gap-3 min-w-0">
+                  {restaurantSettings.logoUrl && (
+                    <img
+                      src={restaurantSettings.logoUrl}
+                      alt={restaurantSettings.restaurantName}
+                      className="h-10 w-10 rounded-xl border border-white/30 bg-white/20 object-cover"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <h1 className="text-xl font-black uppercase tracking-tighter truncate">
+                      {restaurantSettings.restaurantName || 'Sắc Màu Quán'}
+                    </h1>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30 uppercase">
+                        Bàn số: {tableInfo?.tableNumber || 'NaN'}
+                      </span>
+                      {/* {restaurantSettings.restaurantPhone && (    // Tạm thời ẩn số điện thoại
                     <span className="hidden sm:inline bg-white/20 px-3 py-0.5 rounded-full text-[10px] font-bold border border-white/30">
                       {restaurantSettings.restaurantPhone}
                     </span>
                   )} */}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trạng thái & Toggle Dark Mode */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsDarkMode(!isDarkMode)}
+                    className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white cursor-pointer hover:bg-white/30 transition-all duration-300 shadow-sm"
+                    aria-label="Toggle dark mode"
+                  >
+                    {isDarkMode ? (
+                      <Sun size={14} className="animate-spin-slow" />
+                    ) : (
+                      <Moon size={14} />
+                    )}
+                  </button>
+
+                  <div
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all duration-500 ${wsConnected ? 'bg-green-500/20 border-green-400' : 'bg-red-500/20 border-red-400'}`}
+                  >
+                    {wsConnected ? (
+                      <Wifi size={12} className="animate-pulse" />
+                    ) : (
+                      <WifiOff size={12} />
+                    )}
+                    {wsConnected ? 'LIVE' : 'OFFLINE'}
                   </div>
                 </div>
               </div>
-
-              {/* Trạng thái & Toggle Dark Mode */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center text-white cursor-pointer hover:bg-white/30 transition-all duration-300 shadow-sm"
-                  aria-label="Toggle dark mode"
-                >
-                  {isDarkMode ? (
-                    <Sun size={14} className="animate-spin-slow" />
-                  ) : (
-                    <Moon size={14} />
-                  )}
-                </button>
-
-                <div
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold border transition-all duration-500 ${wsConnected ? 'bg-green-500/20 border-green-400' : 'bg-red-500/20 border-red-400'}`}
-                >
-                  {wsConnected ? (
-                    <Wifi size={12} className="animate-pulse" />
-                  ) : (
-                    <WifiOff size={12} />
-                  )}
-                  {wsConnected ? 'LIVE' : 'OFFLINE'}
-                </div>
-              </div>
             </div>
-          </div>
 
-          {currentOrder && (
-            <div className="sticky top-0 z-40 bg-white/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:bg-slate-900/95 border-b border-gray-100 dark:border-slate-800">
-              <CurrentOrderBanner
-                order={currentOrder}
-                onClick={() => setShowCurrentOrderSheet(true)}
-              />
-            </div>
-          )}
-
-          {orderingUnavailable && (
-            <div className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              {restaurantSettings.maintenanceMode
-                ? 'Quán đang bảo trì, hiện chưa nhận đơn mới.'
-                : 'Quán đang tạm ngưng nhận đơn mới.'}
-            </div>
-          )}
-
-          <div className="p-4 flex-1 overflow-y-auto pb-32">
-            {/* Component lọc danh mục */}
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={setSelectedCategory}
-            />
-
-            {/* Phần Combo */}
-            {combos.length > 0 && (
-              <div className="mt-4 mb-2">
-                <h2 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2 transition-colors">
-                  Combo Khuyến Mãi
-                </h2>
-                <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar animate-in fade-in duration-500">
-                  {combos.map((c) => (
-                    <div key={c.id} className="min-w-[85vw] sm:min-w-[280px]">
-                      <ComboCard
-                        combo={c}
-                        quantity={cart.combos[c.id]?.qty || 0}
-                        onAddToCart={(cb, q) => handleAddToCart(cb, q, true)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Phần Đề xuất thông minh */}
-            {recommendations.length > 0 && selectedCategory === 'all' && (
-              <div className="mt-8 mb-4 p-4 -mx-4 bg-gradient-to-r from-orange-50/80 to-transparent dark:from-slate-800/80 dark:to-transparent border-t border-b border-orange-100/50 dark:border-slate-800/50 backdrop-blur-sm transition-colors">
-                <h2 className="text-sm font-bold text-orange-900 dark:text-orange-300 mb-3 flex items-center gap-2 px-4 uppercase tracking-wider transition-colors">
-                  <Sparkles size={16} className="text-orange-500 fill-orange-500" /> Gợi ý cho bạn (
-                  {timeContext})
-                </h2>
-                <div className="flex overflow-x-auto gap-3 pb-2 px-4 no-scrollbar">
-                  {recommendations.map((item) => (
-                    <div key={item.id} className="min-w-[140px]">
-                      <MenuCard
-                        item={item}
-                        quantity={getCartItemQty(item)}
-                        onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Phần Món lẻ */}
-            <h2 className="text-sm font-black text-gray-800 dark:text-white mt-6 mb-4 uppercase tracking-tight transition-colors">
-              Thực đơn
-            </h2>
-            <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-500">
-              {displayItems.map((item) => (
-                <MenuCard
-                  key={item.id}
-                  item={item}
-                  quantity={getCartItemQty(item)}
-                  onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
+            {currentOrder && (
+              <div className="sticky top-0 z-40 bg-white/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:bg-slate-900/95 border-b border-gray-100 dark:border-slate-800">
+                <CurrentOrderBanner
+                  order={currentOrder}
+                  onClick={() => setShowCurrentOrderSheet(true)}
                 />
-              ))}
-            </div>
-
-            {displayItems.length === 0 && (
-              <div className="text-center py-10 text-gray-400 text-xs italic">
-                Danh mục này hiện tại chưa có món.
               </div>
             )}
-          </div>
+
+            {orderingUnavailable && (
+              <div className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                {restaurantSettings.maintenanceMode
+                  ? 'Quán đang bảo trì, hiện chưa nhận đơn mới.'
+                  : 'Quán đang tạm ngưng nhận đơn mới.'}
+              </div>
+            )}
+
+            <div className="p-4">
+              {/* Component lọc danh mục */}
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+              />
+
+              {/* Phần Combo */}
+              {combos.length > 0 && (
+                <div className="mt-4 mb-2">
+                  <h2 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-2 transition-colors">
+                    Combo Khuyến Mãi
+                  </h2>
+                  <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar animate-in fade-in duration-500">
+                    {combos.map((c) => (
+                      <div key={c.id} className="min-w-[85vw] sm:min-w-[280px]">
+                        <ComboCard
+                          combo={c}
+                          quantity={cart.combos[c.id]?.qty || 0}
+                          onAddToCart={(cb, q) => handleAddToCart(cb, q, true)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Phần Đề xuất thông minh */}
+              {recommendations.length > 0 && selectedCategory === 'all' && (
+                <div className="mt-8 mb-4 p-4 -mx-4 bg-gradient-to-r from-orange-50/80 to-transparent dark:from-slate-800/80 dark:to-transparent border-t border-b border-orange-100/50 dark:border-slate-800/50 backdrop-blur-sm transition-colors">
+                  <h2 className="text-sm font-bold text-orange-900 dark:text-orange-300 mb-3 flex items-center gap-2 px-4 uppercase tracking-wider transition-colors">
+                    <Sparkles size={16} className="text-orange-500 fill-orange-500" /> Gợi ý cho bạn
+                    ({timeContext})
+                  </h2>
+                  <div className="flex overflow-x-auto gap-3 pb-2 px-4 no-scrollbar">
+                    {recommendations.map((item) => (
+                      <div key={item.id} className="min-w-[140px]">
+                        <MenuCard
+                          item={item}
+                          quantity={getCartItemQty(item)}
+                          onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Phần Món lẻ */}
+              <h2 className="text-sm font-black text-gray-800 dark:text-white mt-6 mb-4 uppercase tracking-tight transition-colors">
+                Thực đơn
+              </h2>
+              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-500">
+                {displayItems.map((item) => (
+                  <MenuCard
+                    key={item.id}
+                    item={item}
+                    quantity={getCartItemQty(item)}
+                    onAddToCart={(i, q, needsOpt) => handleAddToCart(i, q, false, needsOpt)}
+                  />
+                ))}
+              </div>
+
+              {displayItems.length === 0 && (
+                <div className="text-center py-10 text-gray-400 text-xs italic">
+                  Danh mục này hiện tại chưa có món.
+                </div>
+              )}
+            </div>
+          </PullToRefresh>
 
           {/* Nút Giỏ hàng nổi */}
           <ShoppingCartButton cart={cart} onOpenCart={() => setShowOrderModal(true)} />

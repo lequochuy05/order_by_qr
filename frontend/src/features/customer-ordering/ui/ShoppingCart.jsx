@@ -13,7 +13,10 @@ const ShoppingCartButton = ({ cart, onOpenCart }) => {
   if (totalItems === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-0 right-0 px-4 z-50">
+    <div
+      className="fixed left-0 right-0 z-50 px-4"
+      style={{ bottom: 'calc(1.5rem + var(--safe-area-inset-bottom))' }}
+    >
       <button
         onClick={onOpenCart}
         className="max-w-md mx-auto w-full bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between transition-transform active:scale-95"

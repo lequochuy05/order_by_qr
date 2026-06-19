@@ -221,7 +221,10 @@ const ItemOptionsModal = ({
           })}
         </div>
 
-        <div className="sticky bottom-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-5 py-4 border-t border-gray-100 dark:border-slate-800 transition-colors">
+        <div
+          className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/95 px-5 py-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/95"
+          style={{ paddingBottom: 'calc(1rem + var(--safe-area-inset-bottom))' }}
+        >
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               {labels.subtotal}

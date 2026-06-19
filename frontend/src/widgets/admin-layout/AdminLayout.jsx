@@ -48,7 +48,9 @@ const AdminLayoutContent = () => {
 
   return (
     <div
-      className="relative flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 transition-colors dark:bg-slate-950"
+      className={`relative flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 transition-colors dark:bg-slate-950 ${
+        isCompactViewport ? 'safe-top safe-right safe-bottom safe-left' : ''
+      }`}
       style={
         isCompactViewport
           ? { width: `${viewportWidth}px`, maxWidth: `${viewportWidth}px` }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
 import { useRegisterSW as useViteRegisterSW } from 'virtual:pwa-register/react';
+import { showErrorToast, showSuccessToast } from './toast.js';
 
 const OFFLINE_TOAST_ID = 'pwa-offline-ready';
 const ERROR_TOAST_ID = 'pwa-register-error';
@@ -33,13 +33,13 @@ export const useRegisterSW = () => {
       window.location.reload();
     },
     onOfflineReady: () => {
-      toast.success('Ứng dụng đã sẵn sàng để sử dụng khi ngoại tuyến.', {
+      showSuccessToast('Ứng dụng đã sẵn sàng để sử dụng khi ngoại tuyến.', {
         id: OFFLINE_TOAST_ID,
       });
     },
     onRegisterError: (error) => {
       console.error('Không thể đăng ký Service Worker:', error);
-      toast.error('Không thể bật chế độ ngoại tuyến.', {
+      showErrorToast('Không thể bật chế độ ngoại tuyến.', {
         id: ERROR_TOAST_ID,
       });
     },

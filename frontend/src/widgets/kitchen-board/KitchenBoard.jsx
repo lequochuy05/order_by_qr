@@ -9,6 +9,7 @@ import {
   Search,
   SlidersHorizontal,
   StickyNote,
+  Sun,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { orderService } from '@features/order-management';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
+import { useScreenWakeLock } from '@shared/hooks/useScreenWakeLock.js';
 import KitchenColumn from './KitchenColumn';
 import { playNotificationSound, playLoudSound } from '@shared/lib/notificationSound.js';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
@@ -40,6 +42,7 @@ const KitchenBoardContent = () => {
 
   const [preferences, setPreferences] = useAdminPreferences();
   const { showError } = useStatusModal();
+  const wakeLock = useScreenWakeLock(true);
 
   const fetchKitchenOrders = useCallback(
     async ({ silent = false } = {}) => {
@@ -238,6 +241,30 @@ const KitchenBoardContent = () => {
       <section className="overflow-hidden rounded-3xl bg-white px-5 py-6 shadow-xl shadow-slate-200/70 dark:bg-slate-900 dark:text-slate-100 dark:shadow-none sm:px-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-end">
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={wakeLock.requestWakeLock}
+              disabled={!wakeLock.isSupported}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                wakeLock.isActive
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+                  : wakeLock.isSupported
+                    ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
+                    : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800'
+              }`}
+              title={
+                wakeLock.isSupported
+                  ? 'Giữ màn hình bếp không tự tắt'
+                  : 'Thiết bị này không hỗ trợ Screen Wake Lock'
+              }
+            >
+              <Sun size={17} className={wakeLock.isActive ? 'animate-pulse' : ''} />
+              {wakeLock.isActive
+                ? 'Màn hình luôn bật'
+                : wakeLock.isSupported
+                  ? 'Bật giữ màn hình'
+                  : 'Không hỗ trợ Wake Lock'}
+            </button>
             <button
               type="button"
               onClick={toggleSound}
