@@ -13,6 +13,7 @@ import com.qros.modules.analytics.dto.response.TopSellingItemResponse;
 import com.qros.modules.analytics.dto.response.UserPerformanceResponse;
 import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
 import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
 import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
@@ -25,6 +26,7 @@ import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +63,7 @@ public class AnalyticsService {
         LocalDateTime todayStart = today.atStartOfDay();
         LocalDateTime tomorrowStart = today.plusDays(1).atStartOfDay();
 
-        OrderSummaryProjection orderSummary = analyticsQueryRepository.orderSummary(todayStart, tomorrowStart);
+        OrderSummaryProjection orderSummary = analyticsQueryRepository.orderSummary(today, today.plusDays(1));
 
         TableSummaryProjection tableSummary = analyticsQueryRepository.tableSummary();
 
@@ -167,7 +169,21 @@ public class AnalyticsService {
 
     public Map<String, Object> getOrderAnalytics(
             String status, LocalDate from, LocalDate to, String orderId, String tableNumber) {
-        return orderService.getOrderAnalytics(status, from, to, orderId, tableNumber);
+        Long parsedOrderId = parseOrderId(orderId);
+        if (orderId != null && !orderId.isBlank() && parsedOrderId == null) {
+            return orderSummaryMap(0L, BigDecimal.ZERO);
+        }
+
+        OrderFilterSummaryProjection summary = analyticsQueryRepository.orderFilterSummary(
+                normalizeStatus(status),
+                from,
+                to != null ? to.plusDays(1) : null,
+                parsedOrderId,
+                normalizeText(tableNumber));
+
+        return orderSummaryMap(
+                safeLong(summary != null ? summary.getTotalOrders() : null),
+                safeMoney(summary != null ? summary.getTotalRevenue() : null));
     }
 
     private List<RecentOrderResponse> getRecentOrders(
@@ -223,6 +239,35 @@ public class AnalyticsService {
         }
 
         return Math.min(limit, MAX_LIMIT);
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        return status.trim().toUpperCase();
+    }
+
+    private String normalizeText(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private Long parseOrderId(String orderId) {
+        if (orderId == null || orderId.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(orderId.trim());
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Map<String, Object> orderSummaryMap(Long totalOrders, BigDecimal totalRevenue) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalOrders", totalOrders);
+        result.put("totalRevenue", totalRevenue);
+        return result;
     }
 
     private BigDecimal safeMoney(BigDecimal value) {

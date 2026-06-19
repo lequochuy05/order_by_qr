@@ -107,6 +107,7 @@ public class OrderSettlementService {
                     savedOrder.getTableSession().getId(), TableSessionStatus.CLOSED, "Order settled");
         }
         orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
+        eventPublisher.publishEvent(new OrderSettledEvent(savedOrder.getId(), savedOrder.getBusinessDate()));
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         log.info("Order #{} successfully settled via {} payment", savedOrder.getId(), paymentMethod);
