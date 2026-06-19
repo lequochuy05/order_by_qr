@@ -234,7 +234,7 @@ const KitchenBoardContent = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <section className="overflow-hidden rounded-3xl bg-white px-5 py-6 shadow-xl shadow-slate-200/70 dark:bg-slate-900 dark:text-slate-100 dark:shadow-none sm:px-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-end">
           <div className="flex flex-wrap items-center gap-2">

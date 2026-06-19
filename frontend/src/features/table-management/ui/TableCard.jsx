@@ -13,12 +13,12 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
 
   return (
     <div
-      className={`relative p-4 rounded-2xl border-2 transition-all hover:shadow-lg ${status.classes} group`}
+      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg ${status.classes}`}
     >
       {/* Header và Nội dung chính giữ nguyên */}
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-xl font-bold text-gray-800">Bàn {table.tableNumber}</h3>
-        <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-white/50 border">
+      <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+        <h3 className="min-w-0 text-xl font-bold text-gray-800">Bàn {table.tableNumber}</h3>
+        <span className="shrink-0 whitespace-nowrap rounded border bg-white/50 px-2 py-1 text-[10px] font-bold uppercase sm:text-xs">
           {status.label}
         </span>
       </div>
@@ -34,24 +34,24 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <button
           onClick={onDetail}
-          className="btn-secondary flex items-center justify-center gap-1 py-2 rounded-lg bg-white border hover:bg-gray-50"
+          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-lg border bg-white px-2 py-2 hover:bg-gray-50"
         >
-          <FileText size={16} /> Chi tiết
+          <FileText className="shrink-0" size={16} /> <span className="truncate">Chi tiết</span>
         </button>
         <button
           onClick={onAddItems}
-          className="btn-primary flex items-center justify-center gap-1 py-2 rounded-lg bg-orange-100 text-orange-600 hover:bg-orange-200"
+          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-lg bg-orange-100 px-2 py-2 text-orange-600 hover:bg-orange-200"
         >
-          <PlusCircle size={16} /> Thêm món
+          <PlusCircle className="shrink-0" size={16} /> <span className="truncate">Thêm món</span>
         </button>
 
         {hasOrder && (
           <button
             onClick={onPay}
-            className="col-span-2 btn-pay flex items-center justify-center gap-1 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 shadow-md"
+            className="btn-pay flex items-center justify-center gap-1 rounded-lg bg-green-500 px-2 py-2 text-white shadow-md hover:bg-green-600 min-[360px]:col-span-2"
           >
             <CreditCard size={16} /> Thanh toán
           </button>

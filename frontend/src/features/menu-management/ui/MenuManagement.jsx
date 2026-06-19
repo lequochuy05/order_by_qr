@@ -184,7 +184,7 @@ const MenuManager = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:p-3 lg:p-4">
       <ManagementHeader
         searchPlaceholder="Tìm món ăn..."
         searchTerm={searchTerm}
@@ -210,7 +210,7 @@ const MenuManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {items.map((it) => (
             <MenuCard
               key={it.id}

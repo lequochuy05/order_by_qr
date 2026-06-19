@@ -175,7 +175,7 @@ function OrderHistoryContent() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">

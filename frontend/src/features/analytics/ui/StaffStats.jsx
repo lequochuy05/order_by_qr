@@ -81,7 +81,7 @@ const StaffStats = () => {
   const maxRev = employees.length > 0 ? Math.max(...employees.map((e) => e.revenue || 0)) : 1;
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -96,7 +96,7 @@ const StaffStats = () => {
       ) : (
         <div className="flex flex-col lg:flex-row gap-6 mt-6">
           {/* === PHẦN TRÁI: BIỂU ĐỒ TRÒN === */}
-          <div className="lg:w-1/3 bg-white p-6 rounded-3xl shadow-sm border h-fit sticky top-6">
+          <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 lg:sticky lg:top-6 lg:w-1/3">
             <div className="h-[300px] w-full relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -143,7 +143,7 @@ const StaffStats = () => {
           </div>
 
           {/* === PHẦN PHẢI: DANH SÁCH CHI TIẾT === */}
-          <div className="lg:w-2/3">
+          <div className="min-w-0 lg:w-2/3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {employees.map((emp, idx) => (
                 <div

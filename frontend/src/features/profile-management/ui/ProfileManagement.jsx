@@ -234,9 +234,9 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto bg-slate-50 min-h-screen">
-      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
+    <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
+      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col items-center text-center">
             <div className="relative">
               <div className="h-36 w-36 overflow-hidden rounded-full border-4 border-orange-100 bg-orange-50 dark:border-orange-500/30 dark:bg-slate-950">
@@ -291,12 +291,12 @@ const ProfilePage = () => {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
+        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-6 flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
               <User size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
                 Thông tin cá nhân
               </h2>
@@ -406,13 +406,13 @@ const ProfilePage = () => {
         </section>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
+      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-6 flex min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
               <Lock size={20} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
                 Đổi mật khẩu
               </h2>
@@ -517,7 +517,7 @@ const FieldError = ({ message }) => (
 );
 
 const PasswordField = ({ label, value, visible, error, onChange }) => (
-  <label className="space-y-2">
+  <label className="min-w-0 space-y-2">
     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</span>
     <div className="relative">
       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

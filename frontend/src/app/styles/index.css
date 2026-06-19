@@ -1,3 +1,31 @@
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.admin-content,
+.admin-content > *,
+.admin-content .grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-content .recharts-responsive-container {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden;
+}
+
+.admin-content img,
+.admin-content canvas,
+.admin-content svg {
+  max-width: 100%;
+}

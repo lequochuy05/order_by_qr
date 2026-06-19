@@ -193,7 +193,7 @@ const ComboManager = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen font-sans">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50/50 p-0 font-sans sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm kiếm combo..."
         searchTerm={searchTerm}
@@ -215,7 +215,7 @@ const ComboManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={48} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {combos.map((c) => (
             <ComboCard
               key={c.id}

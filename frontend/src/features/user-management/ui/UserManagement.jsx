@@ -179,7 +179,7 @@ const StaffManager = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm tên, email, sđt..."
         searchTerm={searchTerm}
@@ -202,7 +202,7 @@ const StaffManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {staffs.map((staff) => (
             <UserCard
               key={staff.id}
