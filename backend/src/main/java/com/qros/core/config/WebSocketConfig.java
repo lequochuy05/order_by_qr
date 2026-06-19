@@ -76,7 +76,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     private static String[] parseAllowedOrigins(String origins) {
         if (!org.springframework.util.StringUtils.hasText(origins)) {
-            return new String[] {"http://localhost:5173", "https://localhost", "https://order-by-qr.vercel.app"};
+            return new String[] {"http://localhost:5173", "https://localhost", "https://wqros.vercel.app"};
         }
         return origins.split("\\s*,\\s*");
     }
