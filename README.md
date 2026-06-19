@@ -249,11 +249,12 @@ mvn clean package
 
 ```bash
 cd frontend
+npm test
 npm run lint
 npm run build
 ```
 
-Hiện frontend chưa có bộ test tự động riêng; `lint` và `build` là bước kiểm tra chính.
+Bộ test frontend hiện kiểm tra cơ chế chống gửi trùng request khi bắt đầu table session.
 
 ## Docker
 

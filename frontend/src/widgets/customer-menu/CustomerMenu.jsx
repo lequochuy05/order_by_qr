@@ -115,7 +115,6 @@ const CustomerMenuContent = () => {
   );
 
   const tableInfo = sessionData?.tableInfo;
-  const sessionState = sessionData?.sessionState;
   const currentOrder = sessionData?.currentOrder;
   const sessionEnded = sessionData?.sessionEnded;
   const sessionError = sessionData?.sessionError;
@@ -126,7 +125,10 @@ const CustomerMenuContent = () => {
   const orderingUnavailable =
     restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
   const canUseAiAssistant = Boolean(user) && restaurantSettings.enableAiAssistant !== false;
-  const orderPaymentLocked = paymentInProgress || currentOrder?.status === 'AWAITING_PAYMENT';
+  // AWAITING_PAYMENT only means every current item is finished. Customers may
+  // still add another batch; the backend will reopen the order to SERVING.
+  // Only lock ordering after the backend confirms a payment transaction is active.
+  const orderPaymentLocked = paymentInProgress;
   const paymentLockedMessage = 'Bàn đang trong quá trình thanh toán, vui lòng liên hệ nhân viên.';
 
   const getCartItemQty = (item) => {
@@ -312,8 +314,7 @@ const CustomerMenuContent = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOrderMutation = useSubmitOrderMutation();
-  const { mutateAsync: startTableSession, isPending: isStartingSession } =
-    useStartTableSessionMutation();
+  const { mutateAsync: startTableSession } = useStartTableSessionMutation();
 
   useEffect(() => {
     if (!tableCode) {
@@ -369,43 +370,6 @@ const CustomerMenuContent = () => {
     queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
     return startedSession.sessionToken;
   }, [persistSessionToken, sessionToken, startTableSession, tableCode]);
-
-  useEffect(() => {
-    if (
-      !tableCode ||
-      sessionToken ||
-      orderingUnavailable ||
-      !sessionState?.hasOpenSession ||
-      isStartingSession
-    ) {
-      return undefined;
-    }
-
-    let isActive = true;
-
-    startTableSession(tableCode)
-      .then((startedSession) => {
-        if (!isActive) return;
-
-        persistSessionToken(startedSession.sessionToken);
-        queryClient.invalidateQueries({ queryKey: ['tableSession', tableCode] });
-      })
-      .catch(() => {
-        // Customer can still join/create the session when submitting the first order.
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [
-    isStartingSession,
-    orderingUnavailable,
-    persistSessionToken,
-    sessionState?.hasOpenSession,
-    sessionToken,
-    startTableSession,
-    tableCode,
-  ]);
 
   useEffect(() => {
     if (!sessionToken) return undefined;
