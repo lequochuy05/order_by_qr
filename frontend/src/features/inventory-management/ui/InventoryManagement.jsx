@@ -26,6 +26,7 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const INVENTORY_UNITS = ['g', 'kg', 'ml', 'l'];
 
@@ -72,7 +73,7 @@ const InventoryManagement = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const { showSuccess, showError } = useStatusModal();
+  const { showError } = useStatusModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   const isMountedRef = React.useRef(true);
@@ -99,50 +100,44 @@ const InventoryManagement = () => {
         setTotalElements(inventoryData.totalElements || 0);
       } catch (err) {
         if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
-        showError(err);
+        showErrorToast(err);
       } finally {
         if (isMountedRef.current && fetchSeq === inventoryFetchSeqRef.current) {
           setLoading(false);
         }
       }
     },
-    [currentPage, debouncedSearchTerm, showError, stockFilter],
+    [currentPage, debouncedSearchTerm, stockFilter],
   );
 
-  const fetchInventorySummary = useCallback(
-    async ({ force = false } = {}) => {
-      try {
-        const data = await inventoryService.getSummary({ force });
-        if (!isMountedRef.current) return;
-        setSummary(data);
-      } catch (err) {
-        if (!isMountedRef.current) return;
-        showError(err);
+  const fetchInventorySummary = useCallback(async ({ force = false } = {}) => {
+    try {
+      const data = await inventoryService.getSummary({ force });
+      if (!isMountedRef.current) return;
+      setSummary(data);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      showErrorToast(err);
+    }
+  }, []);
+
+  const fetchMovements = useCallback(async (showLoading = false, { force = false } = {}) => {
+    const fetchSeq = ++movementFetchSeqRef.current;
+    if (showLoading) setMovementsLoading(true);
+    try {
+      const movementData = await inventoryService.getMovements({ force });
+      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
+
+      setMovements(movementData || []);
+    } catch (err) {
+      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
+      showErrorToast(err);
+    } finally {
+      if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
+        setMovementsLoading(false);
       }
-    },
-    [showError],
-  );
-
-  const fetchMovements = useCallback(
-    async (showLoading = false, { force = false } = {}) => {
-      const fetchSeq = ++movementFetchSeqRef.current;
-      if (showLoading) setMovementsLoading(true);
-      try {
-        const movementData = await inventoryService.getMovements({ force });
-        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-
-        setMovements(movementData || []);
-      } catch (err) {
-        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-        showError(err);
-      } finally {
-        if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
-          setMovementsLoading(false);
-        }
-      }
-    },
-    [showError],
-  );
+    }
+  }, []);
 
   const ensureMenuItems = useCallback(
     async ({ force = false } = {}) => {
@@ -159,7 +154,7 @@ const InventoryManagement = () => {
         );
         return menuData || [];
       } catch (err) {
-        showError(err);
+        showErrorToast(err);
         return [];
       } finally {
         if (isMountedRef.current) {
@@ -167,7 +162,7 @@ const InventoryManagement = () => {
         }
       }
     },
-    [menuItems, showError],
+    [menuItems],
   );
 
   useEffect(() => {
@@ -315,10 +310,10 @@ const InventoryManagement = () => {
             note: 'Cập nhật tồn kho từ form nguyên liệu',
           });
         }
-        showSuccess('Đã cập nhật nguyên liệu');
+        showSuccessToast('Đã cập nhật nguyên liệu');
       } else {
         await inventoryService.createItem(payload);
-        showSuccess('Đã thêm nguyên liệu');
+        showSuccessToast('Đã thêm nguyên liệu');
       }
       setInventoryModalOpen(false);
       setEditingItem(null);
@@ -330,7 +325,17 @@ const InventoryManagement = () => {
         fetchMovements(false, { force: true });
       }
     } catch (err) {
-      showError(err);
+      if (
+        err?.code === 'INVENTORY_ITEM_NAME_EXISTS' ||
+        err?.message?.includes('Inventory item name already exists')
+      ) {
+        setInventoryErrors((current) => ({
+          ...current,
+          name: 'Tên nguyên liệu này đã tồn tại',
+        }));
+      } else {
+        showErrorToast(err);
+      }
     } finally {
       setIsInventorySubmitting(false);
     }
@@ -355,20 +360,20 @@ const InventoryManagement = () => {
           quantity: Number(stockForm.quantity),
           note: stockForm.note,
         });
-        showSuccess('Đã nhập kho');
+        showSuccessToast('Đã nhập kho');
       } else {
         const quantityDelta =
           Number(stockForm.quantityOnHand) - Number(stockAction.item.quantityOnHand || 0);
         if (quantityDelta === 0) {
           setStockAction(null);
-          showSuccess('Tồn kho không thay đổi');
+          showSuccessToast('Tồn kho không thay đổi');
           return;
         }
         await inventoryService.adjust(stockAction.item.id, {
           quantityDelta,
           note: stockForm.note,
         });
-        showSuccess('Đã cập nhật kiểm kê');
+        showSuccessToast('Đã cập nhật kiểm kê');
       }
       setStockAction(null);
       fetchInventoryItems(false, { force: true });
@@ -377,7 +382,7 @@ const InventoryManagement = () => {
         fetchMovements(false, { force: true });
       }
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setIsStockSubmitting(false);
     }
@@ -407,7 +412,7 @@ const InventoryManagement = () => {
         })),
       );
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setRecipeLoading(false);
     }
@@ -435,10 +440,10 @@ const InventoryManagement = () => {
           quantityRequired: Number(item.quantityRequired),
         })),
       });
-      showSuccess('Đã cập nhật định mức món');
+      showSuccessToast('Đã cập nhật định mức món');
       setRecipeOpen(false);
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setIsRecipeSubmitting(false);
     }

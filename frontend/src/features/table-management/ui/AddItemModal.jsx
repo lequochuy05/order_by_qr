@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { Loader2, X } from 'lucide-react';
+import { showErrorToast } from '@shared/lib/toast.js';
 import { tableOrderCatalogService } from '@features/table-management/api/tableOrderCatalogService.js';
 import ItemOptionsModal from '@features/customer-ordering/ui/ItemOptionsModal.jsx';
 import SharedModal from '@shared/ui/SharedModal.jsx';
@@ -92,7 +92,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
   };
 
   const handleConfirm = () => {
-    if (cart.length === 0) return toast.error('Chưa chọn món nào');
+    if (cart.length === 0) return showErrorToast('Chưa chọn món nào');
     const payload = {
       tableId: table.id,
       items: cart

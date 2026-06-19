@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
-// Import Hook
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 // Import React Query
 import { queryClient } from '@shared/api/queryClient.js';
@@ -53,8 +52,6 @@ const CategoryManager = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 24;
 
-  // === Hook Status Modal ===
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
@@ -120,10 +117,10 @@ const CategoryManager = () => {
       let result;
       if (editId) {
         result = await categoryService.update(editId, payload);
-        showSuccess('Cập nhật danh mục thành công!');
+        showSuccessToast('Cập nhật danh mục thành công!');
       } else {
         result = await categoryService.create(payload);
-        showSuccess('Thêm mới danh mục thành công!');
+        showSuccessToast('Thêm mới danh mục thành công!');
       }
       if (selectedFile) {
         await categoryService.uploadImage(result?.id || editId, selectedFile);
@@ -133,10 +130,13 @@ const CategoryManager = () => {
       invalidateCategories();
     } catch (err) {
       const errorMsg = err.message || '';
-      if (errorMsg.toLowerCase().includes('category name already exists')) {
+      if (
+        err?.code === 'CATEGORY_NAME_EXISTS' ||
+        errorMsg.toLowerCase().includes('category name already exists')
+      ) {
         setErrors({ ...errors, name: 'Tên danh mục này đã tồn tại' });
       } else {
-        showError(err);
+        showErrorToast(err);
       }
     } finally {
       setIsSubmitting(false);
@@ -153,10 +153,10 @@ const CategoryManager = () => {
 
     try {
       await categoryService.delete(id);
-      showSuccess('Đã xóa danh mục thành công!');
+      showSuccessToast('Đã xóa danh mục thành công!');
       invalidateCategories();
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 

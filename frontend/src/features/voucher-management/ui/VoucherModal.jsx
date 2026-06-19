@@ -2,7 +2,15 @@ import React, { useState } from 'react';
 import { X, Wand2, AlertCircle, Loader2 } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 
-const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) => {
+const VoucherModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  initialData,
+  isSubmitting,
+  serverErrors = {},
+  onClearServerError,
+}) => {
   // State dữ liệu form
   const [formData, setFormData] = useState(() => {
     if (initialData) {
@@ -28,6 +36,7 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
 
   // State lưu lỗi validation
   const [errors, setErrors] = useState({});
+  const codeError = errors.code || serverErrors.code;
 
   const originalData = React.useMemo(() => {
     if (!initialData) return null;
@@ -66,6 +75,7 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
     const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
     setFormData((prev) => ({ ...prev, code: `SALE_${randomStr}`, codeError: null }));
     setErrors((prev) => ({ ...prev, code: null }));
+    onClearServerError?.('code');
   };
 
   // Hàm Validate chi tiết
@@ -198,11 +208,12 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
             <input
               type="text"
               placeholder="HELLO2026"
-              className={`w-full px-4 py-2 border rounded-xl outline-none uppercase font-mono font-bold text-gray-700 ${errors.code ? 'border-red-500 focus:ring-red-200' : 'focus:ring-2 focus:ring-orange-500'}`}
+              className={`w-full px-4 py-2 border rounded-xl outline-none uppercase font-mono font-bold text-gray-700 ${codeError ? 'border-red-500 focus:ring-red-200' : 'focus:ring-2 focus:ring-orange-500'}`}
               value={formData.code}
               onChange={(e) => {
                 setFormData({ ...formData, code: e.target.value.toUpperCase().replace(/\s/g, '') }); // Tự động xóa khoảng trắng
                 if (errors.code) setErrors({ ...errors, code: null });
+                onClearServerError?.('code');
               }}
             />
             <button
@@ -214,10 +225,10 @@ const VoucherModal = ({ isOpen, onClose, onSubmit, initialData, isSubmitting }) 
               <Wand2 size={20} />
             </button>
           </div>
-          {errors.code && (
+          {codeError && (
             <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
               <AlertCircle size={12} />
-              {errors.code}
+              {codeError}
             </p>
           )}
         </div>

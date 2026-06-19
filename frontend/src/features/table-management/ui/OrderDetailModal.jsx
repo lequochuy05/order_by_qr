@@ -3,7 +3,7 @@ import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-rea
 import { orderService } from '@features/order-management/api/orderService.js';
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { toast } from 'react-hot-toast';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [items, setItems] = useState(order?.orderItems || []);
@@ -39,10 +39,10 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
           setItems((prev) =>
             prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i)),
           );
-          toast.success('Đã hoàn tất chuẩn bị món');
+          showSuccessToast('Đã hoàn tất chuẩn bị món');
           await onOrderUpdate();
-        } catch {
-          toast.error('Lỗi cập nhật trạng thái');
+        } catch (error) {
+          showErrorToast(error);
         }
       })
       .finally(() => {
@@ -57,10 +57,10 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     try {
       await orderService.deleteOrderItem(itemId);
       setItems((prev) => prev.filter((i) => i.id !== itemId));
-      toast.success('Đã hủy món thành công');
+      showSuccessToast('Đã hủy món thành công');
       await onOrderUpdate();
-    } catch {
-      toast.error('Lỗi hủy món');
+    } catch (error) {
+      showErrorToast(error);
     }
   };
 
@@ -74,10 +74,10 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
       await orderService.updateOrderItem(itemId, editVal);
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...editVal } : i)));
       setEditingId(null);
-      toast.success('Cập nhật món thành công');
+      showSuccessToast('Cập nhật món thành công');
       await onOrderUpdate();
-    } catch {
-      toast.error('Lỗi cập nhật món');
+    } catch (error) {
+      showErrorToast(error);
     }
   };
 

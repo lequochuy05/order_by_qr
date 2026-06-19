@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
@@ -16,6 +15,7 @@ import UserModal from './UserModal';
 import EmptyState from '@shared/ui/EmptyState.jsx';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { USER_STATUS } from '@shared/lib/formatters.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) => ({
   id,
@@ -39,8 +39,6 @@ const StaffManager = () => {
   const fetchSeqRef = useRef(0);
   const pageSize = 24;
 
-  // Hook Status Modal
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
@@ -145,23 +143,23 @@ const StaffManager = () => {
       }
 
       setIsModalOpen(false);
-      showSuccess(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
+      showSuccessToast(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
       fetchStaffs(false, { force: true });
     } catch (err) {
       console.error('Error saving staff:', err);
       const errorMsg = err.message || '';
 
       const newErrors = {};
-      if (errorMsg.includes('Email already exists')) {
+      if (err?.code === 'EMAIL_EXISTS' || errorMsg.includes('Email already exists')) {
         newErrors.email = 'Email này đã tồn tại.';
-      } else if (errorMsg.includes('Phone number already exists')) {
+      } else if (err?.code === 'PHONE_EXISTS' || errorMsg.includes('Phone number already exists')) {
         newErrors.phone = 'Số điện thoại này đã tồn tại.';
       }
 
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
       } else {
-        showError(errorMsg || 'Có lỗi xảy ra');
+        showErrorToast(err);
       }
     }
   };
@@ -171,10 +169,10 @@ const StaffManager = () => {
     if (!confirmed) return;
     try {
       await userService.delete(id);
-      showSuccess('Đã xóa nhân viên thành công!');
+      showSuccessToast('Đã xóa nhân viên thành công!');
       fetchStaffs(false, { force: true });
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 

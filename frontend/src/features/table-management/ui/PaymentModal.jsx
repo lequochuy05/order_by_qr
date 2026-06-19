@@ -23,7 +23,7 @@ import {
 } from '@shared/lib/orderMoney.js';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import { ErrorBoundary } from '@shared/ui';
-import { toast } from 'react-hot-toast';
+import { showErrorToast } from '@shared/lib/toast.js';
 
 const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
   const [voucherCode, setVoucherCode] = useState('');
@@ -366,7 +366,7 @@ const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPay
       setPayosStatus('idle');
       setPayosData(null);
     } catch (e) {
-      toast.error('Không thể hủy giao dịch PayOS: ' + (e.message || ''));
+      showErrorToast(e);
     }
   };
 
@@ -381,7 +381,7 @@ const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPay
       await paymentService.createPayment(order.id, 'CASH', finalVoucher);
       await finishPayment('CASH');
     } catch (e) {
-      toast.error('Thanh toán thất bại: ' + (e.response?.data?.message || e.message));
+      showErrorToast(e);
     }
   };
 

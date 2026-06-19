@@ -17,7 +17,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
+import FormError from '@shared/ui/FormError.jsx';
+import { getErrorDetails } from '@shared/lib/errorMessages.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { useSettingsQuery } from '../api/settingsQueries.js';
 import { useUpdateSettingsMutation } from '../api/settingsMutations.js';
 
@@ -41,10 +43,10 @@ const defaultSettings = {
 const SettingsPage = () => {
   const { user } = useAuth();
   const isManager = user?.role === 'MANAGER';
-  const { showSuccess, showError } = useStatusModal();
 
   const [preferences, setPreferences] = useAdminPreferences();
   const [activeTab, setActiveTab] = useState(isManager ? 'restaurant' : 'preferences');
+  const [settingsErrors, setSettingsErrors] = useState({});
   const copy = settingsCopy[preferences.language] || settingsCopy.vi;
 
   const { data: serverSettings, isLoading: loading } = useSettingsQuery({
@@ -83,10 +85,17 @@ const SettingsPage = () => {
   const updateMutation = useUpdateSettingsMutation({
     onSuccess: (updated) => {
       setSettingsDraft(normalizeSettings(updated));
-      showSuccess(copy.success.saved);
+      setSettingsErrors({});
+      showSuccessToast(copy.success.saved);
     },
     onError: (err) => {
-      showError(err);
+      const details = getErrorDetails(err);
+      if (details.restaurantName) {
+        setSettingsErrors({ restaurantName: details.restaurantName });
+        setActiveTab('restaurant');
+      } else {
+        showErrorToast(err);
+      }
     },
   });
 
@@ -97,7 +106,8 @@ const SettingsPage = () => {
 
   const handleSaveSettings = () => {
     if (!settings.restaurantName.trim()) {
-      showError(copy.errors.restaurantNameRequired, copy.errors.invalidData);
+      setSettingsErrors({ restaurantName: copy.errors.restaurantNameRequired });
+      setActiveTab('restaurant');
       return;
     }
 
@@ -163,6 +173,10 @@ const SettingsPage = () => {
             saving={saving}
             onSave={handleSaveSettings}
             copy={copy}
+            errors={settingsErrors}
+            onClearError={(field) =>
+              setSettingsErrors((current) => ({ ...current, [field]: null }))
+            }
           />
         )}
 
@@ -195,7 +209,7 @@ const SettingsPage = () => {
   );
 };
 
-const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
+const RestaurantTab = ({ settings, setSettings, saving, onSave, copy, errors, onClearError }) => (
   <section className="min-w-0">
     <SectionHeader
       icon={Building2}
@@ -206,7 +220,11 @@ const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
       <TextField
         label={copy.restaurant.name}
         value={settings.restaurantName}
-        onChange={(value) => setSettingsValue(setSettings, 'restaurantName', value)}
+        error={errors.restaurantName}
+        onChange={(value) => {
+          setSettingsValue(setSettings, 'restaurantName', value);
+          onClearError('restaurantName');
+        }}
       />
       <TextField
         label={copy.restaurant.hotline}
@@ -395,15 +413,20 @@ const SectionHeader = ({ icon, title, subtitle }) => (
   </div>
 );
 
-const TextField = ({ label, value, onChange, className = '', ...props }) => (
+const TextField = ({ label, value, onChange, error, className = '', ...props }) => (
   <label className={`min-w-0 space-y-2 ${className}`}>
     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</span>
     <input
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value)}
-      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+      className={`h-11 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 ${
+        error
+          ? 'border-red-500 focus:ring-2 focus:ring-red-100 dark:border-red-500 dark:focus:ring-red-500/20'
+          : 'border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:focus:ring-orange-500/20'
+      }`}
       {...props}
     />
+    <FormError message={error} />
   </label>
 );
 

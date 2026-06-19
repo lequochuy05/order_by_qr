@@ -19,6 +19,7 @@ import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { profileService } from '@features/profile-management/api/profileService.js';
 import { fmtRole } from '@shared/lib/formatters.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const initialProfile = {
   fullName: '',
@@ -50,7 +51,7 @@ const strengthMeta = [
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
-  const { showSuccess, showError } = useStatusModal();
+  const { showError } = useStatusModal();
   const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState(initialProfile);
@@ -153,9 +154,9 @@ const ProfilePage = () => {
         role: updated.role,
         email: updated.email,
       });
-      showSuccess('Thông tin cá nhân đã được cập nhật.');
+      showSuccessToast('Thông tin cá nhân đã được cập nhật.');
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setSavingProfile(false);
     }
@@ -177,10 +178,10 @@ const ProfilePage = () => {
       setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || '' }));
       setAvatarPreview(updated.avatarUrl || '');
       updateUser({ avatarUrl: updated.avatarUrl || '' });
-      showSuccess('Ảnh đại diện đã được cập nhật.');
+      showSuccessToast('Ảnh đại diện đã được cập nhật.');
     } catch (err) {
       setAvatarPreview(profile.avatarUrl || '');
-      showError(err, 'Không thể cập nhật ảnh');
+      showErrorToast(err);
     } finally {
       setUploadingAvatar(false);
       event.target.value = '';
@@ -217,9 +218,9 @@ const ProfilePage = () => {
         newPassword: passwordForm.newPassword,
       });
       setPasswordForm(initialPassword);
-      showSuccess('Mật khẩu đã được thay đổi.');
+      showSuccessToast('Mật khẩu đã được thay đổi.');
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setSavingPassword(false);
     }
