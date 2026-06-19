@@ -27,6 +27,7 @@ public final class SecurityRoutes {
         ApiRoutes.PUBLIC + "/orders/preview",
         ApiRoutes.PUBLIC + "/tables/*/start-session",
         ApiRoutes.PUBLIC + "/sessions/heartbeat",
+        ApiRoutes.PUBLIC + "/ai/chat",
         ApiRoutes.WEBHOOKS + "/**"
     };
 

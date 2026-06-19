@@ -42,7 +42,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        boolean isAiChat = (ApiRoutes.AI + "/chat").equals(path) && "POST".equalsIgnoreCase(method);
+        boolean isAiChat = (ApiRoutes.PUBLIC + "/ai/chat").equals(path) && "POST".equalsIgnoreCase(method);
         boolean isPublicOrder = path.startsWith(ApiRoutes.PUBLIC + "/orders") && "POST".equalsIgnoreCase(method);
         boolean isStartSession = path.matches("^" + Pattern.quote(ApiRoutes.PUBLIC) + "/tables/[^/]+/start-session$")
                 && "POST".equalsIgnoreCase(method);
