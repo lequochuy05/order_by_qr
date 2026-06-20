@@ -6,13 +6,22 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
 
 spring:
+  main:
+    lazy-initialization: true
+
   jpa:
     show-sql: false
+    hibernate:
+      ddl-auto: none
 
   data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+
     redis:
       ssl:
-        enabled: ${REDIS_SSL_ENABLED:true}
+        enabled: ${REDIS_SSL_ENABLED:false}
 
 auth:
   password-reset:

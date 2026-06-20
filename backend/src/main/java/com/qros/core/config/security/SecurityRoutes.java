@@ -6,7 +6,7 @@ public final class SecurityRoutes {
 
     private SecurityRoutes() {}
 
-    public static final String[] STATIC_AND_SYSTEM = {"/error", "/ws/**", "/actuator/health"};
+    public static final String[] STATIC_AND_SYSTEM = {"/error", "/ws/**", "/actuator/health", "/actuator/health/**"};
 
     public static final String[] AUTH_PUBLIC_POST = {
         ApiRoutes.AUTH + "/login",

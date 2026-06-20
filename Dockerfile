@@ -29,18 +29,17 @@ COPY --chown=spring:spring --from=builder /app/spring-boot-loader/ ./
 COPY --chown=spring:spring --from=builder /app/snapshot-dependencies/ ./
 COPY --chown=spring:spring --from=builder /app/application/ .
 
-# JVM tuning: MaxRAMPercentage thấp hơn để tiết kiệm RAM trên Render
+# JVM tuning ưu tiên cold-start và footprint nhỏ trên Render.
 ENV TZ="Asia/Ho_Chi_Minh"
 ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh \
-    -XX:MaxRAMPercentage=50.0 \
-    -XX:+UseG1GC \
-    -XX:+UseStringDeduplication \
+    -XX:MaxRAMPercentage=60.0 \
+    -XX:+UseSerialGC \
+    -XX:TieredStopAtLevel=1 \
     -XX:+ExitOnOutOfMemoryError \
-    -XX:+AlwaysPreTouch \
     -Djava.security.egd=file:/dev/./urandom"
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+    CMD curl -f "http://localhost:${PORT:-8080}/actuator/health/liveness" || exit 1
 
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher"]
