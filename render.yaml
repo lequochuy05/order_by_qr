@@ -1,0 +1,66 @@
+services:
+  - type: web
+    name: qros-backend
+    runtime: image
+    repo: https://github.com/lequochuy05/order-by-qr
+    branch: master
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: 8080
+      - key: DB_URL
+        fromDatabase:
+          name: qros-db
+          property: connectionString
+      - key: DB_USERNAME
+        fromDatabase:
+          name: qros-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: qros-db
+          property: password
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: qros-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: qros-redis
+          property: port
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MS
+        value: 900000
+      - key: JWT_REFRESH_EXPIRATION_MS
+        value: 604800000
+      - key: JWT_REFRESH_COOKIE_NAME
+        value: refreshToken
+      - key: APP_BASE_URL
+        value: https://qros-backend.onrender.com
+      - key: APP_FRONTEND_BASE_URL
+        value: https://qros-frontend.vercel.app
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: https://qros-frontend.vercel.app
+      - key: APP_TRUST_PROXY_HEADERS
+        value: true
+      - key: GEMINI_ENABLED
+        value: true
+
+  - type: redis
+    name: qros-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: qros-db
+    plan: free
+    databaseType: postgresql
+    ipAllowList: []
