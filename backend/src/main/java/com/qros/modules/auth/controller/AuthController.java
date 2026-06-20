@@ -7,6 +7,7 @@ import com.qros.modules.auth.dto.request.LoginRequest;
 import com.qros.modules.auth.dto.request.PhonePasswordResetRequest;
 import com.qros.modules.auth.dto.response.LoginResponse;
 import com.qros.modules.auth.dto.response.TokenResponse;
+import com.qros.modules.auth.service.AuthRateLimitService;
 import com.qros.modules.auth.service.AuthService;
 import com.qros.modules.auth.service.PasswordResetService;
 import com.qros.modules.auth.service.RefreshTokenService;
@@ -14,6 +15,7 @@ import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.security.JwtProperties;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +23,6 @@ import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.Arrays;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.lang.NonNull;
@@ -33,36 +34,32 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthRateLimitService authRateLimitService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetService passwordResetService;
-
-    @Value("${security.jwt.refresh-cookie-name}")
-    private String refreshCookieName;
-
-    @Value("${security.jwt.refresh-expiration-ms}")
-    private long refreshExpirationMs;
-
-    @Value("${security.jwt.refresh-cookie-secure}")
-    private boolean refreshCookieSecure;
+    private final JwtProperties jwtProperties;
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest req, HttpServletResponse response) {
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest req, HttpServletRequest request, HttpServletResponse response) {
+        authRateLimitService.checkLogin(request, req.email());
         LoginResult result = authService.login(req);
 
         String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
 
-        setRefreshCookie(response, refreshToken, Duration.ofMillis(refreshExpirationMs));
+        setRefreshCookie(response, refreshToken, Duration.ofMillis(jwtProperties.getRefreshExpirationMs()));
 
         return ApiResponse.success("Login successful", result.response());
     }
 
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        authRateLimitService.checkRefresh(request);
         String oldRefreshToken = extractRefreshToken(request);
 
         RefreshResult result = refreshTokenService.refreshAccessToken(oldRefreshToken);
 
-        setRefreshCookie(response, result.refreshToken(), Duration.ofMillis(refreshExpirationMs));
+        setRefreshCookie(response, result.refreshToken(), Duration.ofMillis(jwtProperties.getRefreshExpirationMs()));
 
         return ApiResponse.success("Token refreshed", result.response());
     }
@@ -71,7 +68,7 @@ public class AuthController {
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         if (request.getCookies() != null) {
             Arrays.stream(request.getCookies())
-                    .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                    .filter(cookie -> jwtProperties.getRefreshCookieName().equals(cookie.getName()))
                     .map(Cookie::getValue)
                     .findFirst()
                     .ifPresent(refreshTokenService::revokeRefreshToken);
@@ -83,7 +80,8 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password-email")
-    public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email) {
+    public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email, HttpServletRequest request) {
+        authRateLimitService.checkForgotPassword(request, email);
         try {
             passwordResetService.createPasswordResetToken(email);
         } catch (Exception ignored) {
@@ -94,23 +92,28 @@ public class AuthController {
     }
 
     @PostMapping("/reset-password-email")
-    public ApiResponse<Void> resetPassword(@Valid @RequestBody @NonNull EmailPasswordResetRequest req) {
+    public ApiResponse<Void> resetPassword(
+            @Valid @RequestBody @NonNull EmailPasswordResetRequest req, HttpServletRequest request) {
+        authRateLimitService.checkPasswordReset(request, req.token());
         passwordResetService.resetPassword(req.token(), req.newPassword());
         return ApiResponse.success("Password reset successfully.", null);
     }
 
     @PostMapping("/forgot-password-phone")
-    public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone) {
+    public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone, HttpServletRequest request) {
+        authRateLimitService.checkForgotPassword(request, phone);
         try {
             passwordResetService.createOtpAndSendOtp(phone);
-        } catch (Exception ignored) {
-            // Keep the response generic to avoid revealing whether an account exists.
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ErrorCode.FEATURE_DISABLED) throw e;
         }
         return ApiResponse.success("If the phone number exists, an OTP code has been sent.", null);
     }
 
     @PostMapping("/reset-password-phone")
-    public ApiResponse<Void> resetPasswordPhone(@Valid @RequestBody @NonNull PhonePasswordResetRequest req) {
+    public ApiResponse<Void> resetPasswordPhone(
+            @Valid @RequestBody @NonNull PhonePasswordResetRequest req, HttpServletRequest request) {
+        authRateLimitService.checkPasswordReset(request, req.phone());
         passwordResetService.resetPasswordWithOtp(req.phone(), req.otp(), req.newPassword());
         return ApiResponse.success("Password reset successfully.", null);
     }
@@ -121,17 +124,17 @@ public class AuthController {
         }
 
         return Arrays.stream(request.getCookies())
-                .filter(cookie -> refreshCookieName.equals(cookie.getName()))
+                .filter(cookie -> jwtProperties.getRefreshCookieName().equals(cookie.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token missing"));
     }
 
     private void setRefreshCookie(HttpServletResponse response, String token, Duration maxAge) {
-        ResponseCookie cookie = ResponseCookie.from(refreshCookieName, token)
+        ResponseCookie cookie = ResponseCookie.from(jwtProperties.getRefreshCookieName(), token)
                 .httpOnly(true)
-                .secure(refreshCookieSecure)
-                .sameSite(refreshCookieSecure ? "None" : "Lax")
+                .secure(jwtProperties.isRefreshCookieSecure())
+                .sameSite(jwtProperties.isRefreshCookieSecure() ? "None" : "Lax")
                 .path(ApiRoutes.PREFIX)
                 .maxAge(maxAge)
                 .build();

@@ -1,5 +1,6 @@
 package com.qros.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -11,6 +12,8 @@ import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
@@ -116,5 +119,34 @@ class OrderStatusServiceTest {
         orderStatusService.cancelOrder(11L);
 
         verify(tableSessionService).closeSession(eq(88L), eq(TableSessionStatus.CANCELLED), eq("Order cancelled"));
+    }
+
+    @Test
+    void addingPendingItemReopensAwaitingPaymentOrderToServing() {
+        Order order = Order.builder()
+                .id(12L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .build();
+        order.addItem(
+                OrderItem.builder().id(101L).status(OrderItemStatus.FINISHED).build());
+        order.addItem(
+                OrderItem.builder().id(102L).status(OrderItemStatus.PENDING).build());
+
+        when(orderStateFactory.getState(OrderStatus.SERVING)).thenReturn(servingState);
+        doAnswer(invocation -> {
+                    Order target = invocation.getArgument(0);
+                    target.setStatus(OrderStatus.SERVING);
+                    return null;
+                })
+                .when(servingState)
+                .handleRequest(order);
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderStatusService.tryAutoPromoteOrder(order);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SERVING);
+        verify(orderStateFactory).validateTransition(OrderStatus.AWAITING_PAYMENT, OrderStatus.SERVING);
+        verify(orderRepository).save(order);
     }
 }

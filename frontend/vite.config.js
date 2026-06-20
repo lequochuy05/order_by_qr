@@ -7,10 +7,16 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const isPublicApiGetRequest = ({ request, url }) =>
+const CACHEABLE_PUBLIC_API_PATHS = new Set([
+  '/api/v1/public/catalog',
+  '/api/v1/public/settings',
+]);
+
+const isCacheablePublicApiGetRequest = ({ request, url }) =>
   request.method === 'GET' &&
-  (url.pathname.startsWith('/api/v1/public/') ||
-    url.pathname.startsWith('/api/v1/recommendations/'));
+  (CACHEABLE_PUBLIC_API_PATHS.has(url.pathname) ||
+    url.pathname.startsWith('/api/v1/recommendations/')) &&
+  !url.searchParams.has('sessionToken');
 
 export default defineConfig({
   plugins: [
@@ -20,14 +26,17 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-*.png'],
       workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
         runtimeCaching: [
           {
-            urlPattern: isPublicApiGetRequest,
+            urlPattern: isCacheablePublicApiGetRequest,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'public-api-cache',
+              cacheName: 'public-catalog-cache-v2',
               networkTimeoutSeconds: 10,
               cacheableResponse: {
                 statuses: [0, 200],

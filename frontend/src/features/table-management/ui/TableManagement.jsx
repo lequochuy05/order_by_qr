@@ -23,6 +23,7 @@ import OrderDetailModal from './OrderDetailModal.jsx';
 import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
 import { TABLE_STATUS } from '@shared/lib/tableStatus.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const tableStatusFilterOptions = Object.entries(TABLE_STATUS).map(([id, meta]) => ({
   id,
@@ -39,8 +40,9 @@ const TableManager = () => {
   const [payModal, setPayModal] = useState({ open: false, table: null, order: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegeneratingQr, setIsRegeneratingQr] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
-  const { showSuccess, showError } = useStatusModal();
+  const { showError } = useStatusModal();
   const { confirm } = useConfirmModal();
 
   const { user } = useAuth();
@@ -117,7 +119,10 @@ const TableManager = () => {
         }
         break;
       case 'EDIT':
-        if (checkPermission()) setFormModal({ open: true, data: table });
+        if (checkPermission()) {
+          setFormErrors({});
+          setFormModal({ open: true, data: table });
+        }
         break;
       case 'DELETE':
         if (checkPermission()) handleDeleteTable(table.id);
@@ -133,14 +138,15 @@ const TableManager = () => {
     try {
       if (data.id) await updateMutation.mutateAsync({ id: data.id, data });
       else await createMutation.mutateAsync(data);
-      showSuccess(data.id ? 'Cập nhật bàn thành công' : 'Thêm bàn thành công');
+      showSuccessToast(data.id ? 'Cập nhật bàn thành công' : 'Thêm bàn thành công');
+      setFormErrors({});
       setFormModal({ open: false, data: null });
     } catch (e) {
       const errorMsg = e.message || '';
-      if (errorMsg.includes('Table number already exists')) {
-        showError('Số bàn này đã tồn tại');
+      if (e?.code === 'TABLE_NUMBER_EXISTS' || errorMsg.includes('Table number already exists')) {
+        setFormErrors({ tableNumber: 'Số bàn này đã tồn tại' });
       } else {
-        showError(e);
+        showErrorToast(e);
       }
     } finally {
       setIsSubmitting(false);
@@ -152,9 +158,9 @@ const TableManager = () => {
     if (!confirmed) return;
     try {
       await deleteMutation.mutateAsync(id);
-      showSuccess('Đã xóa bàn');
+      showSuccessToast('Đã xóa bàn');
     } catch (e) {
-      showError(e);
+      showErrorToast(e);
     }
   };
 
@@ -169,11 +175,11 @@ const TableManager = () => {
     setIsRegeneratingQr(true);
     try {
       const updatedTable = await regenerateQrMutation.mutateAsync(id);
-      showSuccess('Đã tạo lại mã QR cho bàn');
+      showSuccessToast('Đã tạo lại mã QR cho bàn');
       setFormModal((prev) => ({ ...prev, data: updatedTable }));
       return updatedTable;
     } catch (e) {
-      showError(e);
+      showErrorToast(e);
       return null;
     } finally {
       setIsRegeneratingQr(false);
@@ -185,18 +191,18 @@ const TableManager = () => {
     setIsSubmitting(true);
     try {
       await orderService.addItemsToOrder(payload);
-      showSuccess('Đã thêm món vào bàn');
+      showSuccessToast('Đã thêm món vào bàn');
       setAddItemModal({ open: false, table: null });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
     } catch (e) {
-      showError(e);
+      showErrorToast(e);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
       <ManagementHeader
         title="Quản lý bàn ăn"
         showFilter={true}
@@ -204,7 +210,10 @@ const TableManager = () => {
         filterValue={filter}
         setFilterValue={setFilter}
         onAddClick={() => {
-          if (checkPermission()) setFormModal({ open: true, data: null });
+          if (checkPermission()) {
+            setFormErrors({});
+            setFormModal({ open: true, data: null });
+          }
         }}
         addButtonText="Thêm bàn"
       />
@@ -227,10 +236,15 @@ const TableManager = () => {
       <TableFormModal
         key={formModal.open ? formModal.data?.id || 'new' : 'form-closed'}
         isOpen={formModal.open}
-        onClose={() => setFormModal({ open: false, data: null })}
+        onClose={() => {
+          setFormErrors({});
+          setFormModal({ open: false, data: null });
+        }}
         initialData={formModal.data}
         onSubmit={handleSaveTable}
         isSubmitting={isSubmitting}
+        serverErrors={formErrors}
+        onClearServerError={(field) => setFormErrors((current) => ({ ...current, [field]: null }))}
         onRegenerateQr={handleRegenerateQr}
         isRegeneratingQr={isRegeneratingQr}
       />
@@ -269,7 +283,7 @@ const TableManager = () => {
         order={payModal.order}
         currentUser={user}
         onPaymentSuccess={() => {
-          showSuccess('Thanh toán thành công');
+          showSuccessToast('Thanh toán thành công');
           queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
         }}
       />

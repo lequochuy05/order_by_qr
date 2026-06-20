@@ -17,7 +17,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
+import FormError from '@shared/ui/FormError.jsx';
+import { getErrorDetails } from '@shared/lib/errorMessages.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { useSettingsQuery } from '../api/settingsQueries.js';
 import { useUpdateSettingsMutation } from '../api/settingsMutations.js';
 
@@ -41,10 +43,10 @@ const defaultSettings = {
 const SettingsPage = () => {
   const { user } = useAuth();
   const isManager = user?.role === 'MANAGER';
-  const { showSuccess, showError } = useStatusModal();
 
   const [preferences, setPreferences] = useAdminPreferences();
   const [activeTab, setActiveTab] = useState(isManager ? 'restaurant' : 'preferences');
+  const [settingsErrors, setSettingsErrors] = useState({});
   const copy = settingsCopy[preferences.language] || settingsCopy.vi;
 
   const { data: serverSettings, isLoading: loading } = useSettingsQuery({
@@ -83,10 +85,17 @@ const SettingsPage = () => {
   const updateMutation = useUpdateSettingsMutation({
     onSuccess: (updated) => {
       setSettingsDraft(normalizeSettings(updated));
-      showSuccess(copy.success.saved);
+      setSettingsErrors({});
+      showSuccessToast(copy.success.saved);
     },
     onError: (err) => {
-      showError(err);
+      const details = getErrorDetails(err);
+      if (details.restaurantName) {
+        setSettingsErrors({ restaurantName: details.restaurantName });
+        setActiveTab('restaurant');
+      } else {
+        showErrorToast(err);
+      }
     },
   });
 
@@ -97,7 +106,8 @@ const SettingsPage = () => {
 
   const handleSaveSettings = () => {
     if (!settings.restaurantName.trim()) {
-      showError(copy.errors.restaurantNameRequired, copy.errors.invalidData);
+      setSettingsErrors({ restaurantName: copy.errors.restaurantNameRequired });
+      setActiveTab('restaurant');
       return;
     }
 
@@ -130,9 +140,9 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-      <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
-        <nav className="space-y-1">
+    <div className="grid w-full min-w-0 gap-4 sm:gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="min-w-0 rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition-colors sm:p-3 dark:border-slate-800 dark:bg-slate-900">
+        <nav className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTabId === tab.id;
@@ -141,21 +151,21 @@ const SettingsPage = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-bold transition ${
+                className={`flex min-w-0 w-full items-center gap-2 rounded-lg px-2 py-3 text-left text-xs font-bold transition sm:gap-3 sm:px-3 sm:text-sm ${
                   selected
                     ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
                 }`}
               >
-                <Icon size={18} />
-                {tab.label}
+                <Icon className="shrink-0" size={18} />
+                <span className="min-w-0 truncate">{tab.label}</span>
               </button>
             );
           })}
         </nav>
       </aside>
 
-      <main className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
+      <main className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
         {activeTabId === 'restaurant' && (
           <RestaurantTab
             settings={settings}
@@ -163,6 +173,10 @@ const SettingsPage = () => {
             saving={saving}
             onSave={handleSaveSettings}
             copy={copy}
+            errors={settingsErrors}
+            onClearError={(field) =>
+              setSettingsErrors((current) => ({ ...current, [field]: null }))
+            }
           />
         )}
 
@@ -195,8 +209,8 @@ const SettingsPage = () => {
   );
 };
 
-const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
-  <section>
+const RestaurantTab = ({ settings, setSettings, saving, onSave, copy, errors, onClearError }) => (
+  <section className="min-w-0">
     <SectionHeader
       icon={Building2}
       title={copy.restaurant.title}
@@ -206,7 +220,11 @@ const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
       <TextField
         label={copy.restaurant.name}
         value={settings.restaurantName}
-        onChange={(value) => setSettingsValue(setSettings, 'restaurantName', value)}
+        error={errors.restaurantName}
+        onChange={(value) => {
+          setSettingsValue(setSettings, 'restaurantName', value);
+          onClearError('restaurantName');
+        }}
       />
       <TextField
         label={copy.restaurant.hotline}
@@ -261,9 +279,9 @@ const RestaurantTab = ({ settings, setSettings, saving, onSave, copy }) => (
 );
 
 const WifiTab = ({ settings, setSettings, saving, onSave, wifiQrValue, copy }) => (
-  <section>
+  <section className="min-w-0">
     <SectionHeader icon={Wifi} title={copy.wifi.title} subtitle={copy.wifi.subtitle} />
-    <div className="grid gap-6 xl:grid-cols-[1fr_280px]">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
       <div className="grid gap-5">
         <TextField
           label={copy.wifi.ssid}
@@ -297,7 +315,7 @@ const WifiTab = ({ settings, setSettings, saving, onSave, wifiQrValue, copy }) =
 );
 
 const OperationTab = ({ settings, setSettings, saving, onSave, copy }) => (
-  <section>
+  <section className="min-w-0">
     <SectionHeader
       icon={Settings}
       title={copy.operation.title}
@@ -338,7 +356,7 @@ const OperationTab = ({ settings, setSettings, saving, onSave, copy }) => (
 );
 
 const PreferencesTab = ({ preferences, setPreferences, copy }) => (
-  <section>
+  <section className="min-w-0">
     <SectionHeader
       icon={Bell}
       title={copy.preferences.title}
@@ -384,36 +402,41 @@ const PreferencesTab = ({ preferences, setPreferences, copy }) => (
 );
 
 const SectionHeader = ({ icon, title, subtitle }) => (
-  <div className="mb-6 flex items-start gap-3">
-    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
+  <div className="mb-6 flex min-w-0 items-start gap-3">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
       {React.createElement(icon, { size: 20 })}
     </div>
-    <div>
+    <div className="min-w-0">
       <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">{title}</h2>
       <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
     </div>
   </div>
 );
 
-const TextField = ({ label, value, onChange, className = '', ...props }) => (
-  <label className={`space-y-2 ${className}`}>
+const TextField = ({ label, value, onChange, error, className = '', ...props }) => (
+  <label className={`min-w-0 space-y-2 ${className}`}>
     <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</span>
     <input
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value)}
-      className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+      className={`h-11 w-full rounded-lg border bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 dark:bg-slate-950 dark:text-slate-100 ${
+        error
+          ? 'border-red-500 focus:ring-2 focus:ring-red-100 dark:border-red-500 dark:focus:ring-red-500/20'
+          : 'border-slate-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:focus:ring-orange-500/20'
+      }`}
       {...props}
     />
+    <FormError message={error} />
   </label>
 );
 
 const ToggleRow = ({ icon, title, description, checked, onChange }) => (
-  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/70">
-    <span className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+  <label className="flex min-w-0 cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 p-3 transition hover:bg-slate-50 sm:gap-4 sm:p-4 dark:border-slate-800 dark:hover:bg-slate-800/70">
+    <span className="flex min-w-0 items-start gap-3">
+      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
         {React.createElement(icon, { size: 17 })}
       </span>
-      <span>
+      <span className="min-w-0">
         <span className="block text-sm font-black text-slate-900 dark:text-slate-100">{title}</span>
         <span className="text-sm text-slate-500 dark:text-slate-400">{description}</span>
       </span>
@@ -422,7 +445,7 @@ const ToggleRow = ({ icon, title, description, checked, onChange }) => (
       type="checkbox"
       checked={Boolean(checked)}
       onChange={(event) => onChange(event.target.checked)}
-      className="h-5 w-5 accent-orange-500"
+      className="h-5 w-5 shrink-0 accent-orange-500"
     />
   </label>
 );

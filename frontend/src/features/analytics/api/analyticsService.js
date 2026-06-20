@@ -70,6 +70,11 @@ const pagedFallback = (page, size) => ({
 });
 
 const toNumber = (value) => Number(value ?? 0);
+const translateApiLabel = (value) =>
+  ({
+    Staff: 'Nhân viên',
+    Uncategorized: 'Chưa phân loại',
+  })[value] || value;
 
 const normalizeRevenuePoint = (point = {}) => ({
   ...point,
@@ -80,6 +85,7 @@ const normalizeRevenuePoint = (point = {}) => ({
 
 const normalizeUser = (user = {}) => ({
   ...user,
+  fullName: translateApiLabel(user.fullName),
   orders: user.orders ?? user.orderCount ?? 0,
   revenue: toNumber(user.revenue),
 });
@@ -95,7 +101,7 @@ const normalizeTopItem = (item = {}) => ({
   ...item,
   id: item.id ?? item.menuItemId,
   name: item.name ?? item.itemName ?? '',
-  category: item.category ?? item.categoryName ?? 'Khác',
+  category: translateApiLabel(item.category ?? item.categoryName) || 'Khác',
   img: item.img ?? item.imageUrl,
   totalQty: item.totalQty ?? item.quantitySold ?? 0,
   totalRevenue: toNumber(item.totalRevenue ?? item.revenue),
@@ -117,7 +123,7 @@ const normalizePopularForecastItem = (item = {}) => ({
   ...item,
   id: item.id ?? item.menuItemId,
   name: item.name ?? item.itemName ?? '',
-  category: item.category ?? item.categoryName ?? 'Chưa phân loại',
+  category: translateApiLabel(item.category ?? item.categoryName) || 'Chưa phân loại',
   estimatedQty: item.estimatedQty ?? item.estimatedQuantity ?? 0,
 });
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { comboService } from '@features/combo-management/api/comboService.js';
 import { menuItemService } from '@features/menu-management/api/menuService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
@@ -32,7 +32,6 @@ const ComboManager = () => {
   const fetchSeqRef = useRef(0);
   const pageSize = 24;
 
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
@@ -101,10 +100,10 @@ const ComboManager = () => {
     try {
       if (data.id) {
         await comboService.update(data.id, data);
-        showSuccess('Cập nhật Combo thành công!');
+        showSuccessToast('Cập nhật Combo thành công!');
       } else {
         await comboService.create(data);
-        showSuccess('Thêm mới Combo thành công!');
+        showSuccessToast('Thêm mới Combo thành công!');
       }
       setErrors({});
       setIsModalOpen(false);
@@ -112,10 +111,13 @@ const ComboManager = () => {
     } catch (err) {
       console.error('Error saving combo:', err);
       const errorMsg = err.message || '';
-      if (errorMsg.toLowerCase().includes('combo name already exists')) {
+      if (
+        err?.code === 'COMBO_NAME_EXISTS' ||
+        errorMsg.toLowerCase().includes('combo name already exists')
+      ) {
         setErrors({ ...errors, name: 'Tên Combo này đã tồn tại' });
       } else {
-        showError(err);
+        showErrorToast(err);
       }
     }
   };
@@ -125,10 +127,10 @@ const ComboManager = () => {
     if (!confirmed) return;
     try {
       await comboService.delete(id);
-      showSuccess('Đã xóa Combo thành công!');
+      showSuccessToast('Đã xóa Combo thành công!');
       fetchCombos(false, { force: true });
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 
@@ -148,7 +150,7 @@ const ComboManager = () => {
       fetchCombos(false, { force: true });
     } catch (err) {
       setToggleConfirm({ isOpen: false, id: null, active: false });
-      showError(err);
+      showErrorToast(err);
     }
   };
 
@@ -171,7 +173,7 @@ const ComboManager = () => {
       setErrors({});
       setIsModalOpen(true);
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       if (isMountedRef.current) {
         setDetailLoadingId(null);
@@ -188,12 +190,12 @@ const ComboManager = () => {
         setIsModalOpen(true);
       }
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 
   return (
-    <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen font-sans">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50/50 p-0 font-sans sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm kiếm combo..."
         searchTerm={searchTerm}
@@ -215,7 +217,7 @@ const ComboManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={48} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
           {combos.map((c) => (
             <ComboCard
               key={c.id}

@@ -5,7 +5,6 @@ import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,16 +21,12 @@ public class JwtService {
     /**
      * Initializes the JwtService with secret key and expiration time from configuration.
      *
-     * @param secret The secret key used for signing tokens
-     * @param expirationMs The duration (in milliseconds) before a token expires
+     * @param properties JWT signing and expiration configuration
      */
-    public JwtService(
-            @Value("${security.jwt.secret}") String secret,
-            @Value("${security.jwt.expiration-ms}") long expirationMs,
-            @Value("${security.jwt.refresh-expiration-ms}") long refreshExpirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.expirationMs = expirationMs;
-        this.refreshExpirationMs = refreshExpirationMs;
+    public JwtService(JwtProperties properties) {
+        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.expirationMs = properties.getExpirationMs();
+        this.refreshExpirationMs = properties.getRefreshExpirationMs();
     }
 
     public String generateAccessToken(String subject, Map<String, Object> claims) {

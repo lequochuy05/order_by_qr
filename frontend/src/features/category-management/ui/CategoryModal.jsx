@@ -78,7 +78,12 @@ const CategoryModal = ({
             onChange={(e) => updateField('name', e.target.value)}
             placeholder="Ví dụ: Đồ uống, Món khai vị..."
           />
-          <FormError message={errors.name} />
+
+          {errors.name && (
+            <p className="text-red-500 text-[11px] mt-1.5 flex items-center gap-1.5 font-bold animate-in slide-in-from-top-1">
+              <AlertCircle size={12} /> {errors.name}
+            </p>
+          )}
         </div>
 
         <div>

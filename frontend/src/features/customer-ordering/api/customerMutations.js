@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { menuService } from './menuService.js';
+import { startTableSessionOnce } from './sessionStartCoordinator.js';
 
 export const createClientRequestId = () => {
   if (globalThis.crypto?.randomUUID) {
@@ -28,7 +29,7 @@ export const useSubmitOrderMutation = (options = {}) =>
 
 export const useStartTableSessionMutation = (options = {}) =>
   useMutation({
-    mutationFn: (tableCode) => menuService.startSession(tableCode),
+    mutationFn: (tableCode) => startTableSessionOnce(tableCode, menuService.startSession),
     onSuccess: (...args) => {
       options.onSuccess?.(...args);
     },

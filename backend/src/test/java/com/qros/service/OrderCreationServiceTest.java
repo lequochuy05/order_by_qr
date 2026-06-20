@@ -40,6 +40,7 @@ import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -177,8 +178,14 @@ class OrderCreationServiceTest {
 
         when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
         when(orderRepository.findActiveByTableSessionIdForUpdate(any(), any())).thenReturn(List.of(activeOrder));
-        when(paymentTransactionRepository.existsByOrderIdAndStatus(100L, PaymentTransactionStatus.PENDING))
-                .thenReturn(true);
+        when(paymentTransactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
+                        org.mockito.ArgumentMatchers.eq(100L),
+                        org.mockito.ArgumentMatchers.eq(com.qros.shared.enums.PaymentMethod.PAYOS),
+                        any()))
+                .thenReturn(Optional.of(com.qros.modules.payment.model.PaymentTransaction.builder()
+                        .id(1L)
+                        .status(PaymentTransactionStatus.PENDING)
+                        .build()));
 
         assertThatThrownBy(() -> orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
                         "T1", "SESSION", "req-2", null, List.of(new OrderItemRequest(1L, 1, null, List.of())))))

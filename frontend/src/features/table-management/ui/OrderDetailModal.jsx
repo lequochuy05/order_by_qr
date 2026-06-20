@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react';
 import { orderService } from '@features/order-management/api/orderService.js';
 import { useAuth } from '@features/auth/model/AuthContext.jsx';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { toast } from 'react-hot-toast';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [items, setItems] = useState(order?.orderItems || []);
   const [prevOrder, setPrevOrder] = useState(order);
   const [editingId, setEditingId] = useState(null);
   const [editVal, setEditVal] = useState({ quantity: 1, notes: '' });
+  const [preparingItemIds, setPreparingItemIds] = useState(() => new Set());
+  const preparingItemIdsRef = useRef(new Set());
+  const preparedRequestQueueRef = useRef(Promise.resolve());
 
   const { user } = useAuth();
   const isManager = user?.role === 'MANAGER';
@@ -23,17 +26,29 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
 
   if (!isOpen || !table) return null;
 
-  const handlePrepared = async (itemId) => {
-    try {
-      await orderService.markItemPrepared(itemId, user?.userId);
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i)),
-      );
-      toast.success('Đã hoàn tất chuẩn bị món');
-      await onOrderUpdate();
-    } catch {
-      toast.error('Lỗi cập nhật trạng thái');
-    }
+  const handlePrepared = (itemId) => {
+    if (preparingItemIdsRef.current.has(itemId)) return;
+
+    preparingItemIdsRef.current.add(itemId);
+    setPreparingItemIds(new Set(preparingItemIdsRef.current));
+
+    preparedRequestQueueRef.current = preparedRequestQueueRef.current
+      .then(async () => {
+        try {
+          await orderService.markItemPrepared(itemId, user?.userId);
+          setItems((prev) =>
+            prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i)),
+          );
+          showSuccessToast('Đã hoàn tất chuẩn bị món');
+          await onOrderUpdate();
+        } catch (error) {
+          showErrorToast(error);
+        }
+      })
+      .finally(() => {
+        preparingItemIdsRef.current.delete(itemId);
+        setPreparingItemIds(new Set(preparingItemIdsRef.current));
+      });
   };
 
   const handleDelete = async (itemId) => {
@@ -41,11 +56,13 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     if (!confirmed) return;
     try {
       await orderService.deleteOrderItem(itemId);
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
-      toast.success('Đã hủy món thành công');
+      setItems((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'CANCELLED' } : i)),
+      );
+      showSuccessToast('Đã hủy món thành công');
       await onOrderUpdate();
-    } catch {
-      toast.error('Lỗi hủy món');
+    } catch (error) {
+      showErrorToast(error);
     }
   };
 
@@ -59,16 +76,16 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
       await orderService.updateOrderItem(itemId, editVal);
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...editVal } : i)));
       setEditingId(null);
-      toast.success('Cập nhật món thành công');
+      showSuccessToast('Cập nhật món thành công');
       await onOrderUpdate();
-    } catch {
-      toast.error('Lỗi cập nhật món');
+    } catch (error) {
+      showErrorToast(error);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-2xl h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 animate-in fade-in duration-200 sm:p-4">
+      <div className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[80vh] sm:w-full">
         <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
           <div>
             <h3 className="font-bold text-lg text-gray-800">
@@ -114,11 +131,13 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
               item.itemNameSnapshot ||
               (isCombo ? `Combo ${item.combo?.name || ''}` : item.menuItem?.name);
             const isPrepared = item.prepared;
+            const isCancelled = item.status === 'CANCELLED';
+            const isPreparing = preparingItemIds.has(item.id);
 
             return (
               <div
                 key={item.id}
-                className={`p-4 rounded-xl border flex gap-4 transition-all ${isPrepared ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 shadow-sm'}`}
+                className={`p-4 rounded-xl border flex gap-4 transition-all ${isCancelled ? 'bg-rose-50 border-rose-200' : isPrepared ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className="flex-1">
                   <div className="font-bold text-gray-800 text-lg flex items-center gap-2">
@@ -126,7 +145,12 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                     <span className="text-orange-600">
                       x{editingId === item.id ? editVal.quantity : item.quantity}
                     </span>
-                    {isPrepared && (
+                    {isCancelled && (
+                      <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold">
+                        Đã hủy
+                      </span>
+                    )}
+                    {isPrepared && !isCancelled && (
                       <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">
                         Đã phục vụ
                       </span>
@@ -176,7 +200,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                 </div>
 
                 <div className="flex flex-col gap-2 justify-center">
-                  {isPrepared ? (
+                  {isCancelled ? (
+                    <X className="text-rose-500" size={28} />
+                  ) : isPrepared ? (
                     <CheckCircle className="text-green-500" size={28} />
                   ) : (
                     <>
@@ -192,9 +218,10 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                           {/* Nút Báo Xong: Ai cũng thấy */}
                           <button
                             onClick={() => handlePrepared(item.id)}
-                            className="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold hover:bg-green-200 transition-colors"
+                            disabled={isPreparing}
+                            className="min-w-16 rounded-lg bg-green-100 px-3 py-2 text-sm font-bold text-green-700 transition-colors hover:bg-green-200 disabled:cursor-wait disabled:opacity-60"
                           >
-                            Xong
+                            {isPreparing ? 'Đợi...' : 'Xong'}
                           </button>
 
                           {/* Nút Sửa / Xóa: Chỉ Manager thấy */}

@@ -1,17 +1,17 @@
 import React from 'react';
+import { LayoutGrid } from 'lucide-react';
+import EmptyState from '@shared/ui/EmptyState.jsx';
 import TableCard from './TableCard';
 
 const TableGrid = ({ tables, orders = [], onAction, userRole }) => {
   if (tables.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-3xl border border-dashed">
-        <p className="text-gray-400 italic">Chưa có bàn nào hoặc không tìm thấy bàn phù hợp.</p>
-      </div>
+      <EmptyState icon={LayoutGrid} message="Chưa có bàn nào hoặc không tìm thấy bàn phù hợp." />
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {tables.map((table) => {
         // Hỗ trợ cả trường hợp orders là Mảng hoặc Object
         const tableOrder = Array.isArray(orders)

@@ -5,6 +5,7 @@ import com.qros.shared.response.ErrorResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -102,7 +103,12 @@ public class GlobalExceptionHandler {
                 .message(message)
                 .details(details == null ? Map.of() : details)
                 .build();
-        return ResponseEntity.status(status).body(ApiResponse.error(status.value(), message, error));
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(status);
+        Object retryAfterSeconds = details == null ? null : details.get("retryAfterSeconds");
+        if (retryAfterSeconds != null) {
+            response.header(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString());
+        }
+        return response.body(ApiResponse.error(status.value(), message, error));
     }
 
     private String resolveMessage(String defaultMessage, String message) {

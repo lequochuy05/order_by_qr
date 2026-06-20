@@ -19,28 +19,28 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
   };
 
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <span className="font-bold text-gray-700 mr-2">{title}</span>
-        <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg border bg-gray-50 px-3 py-2 min-[480px]:flex min-[480px]:items-center">
           <Calendar size={18} className="text-gray-500" />
           <input
             type="date"
             aria-label="Từ ngày"
-            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+            className="min-w-0 bg-transparent text-sm font-medium text-gray-700 outline-none"
             value={formatBusinessDate(dateRange.from)}
             onChange={(e) => handleDateChange('from', e.target.value)}
           />
-          <span className="text-gray-400">-</span>
+          <span className="hidden text-gray-400 min-[480px]:inline">-</span>
           <input
             type="date"
             aria-label="Đến ngày"
-            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700"
+            className="col-start-2 min-w-0 bg-transparent text-sm font-medium text-gray-700 outline-none"
             value={formatBusinessDate(dateRange.to)}
             onChange={(e) => handleDateChange('to', e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setPreset(7)}
@@ -71,7 +71,7 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
         <button
           type="button"
           onClick={onExport}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 text-sm"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 sm:w-auto"
         >
           <Download size={16} /> Xuất CSV
         </button>

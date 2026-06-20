@@ -1,7 +1,11 @@
 package com.qros.shared.event;
 
+import java.time.LocalDate;
+
 public interface DomainEvents {
     record OrderChangeEvent() {}
+
+    record OrderSettledEvent(Long orderId, LocalDate businessDate) {}
 
     record MenuChangeEvent(String type, Object id) {}
 

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.qros.modules.table.config.TableSessionProperties;
 import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.model.DiningTable;
@@ -55,7 +56,13 @@ class TableSessionServiceTest {
     @BeforeEach
     void setUp() {
         tableSessionService = new TableSessionService(
-                tableRepository, sessionRepository, tokenRepository, cacheManager, eventPublisher, activeOrderChecker);
+                tableRepository,
+                sessionRepository,
+                tokenRepository,
+                cacheManager,
+                eventPublisher,
+                activeOrderChecker,
+                new TableSessionProperties());
     }
 
     @Test

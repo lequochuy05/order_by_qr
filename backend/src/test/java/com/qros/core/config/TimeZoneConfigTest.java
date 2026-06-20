@@ -38,12 +38,11 @@ class TimeZoneConfigTest {
     }
 
     @Test
-    void applicationPropertiesConfigureSerializationJdbcAndDatabaseSessionTimeZones() throws Exception {
-        String properties = Files.readString(Path.of("src/main/resources/application.properties"));
+    void applicationYamlConfiguresSerializationJdbcAndDatabaseSessionTimeZones() throws Exception {
+        String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
 
-        assertThat(properties).contains("spring.jackson.time-zone=Asia/Ho_Chi_Minh");
-        assertThat(properties).contains("spring.jpa.properties.hibernate.jdbc.time_zone=Asia/Ho_Chi_Minh");
-        assertThat(properties)
-                .contains("spring.datasource.hikari.connection-init-sql=SET TIME ZONE 'Asia/Ho_Chi_Minh'");
+        assertThat(yaml).contains("time-zone: Asia/Ho_Chi_Minh");
+        assertThat(yaml).contains("time_zone: Asia/Ho_Chi_Minh");
+        assertThat(yaml).contains("connection-init-sql: \"SET TIME ZONE 'Asia/Ho_Chi_Minh'\"");
     }
 }

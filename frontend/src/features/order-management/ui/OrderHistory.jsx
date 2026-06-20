@@ -17,7 +17,7 @@ import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatu
 import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
 import { printInvoice } from '@shared/lib/invoiceGenerator.js';
 import OrderDetailsModal from './OrderDetailsModal';
-import { toast } from 'react-hot-toast';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { useOrdersHistoryQuery, useOrderAnalyticsQuery } from '../api/orderQueries.js';
@@ -150,7 +150,7 @@ function OrderHistoryContent() {
     if (e && e.stopPropagation) e.stopPropagation();
 
     if (order.status !== 'COMPLETED') {
-      toast.error('Chỉ có thể in hóa đơn cho đơn hàng đã hoàn tất');
+      showErrorToast('Chỉ có thể in hóa đơn cho đơn hàng đã hoàn tất');
       return;
     }
 
@@ -168,14 +168,14 @@ function OrderHistoryContent() {
     e.stopPropagation();
     try {
       const reconciledOrder = await reconcileMutation.mutateAsync(orderId);
-      toast.success(`Tra soát thành công: #${reconciledOrder?.id || orderId}`);
+      showSuccessToast(`Tra soát thành công: #${reconciledOrder?.id || orderId}`);
     } catch (error) {
-      toast.error('Lỗi khi tra soát đơn hàng: ' + (error?.message || ''));
+      showErrorToast(error);
     }
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center gap-4">

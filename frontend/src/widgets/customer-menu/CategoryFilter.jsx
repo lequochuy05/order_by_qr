@@ -1,6 +1,6 @@
 const CategoryFilter = ({ categories, selectedCategory, onSelectCategory }) => {
   return (
-    <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md py-4 mb-4 border-b border-gray-100 dark:border-slate-800 transition-colors duration-500">
+    <div className="mb-4 border-b border-gray-100 bg-white/80 py-4 backdrop-blur-md transition-colors duration-500 dark:border-slate-800 dark:bg-slate-900/80">
       <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
         <button
           onClick={() => onSelectCategory('all')}

@@ -139,7 +139,7 @@ const RevenueStats = () => {
     (loadingRevenue || loadingOrders) && revenueData.length === 0 && orders.length === 0;
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -163,7 +163,7 @@ const RevenueStats = () => {
           {/* 2. Biểu đồ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Biểu đồ miền (Doanh thu) */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
               <h3 className="font-bold text-gray-800 mb-6">Xu hướng doanh thu</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -211,7 +211,7 @@ const RevenueStats = () => {
             </div>
 
             {/* Biểu đồ cột (Số lượng đơn) */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
               <h3 className="font-bold text-gray-800 mb-6">Số lượng đơn hàng</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">

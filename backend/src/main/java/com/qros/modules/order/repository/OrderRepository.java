@@ -22,6 +22,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.combo",
                 "orderItems.orderItemOptions",
@@ -42,6 +43,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.combo",
                 "orderItems.orderItemOptions",
@@ -68,6 +70,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "table",
                 "paidBy",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.menuItem.category",
                 "orderItems.combo",
@@ -86,6 +89,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.menuItem.category",
                 "orderItems.combo",
@@ -102,6 +106,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.combo",
                 "orderItems.orderItemOptions",
@@ -114,6 +119,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "table",
                 "tableSession",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.combo",
                 "orderItems.orderItemOptions",
@@ -129,6 +135,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.combo",
                 "orderItems.orderItemOptions"
@@ -144,6 +151,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "table",
                 "paidBy",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.menuItem.category",
                 "orderItems.combo",
@@ -162,6 +170,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "table",
                 "paidBy",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.menuItem.category",
                 "orderItems.combo",
@@ -211,6 +220,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             attributePaths = {
                 "table",
                 "orderItems",
+                "orderItems.batch",
                 "orderItems.menuItem",
                 "orderItems.menuItem.category",
                 "orderItems.combo",

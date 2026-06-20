@@ -1,42 +1,13 @@
-import { createElement, useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
+import { useEffect, useRef } from 'react';
 import { useRegisterSW as useViteRegisterSW } from 'virtual:pwa-register/react';
+import { showErrorToast, showSuccessToast } from './toast.js';
 
-const UPDATE_TOAST_ID = 'pwa-update-available';
 const OFFLINE_TOAST_ID = 'pwa-offline-ready';
 const ERROR_TOAST_ID = 'pwa-register-error';
 
-const showUpdateToast = (onUpdate) => {
-  toast(
-    (currentToast) =>
-      createElement(
-        'div',
-        { className: 'flex items-center gap-3' },
-        createElement('span', null, 'Đã có phiên bản mới. Làm mới để cập nhật.'),
-        createElement(
-          'button',
-          {
-            type: 'button',
-            className:
-              'shrink-0 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-orange-700',
-            onClick: async () => {
-              toast.dismiss(currentToast.id);
-              await onUpdate();
-            },
-          },
-          'Cập nhật',
-        ),
-      ),
-    {
-      id: UPDATE_TOAST_ID,
-      duration: Infinity,
-      icon: '🔄',
-    },
-  );
-};
-
 export const useRegisterSW = () => {
   const updateServiceWorkerRef = useRef(null);
+  const updatingRef = useRef(false);
 
   useEffect(() => {
     if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;
@@ -48,20 +19,27 @@ export const useRegisterSW = () => {
 
   const registration = useViteRegisterSW({
     immediate: true,
-    onNeedRefresh: () => {
-      showUpdateToast(() => updateServiceWorkerRef.current?.(true));
+    onNeedRefresh: async () => {
+      if (updatingRef.current) return;
+      updatingRef.current = true;
+
+      try {
+        await updateServiceWorkerRef.current?.(true);
+      } finally {
+        window.location.reload();
+      }
     },
     onNeedReload: () => {
-      showUpdateToast(() => window.location.reload());
+      window.location.reload();
     },
     onOfflineReady: () => {
-      toast.success('Ứng dụng đã sẵn sàng để sử dụng khi ngoại tuyến.', {
+      showSuccessToast('Ứng dụng đã sẵn sàng để sử dụng khi ngoại tuyến.', {
         id: OFFLINE_TOAST_ID,
       });
     },
     onRegisterError: (error) => {
       console.error('Không thể đăng ký Service Worker:', error);
-      toast.error('Không thể bật chế độ ngoại tuyến.', {
+      showErrorToast('Không thể bật chế độ ngoại tuyến.', {
         id: ERROR_TOAST_ID,
       });
     },

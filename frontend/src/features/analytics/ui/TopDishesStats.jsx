@@ -148,7 +148,7 @@ const TopDishesStats = () => {
   ];
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -194,7 +194,7 @@ const TopDishesStats = () => {
           {/* 2. Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Horizontal BarChart - Top 10 */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
               <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <BarChart3 size={18} className="text-blue-500" /> Top 10 món bán chạy nhất
               </h3>
@@ -240,7 +240,7 @@ const TopDishesStats = () => {
             </div>
 
             {/* AreaChart - Xu hướng bán theo ngày */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
               <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <TrendingUp size={18} className="text-orange-500" /> Xu hướng bán theo ngày
               </h3>

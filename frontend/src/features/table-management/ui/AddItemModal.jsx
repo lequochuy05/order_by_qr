@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-hot-toast';
 import { Loader2, X } from 'lucide-react';
+import { showErrorToast } from '@shared/lib/toast.js';
 import { tableOrderCatalogService } from '@features/table-management/api/tableOrderCatalogService.js';
 import ItemOptionsModal from '@features/customer-ordering/ui/ItemOptionsModal.jsx';
 import SharedModal from '@shared/ui/SharedModal.jsx';
@@ -92,7 +92,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
   };
 
   const handleConfirm = () => {
-    if (cart.length === 0) return toast.error('Chưa chọn món nào');
+    if (cart.length === 0) return showErrorToast('Chưa chọn món nào');
     const payload = {
       tableId: table.id,
       items: cart
@@ -122,10 +122,10 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
       <SharedModal
         isOpen={isOpen}
         onClose={onClose}
-        className="max-w-5xl !h-[90vh] !flex-row !p-0 overflow-hidden !rounded-2xl"
+        className="max-w-5xl !h-[94vh] !flex-col !overflow-hidden !rounded-2xl !p-0 md:!h-[90vh] md:!flex-row"
       >
         {/* LEFT: Menu Selection */}
-        <div className="flex-1 flex flex-col border-r bg-gray-50 min-w-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b bg-gray-50 md:border-b-0 md:border-r">
           <div className="p-4 bg-white border-b">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg">Thêm món - Bàn {table.tableNumber}</h3>
@@ -166,7 +166,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+          <div className="grid flex-1 grid-cols-1 content-start gap-3 overflow-y-auto p-3 min-[380px]:grid-cols-2 sm:p-4 lg:grid-cols-3">
             {catalogLoading ? (
               <div className="col-span-full flex h-52 items-center justify-center text-gray-400">
                 <Loader2 className="mr-2 h-5 w-5 animate-spin text-orange-500" />
@@ -214,7 +214,7 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         </div>
 
         {/* RIGHT: Cart */}
-        <div className="w-[350px] flex flex-col bg-white shrink-0">
+        <div className="flex max-h-[42%] w-full min-w-0 shrink-0 flex-col bg-white md:max-h-none md:w-[350px]">
           <div className="p-4 border-b bg-orange-50 flex justify-between items-center">
             <h3 className="font-bold text-orange-800">Món đã chọn ({cart.length})</h3>
             <button

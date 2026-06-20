@@ -110,7 +110,7 @@ const menuItems = [
   },
 ];
 
-const AdminSidebar = ({ isOpen }) => {
+const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [preferences] = useAdminPreferences();
@@ -142,12 +142,15 @@ const AdminSidebar = ({ isOpen }) => {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out shadow-2xl flex flex-col dark:bg-slate-950
-        ${
-          isOpen
-            ? 'translate-x-0 w-64'
-            : '-translate-x-full lg:translate-x-0 w-0 lg:w-20 overflow-hidden lg:overflow-visible'
-        }`}
+      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out dark:bg-slate-950 ${
+        isCompactViewport
+          ? isOpen
+            ? 'w-64 translate-x-0'
+            : 'w-64 -translate-x-full overflow-hidden'
+          : isOpen
+            ? 'w-64 translate-x-0'
+            : 'w-20 translate-x-0 overflow-visible'
+      }`}
     >
       {/* Header Sidebar */}
       <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0 dark:border-slate-900">

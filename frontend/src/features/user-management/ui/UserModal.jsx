@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, KeyRound, User, Mail, Phone, Shield, Power, AlertCircle } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import { USER_STATUS } from '@shared/lib/formatters.js';
+import { showErrorToast } from '@shared/lib/toast.js';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import FormError from '@shared/ui/FormError.jsx';
 
@@ -61,7 +61,7 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error('File ảnh quá lớn (Max 5MB)');
+        showErrorToast('File ảnh quá lớn (Max 5MB)');
         return;
       }
       setSelectedFile(file);

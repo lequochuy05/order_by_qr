@@ -160,7 +160,7 @@ const CartModal = ({
         )}
 
         {/* Tổng tiền và Submit */}
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700 transition-colors">
+        <div className="safe-bottom mt-6 border-t border-gray-200 pt-4 transition-colors dark:border-slate-700">
           <div className="flex justify-between items-center mb-4">
             <span className="font-bold text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider transition-colors">
               Tổng cộng

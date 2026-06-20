@@ -6,10 +6,11 @@ import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.dto.response.PublicOrderResponse;
 import com.qros.modules.order.service.OrderService;
 import com.qros.shared.constants.ApiRoutes;
-import com.qros.shared.idempotency.IdempotencyService;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,15 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class CustomerOrderController {
 
     private final OrderService orderService;
-    private final IdempotencyService idempotencyService;
 
     @PostMapping("/orders")
     public ApiResponse<OrderResponse> createCustomerOrder(
             @Valid @RequestBody @NonNull CustomerCreateOrderRequest request) {
-        idempotencyService.requireNew(
-                "public-order:" + request.tableCode() + ":" + request.sessionToken(), request.clientRequestId());
-
-        return ApiResponse.success("Đặt món thành công", orderService.createCustomerOrder(request));
+        return ApiResponse.success("Order placed successfully", orderService.createCustomerOrder(request));
     }
 
     @PostMapping("/orders/preview")
@@ -43,11 +40,12 @@ public class CustomerOrderController {
     }
 
     @GetMapping("/tables/code/{tableCode}/current-order")
-    public ApiResponse<PublicOrderResponse> getCurrentOrder(
+    public ResponseEntity<ApiResponse<PublicOrderResponse>> getCurrentOrder(
             @PathVariable @NonNull String tableCode, @RequestParam @NonNull String sessionToken) {
-        return orderService
+        ApiResponse<PublicOrderResponse> response = orderService
                 .getPublicCurrentOrderBySession(tableCode, sessionToken)
                 .map(ApiResponse::success)
                 .orElseGet(() -> ApiResponse.success(null));
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(response);
     }
 }

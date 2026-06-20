@@ -36,7 +36,7 @@ public class StaffOrderController {
 
     @PostMapping
     public ApiResponse<OrderResponse> createStaffOrder(@Valid @RequestBody @NonNull StaffCreateOrderRequest request) {
-        return ApiResponse.success("Đặt món thành công", orderService.createStaffOrder(request));
+        return ApiResponse.success("Order placed successfully", orderService.createStaffOrder(request));
     }
 
     @PostMapping("/preview")

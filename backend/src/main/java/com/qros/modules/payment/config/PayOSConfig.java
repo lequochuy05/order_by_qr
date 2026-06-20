@@ -1,6 +1,6 @@
 package com.qros.modules.payment.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import vn.payos.PayOS;
@@ -11,25 +11,10 @@ import vn.payos.core.ClientOptions;
  * Key.
  */
 @Configuration
+@RequiredArgsConstructor
 public class PayOSConfig {
 
-    /**
-     * Client ID from PayOS
-     */
-    @Value("${payos.client-id}")
-    private String clientId;
-
-    /**
-     * API Key from PayOS
-     */
-    @Value("${payos.api-key}")
-    private String apiKey;
-
-    /**
-     * Checksum Key from PayOS
-     */
-    @Value("${payos.checksum-key}")
-    private String checksumKey;
+    private final PayOSProperties properties;
 
     /**
      * Create PayOS client instance.
@@ -39,9 +24,9 @@ public class PayOSConfig {
     @Bean
     public PayOS payOS() {
         ClientOptions options = ClientOptions.builder()
-                .clientId(clientId)
-                .apiKey(apiKey)
-                .checksumKey(checksumKey)
+                .clientId(properties.getClientId())
+                .apiKey(properties.getApiKey())
+                .checksumKey(properties.getChecksumKey())
                 .logLevel(ClientOptions.LogLevel.INFO)
                 .build();
 

@@ -1,33 +1,30 @@
 package com.qros.modules.auth.service;
 
-import com.qros.infrastructure.cache.CacheService;
 import com.qros.modules.auth.dto.internal.AuthenticatedUser;
 import com.qros.modules.auth.dto.internal.RefreshResult;
 import com.qros.modules.auth.dto.response.TokenResponse;
+import com.qros.modules.auth.store.RefreshTokenStore;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private final CacheService cacheService;
+    private final RefreshTokenStore refreshTokenStore;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-
-    @Value("${security.jwt.refresh-expiration-ms}")
-    private long refreshExpirationMs;
+    private final JwtProperties jwtProperties;
 
     /**
      * Creates a new refresh token for the authenticated user.
@@ -45,8 +42,7 @@ public class RefreshTokenService {
                         "role", authUser.role().name(),
                         "jti", jti));
 
-        cacheService.set(
-                refreshTokenCacheKey(authUser.userId(), jti), true, refreshExpirationMs, TimeUnit.MILLISECONDS);
+        refreshTokenStore.create(refreshTokenCacheKey(authUser.userId(), jti), jwtProperties.getRefreshExpirationMs());
 
         return refreshToken;
     }
@@ -68,12 +64,9 @@ public class RefreshTokenService {
 
         String cacheKey = refreshTokenCacheKey(userId, jti);
 
-        if (jti.isBlank() || !cacheService.hasKey(cacheKey)) {
+        if (jti.isBlank() || !refreshTokenStore.consumeAtomically(cacheKey)) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
-
-        // Refresh token rotation: invalidate the current refresh token and issue a new one
-        cacheService.delete(cacheKey);
 
         User user = userRepository
                 .findByEmailIgnoreCase(email)
@@ -109,7 +102,7 @@ public class RefreshTokenService {
         String jti = jwtService.extractJti(refreshToken);
 
         if (uid != null && jti != null) {
-            cacheService.delete(refreshTokenCacheKey(Long.valueOf(uid.toString()), jti));
+            refreshTokenStore.revoke(refreshTokenCacheKey(Long.valueOf(uid.toString()), jti));
         }
     }
 

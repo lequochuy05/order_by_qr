@@ -125,9 +125,9 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen">
+    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
       {/* 1. KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+      <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 sm:mt-6 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Revenue Card */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
@@ -196,7 +196,7 @@ const Dashboard = () => {
 
       {/* Forecasting Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <TrendingUp size={18} className="text-orange-500" /> Dự báo doanh thu
@@ -266,7 +266,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <Sparkles size={18} className="text-amber-500" /> Món dự báo tuần tới
           </h3>
@@ -307,7 +307,7 @@ const Dashboard = () => {
       {/* 2 & 4. Charts and Leaderboard Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Tỉ trọng danh mục (Pie Chart) - Nắm 1 cột */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6">Tỉ trọng Danh mục (7 ngày)</h3>
           <div className="h-72">
             {categoryShares.length > 0 ? (
@@ -339,7 +339,7 @@ const Dashboard = () => {
         </div>
 
         {/* Top 5 Món Bán Chạy (Leaderboard) - Nắm 1 cột */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <UtensilsCrossed size={18} className="text-emerald-500" /> Top món (7 ngày)
           </h3>
@@ -376,7 +376,7 @@ const Dashboard = () => {
         </div>
 
         {/* Giao dịch gần nhất hôm nay (Recent Orders Activity) - Nắm 1 cột */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <Clock size={18} className="text-blue-500" /> Đơn hàng mới nhất
           </h3>

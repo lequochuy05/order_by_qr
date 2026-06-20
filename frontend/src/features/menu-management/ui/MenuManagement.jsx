@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
@@ -71,8 +71,6 @@ const MenuManager = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 24;
 
-  // Hook Status Modal
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
@@ -125,10 +123,10 @@ const MenuManager = () => {
       let res;
       if (formData.id) {
         res = await menuItemService.update(formData.id, payload);
-        showSuccess(`Đã cập nhật món ăn`);
+        showSuccessToast(`Đã cập nhật món ăn`);
       } else {
         res = await menuItemService.create(payload);
-        showSuccess(`Đã thêm món ăn`);
+        showSuccessToast(`Đã thêm món ăn`);
       }
 
       if (selectedFile) {
@@ -141,10 +139,13 @@ const MenuManager = () => {
       console.error('Error saving menu item:', err);
       const errorMsg = err.message || '';
 
-      if (errorMsg.toLowerCase().includes('item name already exists')) {
+      if (
+        err?.code === 'MENU_ITEM_NAME_EXISTS' ||
+        errorMsg.toLowerCase().includes('item name already exists')
+      ) {
         setErrors({ ...errors, name: 'Tên món ăn này đã tồn tại' });
       } else {
-        showError(err);
+        showErrorToast(err);
       }
     } finally {
       setIsSubmitting(false);
@@ -157,10 +158,10 @@ const MenuManager = () => {
     if (!confirmed) return;
     try {
       await menuItemService.delete(id);
-      showSuccess('Đã xóa món ăn thành công');
+      showSuccessToast('Đã xóa món ăn thành công');
       invalidateMenu();
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 
@@ -177,14 +178,14 @@ const MenuManager = () => {
       setPreview(detail.img || '');
       setIsModalOpen(true);
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setDetailLoadingId(null);
     }
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:p-3 lg:p-4">
       <ManagementHeader
         searchPlaceholder="Tìm món ăn..."
         searchTerm={searchTerm}
@@ -210,7 +211,7 @@ const MenuManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {items.map((it) => (
             <MenuCard
               key={it.id}

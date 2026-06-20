@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Ticket, Pencil, Trash2 } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { voucherService } from '@features/voucher-management/api/voucherService.js';
@@ -10,6 +9,7 @@ import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import VoucherModal from './VoucherModal.jsx';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const VOUCHER_STATUS = {
   ACTIVE: { text: 'Đang dùng', color: 'bg-green-100 text-green-700' },
@@ -34,12 +34,11 @@ const VoucherManager = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [formErrors, setFormErrors] = useState({});
   const isMountedRef = useRef(true);
   const fetchSeqRef = useRef(0);
   const pageSize = 24;
 
-  // === 1. State cho Status Modal ===
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
@@ -134,19 +133,20 @@ const VoucherManager = () => {
     try {
       if (editingVoucher?.id) {
         await voucherService.update(editingVoucher.id, payload);
-        showSuccess(`Đã cập nhật voucher`);
+        showSuccessToast(`Đã cập nhật voucher`);
       } else {
         await voucherService.create(payload);
-        showSuccess(`Đã thêm voucher`);
+        showSuccessToast(`Đã thêm voucher`);
       }
+      setFormErrors({});
       setIsModalOpen(false);
       fetchData(false, { force: true });
     } catch (err) {
       const errorMsg = err.message || '';
-      if (errorMsg.includes('Voucher code already exists')) {
-        showError('Mã voucher này đã tồn tại trên hệ thống');
+      if (err?.code === 'VOUCHER_CODE_EXISTS' || errorMsg.includes('Voucher code already exists')) {
+        setFormErrors({ code: 'Mã voucher này đã tồn tại trên hệ thống' });
       } else {
-        showError(err);
+        showErrorToast(err);
       }
     } finally {
       setIsSaving(false);
@@ -158,21 +158,22 @@ const VoucherManager = () => {
     if (!confirmed) return;
     try {
       await voucherService.delete(id);
-      showSuccess('Đã xóa voucher thành công');
+      showSuccessToast('Đã xóa voucher thành công');
       fetchData(false, { force: true });
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm mã voucher..."
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         onAddClick={() => {
           setEditingVoucher(null);
+          setFormErrors({});
           setIsModalOpen(true);
         }}
         addButtonText="Thêm Voucher"
@@ -188,7 +189,7 @@ const VoucherManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
           {vouchers.map((v) => {
             const status = getStatusInfo(v);
             return (
@@ -237,6 +238,7 @@ const VoucherManager = () => {
                   <button
                     onClick={() => {
                       setEditingVoucher(v);
+                      setFormErrors({});
                       setIsModalOpen(true);
                     }}
                     className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center"
@@ -276,10 +278,15 @@ const VoucherManager = () => {
       <VoucherModal
         key={isModalOpen ? editingVoucher?.id || 'new' : 'closed'}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setFormErrors({});
+          setIsModalOpen(false);
+        }}
         initialData={editingVoucher}
         onSubmit={handleSubmit}
         isSubmitting={isSaving}
+        serverErrors={formErrors}
+        onClearServerError={(field) => setFormErrors((current) => ({ ...current, [field]: null }))}
       />
     </div>
   );

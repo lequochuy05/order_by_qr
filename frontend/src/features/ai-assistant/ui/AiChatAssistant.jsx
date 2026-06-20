@@ -36,18 +36,34 @@ const LAUNCHER_SIZE = 64;
 const LAUNCHER_MARGIN = 12;
 const LAUNCHER_STORAGE_KEY = 'customer_ai_chat_launcher_position';
 
+const readSafeAreaInset = (side) => {
+  if (typeof document === 'undefined') return 0;
+
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--safe-area-inset-${side}`)
+    .trim();
+
+  return Number.parseFloat(value) || 0;
+};
+
 const clampLauncherPosition = (position) => {
   if (typeof window === 'undefined') return position;
 
+  const viewport = window.visualViewport;
+  const viewportLeft = viewport?.offsetLeft || 0;
+  const viewportTop = viewport?.offsetTop || 0;
+  const viewportWidth = viewport?.width || window.innerWidth;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const minX = viewportLeft + readSafeAreaInset('left') + LAUNCHER_MARGIN;
+  const minY = viewportTop + readSafeAreaInset('top') + LAUNCHER_MARGIN;
+  const maxX =
+    viewportLeft + viewportWidth - readSafeAreaInset('right') - LAUNCHER_SIZE - LAUNCHER_MARGIN;
+  const maxY =
+    viewportTop + viewportHeight - readSafeAreaInset('bottom') - LAUNCHER_SIZE - LAUNCHER_MARGIN;
+
   return {
-    x: Math.min(
-      Math.max(LAUNCHER_MARGIN, position.x),
-      window.innerWidth - LAUNCHER_SIZE - LAUNCHER_MARGIN,
-    ),
-    y: Math.min(
-      Math.max(LAUNCHER_MARGIN, position.y),
-      window.innerHeight - LAUNCHER_SIZE - LAUNCHER_MARGIN,
-    ),
+    x: Math.min(Math.max(minX, position.x), Math.max(minX, maxX)),
+    y: Math.min(Math.max(minY, position.y), Math.max(minY, maxY)),
   };
 };
 
@@ -131,10 +147,14 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('scroll', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
     };
   }, []);
 
@@ -446,7 +466,10 @@ const AiChatAssistant = ({ hidden = false, language = 'vi' }) => {
             {/* Input Area */}
             <div
               className="flex-shrink-0 px-4 py-3 border-t border-gray-100/80 bg-white/80 backdrop-blur-sm"
-              style={{ borderRadius: '0' }}
+              style={{
+                borderRadius: '0',
+                paddingBottom: 'calc(0.75rem + var(--safe-area-inset-bottom))',
+              }}
             >
               <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-1 border border-gray-200/60 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 transition-all duration-200">
                 <input

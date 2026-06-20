@@ -1,0 +1,32 @@
+app:
+  security:
+    enable-default-admin: false
+    trust-proxy-headers: ${APP_TRUST_PROXY_HEADERS:false}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
+
+spring:
+  jpa:
+    show-sql: false
+
+  data:
+    redis:
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:true}
+
+auth:
+  password-reset:
+    phone-enabled: false
+    dev-log-otp: false
+
+security:
+  jwt:
+    refresh-cookie-secure: true
+
+gemini:
+  enabled: ${GEMINI_ENABLED:true}
+
+logging:
+  level:
+    com.qros: INFO
+    org.hibernate.SQL: WARN

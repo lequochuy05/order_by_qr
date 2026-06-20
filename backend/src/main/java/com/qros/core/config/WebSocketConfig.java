@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -36,15 +35,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    /**
-     * Topics requiring authenticated subscriptions.
-     *
-     * NOTE: /topic/tables is intentionally NOT in this map — it is a public topic
-     * so customers scanning a QR code at their table can subscribe without
-     * authentication and receive real-time order status, table state, and payment
-     * confirmation updates. The payload is minimal (status flags, not sensitive
-     * data).
-     */
+    private static final Set<String> PUBLIC_TOPICS =
+            Set.of("/topic/tables", "/topic/menu", "/topic/categories", "/topic/combos", "/topic/settings");
+
+    /** Topics requiring authenticated subscriptions. Unknown topics are denied. */
     private static final Map<String, Set<String>> PROTECTED_TOPICS = Map.of(
             "/topic/orders", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
             "/topic/kitchen", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
@@ -55,9 +49,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-
-    @Value("${app.cors.allowed-origins}")
-    private String allowedOrigins;
+    private final AppProperties appProperties;
 
     /**
      * Registers STOMP endpoints for WebSocket connections.
@@ -67,7 +59,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(parseAllowedOrigins(allowedOrigins))
+                .setAllowedOrigins(parseAllowedOrigins(appProperties.getCors().getAllowedOrigins()))
                 .withSockJS();
     }
 
@@ -76,7 +68,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     private static String[] parseAllowedOrigins(String origins) {
         if (!org.springframework.util.StringUtils.hasText(origins)) {
-            return new String[] {"http://localhost:5173", "https://localhost", "https://order-by-qr.vercel.app"};
+            return new String[] {"http://localhost:5173", "https://localhost", "https://wqros.vercel.app"};
         }
         return origins.split("\\s*,\\s*");
     }
@@ -173,8 +165,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     private void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
-        if (destination == null || !PROTECTED_TOPICS.containsKey(destination)) {
+        if (destination == null) {
+            throw new AccessDeniedException("WebSocket destination is required");
+        }
+
+        if (PUBLIC_TOPICS.contains(destination)) {
             return;
+        }
+
+        if (!PROTECTED_TOPICS.containsKey(destination)) {
+            throw new AccessDeniedException("Subscription is not allowed for topic " + destination);
         }
 
         if (!(accessor.getUser() instanceof Authentication auth) || !auth.isAuthenticated()) {

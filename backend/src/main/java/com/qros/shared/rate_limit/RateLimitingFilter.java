@@ -1,20 +1,21 @@
 package com.qros.shared.rate_limit;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.constants.ApiRoutes;
+import com.qros.shared.exception.AppException;
+import com.qros.shared.response.ApiResponse;
+import com.qros.shared.response.ErrorResponse;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -24,16 +25,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @Order(1)
 @Slf4j
+@RequiredArgsConstructor
 public class RateLimitingFilter extends OncePerRequestFilter {
 
-    private static final int MAX_REQUESTS_PER_WINDOW = 30;
-    private static final long WINDOW_DURATION_MS = 60_000L;
-    private static final int MAX_LIMIT_KEYS = 100_000;
-
-    private final Cache<String, Deque<Long>> requestLogs = Caffeine.newBuilder()
-            .expireAfterAccess(1, TimeUnit.HOURS)
-            .maximumSize(MAX_LIMIT_KEYS)
-            .build();
+    private final RedisRateLimiter rateLimiter;
+    private final ClientAddressResolver clientAddressResolver;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -42,76 +39,64 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        boolean isAiChat = (ApiRoutes.AI + "/chat").equals(path) && "POST".equalsIgnoreCase(method);
-        boolean isPublicOrder = path.startsWith(ApiRoutes.PUBLIC + "/orders") && "POST".equalsIgnoreCase(method);
-        boolean isStartSession = path.matches("^" + Pattern.quote(ApiRoutes.PUBLIC) + "/tables/[^/]+/start-session$")
-                && "POST".equalsIgnoreCase(method);
-        boolean isHeartbeat =
-                (ApiRoutes.PUBLIC + "/sessions/heartbeat").equals(path) && "POST".equalsIgnoreCase(method);
-        boolean isRecommendation = path.startsWith(ApiRoutes.RECOMMENDATIONS) && "GET".equalsIgnoreCase(method);
-
-        if (!isAiChat && !isPublicOrder && !isStartSession && !isHeartbeat && !isRecommendation) {
+        RateLimitPolicy policy = resolvePolicy(path, method);
+        if (policy == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String limitKey = resolveLimitKey(request);
-
-        long now = System.currentTimeMillis();
-
-        Deque<Long> timestamps = requestLogs.get(limitKey, key -> new ArrayDeque<>());
-        boolean allowed;
-
-        synchronized (timestamps) {
-            while (!timestamps.isEmpty() && now - timestamps.peekFirst() > WINDOW_DURATION_MS) {
-                timestamps.removeFirst();
-            }
-
-            if (timestamps.size() >= MAX_REQUESTS_PER_WINDOW) {
-                allowed = false;
-            } else {
-                timestamps.addLast(now);
-                allowed = true;
-            }
-        }
-
-        if (!allowed) {
-            log.warn("[RateLimit] Key {} exceeded {} req/min on path {}", limitKey, MAX_REQUESTS_PER_WINDOW, path);
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setContentType("application/json; charset=UTF-8");
-            response.getWriter().write("{\"status\":429,\"message\":\"Too many requests. Please try again later.\"}");
+        try {
+            rateLimiter.requireAllowed(
+                    policy.scope(), clientAddressResolver.resolve(request), policy.maxRequests(), policy.window());
+        } catch (AppException exception) {
+            writeRateLimitResponse(response, exception);
             return;
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private String resolveLimitKey(HttpServletRequest request) {
-        String sessionToken = request.getHeader("X-Session-Token");
-        if (sessionToken != null && !sessionToken.isBlank()) {
-            return "session:" + sessionToken.trim();
+    private RateLimitPolicy resolvePolicy(String path, String method) {
+        if ((ApiRoutes.PUBLIC + "/ai/chat").equals(path) && "POST".equalsIgnoreCase(method)) {
+            return new RateLimitPolicy("public:ai", 10, Duration.ofMinutes(1));
         }
 
-        String tableToken = request.getHeader("X-Table-Token");
-        if (tableToken != null && !tableToken.isBlank()) {
-            return "table:" + tableToken.trim();
+        if (path.startsWith(ApiRoutes.PUBLIC + "/orders") && "POST".equalsIgnoreCase(method)) {
+            return new RateLimitPolicy("public:orders", 10, Duration.ofMinutes(1));
         }
 
-        return "ip:" + resolveClientIp(request);
+        if (path.matches("^" + Pattern.quote(ApiRoutes.PUBLIC) + "/tables/[^/]+/start-session$")
+                && "POST".equalsIgnoreCase(method)) {
+            return new RateLimitPolicy("public:start-session", 10, Duration.ofMinutes(1));
+        }
+
+        if ((ApiRoutes.PUBLIC + "/sessions/heartbeat").equals(path) && "POST".equalsIgnoreCase(method)) {
+            return new RateLimitPolicy("public:heartbeat", 60, Duration.ofMinutes(1));
+        }
+
+        if (path.startsWith(ApiRoutes.RECOMMENDATIONS) && "GET".equalsIgnoreCase(method)) {
+            return new RateLimitPolicy("public:recommendations", 30, Duration.ofMinutes(1));
+        }
+
+        return null;
     }
 
-    /**
-     * Extracts the client IP, respecting common proxy headers.
-     */
-    private String resolveClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.split(",")[0].trim();
+    private void writeRateLimitResponse(HttpServletResponse response, AppException exception) throws IOException {
+        int status = exception.getErrorCode().getStatus().value();
+        Object retryAfter = exception.getDetails().get("retryAfterSeconds");
+        if (retryAfter != null) {
+            response.setHeader("Retry-After", retryAfter.toString());
         }
-        ip = request.getHeader("X-Real-IP");
-        if (ip != null && !ip.isBlank() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.trim();
-        }
-        return request.getRemoteAddr();
+
+        ErrorResponse error = ErrorResponse.builder()
+                .code(exception.getErrorCode().name())
+                .message(exception.getMessage())
+                .details(exception.getDetails())
+                .build();
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        objectMapper.writeValue(response.getWriter(), ApiResponse.error(status, exception.getMessage(), error));
     }
+
+    private record RateLimitPolicy(String scope, int maxRequests, Duration window) {}
 }

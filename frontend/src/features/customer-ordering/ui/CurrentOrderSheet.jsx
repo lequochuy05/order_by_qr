@@ -112,7 +112,7 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
           </div>
         </div>
 
-        <div className="mt-5 border-t border-gray-100 pt-4 transition-colors dark:border-slate-800">
+        <div className="safe-bottom mt-5 border-t border-gray-100 pt-4 transition-colors dark:border-slate-800">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Tạm tính

@@ -1,0 +1,35 @@
+app:
+  security:
+    enable-default-admin: true
+    trust-proxy-headers: false
+  cors:
+    allowed-origins: http://localhost:5173
+
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      ssl:
+        enabled: false
+
+auth:
+  password-reset:
+    phone-enabled: true
+    dev-log-otp: true
+
+security:
+  jwt:
+    refresh-cookie-secure: false
+
+gemini:
+  enabled: ${GEMINI_ENABLED:false}
+
+logging:
+  level:
+    com.qros: DEBUG
+    org.hibernate.SQL: DEBUG

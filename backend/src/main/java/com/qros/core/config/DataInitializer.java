@@ -7,8 +7,8 @@ import com.qros.modules.user.repository.UserRepository;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -16,15 +16,14 @@ import org.springframework.stereotype.Component;
  * DataInitializer - Initialize essential data when the application starts.
  */
 @Component
+@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepo;
     private final PasswordEncoder pwEncoder;
-
-    @Value("${app.security.enable-default-admin:false}")
-    private boolean enableDefaultAdmin;
+    private final AppProperties appProperties;
 
     /**
      * Executes when the application starts.
@@ -35,7 +34,7 @@ public class DataInitializer implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
-        if (!enableDefaultAdmin) {
+        if (!appProperties.getSecurity().isEnableDefaultAdmin()) {
             log.info("Default admin bootstrap is disabled");
             return;
         }

@@ -1,0 +1,157 @@
+spring:
+  config:
+    import:
+      - "optional:file:.env[.properties]"
+      - "optional:file:../.env[.properties]"
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 60000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      keepalive-time: 30000
+      connection-init-sql: "SET TIME ZONE 'Asia/Ho_Chi_Minh'"
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: Asia/Ho_Chi_Minh
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 1
+
+  jackson:
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    time-zone: Asia/Ho_Chi_Minh
+    default-property-inclusion: non_null
+
+  mvc:
+    problemdetails:
+      enabled: false
+
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+  cache:
+    type: redis
+    redis:
+      cache-null-values: false
+      time-to-live: 1h
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      repositories:
+        enabled: false
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS:false}
+
+auth:
+  password-reset:
+    phone-enabled: false
+    dev-log-otp: false
+
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}
+  compression:
+    enabled: true
+    mime-types:
+      - text/html
+      - text/xml
+      - text/plain
+      - text/css
+      - text/javascript
+      - application/javascript
+      - application/json
+      - application/xml
+    min-response-size: 1024
+  error:
+    include-message: never
+    include-binding-errors: never
+
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS}
+    refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME}
+
+cloudinary:
+  cloud_name: ${CLOUDINARY_CLOUD_NAME}
+  api_key: ${CLOUDINARY_API_KEY}
+  api_secret: ${CLOUDINARY_API_SECRET}
+
+app:
+  base-url: ${APP_BASE_URL}
+  frontend:
+    base-url: ${APP_FRONTEND_BASE_URL}
+
+payos:
+  client-id: ${PAYOS_CLIENT_ID}
+  api-key: ${PAYOS_API_KEY}
+  checksum-key: ${PAYOS_CHECKSUM_KEY}
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: prometheus,health
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+analytics:
+  summary-reconcile-cron: "${ANALYTICS_SUMMARY_RECONCILE_CRON:0 */15 * * * *}"
+  summary-reconcile-zone: ${ANALYTICS_SUMMARY_RECONCILE_ZONE:Asia/Ho_Chi_Minh}
+  summary-reconcile-days: ${ANALYTICS_SUMMARY_RECONCILE_DAYS:2}
+
+gemini:
+  api-key: ${GEMINI_API_KEY}
+  api-url: ${GEMINI_API_URL}
+  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:5}
+  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:15}
+  temperature: ${GEMINI_TEMPERATURE:0.7}
+  top-p: ${GEMINI_TOP_P:0.9}
+  max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:500}
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql: INFO

@@ -24,5 +24,5 @@ export const menuService = {
     api.get('/recommendations/personalized', { params: { context } }).then(recommendationItems),
   getCrossSellRecommendations: (itemId) =>
     api.get(`/recommendations/cross-sell/${itemId}`).then(recommendationItems),
-  sendAiChat: (message, history = []) => api.post('/ai/chat', { message, history }),
+  sendAiChat: (message, history = []) => api.post('/public/ai/chat', { message, history }),
 };

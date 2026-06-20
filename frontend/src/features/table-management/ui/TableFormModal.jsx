@@ -14,6 +14,8 @@ const TableFormModal = ({
   initialData,
   onSubmit,
   isSubmitting,
+  serverErrors = {},
+  onClearServerError,
   onRegenerateQr,
   isRegeneratingQr,
 }) => {
@@ -22,6 +24,10 @@ const TableFormModal = ({
   );
   const [errors, setErrors] = useState({});
   const [isQrPreviewOpen, setIsQrPreviewOpen] = useState(false);
+  const fieldErrors = {
+    tableNumber: errors.tableNumber || serverErrors.tableNumber,
+    capacity: errors.capacity || serverErrors.capacity,
+  };
 
   const isChanged = React.useMemo(() => {
     if (!initialData) return true;
@@ -88,7 +94,7 @@ const TableFormModal = ({
           <input
             type="text"
             className={`w-full px-5 py-3.5 bg-gray-50 border-2 rounded-2xl outline-none text-sm transition-all font-bold disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:border-gray-100 ${
-              errors.tableNumber
+              fieldErrors.tableNumber
                 ? 'border-red-500 ring-red-50'
                 : 'border-transparent focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500'
             }`}
@@ -96,13 +102,14 @@ const TableFormModal = ({
             onChange={(e) => {
               setFormData({ ...formData, tableNumber: e.target.value });
               if (errors.tableNumber) setErrors({ ...errors, tableNumber: null });
+              onClearServerError?.('tableNumber');
             }}
             placeholder="Ví dụ: 101, Bàn 01..."
             disabled={!!formData.id}
           />
-          {errors.tableNumber && (
+          {fieldErrors.tableNumber && (
             <p className="text-red-500 text-[11px] mt-1.5 flex items-center gap-1.5 font-bold animate-in slide-in-from-top-1">
-              <AlertCircle size={12} /> {errors.tableNumber}
+              <AlertCircle size={12} /> {fieldErrors.tableNumber}
             </p>
           )}
         </div>

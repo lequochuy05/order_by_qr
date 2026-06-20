@@ -62,7 +62,7 @@ public class RecommendationService {
         }
 
         return recommendationMapper.toResponse(
-                RecommendationType.POPULAR, RecommendationContext.ANY, safeLimit, items, "Món đang được gọi nhiều");
+                RecommendationType.POPULAR, RecommendationContext.ANY, safeLimit, items, "Popular items");
     }
 
     @Transactional(readOnly = true)
@@ -81,7 +81,7 @@ public class RecommendationService {
                 RecommendationContext.ANY,
                 safeLimit,
                 items,
-                "Thường được gọi cùng món này");
+                "Frequently ordered together");
     }
 
     @Transactional(readOnly = true)
@@ -98,7 +98,7 @@ public class RecommendationService {
                 RecommendationContext.ANY,
                 safeLimit,
                 items,
-                "Cùng danh mục với món bạn đang xem");
+                "Similar items in the same category");
     }
 
     private MenuItem getPublicAvailableMenuItem(Long itemId) {
@@ -252,11 +252,11 @@ public class RecommendationService {
 
     private String reasonForContext(RecommendationContext context) {
         return switch (context) {
-            case MORNING -> "Phù hợp buổi sáng";
-            case LUNCH -> "Phù hợp bữa trưa";
-            case AFTERNOON -> "Phù hợp buổi chiều";
-            case DINNER -> "Phù hợp bữa tối";
-            case ANY -> "Gợi ý phù hợp cho bạn";
+            case MORNING -> "Suitable for the morning";
+            case LUNCH -> "Suitable for lunch";
+            case AFTERNOON -> "Suitable for the afternoon";
+            case DINNER -> "Suitable for dinner";
+            case ANY -> "Recommended for you";
         };
     }
 

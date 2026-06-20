@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
-// Import Hook
-import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 // Import React Query
 import { queryClient } from '@shared/api/queryClient.js';
@@ -53,8 +52,6 @@ const CategoryManager = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const pageSize = 24;
 
-  // === Hook Status Modal ===
-  const { showSuccess, showError } = useStatusModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
@@ -120,10 +117,10 @@ const CategoryManager = () => {
       let result;
       if (editId) {
         result = await categoryService.update(editId, payload);
-        showSuccess('Cập nhật danh mục thành công!');
+        showSuccessToast('Cập nhật danh mục thành công!');
       } else {
         result = await categoryService.create(payload);
-        showSuccess('Thêm mới danh mục thành công!');
+        showSuccessToast('Thêm mới danh mục thành công!');
       }
       if (selectedFile) {
         await categoryService.uploadImage(result?.id || editId, selectedFile);
@@ -133,10 +130,13 @@ const CategoryManager = () => {
       invalidateCategories();
     } catch (err) {
       const errorMsg = err.message || '';
-      if (errorMsg.toLowerCase().includes('category name already exists')) {
+      if (
+        err?.code === 'CATEGORY_NAME_EXISTS' ||
+        errorMsg.toLowerCase().includes('category name already exists')
+      ) {
         setErrors({ ...errors, name: 'Tên danh mục này đã tồn tại' });
       } else {
-        showError(err);
+        showErrorToast(err);
       }
     } finally {
       setIsSubmitting(false);
@@ -153,10 +153,10 @@ const CategoryManager = () => {
 
     try {
       await categoryService.delete(id);
-      showSuccess('Đã xóa danh mục thành công!');
+      showSuccessToast('Đã xóa danh mục thành công!');
       invalidateCategories();
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     }
   };
 
@@ -185,7 +185,7 @@ const CategoryManager = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:p-3 lg:p-4">
       <ManagementHeader
         searchPlaceholder="Tìm danh mục..."
         searchTerm={searchTerm}
@@ -199,7 +199,7 @@ const CategoryManager = () => {
           <Loader2 className="animate-spin text-orange-500" size={40} />
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+        <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
           {categories.map((cat) => (
             <CategoryCard
               key={cat.id}

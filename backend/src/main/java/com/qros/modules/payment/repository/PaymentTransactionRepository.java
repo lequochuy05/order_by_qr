@@ -6,6 +6,7 @@ import com.qros.shared.enums.PaymentMethod;
 import jakarta.persistence.LockModeType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -36,6 +37,9 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
             Long orderId, PaymentMethod paymentMethod, PaymentTransactionStatus status);
 
+    Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
+            Long orderId, PaymentMethod paymentMethod, Collection<PaymentTransactionStatus> statuses);
+
     boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
 
     @Query(
@@ -43,7 +47,10 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId
-                          AND t.status = com.qros.modules.payment.model.enums.PaymentTransactionStatus.PENDING
+                          AND t.status IN (
+                              com.qros.modules.payment.model.enums.PaymentTransactionStatus.CREATING,
+                              com.qros.modules.payment.model.enums.PaymentTransactionStatus.PENDING
+                          )
                           AND t.paymentMethod <> com.qros.shared.enums.PaymentMethod.CASH
                         """)
     List<PaymentTransaction> findPendingOnlineTransactionsByOrderId(@Param("orderId") Long orderId);
@@ -73,7 +80,19 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransaction> findByStatusAndExpiresAtBefore(
             @Param("status") PaymentTransactionStatus status, @Param("now") LocalDateTime now);
 
+    @Query(
+            """
+                        SELECT t
+                        FROM PaymentTransaction t
+                        WHERE t.status IN :statuses
+                          AND t.expiresAt IS NOT NULL
+                          AND t.expiresAt < :now
+                        """)
+    List<PaymentTransaction> findByStatusInAndExpiresAtBefore(
+            @Param("statuses") Collection<PaymentTransactionStatus> statuses, @Param("now") LocalDateTime now);
+
     default List<PaymentTransaction> findExpiredPendingTransactions(LocalDateTime now) {
-        return findByStatusAndExpiresAtBefore(PaymentTransactionStatus.PENDING, now);
+        return findByStatusInAndExpiresAtBefore(
+                List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING), now);
     }
 }

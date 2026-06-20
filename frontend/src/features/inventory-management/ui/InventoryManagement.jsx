@@ -26,6 +26,7 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const INVENTORY_UNITS = ['g', 'kg', 'ml', 'l'];
 
@@ -72,7 +73,7 @@ const InventoryManagement = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const { showSuccess, showError } = useStatusModal();
+  const { showError } = useStatusModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
   const isMountedRef = React.useRef(true);
@@ -99,50 +100,44 @@ const InventoryManagement = () => {
         setTotalElements(inventoryData.totalElements || 0);
       } catch (err) {
         if (!isMountedRef.current || fetchSeq !== inventoryFetchSeqRef.current) return;
-        showError(err);
+        showErrorToast(err);
       } finally {
         if (isMountedRef.current && fetchSeq === inventoryFetchSeqRef.current) {
           setLoading(false);
         }
       }
     },
-    [currentPage, debouncedSearchTerm, showError, stockFilter],
+    [currentPage, debouncedSearchTerm, stockFilter],
   );
 
-  const fetchInventorySummary = useCallback(
-    async ({ force = false } = {}) => {
-      try {
-        const data = await inventoryService.getSummary({ force });
-        if (!isMountedRef.current) return;
-        setSummary(data);
-      } catch (err) {
-        if (!isMountedRef.current) return;
-        showError(err);
+  const fetchInventorySummary = useCallback(async ({ force = false } = {}) => {
+    try {
+      const data = await inventoryService.getSummary({ force });
+      if (!isMountedRef.current) return;
+      setSummary(data);
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      showErrorToast(err);
+    }
+  }, []);
+
+  const fetchMovements = useCallback(async (showLoading = false, { force = false } = {}) => {
+    const fetchSeq = ++movementFetchSeqRef.current;
+    if (showLoading) setMovementsLoading(true);
+    try {
+      const movementData = await inventoryService.getMovements({ force });
+      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
+
+      setMovements(movementData || []);
+    } catch (err) {
+      if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
+      showErrorToast(err);
+    } finally {
+      if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
+        setMovementsLoading(false);
       }
-    },
-    [showError],
-  );
-
-  const fetchMovements = useCallback(
-    async (showLoading = false, { force = false } = {}) => {
-      const fetchSeq = ++movementFetchSeqRef.current;
-      if (showLoading) setMovementsLoading(true);
-      try {
-        const movementData = await inventoryService.getMovements({ force });
-        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-
-        setMovements(movementData || []);
-      } catch (err) {
-        if (!isMountedRef.current || fetchSeq !== movementFetchSeqRef.current) return;
-        showError(err);
-      } finally {
-        if (isMountedRef.current && fetchSeq === movementFetchSeqRef.current) {
-          setMovementsLoading(false);
-        }
-      }
-    },
-    [showError],
-  );
+    }
+  }, []);
 
   const ensureMenuItems = useCallback(
     async ({ force = false } = {}) => {
@@ -159,7 +154,7 @@ const InventoryManagement = () => {
         );
         return menuData || [];
       } catch (err) {
-        showError(err);
+        showErrorToast(err);
         return [];
       } finally {
         if (isMountedRef.current) {
@@ -167,7 +162,7 @@ const InventoryManagement = () => {
         }
       }
     },
-    [menuItems, showError],
+    [menuItems],
   );
 
   useEffect(() => {
@@ -315,10 +310,10 @@ const InventoryManagement = () => {
             note: 'Cập nhật tồn kho từ form nguyên liệu',
           });
         }
-        showSuccess('Đã cập nhật nguyên liệu');
+        showSuccessToast('Đã cập nhật nguyên liệu');
       } else {
         await inventoryService.createItem(payload);
-        showSuccess('Đã thêm nguyên liệu');
+        showSuccessToast('Đã thêm nguyên liệu');
       }
       setInventoryModalOpen(false);
       setEditingItem(null);
@@ -330,7 +325,17 @@ const InventoryManagement = () => {
         fetchMovements(false, { force: true });
       }
     } catch (err) {
-      showError(err);
+      if (
+        err?.code === 'INVENTORY_ITEM_NAME_EXISTS' ||
+        err?.message?.includes('Inventory item name already exists')
+      ) {
+        setInventoryErrors((current) => ({
+          ...current,
+          name: 'Tên nguyên liệu này đã tồn tại',
+        }));
+      } else {
+        showErrorToast(err);
+      }
     } finally {
       setIsInventorySubmitting(false);
     }
@@ -355,20 +360,20 @@ const InventoryManagement = () => {
           quantity: Number(stockForm.quantity),
           note: stockForm.note,
         });
-        showSuccess('Đã nhập kho');
+        showSuccessToast('Đã nhập kho');
       } else {
         const quantityDelta =
           Number(stockForm.quantityOnHand) - Number(stockAction.item.quantityOnHand || 0);
         if (quantityDelta === 0) {
           setStockAction(null);
-          showSuccess('Tồn kho không thay đổi');
+          showSuccessToast('Tồn kho không thay đổi');
           return;
         }
         await inventoryService.adjust(stockAction.item.id, {
           quantityDelta,
           note: stockForm.note,
         });
-        showSuccess('Đã cập nhật kiểm kê');
+        showSuccessToast('Đã cập nhật kiểm kê');
       }
       setStockAction(null);
       fetchInventoryItems(false, { force: true });
@@ -377,7 +382,7 @@ const InventoryManagement = () => {
         fetchMovements(false, { force: true });
       }
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setIsStockSubmitting(false);
     }
@@ -407,7 +412,7 @@ const InventoryManagement = () => {
         })),
       );
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setRecipeLoading(false);
     }
@@ -435,17 +440,17 @@ const InventoryManagement = () => {
           quantityRequired: Number(item.quantityRequired),
         })),
       });
-      showSuccess('Đã cập nhật định mức món');
+      showSuccessToast('Đã cập nhật định mức món');
       setRecipeOpen(false);
     } catch (err) {
-      showError(err);
+      showErrorToast(err);
     } finally {
       setIsRecipeSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 space-y-6">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm nguyên liệu..."
         searchTerm={searchTerm}
@@ -488,7 +493,7 @@ const InventoryManagement = () => {
 
       <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-2 rounded-2xl bg-gray-50 p-1">
+          <div className="grid min-w-0 grid-cols-2 gap-1 rounded-2xl bg-gray-50 p-1 sm:flex sm:items-center sm:gap-2">
             <TabButton
               active={activeTab === 'items'}
               icon={Boxes}
@@ -503,7 +508,7 @@ const InventoryManagement = () => {
             />
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex min-w-0 flex-col gap-3 md:flex-row md:items-center">
             <select
               value={selectedMenuItemId}
               onFocus={() => ensureMenuItems()}
@@ -512,7 +517,7 @@ const InventoryManagement = () => {
                 if (recipeOpen) loadRecipe(e.target.value);
               }}
               disabled={menuItemsLoading}
-              className="min-h-10 min-w-64 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-500 disabled:cursor-wait disabled:opacity-60"
+              className="min-h-10 w-full min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-500 disabled:cursor-wait disabled:opacity-60 md:w-64"
             >
               {menuItemsLoading && <option value="">Đang tải món...</option>}
               {!menuItemsLoading && menuItems.length === 0 && (
@@ -638,7 +643,7 @@ const SummaryCard = ({ icon, label, value, tone = 'orange' }) => {
     red: 'bg-red-50 text-red-600',
   };
   return (
-    <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+    <div className="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-4">
         <div className={`rounded-2xl p-3 ${colors[tone]}`}>
           {React.createElement(icon, { size: 22 })}
@@ -658,7 +663,7 @@ const TabButton = ({ active, icon, label, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 text-sm font-black transition-colors ${active ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+    className={`inline-flex min-h-10 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-black transition-colors sm:px-4 ${active ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
   >
     {React.createElement(icon, { size: 16 })} {label}
   </button>
@@ -675,7 +680,7 @@ const InventoryGrid = ({ items, onEdit, onStockIn, onAdjust }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {items.map((item) => (
         <InventoryCard
           key={item.id}
