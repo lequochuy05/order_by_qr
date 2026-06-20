@@ -1,6 +1,7 @@
 package com.qros.modules.auth.service;
 
 import com.qros.infrastructure.mail.SmtpEmailService;
+import com.qros.modules.auth.config.PasswordResetProperties;
 import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
 import com.qros.modules.user.model.User;
@@ -14,6 +15,8 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +33,8 @@ public class PasswordResetService {
     private final UserRepository userRepo;
     private final PasswordResetTokenRepository tokenRepo;
     private final SmtpEmailService emailService;
+    private final PasswordResetProperties passwordResetProperties;
+    private final Environment environment;
 
     private final PasswordEncoder passwordEncoder;
     private final TransactionSideEffectService sideEffects;
@@ -99,10 +104,15 @@ public class PasswordResetService {
      */
     @Transactional
     public void createOtpAndSendOtp(String phone) {
+        if (!passwordResetProperties.isPhoneEnabled()) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED, "Phone password reset is currently disabled");
+        }
+
         String normalizedPhone = normalizePhone(phone);
 
         User user = userRepo.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PHONE_NOT_FOUND));
+
         tokenRepo.markAllActiveTokensUsedByUserId(user.getId());
 
         String rawOtpCode = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
@@ -117,12 +127,13 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        // TODO: Integrate actual SMS gateway (e.g. Twilio, AWS SNS) in production.
-        // For now, print to console to simulate sending.
-        log.warn("=========================================================");
-        log.warn("📱 SMS GATEWAY NOT CONFIGURED");
-        log.warn("📱 SIMULATED SMS TO {}: 'Your QROS password reset OTP is {}'", normalizedPhone, rawOtpCode);
-        log.warn("=========================================================");
+        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev"));
+
+        if (isDevProfile && passwordResetProperties.isDevLogOtp()) {
+            log.warn("[DEV ONLY] Password reset OTP for phone {} is {}", maskPhone(normalizedPhone), rawOtpCode);
+        } else {
+            log.info("Password reset OTP generated for phone {}", maskPhone(normalizedPhone));
+        }
     }
 
     /**
@@ -134,6 +145,10 @@ public class PasswordResetService {
      */
     @Transactional
     public void resetPasswordWithOtp(String phone, String otpCode, String newPassword) {
+        if (!passwordResetProperties.isPhoneEnabled()) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED, "Phone password reset is currently disabled");
+        }
+
         String normalizedPhone = normalizePhone(phone);
 
         PasswordResetToken otpToken = tokenRepo
@@ -176,5 +191,13 @@ public class PasswordResetService {
         } catch (Exception e) {
             throw new IllegalStateException("Cannot hash token", e);
         }
+    }
+
+    private String maskPhone(String phone) {
+        if (phone == null || phone.length() < 4) {
+            return "****";
+        }
+
+        return "****" + phone.substring(phone.length() - 4);
     }
 }

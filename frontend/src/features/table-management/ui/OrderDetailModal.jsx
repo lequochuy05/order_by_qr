@@ -56,7 +56,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     if (!confirmed) return;
     try {
       await orderService.deleteOrderItem(itemId);
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
+      setItems((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'CANCELLED' } : i)),
+      );
       showSuccessToast('Đã hủy món thành công');
       await onOrderUpdate();
     } catch (error) {
@@ -129,12 +131,13 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
               item.itemNameSnapshot ||
               (isCombo ? `Combo ${item.combo?.name || ''}` : item.menuItem?.name);
             const isPrepared = item.prepared;
+            const isCancelled = item.status === 'CANCELLED';
             const isPreparing = preparingItemIds.has(item.id);
 
             return (
               <div
                 key={item.id}
-                className={`p-4 rounded-xl border flex gap-4 transition-all ${isPrepared ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 shadow-sm'}`}
+                className={`p-4 rounded-xl border flex gap-4 transition-all ${isCancelled ? 'bg-rose-50 border-rose-200' : isPrepared ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className="flex-1">
                   <div className="font-bold text-gray-800 text-lg flex items-center gap-2">
@@ -142,7 +145,12 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                     <span className="text-orange-600">
                       x{editingId === item.id ? editVal.quantity : item.quantity}
                     </span>
-                    {isPrepared && (
+                    {isCancelled && (
+                      <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold">
+                        Đã hủy
+                      </span>
+                    )}
+                    {isPrepared && !isCancelled && (
                       <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">
                         Đã phục vụ
                       </span>
@@ -192,7 +200,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                 </div>
 
                 <div className="flex flex-col gap-2 justify-center">
-                  {isPrepared ? (
+                  {isCancelled ? (
+                    <X className="text-rose-500" size={28} />
+                  ) : isPrepared ? (
                     <CheckCircle className="text-green-500" size={28} />
                   ) : (
                     <>

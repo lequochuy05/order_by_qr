@@ -1,5 +1,6 @@
 package com.qros.infrastructure.mail;
 
+import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.mail.template.ResetPasswordTemplateBuilder;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -7,7 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.mail.MailProperties;
 import org.springframework.lang.NonNull;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -22,19 +23,15 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SmtpEmailService {
     private final JavaMailSender mailSender;
-
-    @Value("${spring.mail.username}")
-    private String fromEmail;
-
-    @Value("${app.base-url}")
-    private String appBaseUrl;
+    private final MailProperties mailProperties;
+    private final AppProperties appProperties;
 
     /**
      * Sends a password reset email to the specified recipient.
      */
     @Async
     public void sendResetPasswordEmail(@NonNull String toEmail, @NonNull String token) {
-        String baseUrl = Objects.requireNonNull(appBaseUrl, "app.base-url not configured");
+        String baseUrl = Objects.requireNonNull(appProperties.getBaseUrl(), "app.base-url not configured");
 
         String resetLink = baseUrl + "/reset-password.html?token=" + token;
         String subject = "Reset password";
@@ -54,7 +51,7 @@ public class SmtpEmailService {
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
 
             helper.setFrom(new InternetAddress(
-                    Objects.requireNonNull(fromEmail, "spring.mail.username not configured"),
+                    Objects.requireNonNull(mailProperties.getUsername(), "spring.mail.username not configured"),
                     "Sắc Màu Quán",
                     StandardCharsets.UTF_8.name()));
             helper.setTo(to);

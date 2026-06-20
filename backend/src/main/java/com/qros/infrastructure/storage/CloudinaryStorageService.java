@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,14 +23,11 @@ public class CloudinaryStorageService implements StorageService {
     /**
      * Initializes the Cloudinary client with credentials from application properties.
      */
-    public CloudinaryStorageService(
-            @Value("${cloudinary.cloud_name}") String cloudName,
-            @Value("${cloudinary.api_key}") String apiKey,
-            @Value("${cloudinary.api_secret}") String apiSecret) {
+    public CloudinaryStorageService(CloudinaryProperties properties) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
-                "cloud_name", cloudName,
-                "api_key", apiKey,
-                "api_secret", apiSecret,
+                "cloud_name", properties.getCloudName(),
+                "api_key", properties.getApiKey(),
+                "api_secret", properties.getApiSecret(),
                 "secure", true));
         log.info("Cloudinary storage service initialized successfully.");
     }

@@ -1,9 +1,9 @@
 package com.qros.modules.analytics.service;
 
+import com.qros.modules.analytics.config.AnalyticsProperties;
 import com.qros.shared.time.AppTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -13,15 +13,13 @@ import org.springframework.stereotype.Component;
 public class DailySummaryReconciliationJob {
 
     private final DailySummaryRefreshService refreshService;
-
-    @Value("${analytics.summary-reconcile-days:2}")
-    private int reconcileDays;
+    private final AnalyticsProperties analyticsProperties;
 
     @Scheduled(
             cron = "${analytics.summary-reconcile-cron:0 */15 * * * *}",
             zone = "${analytics.summary-reconcile-zone:Asia/Ho_Chi_Minh}")
     public void reconcileRecentDates() {
-        int days = Math.max(1, reconcileDays);
+        int days = Math.max(1, analyticsProperties.getSummaryReconcileDays());
         for (int offset = 0; offset < days; offset++) {
             var businessDate = AppTime.today().minusDays(offset);
             try {

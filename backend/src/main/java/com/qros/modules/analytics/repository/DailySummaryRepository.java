@@ -87,7 +87,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
             SELECT :businessDate,
                    'USER:' || fact.paid_by,
                    fact.paid_by,
-                   MAX(COALESCE(fact.paid_by_name_snapshot, 'Nhân viên')),
+                   MAX(COALESCE(fact.paid_by_name_snapshot, 'Staff')),
                    MAX(fact.paid_by_avatar_url_snapshot),
                    COUNT(*),
                    COALESCE(SUM(fact.final_amount), 0),
@@ -123,7 +123,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                        MAX(oi.item_name_snapshot) AS item_name_snapshot,
                        MAX(CASE
                                WHEN oi.item_type = 'MENU_ITEM'
-                                   THEN COALESCE(category.name, 'Chưa phân loại')
+                                   THEN COALESCE(category.name, 'Uncategorized')
                                ELSE 'Combo'
                            END) AS category_name_snapshot,
                        MAX(CASE WHEN oi.item_type = 'MENU_ITEM' THEN menu_item.img END) AS image_url_snapshot,

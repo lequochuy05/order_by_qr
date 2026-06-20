@@ -100,7 +100,9 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
                 {user?.fullName || 'NaN'}
               </p>
               <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">
-                {preferences.language === 'en' ? formatEnglishRole(user?.role) : fmtRole(user?.role)}
+                {preferences.language === 'en'
+                  ? formatEnglishRole(user?.role)
+                  : fmtRole(user?.role)}
               </p>
             </div>
           )}

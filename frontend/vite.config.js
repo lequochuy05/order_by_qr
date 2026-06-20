@@ -7,10 +7,16 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const isPublicApiGetRequest = ({ request, url }) =>
+const CACHEABLE_PUBLIC_API_PATHS = new Set([
+  '/api/v1/public/catalog',
+  '/api/v1/public/settings',
+]);
+
+const isCacheablePublicApiGetRequest = ({ request, url }) =>
   request.method === 'GET' &&
-  (url.pathname.startsWith('/api/v1/public/') ||
-    url.pathname.startsWith('/api/v1/recommendations/'));
+  (CACHEABLE_PUBLIC_API_PATHS.has(url.pathname) ||
+    url.pathname.startsWith('/api/v1/recommendations/')) &&
+  !url.searchParams.has('sessionToken');
 
 export default defineConfig({
   plugins: [
@@ -27,10 +33,10 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
         runtimeCaching: [
           {
-            urlPattern: isPublicApiGetRequest,
+            urlPattern: isCacheablePublicApiGetRequest,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'public-api-cache',
+              cacheName: 'public-catalog-cache-v2',
               networkTimeoutSeconds: 10,
               cacheableResponse: {
                 statuses: [0, 200],

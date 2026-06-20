@@ -29,6 +29,19 @@ import CategoryFilter from './CategoryFilter';
 import CustomerMenuSkeleton from './CustomerMenuSkeleton';
 import { AiChatAssistant } from '@features/ai-assistant';
 
+const RECOMMENDATION_REASON_LABELS = {
+  'Popular items': 'Món đang được gọi nhiều',
+  'Frequently ordered together': 'Thường được gọi cùng món này',
+  'Similar items in the same category': 'Cùng danh mục với món bạn đang xem',
+  'Suitable for the morning': 'Phù hợp buổi sáng',
+  'Suitable for lunch': 'Phù hợp bữa trưa',
+  'Suitable for the afternoon': 'Phù hợp buổi chiều',
+  'Suitable for dinner': 'Phù hợp bữa tối',
+  'Recommended for you': 'Gợi ý phù hợp cho bạn',
+};
+
+const translateRecommendationReason = (reason) => RECOMMENDATION_REASON_LABELS[reason] || reason;
+
 const defaultRestaurantSettings = {
   restaurantName: 'Sắc Màu Quán',
   restaurantPhone: '',
@@ -111,7 +124,7 @@ const CustomerMenuContent = () => {
           return menuItem
             ? {
                 ...menuItem,
-                recommendationReason: recommendation.reason,
+                recommendationReason: translateRecommendationReason(recommendation.reason),
                 recommendationType: recommendation.type,
               }
             : null;

@@ -24,6 +24,7 @@ import {
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import { ErrorBoundary } from '@shared/ui';
 import { showErrorToast } from '@shared/lib/toast.js';
+import { buildErrorMessage, translateErrorMessage } from '@shared/lib/errorMessages.js';
 
 const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPaymentSuccess }) => {
   const [voucherCode, setVoucherCode] = useState('');
@@ -128,7 +129,9 @@ const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPay
 
         if (code && !res.voucherValid) {
           clearPaymentDraft();
-          setError(res.voucherMessage || 'Voucher không hợp lệ');
+          setError(
+            res.voucherMessage ? translateErrorMessage(res.voucherMessage) : 'Voucher không hợp lệ',
+          );
         } else {
           setError('');
           if (persistDraft) savePaymentDraft(code, res);
@@ -214,7 +217,7 @@ const PaymentModalContent = ({ isOpen, onClose, table, order, currentUser, onPay
 
       // Real-time payment success is handled naturally via WebSocket listener below
     } catch (e) {
-      setError(e.response?.data?.message || 'Không thể tạo mã QR thanh toán');
+      setError(buildErrorMessage(e, { includeDetails: false }));
       setPayosStatus('error');
     } finally {
       setPayosLoading(false);

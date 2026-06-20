@@ -1,5 +1,6 @@
 package com.qros.modules.payment.gateway;
 
+import com.qros.core.config.AppProperties;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
 import com.qros.modules.payment.dto.internal.PaymentWebhookResult;
@@ -10,7 +11,6 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import vn.payos.PayOS;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
@@ -24,9 +24,7 @@ import vn.payos.model.webhooks.WebhookData;
 public class PayosGateway implements PaymentGateway {
 
     private final PayOS payOS;
-
-    @Value("${app.frontend.base-url}")
-    private String frontendUrl;
+    private final AppProperties appProperties;
 
     @Override
     public PaymentMethod getMethod() {
@@ -36,7 +34,7 @@ public class PayosGateway implements PaymentGateway {
     @Override
     public PaymentGatewayCreateResult createPaymentLink(PaymentTransaction transaction) {
         try {
-            String returnUrl = frontendUrl + "/admin/table-manager";
+            String returnUrl = appProperties.getFrontend().getBaseUrl() + "/admin/table-manager";
             long expiredAt = transaction
                     .getExpiresAt()
                     .atZone(java.time.ZoneId.systemDefault())

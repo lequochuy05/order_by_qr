@@ -95,9 +95,7 @@ public class OrderCreationService {
                 tableSessionService.requireOpenSessionForOrdering(request.tableCode(), request.sessionToken());
 
         DiningTable table = Optional.ofNullable(session.getTable())
-                .orElseThrow(() -> new BusinessException(
-                        ErrorCode.TABLE_CODE_INVALID,
-                        "Không tìm thấy thông tin bàn. Mã QR này có thể đã được tạo lại hoặc không còn hiệu lực."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID, "Secure Table Code invalid"));
 
         return createOrder(table, session, request.items(), request.combos(), BatchSource.QR);
     }
@@ -108,7 +106,7 @@ public class OrderCreationService {
 
         DiningTable table = tableRepository
                 .findByIdForUpdate(request.tableId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Không tìm thấy thông tin bàn."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table ID invalid"));
 
         return createOrder(table, null, request.items(), request.combos(), BatchSource.STAFF);
     }
@@ -206,13 +204,17 @@ public class OrderCreationService {
             return;
         }
 
-        boolean hasPendingPayment =
-                paymentTransactionRepository.existsByOrderIdAndStatus(order.getId(), PaymentTransactionStatus.PENDING);
+        boolean hasPendingPayment = paymentTransactionRepository
+                .findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
+                        order.getId(),
+                        com.qros.shared.enums.PaymentMethod.PAYOS,
+                        List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING))
+                .isPresent();
 
         if (hasPendingPayment) {
             throw new BusinessException(
                     ErrorCode.ORDER_PAYMENT_IN_PROGRESS,
-                    "Bàn đang trong quá trình thanh toán, vui lòng liên hệ nhân viên");
+                    "The table is currently being paid. Please contact a staff member.");
         }
     }
 

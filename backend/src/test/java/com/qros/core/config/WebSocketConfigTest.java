@@ -17,7 +17,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 class WebSocketConfigTest {
-    private final WebSocketConfig config = new WebSocketConfig(mock(JwtService.class), mock(UserDetailsService.class));
+    private final WebSocketConfig config =
+            new WebSocketConfig(mock(JwtService.class), mock(UserDetailsService.class), new AppProperties());
 
     @Test
     void protectedTopicRequiresAuthenticatedUser() {
@@ -47,6 +48,16 @@ class WebSocketConfigTest {
         assertThatCode(() -> config.webSocketAuthInterceptor()
                         .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void unknownTopicIsDeniedByDefault() {
+        Message<byte[]> message = subscribeMessage("/topic/internal-new-feature", null);
+
+        assertThatThrownBy(() -> config.webSocketAuthInterceptor()
+                        .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Subscription is not allowed");
     }
 
     private Message<byte[]> subscribeMessage(String destination, UsernamePasswordAuthenticationToken auth) {

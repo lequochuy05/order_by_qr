@@ -1,7 +1,10 @@
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 
 const ErrorFallback = ({ error, resetErrorBoundary, fullScreen = false }) => {
-  const message = error?.message || 'Ứng dụng gặp sự cố không mong muốn. Vui lòng thử lại.';
+  const message = error
+    ? buildErrorMessage(error, { includeDetails: false })
+    : 'Ứng dụng gặp sự cố không mong muốn. Vui lòng thử lại.';
 
   return (
     <div

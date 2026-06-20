@@ -22,15 +22,17 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
+import com.qros.modules.payment.service.PaymentPersistenceService;
 import com.qros.modules.payment.service.PaymentService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.time.AppTime;
-import com.qros.shared.transaction.TransactionSideEffectService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,21 +61,14 @@ class PayosServiceImplTest {
     @Mock
     UserRepository userRepository;
 
-    @Mock
-    TransactionSideEffectService sideEffects;
-
     private PaymentService paymentService;
 
     @BeforeEach
     void setUp() {
-        paymentService = new PaymentService(
-                transactionRepository,
-                gatewayResolver,
-                new PaymentMapper(),
-                paymentCompletionService,
-                orderSettlementService,
-                userRepository,
-                sideEffects);
+        PaymentPersistenceService persistenceService = new PaymentPersistenceService(
+                transactionRepository, orderSettlementService, paymentCompletionService, userRepository);
+        paymentService =
+                new PaymentService(gatewayResolver, new PaymentMapper(), persistenceService, new SimpleMeterRegistry());
     }
 
     @Test
@@ -84,29 +79,37 @@ class PayosServiceImplTest {
         when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
         when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.empty());
-        when(transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-                        1L, PaymentMethod.PAYOS, PaymentTransactionStatus.PENDING))
+        when(transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
+                        org.mockito.ArgumentMatchers.eq(1L),
+                        org.mockito.ArgumentMatchers.eq(PaymentMethod.PAYOS),
+                        any()))
                 .thenReturn(Optional.empty());
-        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
+        AtomicReference<PaymentTransaction> transactionReference = new AtomicReference<>();
+        AtomicReference<PaymentTransactionStatus> initialStatus = new AtomicReference<>();
+        when(transactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction transaction = invocation.getArgument(0);
             if (transaction.getId() == null) {
                 transaction.setId(99L);
             }
+            initialStatus.set(transaction.getStatus());
+            transactionReference.set(transaction);
             return transaction;
         });
+        when(transactionRepository.findWithOrderByIdForUpdate(99L))
+                .thenAnswer(invocation -> Optional.of(transactionReference.get()));
+        when(transactionRepository.save(any(PaymentTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(gateway.createPaymentLink(any(PaymentTransaction.class)))
                 .thenReturn(new PaymentGatewayCreateResult("checkout", "qr", "payos-ref", "{}"));
 
         PaymentCreateResponse response = paymentService.createPayment(request, null);
 
-        ArgumentCaptor<PaymentTransaction> transactionCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
-        verify(transactionRepository, org.mockito.Mockito.atLeastOnce()).save(transactionCaptor.capture());
-
-        PaymentTransaction firstSaved = transactionCaptor.getAllValues().get(0);
-        assertThat(firstSaved.getAmount()).isEqualByComparingTo("125000");
-        assertThat(firstSaved.getPaymentMethod()).isEqualTo(PaymentMethod.PAYOS);
-        assertThat(firstSaved.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
-        assertThat(firstSaved.getBusinessDate()).isEqualTo(AppTime.today());
+        PaymentTransaction created = transactionReference.get();
+        assertThat(created.getAmount()).isEqualByComparingTo("125000");
+        assertThat(created.getPaymentMethod()).isEqualTo(PaymentMethod.PAYOS);
+        assertThat(initialStatus.get()).isEqualTo(PaymentTransactionStatus.CREATING);
+        assertThat(created.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
+        assertThat(created.getBusinessDate()).isEqualTo(AppTime.today());
 
         assertThat(response.transactionId()).isEqualTo(99L);
         assertThat(response.amount()).isEqualByComparingTo("125000");
@@ -127,8 +130,6 @@ class PayosServiceImplTest {
                 .idempotencyKey("idem-1")
                 .build();
 
-        when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
-        when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
 
         PaymentCreateResponse response =
@@ -136,7 +137,7 @@ class PayosServiceImplTest {
 
         assertThat(response.transactionId()).isEqualTo(88L);
         assertThat(response.idempotencyKey()).isEqualTo("idem-1");
-        verify(transactionRepository, never()).save(any(PaymentTransaction.class));
+        verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
     }
 
     @Test
@@ -159,7 +160,7 @@ class PayosServiceImplTest {
         when(transactionRepository.findFirstByIdempotencyKey("cash-idem")).thenReturn(Optional.empty());
         when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
         when(userRepository.findById(7L)).thenReturn(Optional.of(cashier));
-        when(transactionRepository.save(any(PaymentTransaction.class))).thenAnswer(invocation -> {
+        when(transactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction transaction = invocation.getArgument(0);
             if (transaction.getId() == null) {
                 transaction.setId(100L);
@@ -179,7 +180,7 @@ class PayosServiceImplTest {
                 paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.CASH, null, "cash-idem"), 7L);
 
         ArgumentCaptor<PaymentTransaction> transactionCaptor = ArgumentCaptor.forClass(PaymentTransaction.class);
-        verify(transactionRepository).save(transactionCaptor.capture());
+        verify(transactionRepository).saveAndFlush(transactionCaptor.capture());
 
         PaymentTransaction cashTransaction = transactionCaptor.getValue();
         assertThat(cashTransaction.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
@@ -216,20 +217,13 @@ class PayosServiceImplTest {
         assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
         assertThat(response.status()).isEqualTo(PaymentTransactionStatus.PAID);
         verify(orderSettlementService, never()).prepareForPayment(any(), any());
-        verify(transactionRepository, never()).save(any(PaymentTransaction.class));
+        verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
     }
 
     @Test
     void confirmPaymentFromWebhookLocksOrderBeforeTransaction() {
         Order orderReference = Order.builder().id(1L).build();
         Order lockedOrder = payableOrder();
-        PaymentTransaction existing = PaymentTransaction.builder()
-                .id(99L)
-                .order(orderReference)
-                .amount(BigDecimal.valueOf(125_000))
-                .status(PaymentTransactionStatus.PENDING)
-                .paymentMethod(PaymentMethod.PAYOS)
-                .build();
         PaymentTransaction lockedTransaction = PaymentTransaction.builder()
                 .id(99L)
                 .order(orderReference)
@@ -238,17 +232,15 @@ class PayosServiceImplTest {
                 .paymentMethod(PaymentMethod.PAYOS)
                 .build();
 
-        when(transactionRepository.findWithOrderById(99L)).thenReturn(Optional.of(existing));
-        when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
         when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(lockedTransaction));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
 
         paymentService.confirmPaymentFromWebhook(
                 new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
 
         var ordered = inOrder(transactionRepository, orderSettlementService, paymentCompletionService);
-        ordered.verify(transactionRepository).findWithOrderById(99L);
-        ordered.verify(orderSettlementService).loadForPayment(1L);
         ordered.verify(transactionRepository).findWithOrderByIdForUpdate(99L);
+        ordered.verify(orderSettlementService).loadForPayment(1L);
         ordered.verify(paymentCompletionService).completeSuccessfulTransaction(lockedTransaction);
 
         assertThat(lockedTransaction.getOrder()).isSameAs(lockedOrder);
@@ -267,9 +259,8 @@ class PayosServiceImplTest {
                 .paymentMethod(PaymentMethod.PAYOS)
                 .build();
 
-        when(transactionRepository.findWithOrderById(99L)).thenReturn(Optional.of(existing));
-        when(orderSettlementService.loadForPayment(1L)).thenReturn(payableOrder());
         when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(existing));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(payableOrder());
 
         paymentService.confirmPaymentFromWebhook(
                 new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));

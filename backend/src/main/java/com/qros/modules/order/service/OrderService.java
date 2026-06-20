@@ -20,6 +20,7 @@ import com.qros.modules.payment.service.PaymentService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.idempotency.IdempotencyService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -49,9 +50,17 @@ public class OrderService {
     private final PaymentTransactionRepository transactionRepository;
     private final PaymentService paymentService;
     private final OrderMapper orderMapper;
+    private final IdempotencyService idempotencyService;
 
+    @Transactional
     public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
-        return orderCreationService.createCustomerOrder(request);
+        String requestKey = request.tableCode() + ":" + request.sessionToken() + ":" + request.clientRequestId();
+        return idempotencyService.execute(
+                "public-order",
+                requestKey,
+                request,
+                OrderResponse.class,
+                () -> orderCreationService.createCustomerOrder(request));
     }
 
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
@@ -128,8 +137,10 @@ public class OrderService {
         }
 
         Optional<PaymentTransaction> latestTx =
-                transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-                        order.getId(), PaymentMethod.PAYOS, PaymentTransactionStatus.PENDING);
+                transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
+                        order.getId(),
+                        PaymentMethod.PAYOS,
+                        List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
 
         if (latestTx.isPresent()) {
             paymentService.syncPaymentStatus(latestTx.get().getId());

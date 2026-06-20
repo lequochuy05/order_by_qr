@@ -114,8 +114,8 @@ public class OrderPricingService {
 
         boolean isVoucherValid = discountResult.voucherId() != null;
         String voucherMessage = isVoucherValid
-                ? "Voucher áp dụng thành công"
-                : (voucherCode != null ? "Voucher không hợp lệ hoặc đã hết hạn" : "");
+                ? "Voucher applied successfully"
+                : (voucherCode != null ? "Voucher is invalid or expired" : "");
 
         return new OrderPreviewResponse(
                 subtotalItems,

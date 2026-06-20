@@ -1,5 +1,6 @@
 package com.qros.modules.table.service;
 
+import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.table.dto.internal.TableQrMedia;
 import com.qros.shared.exception.BusinessException;
@@ -7,7 +8,6 @@ import com.qros.shared.exception.ErrorCode;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -24,9 +24,7 @@ public class TableQrService {
 
     private final QRCodeService qrCodeService;
     private final StorageService storageService;
-
-    @Value("${app.frontend.base-url}")
-    private String frontendBaseUrl;
+    private final AppProperties appProperties;
 
     public TableQrMedia generate(@NonNull String tableCode) {
         try {
@@ -56,7 +54,7 @@ public class TableQrService {
     }
 
     private String buildOrderingUrl(String tableCode) {
-        return UriComponentsBuilder.fromHttpUrl(frontendBaseUrl)
+        return UriComponentsBuilder.fromHttpUrl(appProperties.getFrontend().getBaseUrl())
                 .path("/menu")
                 .queryParam("tableCode", tableCode)
                 .toUriString();

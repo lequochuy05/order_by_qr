@@ -1,5 +1,6 @@
 package com.qros.modules.table.service;
 
+import com.qros.modules.table.config.TableSessionProperties;
 import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.dto.response.TableSessionStateResponse;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,9 +51,7 @@ public class TableSessionService {
     private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
     private final TableActiveOrderChecker activeOrderChecker;
-
-    @Value("${table-session.no-order-expire-minutes:30}")
-    private long noOrderExpireMinutes;
+    private final TableSessionProperties tableSessionProperties;
 
     @Transactional(readOnly = true)
     public TableSessionStateResponse getPublicState(@NonNull String tableCode) {
@@ -211,7 +209,7 @@ public class TableSessionService {
     @Scheduled(fixedDelayString = "${table-session.cleanup-fixed-delay-ms:300000}")
     @Transactional
     public void expireStaleOpenSessionsWithoutOrders() {
-        LocalDateTime cutoff = AppTime.now().minusMinutes(noOrderExpireMinutes);
+        LocalDateTime cutoff = AppTime.now().minusMinutes(tableSessionProperties.getNoOrderExpireMinutes());
         List<TableSession> staleSessions = sessionRepository.findStaleOpenSessionsWithoutOrdersForUpdate(cutoff);
 
         if (staleSessions.isEmpty()) {
