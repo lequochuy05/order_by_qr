@@ -17,6 +17,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Tối ưu Maven: parallel build, skip tests khi chỉ build image -->
+        <maven.test.skip>false</maven.test.skip>
     </properties>
 
     <dependencies>
@@ -183,12 +185,77 @@
 
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>native</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.graalvm.sdk</groupId>
+                    <artifactId>graal-sdk</artifactId>
+                    <scope>provided</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-webflux</artifactId>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                        <configuration>
+                            <imageName>qros-backend</imageName>
+                            <mainClass>com.qros.QrosApplication</mainClass>
+                            <buildArgs>
+                                <buildArg>--enable-url-protocols=http,https</buildArg>
+                                <buildArg>--install-exit-handlers</buildArg>
+                                <buildArg>-H:+ReportExceptionStackTraces</buildArg>
+                                <buildArg>-march=compatibility</buildArg>
+                            </buildArgs>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>build-native</id>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                                <phase>package</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <excludeDevtools>true</excludeDevtools>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>-javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar</argLine>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <!-- Spring Boot Maven Plugin for running and packaging -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <layers>
+                        <enabled>true</enabled>
+                    </layers>
+                    <excludeDevtools>true</excludeDevtools>
+                </configuration>
             </plugin>
 
             <plugin>

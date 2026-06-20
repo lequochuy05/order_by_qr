@@ -1,0 +1,31 @@
+# Stage 1: Build native image với GraalVM
+FROM ghcr.io/graalbuilds/graalvm-community:21 AS builder
+WORKDIR /app
+
+# Cài đặt native-image
+RUN gu install native-image
+
+# Copy pom.xml và cache dependencies
+COPY pom.xml ./
+RUN mvn dependency:go-offline -B
+
+# Copy source và build native image
+COPY src ./src
+RUN mvn -Pnative native:compile -DskipTests -B
+
+# Stage 2: Runtime siêu nhẹ — chỉ cần glibc
+FROM alpine:3.20
+RUN apk add --no-cache libc6-compat openssl
+
+# Timezone
+RUN apk add --no-cache tzdata
+ENV TZ="Asia/Ho_Chi_Minh"
+
+# Tạo user không root
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring
+
+COPY --chown=spring:spring --from=builder /app/target/qros-backend /app/
+
+EXPOSE 8080
+ENTRYPOINT ["/app/qros-backend"]
