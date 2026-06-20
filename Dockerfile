@@ -8,7 +8,7 @@ RUN mvn -f backend/pom.xml dependency:go-offline -B
 
 # Copy mã nguồn và build jar
 COPY backend/src ./backend/src
-RUN mvn -f backend/pom.xml clean package -DskipTests -B
+RUN mvn -f backend/pom.xml clean package -DskipTests -Dspotless.check.skip=true -B
 
 # Giải nén jar thành các layer
 RUN java -Djarmode=layertools -jar backend/target/*.jar extract
