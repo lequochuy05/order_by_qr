@@ -1,6 +1,7 @@
 package com.qros.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -15,6 +16,7 @@ import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.ItemOptionValueRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
+import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
 import com.qros.modules.order.dto.response.OrderPreviewResponse;
 import com.qros.modules.order.service.OrderPricingService;
@@ -22,6 +24,8 @@ import com.qros.modules.order.service.OrderValidator;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
@@ -90,6 +94,18 @@ class OrderPricingServiceTest {
         assertThat(response.subtotalItems()).isEqualByComparingTo("51000");
         verify(tableSessionService).requireOpenSessionForRead("T1", "SESSION");
         verify(itemOptionValueRepository).findAllById(argThat(ids -> idsEqual(ids, Set.of(11L, 21L))));
+    }
+
+    @Test
+    void previewRejectsInvalidComboQuantity() {
+        CustomerCreateOrderRequest request = new CustomerCreateOrderRequest(
+                "T1", "SESSION", "req-invalid-combo", List.of(new OrderComboRequest(1L, 0, null)), null);
+
+        assertThatThrownBy(() -> orderPricingService.previewCustomerOrder(request))
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                    assertThat(ex.getMessage()).isEqualTo("Combo quantity must be at least 1");
+                });
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {

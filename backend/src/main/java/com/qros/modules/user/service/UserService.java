@@ -4,11 +4,14 @@ import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
+import com.qros.modules.user.model.enums.UserRole;
+import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,7 +66,16 @@ public class UserService {
     public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req) {
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
+        List<User> activeManagers = mayRemoveActiveManager(req)
+                ? userRepository.findByRoleAndStatusForUpdate(UserRole.MANAGER, UserStatus.ACTIVE)
+                : List.of();
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        UserRole nextRole = req.role() != null ? req.role() : u.getRole();
+        UserStatus nextStatus = req.status() != null ? req.status() : u.getStatus();
+        if (isActiveManager(u) && !isActiveManager(nextRole, nextStatus) && activeManagers.size() <= 1) {
+            throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
+        }
 
         if (!u.getEmail().equalsIgnoreCase(email) && userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
             throw new BusinessException(ErrorCode.EMAIL_EXISTS);
@@ -94,10 +106,21 @@ public class UserService {
 
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
-    public void delete(@NonNull Long id) {
-        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    public void delete(@NonNull Long id, @NonNull String actorEmail) {
+        List<User> activeManagers = userRepository.findByRoleAndStatusForUpdate(UserRole.MANAGER, UserStatus.ACTIVE);
+        User actor = userRepository
+                .findByEmailIgnoreCase(actorEmail)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        User target = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        userRepository.delete(u);
+        if (Objects.equals(actor.getId(), target.getId())) {
+            throw new BusinessException(ErrorCode.SELF_DELETE_NOT_ALLOWED);
+        }
+        if (isActiveManager(target) && activeManagers.size() <= 1) {
+            throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
+        }
+
+        userRepository.delete(target);
         // log.info("User with id {} deleted", id);
         eventPublisher.publishEvent(new UserChangeEvent());
     }
@@ -113,5 +136,18 @@ public class UserService {
         u.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(u);
         // log.info("Password reset for user: {}", u.getEmail());
+    }
+
+    private boolean mayRemoveActiveManager(UpdateUserRequest req) {
+        return (req.role() != null && req.role() != UserRole.MANAGER)
+                || (req.status() != null && req.status() != UserStatus.ACTIVE);
+    }
+
+    private boolean isActiveManager(User user) {
+        return isActiveManager(user.getRole(), user.getStatus());
+    }
+
+    private boolean isActiveManager(UserRole role, UserStatus status) {
+        return role == UserRole.MANAGER && status == UserStatus.ACTIVE;
     }
 }

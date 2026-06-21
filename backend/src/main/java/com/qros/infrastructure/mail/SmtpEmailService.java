@@ -35,7 +35,8 @@ public class SmtpEmailService {
 
         String resetLink = baseUrl + "/reset-password.html?token=" + token;
         String subject = "Reset password";
-        String htmlContent = ResetPasswordTemplateBuilder.build(resetLink);
+        AppProperties.Email email = appProperties.getEmail();
+        String htmlContent = ResetPasswordTemplateBuilder.build(resetLink, email.getBrandName(), email.getCopyright());
 
         sendHtmlEmail(toEmail, subject, htmlContent);
     }
@@ -52,7 +53,7 @@ public class SmtpEmailService {
 
             helper.setFrom(new InternetAddress(
                     Objects.requireNonNull(mailProperties.getUsername(), "spring.mail.username not configured"),
-                    "Sắc Màu Quán",
+                    appProperties.getEmail().getFromName(),
                     StandardCharsets.UTF_8.name()));
             helper.setTo(to);
             helper.setSubject(subject);
@@ -62,7 +63,8 @@ public class SmtpEmailService {
 
             log.info("Email sent successfully to: {}", to);
         } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
+            log.error("Failed to send email to {}", to, e);
+            throw new IllegalStateException("Failed to send email to " + to, e);
         }
     }
 }

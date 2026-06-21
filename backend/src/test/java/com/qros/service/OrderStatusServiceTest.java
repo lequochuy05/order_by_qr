@@ -149,4 +149,58 @@ class OrderStatusServiceTest {
         verify(orderStateFactory).validateTransition(OrderStatus.AWAITING_PAYMENT, OrderStatus.SERVING);
         verify(orderRepository).save(order);
     }
+
+    @Test
+    void cancelOrderRestoresOnlyReservableItems() {
+        Order order = Order.builder()
+                .id(13L)
+                .status(OrderStatus.SERVING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .build();
+        OrderItem pending =
+                OrderItem.builder().id(201L).status(OrderItemStatus.PENDING).build();
+        OrderItem cooking =
+                OrderItem.builder().id(202L).status(OrderItemStatus.COOKING).build();
+        OrderItem finished =
+                OrderItem.builder().id(203L).status(OrderItemStatus.FINISHED).build();
+        OrderItem cancelled =
+                OrderItem.builder().id(204L).status(OrderItemStatus.CANCELLED).build();
+        order.addItem(pending);
+        order.addItem(cooking);
+        order.addItem(finished);
+        order.addItem(cancelled);
+
+        when(orderRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        orderStatusService.cancelOrder(13L);
+
+        verify(inventoryReservationService).restoreOrderItem(pending);
+        verify(inventoryReservationService).restoreOrderItem(cooking);
+        verify(inventoryReservationService, never()).restoreOrderItem(finished);
+        verify(inventoryReservationService, never()).restoreOrderItem(cancelled);
+    }
+
+    @Test
+    void deleteOrderRestoresOnlyReservableItems() {
+        Order order = Order.builder()
+                .id(14L)
+                .status(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .build();
+        OrderItem pending =
+                OrderItem.builder().id(301L).status(OrderItemStatus.PENDING).build();
+        OrderItem finished =
+                OrderItem.builder().id(302L).status(OrderItemStatus.FINISHED).build();
+        order.addItem(pending);
+        order.addItem(finished);
+
+        when(orderRepository.findByIdForUpdate(14L)).thenReturn(Optional.of(order));
+
+        orderStatusService.deleteOrder(14L);
+
+        verify(inventoryReservationService).restoreOrderItem(pending);
+        verify(inventoryReservationService, never()).restoreOrderItem(finished);
+        verify(orderRepository).delete(order);
+    }
 }

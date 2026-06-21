@@ -46,7 +46,7 @@ public class CloudinaryStorageService implements StorageService {
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = (Map<String, Object>) cloudinary
                     .uploader()
-                    .upload(file.getBytes(), ObjectUtils.asMap("folder", folder, "resource_type", "auto"));
+                    .upload(file.getInputStream(), ObjectUtils.asMap("folder", folder, "resource_type", "auto"));
             String url = Objects.requireNonNull(uploadResult.get("secure_url")).toString();
             log.info("Successfully uploaded image to Cloudinary. URL: {}", url);
             return url;
@@ -97,10 +97,11 @@ public class CloudinaryStorageService implements StorageService {
      * @throws IOException if the upload fails
      */
     public String replace(@NonNull MultipartFile newFile, String oldUrl, String folder) throws IOException {
+        String newUrl = upload(newFile, folder);
         if (oldUrl != null) {
             delete(oldUrl);
         }
-        return upload(newFile, folder);
+        return newUrl;
     }
 
     /**
@@ -108,14 +109,32 @@ public class CloudinaryStorageService implements StorageService {
      */
     private String extractPublicId(String url) {
         try {
-            String part = url.substring(url.indexOf("/upload/") + 8);
-            if (part.contains("/")) {
-                part = part.substring(part.indexOf("/") + 1);
+            int uploadIndex = url.indexOf("/upload/");
+            if (uploadIndex < 0) {
+                return url;
             }
-            if (part.contains(".")) {
-                part = part.substring(0, part.lastIndexOf("."));
+
+            String part = url.substring(uploadIndex + "/upload/".length());
+            int queryIndex = part.indexOf('?');
+            if (queryIndex >= 0) {
+                part = part.substring(0, queryIndex);
             }
-            return part;
+
+            String[] segments = part.split("/");
+            int publicIdStart = 0;
+            for (int index = 0; index < segments.length; index++) {
+                if (segments[index].matches("v\\d+")) {
+                    publicIdStart = index + 1;
+                    break;
+                }
+            }
+
+            String publicId = String.join("/", java.util.Arrays.copyOfRange(segments, publicIdStart, segments.length));
+            int extensionIndex = publicId.lastIndexOf('.');
+            if (extensionIndex > 0) {
+                publicId = publicId.substring(0, extensionIndex);
+            }
+            return publicId;
         } catch (Exception e) {
             log.warn("Unable to extract PublicID from cloud URL: {}", url);
             return "";

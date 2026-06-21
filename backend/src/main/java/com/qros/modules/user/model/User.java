@@ -35,7 +35,7 @@ public class User extends BaseEntity implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 50, unique = true, nullable = false)
+    @Column(length = 50, nullable = false)
     private String email;
 
     @Column(length = 150)
@@ -48,7 +48,7 @@ public class User extends BaseEntity implements UserDetails {
     @JsonIgnore
     private String password;
 
-    @Column(unique = true, length = 15)
+    @Column(length = 15)
     private String phone;
 
     @Enumerated(EnumType.STRING)

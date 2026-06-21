@@ -9,6 +9,7 @@ import com.qros.modules.user.service.UserService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,8 +61,8 @@ public class UserAdminController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
-        userService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id, @NonNull Principal principal) {
+        userService.delete(id, principal.getName());
         return ApiResponse.success("Staff member removed from system", null);
     }
 

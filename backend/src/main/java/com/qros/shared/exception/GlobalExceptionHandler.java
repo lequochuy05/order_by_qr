@@ -2,18 +2,27 @@ package com.qros.shared.exception;
 
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.response.ErrorResponse;
+import jakarta.persistence.OptimisticLockException;
+import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -51,6 +60,69 @@ public class GlobalExceptionHandler {
         });
         log.warn("Validation error: {}", errors);
         return buildErrorResponse(ErrorCode.VALIDATION_ERROR, ErrorCode.VALIDATION_ERROR.getDefaultMessage(), errors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, Object> errors = new LinkedHashMap<>();
+        ex.getConstraintViolations()
+                .forEach(violation -> errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
+        log.warn("Constraint violation: {}", errors);
+        return buildErrorResponse(ErrorCode.VALIDATION_ERROR, ErrorCode.VALIDATION_ERROR.getDefaultMessage(), errors);
+    }
+
+    @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleOptimisticLock(Exception ex) {
+        log.warn("Concurrent modification detected: {}", ex.getMessage());
+        return buildErrorResponse(
+                ErrorCode.CONCURRENT_MODIFICATION,
+                "This resource was changed by another request. Please refresh and try again.",
+                Map.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        return buildErrorResponse(
+                ErrorCode.DATA_INTEGRITY_VIOLATION, "The request conflicts with existing or related data.", Map.of());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMessage());
+        return buildErrorResponse(
+                ErrorCode.MALFORMED_REQUEST, "Request body is malformed or contains an invalid value.", Map.of());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST,
+                "Invalid value for parameter: " + ex.getName(),
+                Map.of("parameter", ex.getName()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleMissingRequestParameter(
+            MissingServletRequestParameterException ex) {
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST,
+                "Missing required parameter: " + ex.getParameterName(),
+                Map.of("parameter", ex.getParameterName()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex) {
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST, "HTTP method is not supported for this endpoint.", Map.of());
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex) {
+        return buildErrorResponse(
+                ErrorCode.INVALID_REQUEST, "Content type is not supported for this endpoint.", Map.of());
     }
 
     /**

@@ -14,6 +14,7 @@ import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.rate_limit.ClientAddressResolver;
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.security.JwtProperties;
 import jakarta.servlet.http.Cookie;
@@ -38,11 +39,13 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetService passwordResetService;
     private final JwtProperties jwtProperties;
+    private final ClientAddressResolver clientAddressResolver;
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(
             @Valid @RequestBody LoginRequest req, HttpServletRequest request, HttpServletResponse response) {
-        authRateLimitService.checkLogin(request, req.email());
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkLogin(clientAddress, req.email());
         LoginResult result = authService.login(req);
 
         String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
@@ -54,7 +57,8 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
-        authRateLimitService.checkRefresh(request);
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkRefresh(clientAddress);
         String oldRefreshToken = extractRefreshToken(request);
 
         RefreshResult result = refreshTokenService.refreshAccessToken(oldRefreshToken);
@@ -81,7 +85,8 @@ public class AuthController {
 
     @PostMapping("/forgot-password-email")
     public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email, HttpServletRequest request) {
-        authRateLimitService.checkForgotPassword(request, email);
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkForgotPassword(clientAddress, email);
         try {
             passwordResetService.createPasswordResetToken(email);
         } catch (Exception ignored) {
@@ -94,14 +99,16 @@ public class AuthController {
     @PostMapping("/reset-password-email")
     public ApiResponse<Void> resetPassword(
             @Valid @RequestBody @NonNull EmailPasswordResetRequest req, HttpServletRequest request) {
-        authRateLimitService.checkPasswordReset(request, req.token());
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkPasswordReset(clientAddress, req.token());
         passwordResetService.resetPassword(req.token(), req.newPassword());
         return ApiResponse.success("Password reset successfully.", null);
     }
 
     @PostMapping("/forgot-password-phone")
     public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone, HttpServletRequest request) {
-        authRateLimitService.checkForgotPassword(request, phone);
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkForgotPassword(clientAddress, phone);
         try {
             passwordResetService.createOtpAndSendOtp(phone);
         } catch (BusinessException e) {
@@ -113,7 +120,8 @@ public class AuthController {
     @PostMapping("/reset-password-phone")
     public ApiResponse<Void> resetPasswordPhone(
             @Valid @RequestBody @NonNull PhonePasswordResetRequest req, HttpServletRequest request) {
-        authRateLimitService.checkPasswordReset(request, req.phone());
+        String clientAddress = clientAddressResolver.resolve(request);
+        authRateLimitService.checkPasswordReset(clientAddress, req.phone());
         passwordResetService.resetPasswordWithOtp(req.phone(), req.otp(), req.newPassword());
         return ApiResponse.success("Password reset successfully.", null);
     }
@@ -134,7 +142,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from(jwtProperties.getRefreshCookieName(), token)
                 .httpOnly(true)
                 .secure(jwtProperties.isRefreshCookieSecure())
-                .sameSite(jwtProperties.isRefreshCookieSecure() ? "None" : "Lax")
+                .sameSite(jwtProperties.getRefreshCookieSameSite())
                 .path(ApiRoutes.PREFIX)
                 .maxAge(maxAge)
                 .build();

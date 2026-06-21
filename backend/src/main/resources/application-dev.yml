@@ -25,6 +25,7 @@ auth:
 security:
   jwt:
     refresh-cookie-secure: false
+    refresh-cookie-same-site: Lax
 
 gemini:
   enabled: ${GEMINI_ENABLED:false}

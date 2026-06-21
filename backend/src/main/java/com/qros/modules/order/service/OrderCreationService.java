@@ -238,6 +238,12 @@ public class OrderCreationService {
         if (!hasItems && !hasCombos) {
             throw new BusinessException(ErrorCode.ORDER_CONTENT_EMPTY);
         }
+
+        if (hasCombos
+                && combos.stream()
+                        .anyMatch(combo -> combo == null || combo.quantity() == null || combo.quantity() < 1)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Combo quantity must be at least 1");
+        }
     }
 
     private void buildOrderItems(

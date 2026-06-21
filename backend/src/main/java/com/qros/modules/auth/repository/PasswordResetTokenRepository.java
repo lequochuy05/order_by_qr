@@ -1,18 +1,37 @@
 package com.qros.modules.auth.repository;
 
 import com.qros.modules.auth.model.PasswordResetToken;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
-    Optional<PasswordResetToken> findByToken(String token);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM PasswordResetToken t WHERE t.token = :token")
+    Optional<PasswordResetToken> findByTokenForUpdate(@Param("token") String token);
 
-    Optional<PasswordResetToken> findFirstByUserPhoneAndUsedFalseAndExpiryDateAfterAndViaOrderByExpiryDateDesc(
-            String phone, LocalDateTime now, @Param("via") PasswordResetToken.Via via);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT t FROM PasswordResetToken t
+            WHERE t.user.phone = :phone
+              AND t.used = false
+              AND t.expiryDate > :now
+              AND t.via = :via
+            ORDER BY t.expiryDate DESC
+            """)
+    List<PasswordResetToken> findLatestOtpForUpdate(
+            @Param("phone") String phone,
+            @Param("now") LocalDateTime now,
+            @Param("via") PasswordResetToken.Via via,
+            Pageable pageable);
 
     @Modifying
     @Query(

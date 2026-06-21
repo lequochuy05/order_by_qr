@@ -24,7 +24,14 @@ public class JwtService {
      * @param properties JWT signing and expiration configuration
      */
     public JwtService(JwtProperties properties) {
-        this.key = Keys.hmacShaKeyFor(properties.getSecret().getBytes(StandardCharsets.UTF_8));
+        String secret = properties.getSecret();
+        if (secret == null) {
+            throw new IllegalStateException("JWT secret must not be null");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException("JWT secret must be at least 32 characters long, got " + secret.length());
+        }
+        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = properties.getExpirationMs();
         this.refreshExpirationMs = properties.getRefreshExpirationMs();
     }

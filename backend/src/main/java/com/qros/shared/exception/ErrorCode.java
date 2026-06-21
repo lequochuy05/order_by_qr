@@ -11,6 +11,9 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "Permission denied"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
     CONFLICT(HttpStatus.CONFLICT, "Resource conflict"),
+    CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "Resource was modified by another request"),
+    DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "Request conflicts with existing data"),
+    MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Malformed request body"),
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
@@ -18,6 +21,8 @@ public enum ErrorCode {
     PHONE_NOT_FOUND(HttpStatus.NOT_FOUND, "Phone number not found"),
     EMAIL_EXISTS(HttpStatus.CONFLICT, "Email already exists"),
     PHONE_EXISTS(HttpStatus.CONFLICT, "Phone number already exists"),
+    SELF_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "You cannot delete your own account"),
+    LAST_ACTIVE_MANAGER_REQUIRED(HttpStatus.CONFLICT, "At least one active manager is required"),
     FEATURE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "Feature is currently disabled"),
     ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "Account is locked or not activated"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Invalid login credentials"),
@@ -49,6 +54,8 @@ public enum ErrorCode {
     ORDER_ALREADY_PAID(HttpStatus.BAD_REQUEST, "Order is already paid"),
     ORDER_PAYMENT_INVALID(HttpStatus.BAD_REQUEST, "Order payment is invalid"),
     ORDER_PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Order payment is in progress"),
+    IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Request already submitted with this idempotency key"),
+    IDEMPOTENCY_PROCESSING(HttpStatus.CONFLICT, "This request is still being processed"),
     ORDER_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Order request already submitted"),
 
     VOUCHER_NOT_FOUND(HttpStatus.NOT_FOUND, "Voucher not found"),
