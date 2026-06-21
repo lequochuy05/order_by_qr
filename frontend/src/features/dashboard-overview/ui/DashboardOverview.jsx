@@ -24,7 +24,7 @@ import {
 import { dashboardOverviewService } from '@features/dashboard-overview/api/dashboardOverviewService.js';
 import { fmtVND, fmtTime } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
-import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { getBusinessToday } from '@shared/lib/businessTime.js';
 
 const Dashboard = () => {

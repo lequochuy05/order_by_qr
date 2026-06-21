@@ -24,7 +24,6 @@ export const WebSocketInvalidator = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
-      queryClient.invalidateQueries({ queryKey: ['tableSession'] });
     }
   });
 
@@ -37,7 +36,6 @@ export const WebSocketInvalidator = () => {
       // Cập nhật lại toàn bộ Lịch sử đơn hàng, Active orders, Table board
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
-      queryClient.invalidateQueries({ queryKey: ['tableSession'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
       clearAnalyticsCache();
     }

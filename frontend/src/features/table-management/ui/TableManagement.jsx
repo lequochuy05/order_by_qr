@@ -22,7 +22,7 @@ import TableGrid from './TableGrid.jsx';
 import OrderDetailModal from './OrderDetailModal.jsx';
 import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
-import { TABLE_STATUS } from '@shared/lib/tableStatus.js';
+import { TABLE_STATUS } from '@entities/table/lib/tableStatus.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const tableStatusFilterOptions = Object.entries(TABLE_STATUS).map(([id, meta]) => ({

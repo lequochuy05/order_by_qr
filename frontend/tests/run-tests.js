@@ -1,0 +1,10 @@
+import './unit/aiAssistant.test.js';
+import './unit/cacheUtils.test.js';
+import './unit/designSystem.test.js';
+import './unit/errorMessages.test.js';
+import './unit/inventory.test.js';
+import './unit/kitchenItems.test.js';
+import './unit/orderHistoryDates.test.js';
+import './unit/orderMoney.test.js';
+import './unit/restaurantSettings.test.js';
+import './unit/sessionStartCoordinator.test.js';

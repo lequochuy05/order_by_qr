@@ -3,7 +3,7 @@ import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
   getOrderSubtotalAmount,
-} from '@shared/lib/orderMoney.js';
+} from '@entities/order/lib/orderMoney.js';
 import { X, Receipt, Clock, Utensils, Printer, RotateCw } from 'lucide-react';
 
 export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
