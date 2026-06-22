@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react';
-import wsService from '@shared/lib/websocket.js';
+import { adminWsService, publicWsService } from '@shared/lib/websocket.js';
 
-export const useWebSocket = (topic, onMessage) => {
+const resolveWebSocketService = ({ service, scope } = {}) => {
+  if (service) return service;
+  return scope === 'admin' ? adminWsService : publicWsService;
+};
+
+export const useWebSocket = (topic, onMessage, options = {}) => {
   const subscriptionRef = useRef(null);
   const onMessageRef = useRef(onMessage);
+  const service = resolveWebSocketService(options);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -14,22 +20,24 @@ export const useWebSocket = (topic, onMessage) => {
       return undefined;
     }
 
-    wsService.connect();
+    service.connect();
 
     const doSubscribe = () => {
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
       }
-      subscriptionRef.current = wsService.subscribe(topic, (msg) => {
+      subscriptionRef.current = service.subscribe(topic, (msg) => {
         if (onMessageRef.current) {
           onMessageRef.current(msg);
         }
       });
     };
 
-    const removeConnectListener = wsService.addConnectListener(doSubscribe);
+    const removeConnectListener = service.addConnectListener((connected) => {
+      if (connected) doSubscribe();
+    });
 
-    if (wsService.isConnected()) {
+    if (service.isConnected()) {
       doSubscribe();
     }
 
@@ -40,7 +48,7 @@ export const useWebSocket = (topic, onMessage) => {
       }
       removeConnectListener();
     };
-  }, [topic]); // Cập nhật khi topic đổi
+  }, [service, topic]); // Cập nhật khi topic hoặc WebSocket service đổi
 
-  return wsService;
+  return service;
 };

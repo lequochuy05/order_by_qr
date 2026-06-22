@@ -10,15 +10,19 @@ const useKitchenNotifications = (onRealtimeUpdate) => {
   const [preferences, setPreferences] = useAdminPreferences();
   const wakeLock = useScreenWakeLock(true);
 
-  useWebSocket('/topic/kitchen', (message) => {
-    if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
-    playNotificationSound();
-    playLoudSound();
-    showBrowserNotification('Đơn hàng nhà bếp', {
-      body: 'Có cập nhật mới cho nhà bếp!',
-    });
-    onRealtimeUpdate();
-  });
+  useWebSocket(
+    '/topic/kitchen',
+    (message) => {
+      if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
+      playNotificationSound();
+      playLoudSound();
+      showBrowserNotification('Đơn hàng nhà bếp', {
+        body: 'Có cập nhật mới cho nhà bếp!',
+      });
+      onRealtimeUpdate();
+    },
+    { scope: 'admin' },
+  );
 
   const toggleSound = useCallback(() => {
     setPreferences((current) => ({

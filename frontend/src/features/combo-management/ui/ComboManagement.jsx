@@ -81,12 +81,16 @@ const ComboManager = () => {
     return data || [];
   }, [menuItems]);
 
-  useWebSocket('/topic/combos', (message) => {
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      playNotificationSound();
-      fetchCombos(false, { force: true });
-    }
-  });
+  useWebSocket(
+    '/topic/combos',
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        playNotificationSound();
+        fetchCombos(false, { force: true });
+      }
+    },
+    { scope: 'admin' },
+  );
 
   useEffect(() => {
     setCurrentPage(0);

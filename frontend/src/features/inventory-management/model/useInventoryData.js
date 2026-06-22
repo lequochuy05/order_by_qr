@@ -126,13 +126,17 @@ const useInventoryData = ({ onInventoryUpdated } = {}) => {
     }
   }, [activeTab, fetchMovements, movements.length]);
 
-  useWebSocket('/topic/inventory', (message) => {
-    if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
+  useWebSocket(
+    '/topic/inventory',
+    (message) => {
+      if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
 
-    playNotificationSound();
-    refreshAfterMutation();
-    onInventoryUpdated?.();
-  });
+      playNotificationSound();
+      refreshAfterMutation();
+      onInventoryUpdated?.();
+    },
+    { scope: 'admin' },
+  );
 
   return {
     items,

@@ -4,7 +4,7 @@ import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { Bell, Menu, User, LogOut, Wifi, WifiOff, Maximize2, Minimize2 } from 'lucide-react';
 import { fmtRole } from '@shared/lib/formatters.js';
-import wsService from '@shared/lib/websocket.js';
+import { adminWsService } from '@shared/lib/websocket.js';
 
 const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
   const { user, logout } = useAuth();
@@ -19,10 +19,10 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
   }, []);
 
   // WebSocket status badge
-  const [wsConnected, setWsConnected] = useState(() => wsService.isConnected());
+  const [wsConnected, setWsConnected] = useState(() => adminWsService.isConnected());
 
   useEffect(() => {
-    return wsService.addConnectListener((connected) => {
+    return adminWsService.addConnectListener((connected) => {
       setWsConnected(connected);
     });
   }, []);

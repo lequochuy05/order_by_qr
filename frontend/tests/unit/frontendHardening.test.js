@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { canSubscribeToOperations } from '../../src/app/webSocketAccess.js';
+import { canSubscribeToOperations, isCustomerMenuPath } from '../../src/app/webSocketAccess.js';
 import { calculatePayosTimeLeft } from '../../src/features/payment/lib/paymentExpiry.js';
 import { createPaymentWithRetry } from '../../src/features/payment/lib/paymentRetry.js';
 
@@ -11,6 +11,14 @@ test('operation WebSocket topics require an authenticated admin route', () => {
   assert.equal(canSubscribeToOperations(user, '/admin/tables'), true);
   assert.equal(canSubscribeToOperations(user, '/menu'), false);
   assert.equal(canSubscribeToOperations(null, '/admin/tables'), false);
+});
+
+test('customer menu path detection excludes admin menu', () => {
+  assert.equal(isCustomerMenuPath('/menu'), true);
+  assert.equal(isCustomerMenuPath('/T01/menu'), true);
+  assert.equal(isCustomerMenuPath('/T01/menu/'), true);
+  assert.equal(isCustomerMenuPath('/admin/menu'), false);
+  assert.equal(isCustomerMenuPath('/admin/dashboard'), false);
 });
 
 test('PayOS retries reuse one idempotency key', async () => {

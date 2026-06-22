@@ -167,16 +167,20 @@ const usePayosPayment = ({
     };
   }, [handlePaymentSuccess, order?.id, payosData?.transactionId, payosStatus]);
 
-  useWebSocket('/topic/tables', (message) => {
-    const eventOrderId = message?.orderId ?? message?.id;
-    const eventTransactionId = message?.transactionId ?? message?.data;
-    if (
-      message?.event === 'PAYMENT_SUCCESS' &&
-      (eventOrderId === order?.id || eventTransactionId === payosData?.transactionId)
-    ) {
-      handlePaymentSuccess();
-    }
-  });
+  useWebSocket(
+    '/topic/tables',
+    (message) => {
+      const eventOrderId = message?.orderId ?? message?.id;
+      const eventTransactionId = message?.transactionId ?? message?.data;
+      if (
+        message?.event === 'PAYMENT_SUCCESS' &&
+        (eventOrderId === order?.id || eventTransactionId === payosData?.transactionId)
+      ) {
+        handlePaymentSuccess();
+      }
+    },
+    { scope: 'admin' },
+  );
 
   const handleCreatePayosQR = useCallback(async () => {
     setPayosLoading(true);
