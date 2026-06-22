@@ -36,6 +36,7 @@ public class CategoryMapper {
                 category.getDisplayOrder(),
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
+                category.getVersion(),
                 menuItems);
     }
 
@@ -53,6 +54,7 @@ public class CategoryMapper {
                 category.getDisplayOrder(),
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
+                category.getVersion(),
                 Collections.emptyList());
     }
 

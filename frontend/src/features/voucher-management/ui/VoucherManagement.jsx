@@ -95,12 +95,16 @@ const VoucherManager = () => {
     [currentPage, debouncedSearchTerm, statusFilter],
   );
 
-  useWebSocket('/topic/vouchers', (message) => {
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      playNotificationSound();
-      fetchData(false, { force: true });
-    }
-  });
+  useWebSocket(
+    '/topic/vouchers',
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        playNotificationSound();
+        fetchData(false, { force: true });
+      }
+    },
+    { scope: 'admin' },
+  );
 
   useEffect(() => {
     setCurrentPage(0);

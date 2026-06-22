@@ -1,6 +1,15 @@
 import React from 'react';
-import { X, ImageIcon, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import SharedModal from '@shared/ui/SharedModal.jsx';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import {
+  CheckboxCard,
+  ImageUploadField,
+  ModalActions,
+  ModalHeader,
+  SelectField,
+  SharedModal,
+  TextareaField,
+  TextField,
+} from '@shared/ui';
 
 const MenuItemModal = ({
   isOpen,
@@ -150,219 +159,118 @@ const MenuItemModal = ({
   };
 
   return (
-    <SharedModal isOpen={isOpen} onClose={onClose} className="max-w-2xl !p-0">
-      {/* Header - Fixed */}
-      <div className="px-8 py-6 border-b flex justify-between items-center shrink-0">
-        <h2 className="text-xl font-black text-gray-800 tracking-tight">
-          {formData.id ? 'Sửa Món Ăn' : 'Thêm Món Mới'}
-        </h2>
-        <button
-          onClick={onClose}
-          className="p-2.5 hover:bg-gray-100 rounded-full text-gray-400 transition-all active:scale-90"
-        >
-          <X size={20} />
-        </button>
-      </div>
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      className="max-w-2xl !p-0"
+      ariaLabel={formData.id ? 'Sửa món ăn' : 'Thêm món ăn'}
+    >
+      <ModalHeader
+        title={formData.id ? 'Sửa Món Ăn' : 'Thêm Món Mới'}
+        subtitle="Thông tin thực đơn"
+        onClose={onClose}
+        disabled={isSubmitting}
+      />
 
-      {/* Body - Scrollable */}
       <form
         id="menuForm"
         onSubmit={handleLocalSubmit}
-        className="p-8 space-y-8 overflow-y-auto custom-scrollbar"
+        className="custom-scrollbar space-y-8 overflow-y-auto p-6 sm:p-8"
       >
-        {/* Thông tin cơ bản */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-5">
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-                Tên món ăn <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Ví dụ: Trà sữa thái xanh"
-                className={`w-full px-5 py-3.5 bg-gray-50 border-2 rounded-2xl outline-none text-sm transition-all font-medium ${
-                  errors.name
-                    ? 'border-red-500 ring-red-50'
-                    : 'border-transparent focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500'
-                }`}
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                  if (errors.name) setErrors({ ...errors, name: null });
-                }}
-              />
-              {errors.name && (
-                <p className="text-red-500 text-[11px] mt-1.5 flex items-center gap-1.5 font-bold animate-in slide-in-from-top-1">
-                  <AlertCircle size={12} /> {errors.name}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-                  Giá bán <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    placeholder="0"
-                    className={`w-full pl-5 pr-10 py-3.5 bg-gray-50 border-2 rounded-2xl outline-none text-sm font-black transition-all ${
-                      errors.price
-                        ? 'border-red-500 ring-red-50'
-                        : 'border-transparent focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 text-orange-600'
-                    }`}
-                    value={formData.price}
-                    onChange={(e) => {
-                      setFormData({ ...formData, price: e.target.value });
-                      if (errors.price) setErrors({ ...errors, price: null });
-                    }}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">
-                    đ
-                  </span>
-                </div>
-                {errors.price && (
-                  <p className="text-red-500 text-[11px] mt-1.5 flex items-center gap-1.5 font-bold animate-in slide-in-from-top-1">
-                    <AlertCircle size={12} /> {errors.price}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-                  Danh mục <span className="text-red-500">*</span>
-                </label>
-                <select
-                  className={`w-full px-4 py-3.5 bg-gray-50 border-2 rounded-2xl outline-none text-sm font-bold appearance-none transition-all cursor-pointer ${
-                    errors.categoryId
-                      ? 'border-red-500'
-                      : 'border-transparent focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500'
-                  }`}
-                  value={formData.categoryId}
-                  onChange={(e) => {
-                    setFormData({ ...formData, categoryId: e.target.value });
-                    if (errors.categoryId) setErrors({ ...errors, categoryId: null });
-                  }}
-                >
-                  <option value="" disabled>
-                    Chọn...
-                  </option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Upload Ảnh */}
-          <div className="relative group">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-              Hình ảnh đại diện
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-3xl p-2 text-center h-[145px] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 ${
-                preview
-                  ? 'border-orange-200 bg-orange-50/20'
-                  : 'border-gray-100 bg-gray-50/50 hover:border-orange-200'
-              }`}
-            >
-              {preview ? (
-                <img
-                  src={preview}
-                  className="w-full h-full object-cover rounded-[1.25rem] shadow-sm"
-                  alt="Preview"
-                />
-              ) : (
-                <div className="space-y-2 text-gray-300 py-4">
-                  <ImageIcon className="mx-auto" size={32} />
-                  <p className="text-[9px] uppercase font-black tracking-tighter">
-                    Click để tải ảnh
-                  </p>
-                </div>
-              )}
-
-              <input
-                type="file"
-                id="itemFile"
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col items-center justify-center gap-2 backdrop-blur-[2px]">
-                <label
-                  htmlFor="itemFile"
-                  className="px-5 py-2 bg-white text-gray-800 rounded-full text-[10px] font-black cursor-pointer shadow-xl hover:scale-105 active:scale-95 transition-all"
-                >
-                  {preview ? 'Đổi ảnh khác' : 'Tải ảnh lên'}
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Mô tả & Cài đặt nâng cao */}
-        <div className="space-y-5">
-          <div>
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-              Mô tả món ăn
-            </label>
-            <textarea
-              rows={3}
-              maxLength={500}
-              className="w-full px-5 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl outline-none text-sm transition-all resize-none focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
-              placeholder="Mô tả ngắn gọn về món ăn..."
-              value={formData.description || ''}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            <TextField
+              label="Tên món ăn"
+              required
+              placeholder="Ví dụ: Trà sữa thái xanh"
+              value={formData.name}
+              onChange={(value) => {
+                setFormData({ ...formData, name: value });
+                if (errors.name) setErrors({ ...errors, name: null });
+              }}
+              error={errors.name}
             />
-            <div className="text-right mt-1">
-              <span className="text-[10px] font-medium text-gray-400">
-                {(formData.description || '').length}/500
-              </span>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-2 block">
-                Thứ tự
-              </label>
-              <input
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <TextField
+                label="Giá bán"
+                required
                 type="number"
                 min="0"
-                className="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent rounded-2xl outline-none text-sm font-bold transition-all focus:bg-white focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
-                value={formData.displayOrder ?? 0}
-                onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
+                placeholder="0"
+                suffix="đ"
+                inputClassName="text-orange-600"
+                value={formData.price}
+                onChange={(value) => {
+                  setFormData({ ...formData, price: value });
+                  if (errors.price) setErrors({ ...errors, price: null });
+                }}
+                error={errors.price}
+              />
+              <SelectField
+                label="Danh mục"
+                required
+                value={formData.categoryId}
+                onChange={(value) => {
+                  setFormData({ ...formData, categoryId: value });
+                  if (errors.categoryId) setErrors({ ...errors, categoryId: null });
+                }}
+                error={errors.categoryId}
+              >
+                <option value="" disabled>
+                  Chọn...
+                </option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+          </div>
+
+          <ImageUploadField
+            label="Hình ảnh đại diện"
+            preview={preview}
+            onChange={handleFileChange}
+            inputId="menu-item-image"
+            helperText="Click để tải ảnh"
+            changeLabel="Đổi ảnh khác"
+          />
+        </div>
+
+        <div className="space-y-5">
+          <TextareaField
+            label="Mô tả món ăn"
+            rows={3}
+            maxLength={500}
+            placeholder="Mô tả ngắn gọn về món ăn..."
+            value={formData.description || ''}
+            onChange={(value) => setFormData({ ...formData, description: value })}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <TextField
+              label="Thứ tự"
+              type="number"
+              min="0"
+              value={formData.displayOrder ?? 0}
+              onChange={(value) => setFormData({ ...formData, displayOrder: value })}
+            />
+            <div className="flex items-end">
+              <CheckboxCard
+                checked={formData.active ?? true}
+                onChange={(checked) => setFormData({ ...formData, active: checked })}
+                label="Kinh doanh"
               />
             </div>
             <div className="flex items-end">
-              <label className="flex items-center gap-3 px-4 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-200 cursor-pointer"
-                  checked={formData.active ?? true}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                />
-                <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
-                  Kinh doanh
-                </span>
-              </label>
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-3 px-4 h-[52px] bg-gray-50 hover:bg-gray-100 rounded-2xl cursor-pointer w-full transition-all border-2 border-transparent">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded text-emerald-500 focus:ring-emerald-200 border-gray-200 cursor-pointer"
-                  checked={formData.available ?? true}
-                  onChange={(e) => setFormData({ ...formData, available: e.target.checked })}
-                />
-                <span className="text-[11px] font-black text-gray-600 uppercase tracking-tight">
-                  Còn hàng
-                </span>
-              </label>
+              <CheckboxCard
+                checked={formData.available ?? true}
+                onChange={(checked) => setFormData({ ...formData, available: checked })}
+                label="Còn hàng"
+                tone="green"
+              />
             </div>
           </div>
         </div>
@@ -544,37 +452,14 @@ const MenuItemModal = ({
         </div>
       </form>
 
-      {/* Footer - Fixed */}
-      <div className="px-8 py-6 border-t bg-gray-50/50 rounded-b-[2rem] flex gap-4 shrink-0">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 bg-white text-gray-600 py-4 rounded-2xl font-black transition-all text-[11px] uppercase tracking-[0.1em] border border-gray-200 hover:bg-gray-100 active:scale-95"
-        >
-          Hủy bỏ
-        </button>
-        <button
-          form="menuForm"
-          type="submit"
-          disabled={isSubmitting || !isChanged}
-          className={`flex-[2] text-white py-4 rounded-2xl font-black transition-all text-[11px] uppercase tracking-[0.2em] shadow-xl active:scale-95 ${
-            isSubmitting || !isChanged
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-              : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'
-          }`}
-        >
-          {isSubmitting ? (
-            <div className="flex items-center justify-center gap-2">
-              <Loader2 size={16} className="animate-spin" />
-              <span>Đang đồng bộ...</span>
-            </div>
-          ) : formData.id ? (
-            'Lưu thay đổi'
-          ) : (
-            'Tạo món ăn'
-          )}
-        </button>
-      </div>
+      <ModalActions
+        onClose={onClose}
+        formId="menuForm"
+        submitLabel={formData.id ? 'Lưu thay đổi' : 'Tạo món ăn'}
+        submittingLabel="Đang đồng bộ..."
+        isSubmitting={isSubmitting}
+        disabled={!isChanged}
+      />
     </SharedModal>
   );
 };

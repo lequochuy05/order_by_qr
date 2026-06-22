@@ -9,6 +9,7 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import com.qros.shared.validation.ImageFileValidator;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +28,12 @@ public class UserAvatarService {
     private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
     private final UserMapper userMapper;
+    private final ImageFileValidator imageFileValidator;
 
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse uploadAvatar(@NonNull Long id, @NonNull MultipartFile file) {
+        imageFileValidator.validate(file);
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         try {

@@ -154,6 +154,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         String email = jwtService.extractSubject(token);
         UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        if (!isUsableAccount(userDetails)) {
+            throw new AccessDeniedException("WebSocket user account is not active");
+        }
         Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         accessor.setUser(auth);
     }
@@ -187,5 +190,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         if (!allowed) {
             throw new AccessDeniedException("Insufficient role for topic " + destination);
         }
+    }
+
+    private boolean isUsableAccount(UserDetails userDetails) {
+        return userDetails.isEnabled()
+                && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired()
+                && userDetails.isCredentialsNonExpired();
     }
 }

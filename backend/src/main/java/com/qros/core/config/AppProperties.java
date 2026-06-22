@@ -13,6 +13,8 @@ public class AppProperties {
     private Frontend frontend = new Frontend();
     private Cors cors = new Cors();
     private Security security = new Security();
+    private Cache cache = new Cache();
+    private Email email = new Email();
 
     @Getter
     @Setter
@@ -30,6 +32,22 @@ public class AppProperties {
     @Setter
     public static class Security {
         private boolean enableDefaultAdmin;
+        private String defaultAdminEmail;
+        private String defaultAdminPassword;
         private boolean trustProxyHeaders;
+    }
+
+    @Getter
+    @Setter
+    public static class Cache {
+        private String prefix = "qros:v3:";
+    }
+
+    @Getter
+    @Setter
+    public static class Email {
+        private String fromName = "QROS";
+        private String brandName = "QROS";
+        private String copyright = "2026 QROS";
     }
 }

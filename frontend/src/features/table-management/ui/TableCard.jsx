@@ -1,8 +1,8 @@
 import React from 'react';
 import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { getTableStatusMeta } from '@shared/lib/tableStatus.js';
-import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import { getTableStatusMeta } from '@entities/table/lib/tableStatus.js';
 
 const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete, userRole }) => {
   const finalAmount = getOrderFinalAmount(order);

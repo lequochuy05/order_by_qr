@@ -81,12 +81,16 @@ const StaffManager = () => {
   );
 
   // WebSocket Realtime
-  useWebSocket('/topic/users', (message) => {
-    if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-      playNotificationSound();
-      fetchStaffs(false, { force: true });
-    }
-  });
+  useWebSocket(
+    '/topic/users',
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        playNotificationSound();
+        fetchStaffs(false, { force: true });
+      }
+    },
+    { scope: 'admin' },
+  );
 
   useEffect(() => {
     setCurrentPage(0);

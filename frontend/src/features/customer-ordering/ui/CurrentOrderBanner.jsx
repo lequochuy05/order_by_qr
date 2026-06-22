@@ -3,7 +3,7 @@ import { ChevronRight, Clock3, ReceiptText } from 'lucide-react';
 
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
-import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const countItems = (order) =>
   (order?.items || order?.orderItems || []).reduce(

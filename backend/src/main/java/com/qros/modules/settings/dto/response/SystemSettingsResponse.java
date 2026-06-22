@@ -5,6 +5,7 @@ import java.time.LocalTime;
 
 public record SystemSettingsResponse(
         Long id,
+        Long version,
         String restaurantName,
         String restaurantPhone,
         String restaurantEmail,

@@ -1,19 +1,36 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
-import wsService from '@shared/lib/websocket.js';
 import { authService } from '@features/auth/api/authService.js';
 import { setAccessToken } from '@shared/api/httpClient.js';
 import { queryClient } from '@shared/api/queryClient.js';
+import { adminWsService } from '@shared/lib/websocket.js';
+import { isAdminRoute, isCustomerMenuPath } from '@shared/lib/routeMatchers.js';
 
 const AuthContext = createContext();
+
+const toAuthUser = (data) => ({
+  role: data.role,
+  fullName: data.fullName,
+  avatarUrl: data.avatarUrl,
+  userId: data.userId,
+  email: data.email,
+});
+
+const reconnectAdminWebSocketIfNeeded = () => {
+  if (isAdminRoute(window.location.pathname)) {
+    adminWsService.reconnect();
+  } else {
+    adminWsService.disconnect();
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
-  const [loading, setLoading] = useState(() => !window.location.pathname.startsWith('/menu'));
+  const [loading, setLoading] = useState(() => !isCustomerMenuPath(window.location.pathname));
   const timerRef = useRef(null);
 
   const logout = useCallback(() => {
-    wsService.disconnect();
+    adminWsService.disconnect();
     setAccessToken(null);
     queryClient.clear();
     authService.logout().catch(() => {});
@@ -22,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Không tự động refresh ở trang khách hàng (Menu)
-    if (window.location.pathname.startsWith('/menu')) {
+    if (isCustomerMenuPath(window.location.pathname)) {
       return;
     }
 
@@ -32,16 +49,12 @@ export const AuthProvider = ({ children }) => {
       .then((data) => {
         if (!mounted) return;
         setAccessToken(data.accessToken);
-        setUser({
-          role: data.role,
-          fullName: data.fullName,
-          avatarUrl: data.avatarUrl,
-          userId: data.userId,
-          email: data.email,
-        });
+        setUser(toAuthUser(data));
+        reconnectAdminWebSocketIfNeeded();
       })
       .catch(() => {
         setAccessToken(null);
+        adminWsService.disconnect();
         if (mounted) setUser(null);
       })
       .finally(() => {
@@ -59,7 +72,7 @@ export const AuthProvider = ({ children }) => {
     timerRef.current = setTimeout(() => {
       logout();
       // Chỉ điều hướng về /login nếu đang ở trong trang quản lý (/admin)
-      if (window.location.pathname.startsWith('/admin')) {
+      if (isAdminRoute(window.location.pathname)) {
         window.location.href = '/login';
       }
     }, 1200000); // 20 phút = 20 * 60 * 1000
@@ -90,13 +103,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = (data) => {
     setAccessToken(data.accessToken);
-    setUser({
-      role: data.role,
-      fullName: data.fullName,
-      avatarUrl: data.avatarUrl,
-      userId: data.userId,
-      email: data.email,
-    });
+    setUser(toAuthUser(data));
+    reconnectAdminWebSocketIfNeeded();
   };
 
   const updateUser = useCallback((updatedFields) => {

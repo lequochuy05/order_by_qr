@@ -18,6 +18,7 @@ import com.qros.modules.menu.repository.ComboRepository;
 import com.qros.modules.menu.repository.ItemOptionValueRepository;
 import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
+import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
@@ -193,6 +194,20 @@ class OrderCreationServiceTest {
                         .isEqualTo(ErrorCode.ORDER_PAYMENT_IN_PROGRESS));
 
         verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
+    void createCustomerOrderRejectsInvalidComboQuantityBeforeLoadingSession() {
+        CustomerCreateOrderRequest request = new CustomerCreateOrderRequest(
+                "T1", "SESSION", "req-invalid-combo", List.of(new OrderComboRequest(1L, 0, null)), null);
+
+        assertThatThrownBy(() -> orderCreationService.createCustomerOrder(request))
+                .isInstanceOfSatisfying(BusinessException.class, ex -> {
+                    assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
+                    assertThat(ex.getMessage()).isEqualTo("Combo quantity must be at least 1");
+                });
+
+        verify(tableSessionService, never()).requireOpenSessionForOrdering(any(), any());
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {

@@ -1,5 +1,9 @@
 {
   "appId": "com.qros.app",
   "appName": "QROS",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://wqros.vercel.app/",
+    "cleartext": false
+  }
 }

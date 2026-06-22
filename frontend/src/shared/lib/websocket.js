@@ -3,7 +3,9 @@ import SockJS from 'sockjs-client';
 import { getAccessToken } from '@shared/api/httpClient.js';
 
 class WebSocketService {
-  constructor() {
+  constructor({ name = 'websocket', authenticated = false } = {}) {
+    this.name = name;
+    this.authenticated = authenticated;
     this.client = null;
     this.connected = false;
     this.onConnectCallbacks = [];
@@ -11,20 +13,34 @@ class WebSocketService {
     this.subscriptions = new Set();
   }
 
+  canConnect() {
+    return !this.authenticated || Boolean(getAccessToken());
+  }
+
   connect() {
-    if (this.client?.active) return;
+    if (this.client?.active) return true;
+    if (!this.canConnect()) {
+      this.connected = false;
+      this.notifyStatusChange();
+      return false;
+    }
+
     const wsUrl = import.meta.env.VITE_WS_URL || '/ws';
 
-    this.client = new Client({
+    const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: this.getConnectHeaders(),
-      beforeConnect: (client) => {
-        client.connectHeaders = this.getConnectHeaders();
+      beforeConnect: (stompClient) => {
+        if (!this.canConnect()) {
+          throw new Error(`${this.name} WebSocket requires an access token`);
+        }
+        stompClient.connectHeaders = this.getConnectHeaders();
       },
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
       onConnect: () => {
+        if (this.client !== client) return;
         this.connected = true;
         this.notifyStatusChange();
         const callbacks = [...this.onConnectCallbacks];
@@ -32,22 +48,39 @@ class WebSocketService {
         callbacks.forEach((cb) => cb());
       },
       onDisconnect: () => {
+        if (this.client !== client) return;
         this.connected = false;
         this.notifyStatusChange();
       },
       onWebSocketClose: () => {
+        if (this.client !== client) return;
         this.connected = false;
         this.notifyStatusChange();
       },
       onStompError: (frame) => {
-        console.error('WebSocket broker error:', frame.headers?.message || frame.body);
+        if (this.client !== client) return;
+        console.error(
+          `${this.name} WebSocket broker error:`,
+          frame.headers?.message || frame.body,
+        );
       },
     });
-    this.client.activate();
+    this.client = client;
+    client.activate();
+    return true;
+  }
+
+  reconnect() {
+    this.disconnect({ clearQueued: false });
+    return this.connect();
   }
 
   isConnected() {
     return this.connected && Boolean(this.client?.connected);
+  }
+
+  isActive() {
+    return Boolean(this.client?.active);
   }
 
   notifyStatusChange() {
@@ -62,6 +95,7 @@ class WebSocketService {
   }
 
   getConnectHeaders() {
+    if (!this.authenticated) return {};
     const token = getAccessToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
@@ -70,6 +104,7 @@ class WebSocketService {
     if (!topic || typeof callback !== 'function') return null;
 
     const subscribeNow = () => {
+      if (!this.client?.connected) return null;
       const subscription = this.client.subscribe(topic, (message) => {
         try {
           callback(JSON.parse(message.body));
@@ -107,18 +142,25 @@ class WebSocketService {
     };
   }
 
-  disconnect() {
-    this.onConnectCallbacks = [];
-    this.statusListeners.clear();
-    this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+  disconnect({ clearQueued = true, clearListeners = false } = {}) {
+    if (clearQueued) {
+      this.onConnectCallbacks = [];
+    }
+    [...this.subscriptions].forEach((subscription) => subscription.unsubscribe());
     this.subscriptions.clear();
     this.connected = false;
+    if (clearListeners) {
+      this.statusListeners.clear();
+    }
     if (this.client) {
       this.client.deactivate();
       this.client = null;
     }
+    this.notifyStatusChange();
   }
 }
 
-const wsService = new WebSocketService();
-export default wsService;
+export const publicWsService = new WebSocketService({ name: 'public', authenticated: false });
+export const adminWsService = new WebSocketService({ name: 'admin', authenticated: true });
+
+export default publicWsService;

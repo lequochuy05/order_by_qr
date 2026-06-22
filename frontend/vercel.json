@@ -6,6 +6,7 @@
   "installCommand": "npm ci",
   "rewrites": [
     { "source": "/api/v1/(.*)", "destination": "https://order-by-qr.onrender.com/api/v1/$1" },
+    { "source": "/ws", "destination": "https://order-by-qr.onrender.com/ws" },
     { "source": "/ws/(.*)", "destination": "https://order-by-qr.onrender.com/ws/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

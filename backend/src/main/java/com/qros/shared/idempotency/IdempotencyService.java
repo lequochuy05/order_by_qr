@@ -87,15 +87,14 @@ public class IdempotencyService {
         if (!request.getRequestHash().equals(requestHash)) {
             conflictCounter.increment();
             throw new BusinessException(
-                    ErrorCode.ORDER_IDEMPOTENCY_CONFLICT,
-                    "Idempotency key is already associated with a different order request");
+                    ErrorCode.IDEMPOTENCY_CONFLICT, "Idempotency key is already associated with a different request");
         }
 
         if (request.getStatus() != IdempotencyRequestStatus.SUCCEEDED || request.getResponseJson() == null) {
             conflictCounter.increment();
             throw new BusinessException(
-                    ErrorCode.ORDER_IDEMPOTENCY_CONFLICT,
-                    "This order request is still being processed",
+                    ErrorCode.IDEMPOTENCY_PROCESSING,
+                    "This request is still being processed",
                     Map.of("retryAfterSeconds", 1));
         }
 

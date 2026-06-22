@@ -132,8 +132,12 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                        COALESCE(SUM(COALESCE(oi.line_total, oi.quantity * oi.unit_price)), 0) AS revenue
                 FROM order_item oi
                 JOIN order_reporting_fact fact ON fact.order_id = oi.order_id
-                LEFT JOIN menu_item ON menu_item.id = oi.menu_item_id
-                LEFT JOIN category ON category.id = menu_item.cate_id
+                LEFT JOIN menu_item
+                       ON menu_item.id = oi.menu_item_id
+                      AND menu_item.is_deleted = false
+                LEFT JOIN category
+                       ON category.id = menu_item.cate_id
+                      AND category.is_deleted = false
                 WHERE fact.business_date = :businessDate
                   AND fact.status = 'COMPLETED'
                   AND fact.payment_status = 'PAID'

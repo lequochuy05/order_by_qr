@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -110,13 +111,17 @@ public class TableSessionService {
         TableSessionToken token = requireActiveToken(request.sessionToken());
         TableSession session = token.getSession();
 
-        if (session == null || !session.isOpen()) {
-            return;
+        if (session == null) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND);
         }
 
         validateOpenSession(session);
 
         LocalDateTime now = AppTime.now();
+        if (!shouldWriteHeartbeat(token, now)) {
+            return;
+        }
+
         token.setLastSeenAt(now);
         tokenRepository.save(token);
 
@@ -174,9 +179,11 @@ public class TableSessionService {
 
     private TableSessionToken requireActiveToken(String sessionToken) {
         String tokenHash = hashToken(sessionToken);
-        return tokenRepository
+        TableSessionToken token = tokenRepository
                 .findFirstByTokenHashAndRevokedAtIsNull(tokenHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_INVALID));
+        validateTokenLifetime(token, AppTime.now());
+        return token;
     }
 
     @Transactional
@@ -191,27 +198,35 @@ public class TableSessionService {
             throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Cannot close session with OPEN status");
         }
 
+        Long tableId = sessionRepository
+                .findTableIdById(sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
+        DiningTable table = tableRepository
+                .findByIdForUpdate(tableId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
         TableSession session = sessionRepository
                 .findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
 
-        if (!session.isOpen()) {
-            return;
+        LocalDateTime now = AppTime.now();
+        if (session.isOpen()) {
+            session.setStatus(normalizedStatus);
+            session.setClosedAt(now);
+            session.setClosedReason(reason);
+            sessionRepository.save(session);
         }
 
-        session.setStatus(normalizedStatus);
-        session.setClosedAt(AppTime.now());
-        session.setClosedReason(reason);
-        sessionRepository.save(session);
+        tokenRepository.revokeActiveTokensBySessionId(sessionId, now);
+        releaseTableIfUnused(table);
 
-        evictTableSessionCaches(session.getTable());
+        evictTableSessionCaches(table);
         eventPublisher.publishEvent(new TableChangeEvent());
     }
 
     @Scheduled(fixedDelayString = "${table-session.cleanup-fixed-delay-ms:300000}")
     @Transactional
     public void expireStaleOpenSessionsWithoutOrders() {
-        LocalDateTime cutoff = AppTime.now().minusMinutes(tableSessionProperties.getNoOrderExpireMinutes());
+        LocalDateTime cutoff = AppTime.now().minus(tableSessionProperties.getNoOrderExpire());
         List<TableSession> staleSessions = sessionRepository.findStaleOpenSessionsWithoutOrdersForUpdate(cutoff);
 
         if (staleSessions.isEmpty()) {
@@ -223,6 +238,7 @@ public class TableSessionService {
             session.setStatus(TableSessionStatus.EXPIRED);
             session.setClosedAt(now);
             session.setClosedReason("Expired before first order");
+            tokenRepository.revokeActiveTokensBySessionId(session.getId(), now);
 
             DiningTable table = session.getTable();
             if (table != null && table.getStatus() != TableStatus.INACTIVE) {
@@ -255,16 +271,45 @@ public class TableSessionService {
     }
 
     private String issueClientToken(TableSession session) {
+        LocalDateTime now = AppTime.now();
+        reserveTokenSlot(session, now);
+
         String rawToken = generateRawToken();
         TableSessionToken token = TableSessionToken.builder()
                 .session(session)
                 .tokenHash(hashToken(rawToken))
-                .issuedAt(AppTime.now())
-                .lastSeenAt(AppTime.now())
+                .issuedAt(now)
+                .lastSeenAt(now)
                 .build();
 
         tokenRepository.save(token);
         return rawToken;
+    }
+
+    private void reserveTokenSlot(TableSession session, LocalDateTime now) {
+        List<TableSessionToken> activeTokens = tokenRepository.findActiveBySessionIdForUpdate(session.getId());
+        List<TableSessionToken> validTokens = new ArrayList<>();
+        List<TableSessionToken> tokensToRevoke = new ArrayList<>();
+
+        for (TableSessionToken token : activeTokens) {
+            if (isTokenExpired(token, now)) {
+                token.setRevokedAt(now);
+                tokensToRevoke.add(token);
+            } else {
+                validTokens.add(token);
+            }
+        }
+
+        int overflow = validTokens.size() - tableSessionProperties.getMaxActiveTokensPerSession() + 1;
+        for (int index = 0; index < overflow; index++) {
+            TableSessionToken token = validTokens.get(index);
+            token.setRevokedAt(now);
+            tokensToRevoke.add(token);
+        }
+
+        if (!tokensToRevoke.isEmpty()) {
+            tokenRepository.saveAll(tokensToRevoke);
+        }
     }
 
     private TableSessionStartResponse toStartResponse(DiningTable table, TableSession session, String rawToken) {
@@ -299,6 +344,41 @@ public class TableSessionService {
         if (session.getTable() == null || !Objects.equals(session.getTable().getTableCode(), tableCode)) {
             throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Session token does not belong to this table");
         }
+    }
+
+    private void validateTokenLifetime(TableSessionToken token, LocalDateTime now) {
+        if (token.getIssuedAt() == null) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID);
+        }
+
+        if (isTokenExpired(token, now)) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_EXPIRED);
+        }
+    }
+
+    private boolean isTokenExpired(TableSessionToken token, LocalDateTime now) {
+        LocalDateTime issuedAt = token.getIssuedAt();
+        if (issuedAt == null) {
+            return true;
+        }
+
+        LocalDateTime lastSeenAt = token.getLastSeenAt() != null ? token.getLastSeenAt() : issuedAt;
+        return issuedAt.isBefore(now.minus(tableSessionProperties.getTokenMaxLifetime()))
+                || lastSeenAt.isBefore(now.minus(tableSessionProperties.getTokenIdleTimeout()));
+    }
+
+    private boolean shouldWriteHeartbeat(TableSessionToken token, LocalDateTime now) {
+        LocalDateTime lastSeenAt = token.getLastSeenAt();
+        return lastSeenAt == null || !lastSeenAt.isAfter(now.minus(tableSessionProperties.getHeartbeatWriteInterval()));
+    }
+
+    private void releaseTableIfUnused(DiningTable table) {
+        if (table.getStatus() == TableStatus.INACTIVE || activeOrderChecker.hasActiveOrders(table.getId())) {
+            return;
+        }
+
+        table.setStatus(TableStatus.AVAILABLE);
+        tableRepository.save(table);
     }
 
     private void touch(TableSession session) {

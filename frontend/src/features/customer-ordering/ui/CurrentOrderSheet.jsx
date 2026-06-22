@@ -3,7 +3,7 @@ import { Clock3, ReceiptText, X } from 'lucide-react';
 
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta, getItemStatusMeta } from '@entities/order/lib/orderStatus.js';
-import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const getItemName = (item) =>
   item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món đã gọi';

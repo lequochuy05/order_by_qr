@@ -17,4 +17,5 @@ public record MenuItemResponse(
         CategorySummary category,
         List<ItemOptionResponse> itemOptions,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {}
+        LocalDateTime updatedAt,
+        Long version) {}

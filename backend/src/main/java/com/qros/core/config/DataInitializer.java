@@ -40,16 +40,24 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (userRepo.count() == 0) {
+            String email = appProperties.getSecurity().getDefaultAdminEmail();
+            String password = appProperties.getSecurity().getDefaultAdminPassword();
+
+            if (email == null || password == null) {
+                log.warn("Default admin email or password not configured — skipping admin creation");
+                return;
+            }
+
             User u = User.builder()
-                    .email("admin@gmail.com")
+                    .email(email)
                     .fullName("Admin")
-                    .password(pwEncoder.encode("admin123"))
+                    .password(pwEncoder.encode(password))
                     .role(UserRole.MANAGER)
                     .status(UserStatus.ACTIVE)
                     .build();
             userRepo.save(Objects.requireNonNull(u));
 
-            log.warn("Created default admin account: admin@gmail.com / admin123");
+            log.warn("Created default admin account: {}", email);
         }
     }
 }

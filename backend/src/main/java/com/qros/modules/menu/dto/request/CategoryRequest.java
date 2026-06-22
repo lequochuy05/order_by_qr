@@ -13,4 +13,5 @@ public record CategoryRequest(
         @Size(max = 500, message = "Image URL cannot exceed 500 characters") String img,
         @Size(max = 255, message = "Description cannot exceed 255 characters") String description,
         Boolean active,
-        Integer displayOrder) {}
+        Integer displayOrder,
+        Long version) {}

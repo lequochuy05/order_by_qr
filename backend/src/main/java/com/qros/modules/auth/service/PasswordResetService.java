@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,7 +81,7 @@ public class PasswordResetService {
     @Transactional
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepo
-                .findByToken(sha256(token))
+                .findByTokenForUpdate(sha256(token))
                 .orElseThrow(() ->
                         new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "Token invalid or expired"));
 
@@ -89,10 +90,9 @@ public class PasswordResetService {
         }
 
         User user = resetToken.getUser();
+        resetToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepo.save(user);
-
-        resetToken.setUsed(true);
         tokenRepo.save(resetToken);
     }
 
@@ -152,8 +152,10 @@ public class PasswordResetService {
         String normalizedPhone = normalizePhone(phone);
 
         PasswordResetToken otpToken = tokenRepo
-                .findFirstByUserPhoneAndUsedFalseAndExpiryDateAfterAndViaOrderByExpiryDateDesc(
-                        normalizedPhone, AppTime.now(), PasswordResetToken.Via.PHONE)
+                .findLatestOtpForUpdate(
+                        normalizedPhone, AppTime.now(), PasswordResetToken.Via.PHONE, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
                 .orElseThrow(
                         () -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired"));
 
@@ -162,10 +164,9 @@ public class PasswordResetService {
         }
 
         User user = otpToken.getUser();
+        otpToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepo.save(user);
-
-        otpToken.setUsed(true);
         tokenRepo.save(otpToken);
     }
 

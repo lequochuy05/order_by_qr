@@ -1,4 +1,4 @@
-import { fmtVND } from './formatters';
+import { fmtVND } from '@shared/lib/formatters.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,

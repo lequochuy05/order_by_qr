@@ -7,9 +7,7 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
-import com.qros.shared.event.DomainEvents.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 public class OrderTableSyncService {
 
     private final DiningTableRepository tableRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     public void recalcTableStatus(Order order) {
         if (order == null || order.getTable() == null) {
@@ -45,7 +42,6 @@ public class OrderTableSyncService {
         }
 
         tableRepository.save(table);
-        eventPublisher.publishEvent(new TableChangeEvent());
     }
 
     public void releaseTable(Order order) {
@@ -56,6 +52,5 @@ public class OrderTableSyncService {
         DiningTable table = order.getTable();
         table.setStatus(TableStatus.AVAILABLE);
         tableRepository.save(table);
-        eventPublisher.publishEvent(new TableChangeEvent());
     }
 }

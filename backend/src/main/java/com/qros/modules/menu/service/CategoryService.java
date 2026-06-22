@@ -14,11 +14,12 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -43,6 +44,7 @@ public class CategoryService {
     private final ApplicationEventPublisher eventPublisher;
     private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
+    private final ImageFileValidator imageFileValidator;
 
     @Cacheable(value = CacheNames.CATEGORIES, key = "'all_active'")
     public List<CategoryResponse> getAllActive() {
@@ -67,15 +69,6 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.CATEGORIES,
-                CacheNames.MENU,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public CategoryResponse create(@NonNull CategoryRequest req) {
         String name = normalizeRequired(req.name(), "Category name cannot be empty");
         if (categoryRepo.existsByNameIgnoreCase(name)) {
@@ -97,18 +90,10 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.CATEGORIES,
-                CacheNames.MENU,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public CategoryResponse update(@NonNull Long id, @NonNull CategoryRequest req) {
         String name = normalizeRequired(req.name(), "Category name cannot be empty");
         Category category = getEntityById(id);
+        assertVersionMatches(category.getVersion(), req.version());
 
         if (!category.getName().equalsIgnoreCase(name) && categoryRepo.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS);
@@ -133,21 +118,12 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.CATEGORIES,
-                CacheNames.MENU,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public void delete(@NonNull Long id) {
         Category category = getEntityById(id);
 
-        if (menuItemRepository.countByCategoryIdAndActiveTrue(id) > 0) {
+        if (menuItemRepository.existsByCategoryId(id)) {
             throw new BusinessException(
-                    ErrorCode.BUSINESS_ERROR, "Cannot delete category that still contains active menu items");
+                    ErrorCode.BUSINESS_ERROR, "Cannot delete category that still contains menu items");
         }
 
         String oldImg = category.getImg();
@@ -163,19 +139,8 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.CATEGORIES,
-                CacheNames.MENU,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new BusinessException(ErrorCode.FILE_INVALID);
-        }
+        imageFileValidator.validate(file);
 
         Category category = getEntityById(id);
         String oldUrl = category.getImg();
@@ -217,6 +182,14 @@ public class CategoryService {
             throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
         }
         return trimmed;
+    }
+
+    private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
+        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+            throw new BusinessException(
+                    ErrorCode.CONCURRENT_MODIFICATION,
+                    "This category was changed by another request. Please refresh and try again.");
+        }
     }
 
     private boolean isCustomImage(String image) {

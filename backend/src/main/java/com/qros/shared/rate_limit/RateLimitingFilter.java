@@ -1,7 +1,6 @@
 package com.qros.shared.rate_limit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.AppException;
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.response.ErrorResponse;
@@ -11,8 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.regex.Pattern;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
@@ -20,17 +19,39 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * RateLimitingFilter - In-memory sliding-window rate limiter for public endpoints.
+ * RateLimitingFilter - Redis-backed fixed-window rate limiter for public endpoints.
+ * Policies are loaded from {@code rate-limit.rules} in application configuration.
  */
 @Component
 @Order(1)
 @Slf4j
-@RequiredArgsConstructor
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final RedisRateLimiter rateLimiter;
     private final ClientAddressResolver clientAddressResolver;
     private final ObjectMapper objectMapper;
+    private final List<CompiledRule> rules;
+
+    public RateLimitingFilter(
+            RedisRateLimiter rateLimiter,
+            ClientAddressResolver clientAddressResolver,
+            ObjectMapper objectMapper,
+            RateLimitProperties properties) {
+        this.rateLimiter = rateLimiter;
+        this.clientAddressResolver = clientAddressResolver;
+        this.objectMapper = objectMapper;
+        this.rules = properties.getRules().stream()
+                .map(rule -> new CompiledRule(
+                        rule.getScope(),
+                        compilePathPattern(rule.getPath()),
+                        rule.getMethod() != null ? rule.getMethod().toUpperCase() : null,
+                        rule.getMaxRequests(),
+                        rule.getWindow()))
+                .toList();
+        if (!rules.isEmpty()) {
+            log.info("Loaded {} rate-limit rule(s)", rules.size());
+        }
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -39,15 +60,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        RateLimitPolicy policy = resolvePolicy(path, method);
-        if (policy == null) {
+        CompiledRule rule = resolveRule(path, method);
+        if (rule == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
             rateLimiter.requireAllowed(
-                    policy.scope(), clientAddressResolver.resolve(request), policy.maxRequests(), policy.window());
+                    rule.scope, clientAddressResolver.resolve(request), rule.maxRequests, rule.window);
         } catch (AppException exception) {
             writeRateLimitResponse(response, exception);
             return;
@@ -56,28 +77,15 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private RateLimitPolicy resolvePolicy(String path, String method) {
-        if ((ApiRoutes.PUBLIC + "/ai/chat").equals(path) && "POST".equalsIgnoreCase(method)) {
-            return new RateLimitPolicy("public:ai", 10, Duration.ofMinutes(1));
+    private CompiledRule resolveRule(String path, String method) {
+        for (CompiledRule rule : rules) {
+            if (rule.methodPattern != null && !rule.methodPattern.equals(method)) {
+                continue;
+            }
+            if (rule.pathPattern.matcher(path).matches()) {
+                return rule;
+            }
         }
-
-        if (path.startsWith(ApiRoutes.PUBLIC + "/orders") && "POST".equalsIgnoreCase(method)) {
-            return new RateLimitPolicy("public:orders", 10, Duration.ofMinutes(1));
-        }
-
-        if (path.matches("^" + Pattern.quote(ApiRoutes.PUBLIC) + "/tables/[^/]+/start-session$")
-                && "POST".equalsIgnoreCase(method)) {
-            return new RateLimitPolicy("public:start-session", 10, Duration.ofMinutes(1));
-        }
-
-        if ((ApiRoutes.PUBLIC + "/sessions/heartbeat").equals(path) && "POST".equalsIgnoreCase(method)) {
-            return new RateLimitPolicy("public:heartbeat", 60, Duration.ofMinutes(1));
-        }
-
-        if (path.startsWith(ApiRoutes.RECOMMENDATIONS) && "GET".equalsIgnoreCase(method)) {
-            return new RateLimitPolicy("public:recommendations", 30, Duration.ofMinutes(1));
-        }
-
         return null;
     }
 
@@ -98,5 +106,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         objectMapper.writeValue(response.getWriter(), ApiResponse.error(status, exception.getMessage(), error));
     }
 
-    private record RateLimitPolicy(String scope, int maxRequests, Duration window) {}
+    private static Pattern compilePathPattern(String pattern) {
+        if (pattern == null) {
+            return Pattern.compile(".*");
+        }
+        String regex = Pattern.quote(pattern).replace("\\*\\*", ".*").replace("\\*", "[^/]*");
+        return Pattern.compile("^" + regex + "$");
+    }
+
+    private record CompiledRule(
+            String scope, Pattern pathPattern, String methodPattern, int maxRequests, Duration window) {}
 }

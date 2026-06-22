@@ -20,6 +20,7 @@ import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.auth.store.RedisRefreshTokenStore;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.rate_limit.ClientAddressResolver;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -51,7 +52,9 @@ class AuthControllerTest {
         AuthService authService = mock(AuthService.class);
         AuthRateLimitService authRateLimitService = mock(AuthRateLimitService.class);
         PasswordResetService passwordResetService = mock(PasswordResetService.class);
+        ClientAddressResolver clientAddressResolver = mock(ClientAddressResolver.class);
         HttpServletResponse response = mock(HttpServletResponse.class);
+        when(clientAddressResolver.resolve(any())).thenReturn("127.0.0.1");
         LoginRequest request = new LoginRequest("manager@example.com", "password");
         AuthenticatedUser authUser = new AuthenticatedUser(7L, "manager@example.com", UserRole.MANAGER);
         LoginResponse loginResponse =
@@ -59,7 +62,12 @@ class AuthControllerTest {
         when(authService.login(request)).thenReturn(new LoginResult(loginResponse, authUser));
 
         AuthController controller = new AuthController(
-                authService, authRateLimitService, refreshTokenService, passwordResetService, jwtProperties);
+                authService,
+                authRateLimitService,
+                refreshTokenService,
+                passwordResetService,
+                jwtProperties,
+                clientAddressResolver);
 
         assertThatThrownBy(
                         () -> controller.login(request, mock(jakarta.servlet.http.HttpServletRequest.class), response))

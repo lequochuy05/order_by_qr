@@ -79,6 +79,28 @@ auth:
   password-reset:
     phone-enabled: false
     dev-log-otp: false
+  rate-limit:
+    login-ip:
+      max-requests: 10
+      window: 1m
+    login-account:
+      max-requests: 5
+      window: 1m
+    forgot-password-ip:
+      max-requests: 10
+      window: 15m
+    forgot-password-account:
+      max-requests: 3
+      window: 15m
+    password-reset-ip:
+      max-requests: 10
+      window: 15m
+    password-reset-account:
+      max-requests: 5
+      window: 15m
+    refresh-ip:
+      max-requests: 30
+      window: 1m
 
 server:
   address: 0.0.0.0
@@ -105,6 +127,40 @@ security:
     expiration-ms: ${JWT_EXPIRATION_MS}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS}
     refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME}
+    refresh-cookie-same-site: ${JWT_REFRESH_COOKIE_SAME_SITE:Lax}
+
+rate-limit:
+  rules:
+    - scope: public:ai
+      path: /api/v1/public/ai/chat
+      method: POST
+      max-requests: 10
+      window: 1m
+    - scope: public:orders
+      path: /api/v1/public/orders/**
+      method: POST
+      max-requests: 10
+      window: 1m
+    - scope: public:start-session
+      path: /api/v1/public/tables/*/start-session
+      method: POST
+      max-requests: 5
+      window: 1m
+    - scope: public:heartbeat
+      path: /api/v1/public/sessions/heartbeat
+      method: POST
+      max-requests: 30
+      window: 1m
+    - scope: public:session-state
+      path: /api/v1/public/tables/*/session-state
+      method: GET
+      max-requests: 30
+      window: 1m
+    - scope: public:recommendations
+      path: /api/v1/recommendations/**
+      method: GET
+      max-requests: 30
+      window: 1m
 
 cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME}
@@ -115,6 +171,15 @@ app:
   base-url: ${APP_BASE_URL}
   frontend:
     base-url: ${APP_FRONTEND_BASE_URL}
+  security:
+    default-admin-email: ${APP_DEFAULT_ADMIN_EMAIL:admin@gmail.com}
+    default-admin-password: ${APP_DEFAULT_ADMIN_PASSWORD:admin123}
+  cache:
+    prefix: ${APP_CACHE_PREFIX:qros:v3:}
+  email:
+    from-name: ${APP_EMAIL_FROM_NAME:QROS}
+    brand-name: ${APP_EMAIL_BRAND_NAME:QROS}
+    copyright: ${APP_EMAIL_COPYRIGHT:2026 QROS}
 
 payos:
   client-id: ${PAYOS_CLIENT_ID}
@@ -141,6 +206,14 @@ analytics:
   summary-reconcile-cron: "${ANALYTICS_SUMMARY_RECONCILE_CRON:0 */15 * * * *}"
   summary-reconcile-zone: ${ANALYTICS_SUMMARY_RECONCILE_ZONE:Asia/Ho_Chi_Minh}
   summary-reconcile-days: ${ANALYTICS_SUMMARY_RECONCILE_DAYS:2}
+
+table-session:
+  no-order-expire: ${TABLE_SESSION_NO_ORDER_EXPIRE:30m}
+  token-idle-timeout: ${TABLE_SESSION_TOKEN_IDLE_TIMEOUT:2h}
+  token-max-lifetime: ${TABLE_SESSION_TOKEN_MAX_LIFETIME:12h}
+  heartbeat-write-interval: ${TABLE_SESSION_HEARTBEAT_WRITE_INTERVAL:30s}
+  max-active-tokens-per-session: ${TABLE_SESSION_MAX_ACTIVE_TOKENS:8}
+  cleanup-fixed-delay-ms: ${TABLE_SESSION_CLEANUP_FIXED_DELAY_MS:300000}
 
 gemini:
   api-key: ${GEMINI_API_KEY}

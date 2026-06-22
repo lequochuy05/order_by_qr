@@ -55,6 +55,26 @@ class SecurityConfigRegressionTest {
 
         assertThat(managerPutBlock).contains("ApiRoutes.USERS + \"/**\"");
         assertThat(managerPutBlock).contains("ApiRoutes.TABLES + \"/**\"");
+        assertThat(managerPutBlock).contains("ApiRoutes.SETTINGS");
+    }
+
+    @Test
+    void settingsAreManagerOnlyAndHaveNoDeleteRoute() throws Exception {
+        Path securityRoutesPath = Files.walk(Path.of("src/main/java"))
+                .filter(path -> path.getFileName().toString().equals("SecurityRoutes.java"))
+                .findFirst()
+                .orElseThrow();
+
+        String source = Files.readString(securityRoutesPath);
+        String managerGetBlock = source.substring(
+                source.indexOf("public static final String[] MANAGER_GET"),
+                source.indexOf("public static final String[] STAFF_READ_GET"));
+        String managerDeleteBlock = source.substring(
+                source.indexOf("public static final String[] MANAGER_DELETE"),
+                source.indexOf("public static final String[] KITCHEN_PATCH"));
+
+        assertThat(managerGetBlock).contains("ApiRoutes.SETTINGS");
+        assertThat(managerDeleteBlock).doesNotContain("ApiRoutes.SETTINGS");
     }
 
     @Test

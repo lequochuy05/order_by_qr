@@ -15,7 +15,7 @@ import { Loader2, Receipt } from 'lucide-react'; // Thêm icon Receipt
 import { analyticsService } from '@features/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
-import { getOrderFinalAmount } from '@shared/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 
 const ITEMS_PER_PAGE = 10;
 

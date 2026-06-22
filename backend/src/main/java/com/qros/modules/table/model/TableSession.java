@@ -17,7 +17,7 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@SQLDelete(sql = "UPDATE table_sessions SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE table_sessions SET is_deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @SQLRestriction("is_deleted = false")
 public class TableSession extends BaseEntity {
 
@@ -26,6 +26,7 @@ public class TableSession extends BaseEntity {
     private Long id;
 
     @Version
+    @Column(nullable = false)
     private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
