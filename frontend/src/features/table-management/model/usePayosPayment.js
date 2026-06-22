@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { orderService } from '@features/order-management';
 import { paymentService } from '@features/payment';
+import { calculatePayosTimeLeft } from '@features/payment/lib/paymentExpiry.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
@@ -12,12 +13,6 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { showErrorToast } from '@shared/lib/toast.js';
-
-const calculatePayosTimeLeft = (createdAt) => {
-  if (!createdAt) return 0;
-  const expiresAt = new Date(createdAt).getTime() + 20 * 60 * 1000;
-  return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
-};
 
 const usePayosPayment = ({
   isOpen,
@@ -55,16 +50,17 @@ const usePayosPayment = ({
   }, [isOpen, order?.id]);
 
   useEffect(() => {
-    if (payosStatus !== 'waiting' || !payosData?.createdAt) return undefined;
+    if (payosStatus !== 'waiting' || !payosData?.expiresAt) return undefined;
 
     const updateTimeLeft = () => {
-      const remaining = calculatePayosTimeLeft(payosData.createdAt);
+      const remaining = calculatePayosTimeLeft(payosData.expiresAt);
       setTimeLeft(remaining);
       if (remaining <= 0) setPayosStatus('expired');
     };
+    updateTimeLeft();
     const interval = window.setInterval(updateTimeLeft, 1000);
     return () => window.clearInterval(interval);
-  }, [payosData?.createdAt, payosStatus]);
+  }, [payosData?.expiresAt, payosStatus]);
 
   const buildInvoiceOrder = useCallback(
     (latestOrder, method) => {
@@ -194,7 +190,7 @@ const usePayosPayment = ({
       setPayosData(data);
       setPayosStatus('waiting');
       setPaymentMethod('PAYOS');
-      setTimeLeft(calculatePayosTimeLeft(data.createdAt));
+      setTimeLeft(calculatePayosTimeLeft(data.expiresAt));
 
       const nextPreview = {
         ...preview.previewData,

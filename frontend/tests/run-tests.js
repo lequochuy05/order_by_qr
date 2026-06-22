@@ -2,6 +2,7 @@ import './unit/aiAssistant.test.js';
 import './unit/cacheUtils.test.js';
 import './unit/designSystem.test.js';
 import './unit/errorMessages.test.js';
+import './unit/frontendHardening.test.js';
 import './unit/inventory.test.js';
 import './unit/kitchenItems.test.js';
 import './unit/orderHistoryDates.test.js';

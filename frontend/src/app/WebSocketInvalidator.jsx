@@ -5,6 +5,7 @@ import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { clearAnalyticsCache } from '@features/analytics';
 import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
+import { canSubscribeToOperations } from './webSocketAccess.js';
 
 /**
  * WebSocket Invalidator Layer (Sprint 3D)
@@ -14,11 +15,10 @@ import { useLocation } from 'react-router-dom';
 export const WebSocketInvalidator = () => {
   const { user } = useAuth();
   const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
-  const canSubscribeOperations = Boolean(user) && isAdminRoute;
+  const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
 
   // Lắng nghe /topic/tables (Cập nhật Bàn ăn / Order mới)
-  useWebSocket('/topic/tables', (message) => {
+  useWebSocket(canSubscribeOperations ? '/topic/tables' : null, (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       // Khi có thay đổi bàn -> Invalidate tables board, detail và orders active
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
@@ -51,10 +51,10 @@ export const WebSocketInvalidator = () => {
     }
   };
 
-  useWebSocket('/topic/menu', handleCatalogUpdate);
-  useWebSocket('/topic/combos', handleCatalogUpdate);
-  useWebSocket('/topic/categories', handleCatalogUpdate);
-  useWebSocket('/topic/settings', handleCatalogUpdate);
+  useWebSocket(canSubscribeOperations ? '/topic/menu' : null, handleCatalogUpdate);
+  useWebSocket(canSubscribeOperations ? '/topic/combos' : null, handleCatalogUpdate);
+  useWebSocket(canSubscribeOperations ? '/topic/categories' : null, handleCatalogUpdate);
+  useWebSocket(canSubscribeOperations ? '/topic/settings' : null, handleCatalogUpdate);
 
   return null;
 };
