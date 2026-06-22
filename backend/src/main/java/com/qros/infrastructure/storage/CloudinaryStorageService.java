@@ -46,7 +46,7 @@ public class CloudinaryStorageService implements StorageService {
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = (Map<String, Object>) cloudinary
                     .uploader()
-                    .upload(file.getInputStream(), ObjectUtils.asMap("folder", folder, "resource_type", "auto"));
+                    .upload(file.getInputStream(), ObjectUtils.asMap("folder", folder, "resource_type", "image"));
             String url = Objects.requireNonNull(uploadResult.get("secure_url")).toString();
             log.info("Successfully uploaded image to Cloudinary. URL: {}", url);
             return url;
