@@ -44,6 +44,7 @@ public class ComboMapper {
                 combo.getDisplayOrder(),
                 combo.getCreatedAt(),
                 combo.getUpdatedAt(),
+                combo.getVersion(),
                 items);
     }
 
@@ -62,6 +63,7 @@ public class ComboMapper {
                 combo.getDisplayOrder(),
                 combo.getCreatedAt(),
                 combo.getUpdatedAt(),
+                combo.getVersion(),
                 Collections.emptyList());
     }
 

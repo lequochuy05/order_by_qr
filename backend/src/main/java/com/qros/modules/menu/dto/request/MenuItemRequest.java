@@ -17,4 +17,5 @@ public record MenuItemRequest(
         Boolean active,
         Boolean available,
         Integer displayOrder,
-        @Valid List<ItemOptionRequest> itemOptions) {}
+        @Valid List<ItemOptionRequest> itemOptions,
+        Long version) {}

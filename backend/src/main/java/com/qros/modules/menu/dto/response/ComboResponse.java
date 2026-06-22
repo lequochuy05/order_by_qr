@@ -14,4 +14,5 @@ public record ComboResponse(
         Integer displayOrder,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
+        Long version,
         List<ComboItemResponse> items) {}

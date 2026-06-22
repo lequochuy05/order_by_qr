@@ -16,11 +16,12 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -50,6 +51,7 @@ public class MenuItemService {
     private final TransactionSideEffectService sideEffects;
     private final ApplicationEventPublisher eventPublisher;
     private final MenuItemOptionService menuItemOptionService;
+    private final ImageFileValidator imageFileValidator;
 
     public Page<MenuItemResponse> searchManagementSummary(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
@@ -77,15 +79,6 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public MenuItemResponse create(@NonNull MenuItemRequest req) {
         String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
@@ -122,17 +115,9 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public MenuItemResponse update(@NonNull Long id, @NonNull MenuItemRequest req) {
         MenuItem item = getEntityById(id);
+        assertVersionMatches(item.getVersion(), req.version());
 
         String name = MenuItemOptionService.normalizeRequired(req.name(), "Menu item name cannot be empty");
 
@@ -176,15 +161,6 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public void delete(@NonNull Long id) {
         MenuItem item = getEntityById(id);
 
@@ -206,19 +182,8 @@ public class MenuItemService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.COMBOS,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new BusinessException(ErrorCode.FILE_INVALID);
-        }
+        imageFileValidator.validate(file);
 
         MenuItem item = getEntityById(id);
         String oldUrl = item.getImg();
@@ -256,6 +221,14 @@ public class MenuItemService {
 
     private String normalizeBlankOrDefault(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();
+    }
+
+    private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
+        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+            throw new BusinessException(
+                    ErrorCode.CONCURRENT_MODIFICATION,
+                    "This menu item was changed by another request. Please refresh and try again.");
+        }
     }
 
     private boolean isCustomImage(String image) {

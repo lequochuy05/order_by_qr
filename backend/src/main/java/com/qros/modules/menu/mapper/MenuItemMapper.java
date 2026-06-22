@@ -49,7 +49,8 @@ public class MenuItemMapper {
                 toCategorySummary(item.getCategory()),
                 itemOptions,
                 item.getCreatedAt(),
-                item.getUpdatedAt());
+                item.getUpdatedAt(),
+                item.getVersion());
     }
 
     public MenuItemResponse toSummaryResponse(MenuItem item) {
@@ -69,7 +70,8 @@ public class MenuItemMapper {
                 toCategorySummary(item.getCategory()),
                 Collections.emptyList(),
                 item.getCreatedAt(),
-                item.getUpdatedAt());
+                item.getUpdatedAt(),
+                item.getVersion());
     }
 
     public ItemOptionResponse toOptionResponse(ItemOption option) {

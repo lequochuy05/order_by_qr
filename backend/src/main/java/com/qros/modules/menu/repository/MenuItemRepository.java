@@ -33,6 +33,8 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
       """)
     long countByCategoryIdAndActiveTrue(@Param("categoryId") Long categoryId);
 
+    boolean existsByCategoryId(Long categoryId);
+
     boolean existsByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);

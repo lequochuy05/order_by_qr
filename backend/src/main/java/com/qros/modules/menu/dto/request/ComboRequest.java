@@ -22,4 +22,5 @@ public record ComboRequest(
         Boolean active,
         Boolean available,
         Integer displayOrder,
-        @Valid @NotEmpty(message = "Combo must contain at least one item") List<ComboItemRequest> items) {}
+        @Valid @NotEmpty(message = "Combo must contain at least one item") List<ComboItemRequest> items,
+        Long version) {}

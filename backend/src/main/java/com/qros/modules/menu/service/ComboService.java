@@ -20,7 +20,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -71,15 +70,6 @@ public class ComboService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.COMBOS,
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public ComboResponse create(@NonNull ComboRequest req) {
         String name = normalizeRequired(req.name(), "Combo name cannot be empty");
 
@@ -124,17 +114,9 @@ public class ComboService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.COMBOS,
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public ComboResponse update(@NonNull Long id, @NonNull ComboRequest req) {
         Combo combo = getEntityByIdWithItems(id);
+        assertVersionMatches(combo.getVersion(), req.version());
 
         String name = normalizeRequired(req.name(), "Combo name cannot be empty");
 
@@ -169,15 +151,6 @@ public class ComboService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.COMBOS,
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public void delete(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -188,15 +161,6 @@ public class ComboService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.COMBOS,
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public ComboResponse toggleActive(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -209,15 +173,6 @@ public class ComboService {
     }
 
     @Transactional
-    @CacheEvict(
-            value = {
-                CacheNames.COMBOS,
-                CacheNames.MENU,
-                CacheNames.CATEGORIES,
-                CacheNames.RECOMMENDATIONS,
-                CacheNames.POPULAR_ITEMS
-            },
-            allEntries = true)
     public ComboResponse toggleAvailable(@NonNull Long id) {
         Combo combo = getEntityByIdWithItems(id);
 
@@ -325,6 +280,14 @@ public class ComboService {
                 throw new BusinessException(
                         ErrorCode.BUSINESS_ERROR, "Duplicate menu item in combo: " + item.menuItemId());
             }
+        }
+    }
+
+    private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
+        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+            throw new BusinessException(
+                    ErrorCode.CONCURRENT_MODIFICATION,
+                    "This combo was changed by another request. Please refresh and try again.");
         }
     }
 
