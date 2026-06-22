@@ -51,11 +51,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && "access".equals(jwtService.extractTokenType(token))) {
             String email = jwtService.extractSubject(token);
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-
-            var auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            if (isUsableAccount(userDetails)) {
+                var auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } else {
+                SecurityContextHolder.clearContext();
+            }
         }
         chain.doFilter(request, response);
+    }
+
+    private boolean isUsableAccount(UserDetails userDetails) {
+        return userDetails.isEnabled()
+                && userDetails.isAccountNonLocked()
+                && userDetails.isAccountNonExpired()
+                && userDetails.isCredentialsNonExpired();
     }
 }
