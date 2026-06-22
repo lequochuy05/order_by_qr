@@ -144,12 +144,17 @@ rate-limit:
     - scope: public:start-session
       path: /api/v1/public/tables/*/start-session
       method: POST
-      max-requests: 10
+      max-requests: 5
       window: 1m
     - scope: public:heartbeat
       path: /api/v1/public/sessions/heartbeat
       method: POST
-      max-requests: 60
+      max-requests: 30
+      window: 1m
+    - scope: public:session-state
+      path: /api/v1/public/tables/*/session-state
+      method: GET
+      max-requests: 30
       window: 1m
     - scope: public:recommendations
       path: /api/v1/recommendations/**
@@ -201,6 +206,14 @@ analytics:
   summary-reconcile-cron: "${ANALYTICS_SUMMARY_RECONCILE_CRON:0 */15 * * * *}"
   summary-reconcile-zone: ${ANALYTICS_SUMMARY_RECONCILE_ZONE:Asia/Ho_Chi_Minh}
   summary-reconcile-days: ${ANALYTICS_SUMMARY_RECONCILE_DAYS:2}
+
+table-session:
+  no-order-expire: ${TABLE_SESSION_NO_ORDER_EXPIRE:30m}
+  token-idle-timeout: ${TABLE_SESSION_TOKEN_IDLE_TIMEOUT:2h}
+  token-max-lifetime: ${TABLE_SESSION_TOKEN_MAX_LIFETIME:12h}
+  heartbeat-write-interval: ${TABLE_SESSION_HEARTBEAT_WRITE_INTERVAL:30s}
+  max-active-tokens-per-session: ${TABLE_SESSION_MAX_ACTIVE_TOKENS:8}
+  cleanup-fixed-delay-ms: ${TABLE_SESSION_CLEANUP_FIXED_DELAY_MS:300000}
 
 gemini:
   api-key: ${GEMINI_API_KEY}

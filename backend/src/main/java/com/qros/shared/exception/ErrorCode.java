@@ -30,6 +30,8 @@ public enum ErrorCode {
     PASSWORD_INVALID(HttpStatus.BAD_REQUEST, "Current password is incorrect"),
     PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "Token invalid or expired"),
 
+    SETTINGS_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "System settings are not initialized"),
+
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Category not found"),
     CATEGORY_NAME_EXISTS(HttpStatus.CONFLICT, "Category name already exists"),
     MENU_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Menu item not found"),
@@ -40,6 +42,8 @@ public enum ErrorCode {
     TABLE_NOT_FOUND(HttpStatus.NOT_FOUND, "Table not found"),
     TABLE_CODE_INVALID(HttpStatus.NOT_FOUND, "Invalid table code"),
     TABLE_NUMBER_EXISTS(HttpStatus.CONFLICT, "Table number already exists"),
+    TABLE_IN_USE(HttpStatus.CONFLICT, "Table is currently in use"),
+    TABLE_STATUS_TRANSITION_INVALID(HttpStatus.CONFLICT, "Invalid table status transition"),
     TABLE_QR_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "System error generating QR code"),
     TABLE_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Table session not found"),
     TABLE_SESSION_INVALID(HttpStatus.BAD_REQUEST, "Invalid table session"),

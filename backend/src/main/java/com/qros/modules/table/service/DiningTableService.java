@@ -8,8 +8,10 @@ import com.qros.modules.table.dto.response.DiningTableResponse;
 import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.mapper.DiningTableMapper;
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
@@ -37,6 +39,8 @@ public class DiningTableService {
     private final DiningTableMapper diningTableMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionSideEffectService sideEffects;
+    private final TableSessionRepository sessionRepository;
+    private final TableActiveOrderChecker activeOrderChecker;
 
     @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
     public List<DiningTableResponse> getAllSorted() {
@@ -47,6 +51,10 @@ public class DiningTableService {
 
     public DiningTable getEntityById(@NonNull Long id) {
         return tableRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
+    }
+
+    private DiningTable getEntityByIdForUpdate(Long id) {
+        return tableRepo.findByIdForUpdate(id).orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND));
     }
 
     public DiningTableResponse getById(@NonNull Long id) {
@@ -95,8 +103,7 @@ public class DiningTableService {
         String tableCode = tableCodeGenerator.generate();
         TableQrMedia qrMedia = tableQrService.generate(tableCode);
 
-        sideEffects.afterRollback(
-                () -> tableQrService.delete(qrMedia.publicId()), "delete rolled back table QR media " + tableCode);
+        sideEffects.afterRollback(() -> tableQrService.delete(qrMedia.publicId()), "delete rolled back table QR media");
 
         DiningTable table = DiningTable.builder()
                 .tableNumber(req.tableNumber())
@@ -137,7 +144,8 @@ public class DiningTableService {
             value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
             allEntries = true)
     public DiningTableResponse updateStatus(@NonNull Long id, @NonNull UpdateTableStatusRequest req) {
-        DiningTable table = getEntityById(id);
+        DiningTable table = getEntityByIdForUpdate(id);
+        validateStatusTransition(table, req.status());
 
         table.setStatus(req.status());
 
@@ -152,7 +160,8 @@ public class DiningTableService {
             value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
             allEntries = true)
     public DiningTableResponse regenerateQrCode(@NonNull Long id) {
-        DiningTable table = getEntityById(id);
+        DiningTable table = getEntityByIdForUpdate(id);
+        requireTableNotInUse(table.getId(), "Cannot regenerate QR code while the table is in use");
 
         String oldPublicId = table.getQrCodePublicId();
 
@@ -160,8 +169,7 @@ public class DiningTableService {
         TableQrMedia qrMedia = tableQrService.generate(newTableCode);
 
         sideEffects.afterRollback(
-                () -> tableQrService.delete(qrMedia.publicId()),
-                "delete rolled back regenerated table QR media " + newTableCode);
+                () -> tableQrService.delete(qrMedia.publicId()), "delete rolled back regenerated table QR media");
 
         table.setTableCode(newTableCode);
         table.setQrCodeUrl(qrMedia.url());
@@ -181,7 +189,8 @@ public class DiningTableService {
             value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
             allEntries = true)
     public void delete(@NonNull Long id) {
-        DiningTable table = getEntityById(id);
+        DiningTable table = getEntityByIdForUpdate(id);
+        requireTableNotInUse(table.getId(), "Cannot delete a table with an open session or active order");
         String publicId = table.getQrCodePublicId();
 
         tableRepo.delete(table);
@@ -190,5 +199,42 @@ public class DiningTableService {
                 () -> tableQrService.delete(publicId), "delete table QR media after table delete " + id);
 
         eventPublisher.publishEvent(new TableChangeEvent());
+    }
+
+    private void validateStatusTransition(DiningTable table, TableStatus newStatus) {
+        if (table.getStatus() == newStatus) {
+            return;
+        }
+
+        TableUsage usage = inspectUsage(table.getId());
+        if ((newStatus == TableStatus.AVAILABLE || newStatus == TableStatus.INACTIVE) && usage.inUse()) {
+            throw new BusinessException(
+                    ErrorCode.TABLE_IN_USE,
+                    "Cannot set table to " + newStatus + " while it has an open session or active order");
+        }
+
+        if (newStatus == TableStatus.WAITING_FOR_PAYMENT && !usage.hasActiveOrders()) {
+            throw new BusinessException(
+                    ErrorCode.TABLE_STATUS_TRANSITION_INVALID,
+                    "A table can wait for payment only when it has an active order");
+        }
+    }
+
+    private void requireTableNotInUse(Long tableId, String message) {
+        if (inspectUsage(tableId).inUse()) {
+            throw new BusinessException(ErrorCode.TABLE_IN_USE, message);
+        }
+    }
+
+    private TableUsage inspectUsage(Long tableId) {
+        boolean hasOpenSession = sessionRepository.existsByTableIdAndStatus(tableId, TableSessionStatus.OPEN);
+        boolean hasActiveOrders = activeOrderChecker.hasActiveOrders(tableId);
+        return new TableUsage(hasOpenSession, hasActiveOrders);
+    }
+
+    private record TableUsage(boolean hasOpenSession, boolean hasActiveOrders) {
+        private boolean inUse() {
+            return hasOpenSession || hasActiveOrders;
+        }
     }
 }

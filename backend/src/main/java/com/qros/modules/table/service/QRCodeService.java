@@ -38,10 +38,10 @@ public class QRCodeService {
 
             return outputStream.toByteArray();
         } catch (WriterException e) {
-            log.error("ZXing failed to encode QR payload [{}]: {}", text, e.getMessage(), e);
+            log.error("ZXing failed to encode QR payload, payloadLength={}: {}", text.length(), e.getMessage(), e);
             throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "Unable to encode QR code payload", e);
         } catch (Exception e) {
-            log.error("Failed to generate QR image for payload [{}]: {}", text, e.getMessage(), e);
+            log.error("Failed to generate QR image, payloadLength={}: {}", text.length(), e.getMessage(), e);
             throw new BusinessException(ErrorCode.TABLE_QR_GENERATION_FAILED, "Unable to generate QR code image", e);
         }
     }

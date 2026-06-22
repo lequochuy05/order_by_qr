@@ -39,7 +39,7 @@ public class TableQrService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to generate/upload table QR for tableCode {}: {}", tableCode, e.getMessage(), e);
+            log.error("Failed to generate/upload table QR: {}", e.getMessage(), e);
             throw new BusinessException(
                     ErrorCode.TABLE_QR_GENERATION_FAILED, "System error generating table QR code", e);
         }

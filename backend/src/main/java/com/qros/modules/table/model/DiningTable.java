@@ -20,7 +20,7 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@SQLDelete(sql = "UPDATE tables SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE tables SET is_deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @SQLRestriction("is_deleted = false")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class DiningTable extends BaseEntity {
@@ -28,6 +28,10 @@ public class DiningTable extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Column(length = 10, nullable = false)
     private String tableNumber;

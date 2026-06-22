@@ -30,8 +30,13 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
     @EntityGraph(attributePaths = "table")
     Optional<TableSession> findFirstByTableIdAndStatusOrderByOpenedAtDesc(Long tableId, TableSessionStatus status);
 
+    boolean existsByTableIdAndStatus(Long tableId, TableSessionStatus status);
+
     @EntityGraph(attributePaths = "table")
     List<TableSession> findByStatus(TableSessionStatus status);
+
+    @Query("SELECT s.table.id FROM TableSession s WHERE s.id = :id")
+    Optional<Long> findTableIdById(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = "table")
