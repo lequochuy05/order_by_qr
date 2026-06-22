@@ -63,7 +63,7 @@ class IdempotencyServiceTest {
                         TestResponse.class,
                         () -> new TestResponse("created")))
                 .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.ORDER_IDEMPOTENCY_CONFLICT));
+                        .isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT));
         verify(repository, never()).save(any());
     }
 
