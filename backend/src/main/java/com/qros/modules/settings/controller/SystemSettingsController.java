@@ -6,7 +6,9 @@ import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +28,9 @@ public class SystemSettingsController {
     }
 
     @PutMapping
-    public ApiResponse<SystemSettingsResponse> updateSettings(@Valid @RequestBody SystemSettingsUpdateRequest request) {
-        return ApiResponse.success("System settings updated successfully", settingsService.updateSettings(request));
+    public ApiResponse<SystemSettingsResponse> updateSettings(
+            @Valid @RequestBody SystemSettingsUpdateRequest request, @NonNull Principal principal) {
+        return ApiResponse.success(
+                "System settings updated successfully", settingsService.updateSettings(request, principal.getName()));
     }
 }

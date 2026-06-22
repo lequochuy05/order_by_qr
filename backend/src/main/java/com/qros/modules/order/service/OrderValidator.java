@@ -19,7 +19,7 @@ public class OrderValidator {
     private final SystemSettingsService systemSettingsService;
 
     public void validateSystemAcceptsOrders() {
-        SystemSettings settings = systemSettingsService.getOrCreateSettings();
+        SystemSettings settings = systemSettingsService.getSettingsEntity();
 
         if (Boolean.TRUE.equals(settings.getMaintenanceMode())) {
             throw new BusinessException(

@@ -109,8 +109,7 @@ public final class SecurityRoutes {
         ApiRoutes.TABLES + "/**",
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
-        ApiRoutes.COMBOS + "/**",
-        ApiRoutes.SETTINGS + "/**"
+        ApiRoutes.COMBOS + "/**"
     };
 
     public static final String[] KITCHEN_PATCH = {

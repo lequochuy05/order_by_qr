@@ -4,7 +4,8 @@ import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
 import com.qros.modules.settings.model.SystemSettings;
-import java.math.BigDecimal;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,6 +14,7 @@ public class SystemSettingsMapper {
     public SystemSettingsResponse toResponse(SystemSettings settings) {
         return new SystemSettingsResponse(
                 settings.getId(),
+                settings.getVersion(),
                 settings.getRestaurantName(),
                 settings.getRestaurantPhone(),
                 settings.getRestaurantEmail(),
@@ -53,26 +55,17 @@ public class SystemSettingsMapper {
         settings.setOpeningTime(request.openingTime());
         settings.setClosingTime(request.closingTime());
         settings.setCurrency(normalizeCurrency(request.currency()));
-        settings.setTaxPercent(defaultMoneyPercent(request.taxPercent()));
-        settings.setServiceChargePercent(defaultMoneyPercent(request.serviceChargePercent()));
-        settings.setOrderingEnabled(request.orderingEnabled() != null ? request.orderingEnabled() : true);
-        settings.setMaintenanceMode(request.maintenanceMode() != null ? request.maintenanceMode() : false);
-    }
-
-    public SystemSettings defaultSettings() {
-        return SystemSettings.builder()
-                .id(1L)
-                .restaurantName("QROS Restaurant")
-                .currency("VND")
-                .taxPercent(BigDecimal.ZERO)
-                .serviceChargePercent(BigDecimal.ZERO)
-                .orderingEnabled(true)
-                .maintenanceMode(false)
-                .build();
+        settings.setTaxPercent(request.taxPercent());
+        settings.setServiceChargePercent(request.serviceChargePercent());
+        settings.setOrderingEnabled(request.orderingEnabled());
+        settings.setMaintenanceMode(request.maintenanceMode());
     }
 
     private String normalizeRequiredText(String value) {
-        return value == null ? null : value.trim();
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Restaurant name cannot be empty");
+        }
+        return value.trim();
     }
 
     private String normalizeNullableText(String value) {
@@ -85,13 +78,8 @@ public class SystemSettingsMapper {
 
     private String normalizeCurrency(String currency) {
         if (currency == null || currency.isBlank()) {
-            return "VND";
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Currency is required");
         }
-
         return currency.trim().toUpperCase();
-    }
-
-    private BigDecimal defaultMoneyPercent(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
     }
 }
