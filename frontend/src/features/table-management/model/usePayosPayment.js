@@ -11,8 +11,11 @@ import {
 import { printInvoice } from '@entities/order/lib/invoiceGenerator.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
+import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
+import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { showErrorToast } from '@shared/lib/toast.js';
+import useSettingsStore from '@shared/model/settingsStore.js';
 
 const usePayosPayment = ({
   isOpen,
@@ -24,7 +27,11 @@ const usePayosPayment = ({
   preview,
   paymentDraft,
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const settings = useSettingsStore((state) => state.settings);
+  const cashPaymentEnabled = settings.cashPaymentEnabled !== false;
+  const onlinePaymentEnabled = settings.onlinePaymentEnabled !== false;
+  const defaultPaymentMethod = cashPaymentEnabled ? 'CASH' : 'PAYOS';
+  const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod);
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosData, setPayosData] = useState(null);
   const [payosStatus, setPayosStatus] = useState('idle');
@@ -38,7 +45,7 @@ const usePayosPayment = ({
   useEffect(() => {
     if (!isOpen) return undefined;
     const timeout = window.setTimeout(() => {
-      setPaymentMethod('CASH');
+      setPaymentMethod(defaultPaymentMethod);
       setPayosStatus('idle');
       setPayosData(null);
       setPayosError('');
@@ -47,7 +54,15 @@ const usePayosPayment = ({
       paymentSuccessHandledRef.current = false;
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [isOpen, order?.id]);
+  }, [defaultPaymentMethod, isOpen, order?.id]);
+
+  useEffect(() => {
+    if (paymentMethod === 'CASH' && !cashPaymentEnabled && onlinePaymentEnabled) {
+      setPaymentMethod('PAYOS');
+    } else if (paymentMethod === 'PAYOS' && !onlinePaymentEnabled && cashPaymentEnabled) {
+      setPaymentMethod('CASH');
+    }
+  }, [cashPaymentEnabled, onlinePaymentEnabled, paymentMethod]);
 
   useEffect(() => {
     if (payosStatus !== 'waiting' || !payosData?.expiresAt) return undefined;
@@ -106,12 +121,14 @@ const usePayosPayment = ({
       }
 
       const invoiceOrder = buildInvoiceOrder(latestOrder, methodOverride);
-      printInvoice({
-        order: invoiceOrder,
-        table,
-        paidBy: invoiceOrder.paidByName || currentUser?.fullName || 'Admin',
-        paidAt: invoiceOrder.paymentTime || new Date(),
-      });
+      if (settings.autoPrintBill !== false) {
+        printInvoice({
+          order: invoiceOrder,
+          table,
+          paidBy: invoiceOrder.paidByName || currentUser?.fullName || 'Admin',
+          paidAt: invoiceOrder.paymentTime || new Date(),
+        });
+      }
       paymentDraft.clearPaymentDraft();
       onPaymentSuccess();
       onClose();
@@ -124,6 +141,7 @@ const usePayosPayment = ({
       order?.id,
       paymentDraft,
       paymentMethod,
+      settings.autoPrintBill,
       table,
     ],
   );
@@ -133,8 +151,15 @@ const usePayosPayment = ({
     paymentSuccessHandledRef.current = true;
     setPayosStatus('success');
     setPaymentMethod('PAYOS');
+    if (settings.paymentNotificationEnabled !== false) {
+      playNotificationSound();
+      showBrowserNotification('Thanh toán thành công', {
+        body: `Đơn bàn ${table?.tableNumber || ''} đã được PayOS xác nhận.`,
+        tag: `payment-${order?.id}`,
+      });
+    }
     window.setTimeout(() => finishPayment('PAYOS'), 1500);
-  }, [finishPayment]);
+  }, [finishPayment, order?.id, settings.paymentNotificationEnabled, table?.tableNumber]);
 
   useEffect(() => {
     if (payosStatus !== 'waiting' || !payosData?.transactionId || !order?.id) return undefined;
@@ -183,6 +208,7 @@ const usePayosPayment = ({
   );
 
   const handleCreatePayosQR = useCallback(async () => {
+    if (!onlinePaymentEnabled) return;
     setPayosLoading(true);
     setPayosError('');
     try {
@@ -225,7 +251,7 @@ const usePayosPayment = ({
     } finally {
       setPayosLoading(false);
     }
-  }, [order, paymentDraft, preview]);
+  }, [onlinePaymentEnabled, order, paymentDraft, preview]);
 
   const handleCancelPayos = useCallback(async () => {
     if (!payosData) return;
@@ -242,6 +268,7 @@ const usePayosPayment = ({
   }, [payosData]);
 
   const handleConfirmCashPay = useCallback(async () => {
+    if (!cashPaymentEnabled) return;
     const confirmed = await confirm(
       'Xác nhận thanh toán',
       `Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`,
@@ -255,13 +282,21 @@ const usePayosPayment = ({
     } catch (error) {
       showErrorToast(error);
     }
-  }, [confirm, finishPayment, order?.id, preview.voucherCode, table?.tableNumber]);
+  }, [
+    cashPaymentEnabled,
+    confirm,
+    finishPayment,
+    order?.id,
+    preview.voucherCode,
+    table?.tableNumber,
+  ]);
 
   const selectCash = useCallback(() => {
+    if (!cashPaymentEnabled) return;
     setPaymentMethod('CASH');
     setPayosStatus('idle');
     setPayosData(null);
-  }, []);
+  }, [cashPaymentEnabled]);
 
   return {
     paymentMethod,
@@ -270,6 +305,8 @@ const usePayosPayment = ({
     payosStatus,
     timeLeft,
     payosError,
+    cashPaymentEnabled,
+    onlinePaymentEnabled,
     setPaymentMethod,
     selectCash,
     handleCreatePayosQR,

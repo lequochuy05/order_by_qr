@@ -3,6 +3,7 @@ package com.qros.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,8 @@ import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
 import com.qros.modules.payment.service.PaymentPersistenceService;
 import com.qros.modules.payment.service.PaymentService;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
@@ -61,14 +64,28 @@ class PayosServiceImplTest {
     @Mock
     UserRepository userRepository;
 
+    @Mock
+    SystemSettingsService settingsService;
+
     private PaymentService paymentService;
 
     @BeforeEach
     void setUp() {
         PaymentPersistenceService persistenceService = new PaymentPersistenceService(
-                transactionRepository, orderSettlementService, paymentCompletionService, userRepository);
-        paymentService =
-                new PaymentService(gatewayResolver, new PaymentMapper(), persistenceService, new SimpleMeterRegistry());
+                transactionRepository,
+                orderSettlementService,
+                paymentCompletionService,
+                userRepository,
+                settingsService);
+        paymentService = new PaymentService(
+                gatewayResolver, new PaymentMapper(), persistenceService, settingsService, new SimpleMeterRegistry());
+        lenient()
+                .when(settingsService.getSettingsEntity())
+                .thenReturn(SystemSettings.builder()
+                        .cashPaymentEnabled(true)
+                        .onlinePaymentEnabled(true)
+                        .paymentQrExpiresInMinutes(20)
+                        .build());
     }
 
     @Test

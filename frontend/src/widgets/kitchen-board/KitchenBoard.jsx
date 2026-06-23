@@ -1,6 +1,10 @@
+import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { ErrorBoundary } from '@shared/ui';
+import { showBrowserNotification } from '@shared/lib/browserNotification.js';
+import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSound.js';
+import useSettingsStore from '@shared/model/settingsStore.js';
 import KitchenColumn from './KitchenColumn.jsx';
 import { KITCHEN_COLUMNS } from './lib/kitchenItems.js';
 import useKitchenFilters from './model/useKitchenFilters.js';
@@ -11,9 +15,33 @@ import KitchenSummaryCards from './ui/KitchenSummaryCards.jsx';
 import KitchenToolbar from './ui/KitchenToolbar.jsx';
 
 const KitchenBoardContent = () => {
+  const settings = useSettingsStore((state) => state.settings);
+  const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
   const kitchen = useKitchenOrders();
-  const filters = useKitchenFilters(kitchen.orders, kitchen.now);
-  const notifications = useKitchenNotifications(() => kitchen.fetchKitchenOrders({ silent: true }));
+  const filters = useKitchenFilters(kitchen.orders, kitchen.now, overdueMinutes);
+  const notifications = useKitchenNotifications(
+    () => kitchen.fetchKitchenOrders({ silent: true }),
+    settings.newOrderNotificationEnabled !== false,
+  );
+  const previousOverdueCountRef = useRef(null);
+
+  useEffect(() => {
+    const previousCount = previousOverdueCountRef.current;
+    previousOverdueCountRef.current = filters.summary.overdue;
+
+    if (
+      previousCount !== null &&
+      filters.summary.overdue > previousCount &&
+      settings.kitchenOverdueNotificationEnabled !== false
+    ) {
+      playNotificationSound();
+      playLoudSound();
+      showBrowserNotification('Cảnh báo bếp', {
+        body: `${filters.summary.overdue} món đã chờ quá ${overdueMinutes} phút.`,
+        tag: 'kitchen-overdue',
+      });
+    }
+  }, [filters.summary.overdue, overdueMinutes, settings.kitchenOverdueNotificationEnabled]);
 
   return (
     <div className="min-h-screen w-full min-w-0 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -27,7 +55,7 @@ const KitchenBoardContent = () => {
             onRefresh={() => kitchen.fetchKitchenOrders()}
           />
         </div>
-        <KitchenSummaryCards summary={filters.summary} />
+        <KitchenSummaryCards summary={filters.summary} overdueMinutes={overdueMinutes} />
       </section>
 
       <KitchenFilters

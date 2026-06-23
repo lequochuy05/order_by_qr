@@ -24,12 +24,17 @@ const SummaryCard = ({ label, value, icon, tone }) => (
   </div>
 );
 
-const KitchenSummaryCards = ({ summary }) => (
+const KitchenSummaryCards = ({ summary, overdueMinutes }) => (
   <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
     <SummaryCard label="Chờ nấu" value={summary.pending} icon={Clock3} tone="orange" />
     <SummaryCard label="Đang nấu" value={summary.cooking} icon={Flame} tone="blue" />
     <SummaryCard label="Vừa hoàn thành" value={summary.finished} icon={CheckCircle2} tone="green" />
-    <SummaryCard label="Món quá 20 phút" value={summary.overdue} icon={AlertTriangle} tone="red" />
+    <SummaryCard
+      label={`Món quá ${overdueMinutes} phút`}
+      value={summary.overdue}
+      icon={AlertTriangle}
+      tone="red"
+    />
     <SummaryCard
       label="Chờ trung bình"
       value={`${summary.averageWait} phút`}

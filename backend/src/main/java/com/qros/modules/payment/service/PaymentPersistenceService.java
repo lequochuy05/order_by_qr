@@ -10,6 +10,7 @@ import com.qros.modules.payment.dto.request.PaymentCreateRequest;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
@@ -30,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PaymentPersistenceService {
 
-    private static final int PAYMENT_LINK_EXPIRY_MINUTES = 20;
     private static final List<PaymentTransactionStatus> ONLINE_ACTIVE_STATUSES =
             List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING);
 
@@ -38,6 +38,7 @@ public class PaymentPersistenceService {
     private final OrderSettlementService orderSettlementService;
     private final PaymentCompletionService paymentCompletionService;
     private final UserRepository userRepository;
+    private final SystemSettingsService settingsService;
 
     @Transactional
     public OnlinePaymentPreparation prepareOnline(@NonNull PaymentCreateRequest request) {
@@ -74,7 +75,8 @@ public class PaymentPersistenceService {
                 .paymentMethod(method)
                 .businessDate(order.getBusinessDate() != null ? order.getBusinessDate() : AppTime.today())
                 .idempotencyKey(idempotencyKey)
-                .expiresAt(AppTime.now().plusMinutes(PAYMENT_LINK_EXPIRY_MINUTES))
+                .expiresAt(AppTime.now()
+                        .plusMinutes(settingsService.getSettingsEntity().getPaymentQrExpiresInMinutes()))
                 .build();
 
         return new OnlinePaymentPreparation(transactionRepository.saveAndFlush(transaction), true);

@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock3, Flame } from 'lucide-react';
 
-export const OVERDUE_MINUTES = 20;
+export const DEFAULT_OVERDUE_MINUTES = 20;
+export const OVERDUE_MINUTES = DEFAULT_OVERDUE_MINUTES;
 
 export const KITCHEN_COLUMNS = [
   {
@@ -32,7 +33,7 @@ const minutesSince = (dateValue, now) => {
   return Math.max(0, Math.floor((now - timestamp) / 60_000));
 };
 
-export const buildKitchenItems = (orders, now) =>
+export const buildKitchenItems = (orders, now, overdueMinutes = DEFAULT_OVERDUE_MINUTES) =>
   orders.flatMap((order) =>
     (order.orderItems || [])
       .filter((item) => ['PENDING', 'COOKING', 'FINISHED'].includes(item.status))
@@ -54,7 +55,7 @@ export const buildKitchenItems = (orders, now) =>
           statusUpdatedAt,
           waitMinutes,
           stageMinutes: minutesSince(statusUpdatedAt, now),
-          isOverdue: item.status !== 'FINISHED' && waitMinutes >= OVERDUE_MINUTES,
+          isOverdue: item.status !== 'FINISHED' && waitMinutes >= overdueMinutes,
           hasNotes: Boolean(item.notes?.trim()),
         };
       }),

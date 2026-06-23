@@ -28,6 +28,7 @@ import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.repository.DiningTableRepository;
@@ -77,6 +78,7 @@ public class OrderCreationService {
     private final OrderValidator orderValidator;
     private final TableSessionService tableSessionService;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final SystemSettingsService settingsService;
 
     private Counter ordersCreatedCounter;
 
@@ -134,6 +136,7 @@ public class OrderCreationService {
         inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
+        applyAutoConfirmation(order, source);
 
         Order saved = orderRepository.save(order);
 
@@ -150,6 +153,14 @@ public class OrderCreationService {
         log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
 
         return orderMapper.toResponse(saved);
+    }
+
+    private void applyAutoConfirmation(Order order, BatchSource source) {
+        if (source == BatchSource.QR
+                && order.getStatus() == OrderStatus.PENDING
+                && Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
+            order.setStatus(OrderStatus.SERVING);
+        }
     }
 
     private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {

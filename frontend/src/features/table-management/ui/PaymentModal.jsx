@@ -43,6 +43,8 @@ const PaymentModalContent = (props) => {
         <PaymentMethodTabs
           paymentMethod={payment.paymentMethod}
           payosStatus={payment.payosStatus}
+          cashEnabled={payment.cashPaymentEnabled}
+          onlineEnabled={payment.onlinePaymentEnabled}
           onSelectCash={payment.selectCash}
           onSelectPayos={() => payment.setPaymentMethod('PAYOS')}
         />

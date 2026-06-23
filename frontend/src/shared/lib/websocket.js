@@ -59,10 +59,7 @@ class WebSocketService {
       },
       onStompError: (frame) => {
         if (this.client !== client) return;
-        console.error(
-          `${this.name} WebSocket broker error:`,
-          frame.headers?.message || frame.body,
-        );
+        console.error(`${this.name} WebSocket broker error:`, frame.headers?.message || frame.body);
       },
     });
     this.client = client;

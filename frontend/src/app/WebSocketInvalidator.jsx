@@ -5,6 +5,8 @@ import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { clearAnalyticsCache } from '@features/analytics';
 import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import useSettingsStore from '@shared/model/settingsStore.js';
 import { canSubscribeToOperations, isCustomerMenuPath } from './webSocketAccess.js';
 
 /**
@@ -17,6 +19,14 @@ export const WebSocketInvalidator = () => {
   const location = useLocation();
   const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
   const canSubscribePublicCatalog = isCustomerMenuPath(location.pathname);
+  const canSubscribeSettings = Boolean(user) || canSubscribePublicCatalog;
+  const settings = useSettingsStore((state) => state.settings);
+  const fetchSettings = useSettingsStore((state) => state.fetchSettings);
+  const refreshSettings = useSettingsStore((state) => state.invalidateAndRefetch);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   // Lắng nghe /topic/tables trong khu vực quản trị
   useWebSocket(
@@ -38,7 +48,9 @@ export const WebSocketInvalidator = () => {
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         // Có đơn mới / duyệt đơn -> Báo chuông cho Admin
-        playNotificationSound();
+        if (settings.newOrderNotificationEnabled !== false) {
+          playNotificationSound();
+        }
 
         // Cập nhật lại toàn bộ Lịch sử đơn hàng, Active orders, Table board
         queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
@@ -69,9 +81,17 @@ export const WebSocketInvalidator = () => {
   useWebSocket(canSubscribePublicCatalog ? '/topic/categories' : null, handleCatalogUpdate, {
     scope: 'public',
   });
-  useWebSocket(canSubscribePublicCatalog ? '/topic/settings' : null, handleCatalogUpdate, {
-    scope: 'public',
-  });
+  useWebSocket(
+    canSubscribeSettings ? '/topic/settings' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+        refreshSettings();
+        if (canSubscribePublicCatalog) handleCatalogUpdate(message);
+      }
+    },
+    { scope: canSubscribePublicCatalog ? 'public' : 'admin' },
+  );
 
   return null;
 };

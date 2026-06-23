@@ -6,12 +6,15 @@ import {
   summarizeKitchenItems,
 } from '../lib/kitchenItems.js';
 
-const useKitchenFilters = (orders, now) => {
+const useKitchenFilters = (orders, now, overdueMinutes) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [attentionFilter, setAttentionFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
-  const kitchenItems = useMemo(() => buildKitchenItems(orders, now), [now, orders]);
+  const kitchenItems = useMemo(
+    () => buildKitchenItems(orders, now, overdueMinutes),
+    [now, orders, overdueMinutes],
+  );
   const categories = useMemo(
     () =>
       [...new Set(kitchenItems.map((item) => item.category))].sort((a, b) =>

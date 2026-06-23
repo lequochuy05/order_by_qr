@@ -12,6 +12,8 @@ import com.qros.modules.payment.gateway.PaymentGatewayResolver;
 import com.qros.modules.payment.mapper.PaymentMapper;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -32,9 +34,12 @@ public class PaymentService {
     private final PaymentGatewayResolver gatewayResolver;
     private final PaymentMapper paymentMapper;
     private final PaymentPersistenceService persistenceService;
+    private final SystemSettingsService settingsService;
     private final MeterRegistry meterRegistry;
 
     public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId) {
+        validatePaymentMethodEnabled(request.paymentMethod());
+
         if (request.paymentMethod() == PaymentMethod.CASH) {
             try {
                 return paymentMapper.toCreateResponse(persistenceService.settleCash(request, userId));
@@ -97,6 +102,19 @@ public class PaymentService {
 
     public void confirmPaymentFromWebhook(PaymentWebhookResult webhookResult) {
         persistenceService.confirmWebhook(webhookResult);
+    }
+
+    private void validatePaymentMethodEnabled(PaymentMethod paymentMethod) {
+        SystemSettings settings = settingsService.getSettingsEntity();
+        boolean enabled = paymentMethod == PaymentMethod.CASH
+                ? Boolean.TRUE.equals(settings.getCashPaymentEnabled())
+                : Boolean.TRUE.equals(settings.getOnlinePaymentEnabled());
+
+        if (!enabled) {
+            throw new BusinessException(
+                    ErrorCode.FEATURE_DISABLED,
+                    paymentMethod == PaymentMethod.CASH ? "Cash payment is disabled" : "Online payment is disabled");
+        }
     }
 
     private boolean isActiveOnline(PaymentTransaction transaction) {

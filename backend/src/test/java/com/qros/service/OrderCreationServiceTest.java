@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,6 +32,8 @@ import com.qros.modules.order.service.OrderTableSyncService;
 import com.qros.modules.order.service.OrderValidator;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.enums.TableStatus;
@@ -97,6 +100,9 @@ class OrderCreationServiceTest {
     @Mock
     PaymentTransactionRepository paymentTransactionRepository;
 
+    @Mock
+    SystemSettingsService settingsService;
+
     private OrderCreationService orderCreationService;
 
     @BeforeEach
@@ -117,7 +123,11 @@ class OrderCreationServiceTest {
                 inventoryReservationService,
                 orderValidator,
                 tableSessionService,
-                paymentTransactionRepository);
+                paymentTransactionRepository,
+                settingsService);
+        lenient()
+                .when(settingsService.getSettingsEntity())
+                .thenReturn(SystemSettings.builder().autoConfirmOrders(false).build());
         orderCreationService.initCounters();
     }
 

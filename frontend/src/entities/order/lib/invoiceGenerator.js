@@ -20,6 +20,9 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const storePhone = settings.restaurantPhone || '';
   const wifiSsid = settings.wifiName || settings.wifiSsid || '';
   const wifiPassword = settings.wifiPassword || '';
+  const billTitle = settings.billTitle || 'HÓA ĐƠN THANH TOÁN';
+  const billFooterMessage = settings.billFooterMessage || 'CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!';
+  const paperWidth = settings.billPaperSize === '58' ? '58mm' : '80mm';
 
   const items = order.orderItems || [];
   const subtotalAmount = getOrderSubtotalAmount(order);
@@ -107,9 +110,10 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
     : new Date().toLocaleString('vi-VN');
 
   // Wifi footer section (only if wifi configured)
-  const wifiHtml = wifiSsid
-    ? `<div style="font-size: 11px; margin-top: 5px;">Wifi: ${wifiSsid}${wifiPassword ? ` / Pass: ${wifiPassword}` : ''}</div>`
-    : '';
+  const wifiHtml =
+    settings.showWifiOnBill !== false && wifiSsid
+      ? `<div style="font-size: 11px; margin-top: 5px;">Wifi: ${wifiSsid}${wifiPassword ? ` / Pass: ${wifiPassword}` : ''}</div>`
+      : '';
 
   // 4. Template HTML hoàn chỉnh
   return `
@@ -118,10 +122,10 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   <head>
     <meta charset="UTF-8">
     <style>
-      @page { size: 80mm auto; margin: 0; }
+      @page { size: ${paperWidth} auto; margin: 0; }
       body { 
         font-family: 'Courier New', Courier, monospace; 
-        width: 80mm; margin: 0 auto; padding: 5mm;
+        width: ${paperWidth}; margin: 0 auto; padding: 5mm;
         color: #000; background: #fff; line-height: 1.4; font-size: 13px;
       }
       .container { width: 100%; }
@@ -145,7 +149,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
         <div class="store-name">${storeName}</div>
         ${storeAddress ? `<div class="info">Đ/C: ${storeAddress}</div>` : ''}
         ${storePhone ? `<div class="info">SĐT: ${storePhone}</div>` : ''}
-        <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">HÓA ĐƠN THANH TOÁN</div>
+        <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">${billTitle}</div>
       </div>
 
       <div class="info">Mã đơn: <span class="bold">#${order.id}</span></div>
@@ -197,7 +201,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       <div class="divider"></div>
       
       <div class="footer">
-        <div style="font-weight: bold;">CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!</div>
+        <div style="font-weight: bold;">${billFooterMessage}</div>
         ${wifiHtml}
       </div>
     </div>
