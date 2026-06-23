@@ -318,7 +318,7 @@ const VoucherModal = ({
       <ModalActions
         onClose={onClose}
         formId="voucherForm"
-        submitLabel={initialData ? 'Cập nhật' : 'Tạo Voucher'}
+        submitLabel={initialData ? 'Lưu thay đổi' : 'Tạo Voucher'}
         isSubmitting={isSubmitting}
         disabled={!isChanged}
       />

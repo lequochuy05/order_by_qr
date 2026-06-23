@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2, Ticket, Pencil, Trash2 } from 'lucide-react';
+import { Loader2, Ticket } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { voucherService } from '@features/voucher-management/api/voucherService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
+import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';
 import VoucherModal from './VoucherModal.jsx';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
@@ -199,7 +200,7 @@ const VoucherManager = () => {
             return (
               <div
                 key={v.id}
-                className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                className="flex h-full flex-col rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md"
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="bg-orange-50 p-3 rounded-2xl text-orange-500">
@@ -238,24 +239,14 @@ const VoucherManager = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setEditingVoucher(v);
-                      setFormErrors({});
-                      setIsModalOpen(true);
-                    }}
-                    className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(v.id)}
-                    className="flex-1 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex justify-center"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                <EditDeleteActions
+                  onEdit={() => {
+                    setEditingVoucher(v);
+                    setFormErrors({});
+                    setIsModalOpen(true);
+                  }}
+                  onDelete={() => handleDelete(v.id)}
+                />
               </div>
             );
           })}

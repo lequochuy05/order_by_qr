@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
+import { EditDeleteActions } from '@shared/ui';
 
 const CategoryCard = ({ category, onEdit, onDelete }) => (
   <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-md transition-all flex flex-col h-full">
@@ -19,20 +20,10 @@ const CategoryCard = ({ category, onEdit, onDelete }) => (
     <h3 className="font-bold text-gray-800 text-sm mb-3 text-center line-clamp-1 flex-grow">
       {category.name}
     </h3>
-    <div className="flex gap-2 mt-auto">
-      <button
-        onClick={() => onEdit(category)}
-        className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100"
-      >
-        <Pencil size={14} />
-      </button>
-      <button
-        onClick={() => onDelete(category.id)}
-        className="flex-1 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all flex justify-center border border-red-100"
-      >
-        <Trash2 size={14} />
-      </button>
-    </div>
+    <EditDeleteActions
+      onEdit={() => onEdit(category)}
+      onDelete={() => onDelete(category.id)}
+    />
   </div>
 );
 

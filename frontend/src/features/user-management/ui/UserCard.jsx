@@ -4,10 +4,9 @@ import {
   UtensilsCrossed,
   Mail,
   Phone,
-  Pencil,
-  Trash2,
 } from 'lucide-react';
 import { fmtRole, fmtStatus } from '@shared/lib/formatters.js';
+import { EditDeleteActions } from '@shared/ui';
 
 const UserCard = ({ staff, onEdit, onDelete }) => {
   // Kiểm tra an toàn để tránh lỗi nếu staff bị null/undefined
@@ -81,21 +80,7 @@ const UserCard = ({ staff, onEdit, onDelete }) => {
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2 border-t border-gray-100 pt-4 mt-auto">
-        <button
-          onClick={onEdit}
-          className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2 font-medium text-sm"
-        >
-          <Pencil size={16} /> Sửa
-        </button>
-        <button
-          onClick={onDelete}
-          className="w-12 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
-        >
-          <Trash2 size={18} />
-        </button>
-      </div>
+      <EditDeleteActions onEdit={onEdit} onDelete={onDelete} />
     </div>
   );
 };

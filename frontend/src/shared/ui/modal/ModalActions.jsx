@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import SaveButton from '../SaveButton.jsx';
 
 const ModalActions = ({
   onClose,
@@ -21,21 +21,15 @@ const ModalActions = ({
     >
       {cancelLabel}
     </button>
-    <button
+    <SaveButton
       form={formId}
       type="submit"
-      disabled={isSubmitting || disabled}
-      className={`flex-[2] rounded-2xl py-4 text-[11px] font-black uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95 ${
-        isSubmitting || disabled
-          ? 'cursor-not-allowed bg-gray-300 text-gray-500 shadow-none'
-          : 'bg-orange-500 text-white shadow-orange-200 hover:bg-orange-600'
-      }`}
-    >
-      <span className="flex items-center justify-center gap-2">
-        {isSubmitting && <Loader2 size={16} className="animate-spin" />}
-        {isSubmitting ? submittingLabel : submitLabel}
-      </span>
-    </button>
+      saving={isSubmitting}
+      disabled={disabled}
+      label={submitLabel}
+      savingLabel={submittingLabel}
+      className="flex-[2] py-4"
+    />
   </div>
 );
 

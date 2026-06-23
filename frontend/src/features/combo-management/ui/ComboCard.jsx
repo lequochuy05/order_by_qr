@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pencil, Trash2, Power, PowerOff, Package, Loader2 } from 'lucide-react';
+import { Power, PowerOff, Package } from 'lucide-react';
 import { fmtVND, fmtStatus } from '@shared/lib/formatters.js';
+import { EditDeleteActions } from '@shared/ui';
 
 const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => (
   <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-xl transition-all flex flex-col h-full relative overflow-hidden">
@@ -34,26 +35,20 @@ const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => 
       </div>
     </div>
 
-    <div className="flex gap-3 mt-auto relative z-10">
-      <button
-        onClick={() => onEdit(combo.id)}
-        disabled={isEditing}
-        className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100 font-bold disabled:opacity-60 disabled:cursor-wait"
-      >
-        {isEditing ? <Loader2 size={18} className="animate-spin" /> : <Pencil size={18} />}
-      </button>
+    <div className="relative z-10 mt-auto">
       <button
         onClick={() => onToggle(combo.id)}
-        className={`flex-1 py-3 rounded-xl transition-all flex justify-center border font-bold ${combo.active ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 border-green-100 hover:bg-green-600 hover:text-white'}`}
+        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-bold transition-all ${combo.active ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 border-green-100 hover:bg-green-600 hover:text-white'}`}
       >
         {combo.active ? <PowerOff size={18} /> : <Power size={18} />}
+        {combo.active ? 'Tạm ngưng' : 'Kích hoạt'}
       </button>
-      <button
-        onClick={() => onDelete(combo.id)}
-        className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all border border-gray-100"
-      >
-        <Trash2 size={18} />
-      </button>
+      <EditDeleteActions
+        onEdit={() => onEdit(combo.id)}
+        onDelete={() => onDelete(combo.id)}
+        editing={isEditing}
+        className="mt-3"
+      />
     </div>
   </div>
 );
