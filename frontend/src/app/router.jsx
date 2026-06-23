@@ -6,6 +6,8 @@ import AdminLayout from '@widgets/admin-layout/AdminLayout.jsx';
 import { ErrorBoundary } from '@shared/ui';
 
 const LoginPage = lazy(() => import('@pages/auth/LoginPage.jsx'));
+const ForgotPasswordPage = lazy(() => import('@pages/auth/ForgotPasswordPage.jsx'));
+const ResetPasswordPage = lazy(() => import('@pages/auth/ResetPasswordPage.jsx'));
 const OrderingPage = lazy(() => import('@pages/customer/OrderingPage.jsx'));
 const DashboardPage = lazy(() => import('@pages/admin/DashboardPage.jsx'));
 const ProfilePage = lazy(() => import('@pages/admin/ProfilePage.jsx'));
@@ -48,6 +50,8 @@ const AppRouter = () => (
         <Route path="/:tableCode/menu" element={<CustomerOrderingRoute />} />
         <Route path="/menu" element={<CustomerOrderingRoute />} />
         <Route path="/login" element={<AuthRoute />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route
           element={

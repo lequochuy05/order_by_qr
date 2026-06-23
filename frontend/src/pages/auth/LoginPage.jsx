@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { authService, useAuth } from '@features/auth';
 import { Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import { FaGoogle, FaFacebook, FaTwitter } from 'react-icons/fa';
@@ -68,7 +68,6 @@ const LoginPage = () => {
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="email"
-                required
                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
                 placeholder="abc@xyz.com"
                 onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
@@ -85,16 +84,15 @@ const LoginPage = () => {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="password"
-                required
                 className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
                 placeholder="••••••••"
                 onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
               />
             </div>
             <div className="flex justify-end">
-              <a href="#" className="text-xs text-emerald-600 hover:underline">
+              <Link to="/forgot-password" className="text-xs text-emerald-600 hover:underline">
                 Quên mật khẩu?
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -120,7 +118,7 @@ const LoginPage = () => {
 
           <div className="flex justify-center gap-6 mt-4">
             <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#DB4437]">
-              <FaGoogle size={24} /> {/* Gọi trực tiếp như một Component */}
+              <FaGoogle size={24} />
             </button>
 
             <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#4267B2]">

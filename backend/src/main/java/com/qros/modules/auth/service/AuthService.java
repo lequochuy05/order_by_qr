@@ -39,12 +39,12 @@ public class AuthService {
                 .findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
-        }
-
         if (!passwordEncoder.matches(req.password(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
         String accessToken = createAccessToken(user);

@@ -21,13 +21,22 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     private final StringRedisTemplate redisTemplate;
 
     @Override
-    public void create(@NonNull String key, long ttlMs) {
+    public void create(@NonNull String key, @NonNull String value, long ttlMs) {
         if (ttlMs <= 0) {
             throw new IllegalArgumentException("Refresh token TTL must be positive");
         }
 
         try {
-            redisTemplate.opsForValue().set(key, STORED_VALUE, Duration.ofMillis(ttlMs));
+            redisTemplate.opsForValue().set(key, value, Duration.ofMillis(ttlMs));
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Refresh token store is unavailable", e);
+        }
+    }
+
+    @Override
+    public String get(@NonNull String key) {
+        try {
+            return redisTemplate.opsForValue().get(key);
         } catch (RuntimeException e) {
             throw new IllegalStateException("Refresh token store is unavailable", e);
         }

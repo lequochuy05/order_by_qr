@@ -31,9 +31,10 @@ public class SmtpEmailService {
      */
     @Async
     public void sendResetPasswordEmail(@NonNull String toEmail, @NonNull String token) {
-        String baseUrl = Objects.requireNonNull(appProperties.getBaseUrl(), "app.base-url not configured");
+        String baseUrl = Objects.requireNonNull(
+                appProperties.getFrontend().getBaseUrl(), "app.frontend.base-url not configured");
 
-        String resetLink = baseUrl + "/reset-password.html?token=" + token;
+        String resetLink = baseUrl + "/reset-password?token=" + token;
         String subject = "Reset password";
         AppProperties.Email email = appProperties.getEmail();
         String htmlContent = ResetPasswordTemplateBuilder.build(resetLink, email.getBrandName(), email.getCopyright());

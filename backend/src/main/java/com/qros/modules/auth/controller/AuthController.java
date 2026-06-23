@@ -89,8 +89,8 @@ public class AuthController {
         authRateLimitService.checkForgotPassword(clientAddress, email);
         try {
             passwordResetService.createPasswordResetToken(email);
-        } catch (Exception ignored) {
-            // Keep the response generic to avoid revealing whether an account exists.
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == ErrorCode.EMAIL_NOT_FOUND) throw e;
         }
         return ApiResponse.success(
                 "If your email exists in our system, you will receive password reset instructions.", null);
