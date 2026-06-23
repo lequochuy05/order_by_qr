@@ -21,3 +21,15 @@ export const useUpdateSettingsMutation = (options = {}) =>
       options.onSettled?.(...args);
     },
   });
+
+export const useUploadLogoMutation = (options = {}) =>
+  useMutation({
+    mutationFn: (file) => settingsService.uploadLogo(file),
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+      options.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      options.onError?.(...args);
+    },
+  });

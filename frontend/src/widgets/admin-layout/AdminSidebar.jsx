@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
+import { useSettingsQuery } from '@features/settings-management/api/settingsQueries.js';
 import {
   LayoutDashboard,
   Layers,
@@ -114,6 +115,9 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [preferences] = useAdminPreferences();
+  const { data: settings } = useSettingsQuery({ enabled: !!user });
+  const restaurantName = settings?.restaurantName?.trim() || 'QROS';
+  const initial = restaurantName.charAt(0).toUpperCase();
   const label = (text) => getMenuLabel(text, preferences.language);
 
   // State để quản lý menu nào đang mở (lưu theo title)
@@ -156,11 +160,11 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
       <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0 dark:border-slate-900">
         <div className="flex items-center gap-3 overflow-hidden">
           <div className="w-8 h-8 bg-orange-500 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold">
-            S
+            {initial}
           </div>
           {isOpen && (
             <span className="text-xl font-black text-white italic tracking-tighter whitespace-nowrap">
-              SẮC MÀU <span className="text-orange-500">QUÁN</span>
+              {restaurantName}
             </span>
           )}
         </div>

@@ -12,3 +12,10 @@ export const useSettingsQuery = (options = {}) =>
     queryFn: () => settingsService.get(),
     ...options,
   });
+
+export const usePublicSettingsQuery = (options = {}) =>
+  useQuery({
+    queryKey: [...queryKeys.settings.all, 'public'],
+    queryFn: () => settingsService.getPublic(),
+    ...options,
+  });

@@ -28,7 +28,23 @@ public class SystemSettingsMapper {
                 settings.getTaxPercent(),
                 settings.getServiceChargePercent(),
                 settings.getOrderingEnabled(),
-                settings.getMaintenanceMode());
+                settings.getMaintenanceMode(),
+                settings.getCashPaymentEnabled(),
+                settings.getOnlinePaymentEnabled(),
+                settings.getPaymentQrExpiresInMinutes(),
+                settings.getAutoConfirmOrders(),
+                settings.getKitchenOverdueThresholdMinutes(),
+                settings.getShowUnavailableItems(),
+                settings.getShowRecommendations(),
+                settings.getShowCombos(),
+                settings.getBillTitle(),
+                settings.getBillFooterMessage(),
+                settings.getBillPaperSize(),
+                settings.getShowWifiOnBill(),
+                settings.getAutoPrintBill(),
+                settings.getNewOrderNotificationEnabled(),
+                settings.getPaymentNotificationEnabled(),
+                settings.getKitchenOverdueNotificationEnabled());
     }
 
     public PublicSettingsResponse toPublicResponse(SystemSettings settings) {
@@ -41,7 +57,23 @@ public class SystemSettingsMapper {
                 settings.getOpeningTime(),
                 settings.getClosingTime(),
                 settings.getOrderingEnabled(),
-                settings.getMaintenanceMode());
+                settings.getMaintenanceMode(),
+                settings.getCashPaymentEnabled(),
+                settings.getOnlinePaymentEnabled(),
+                settings.getPaymentQrExpiresInMinutes(),
+                settings.getAutoConfirmOrders(),
+                settings.getKitchenOverdueThresholdMinutes(),
+                settings.getShowUnavailableItems(),
+                settings.getShowRecommendations(),
+                settings.getShowCombos(),
+                settings.getBillTitle(),
+                settings.getBillFooterMessage(),
+                settings.getBillPaperSize(),
+                settings.getShowWifiOnBill(),
+                settings.getAutoPrintBill(),
+                settings.getNewOrderNotificationEnabled(),
+                settings.getPaymentNotificationEnabled(),
+                settings.getKitchenOverdueNotificationEnabled());
     }
 
     public void updateEntity(SystemSettings settings, SystemSettingsUpdateRequest request) {
@@ -59,11 +91,32 @@ public class SystemSettingsMapper {
         settings.setServiceChargePercent(request.serviceChargePercent());
         settings.setOrderingEnabled(request.orderingEnabled());
         settings.setMaintenanceMode(request.maintenanceMode());
+        settings.setCashPaymentEnabled(request.cashPaymentEnabled());
+        settings.setOnlinePaymentEnabled(request.onlinePaymentEnabled());
+        settings.setPaymentQrExpiresInMinutes(request.paymentQrExpiresInMinutes());
+        settings.setAutoConfirmOrders(request.autoConfirmOrders());
+        settings.setKitchenOverdueThresholdMinutes(request.kitchenOverdueThresholdMinutes());
+        settings.setShowUnavailableItems(request.showUnavailableItems());
+        settings.setShowRecommendations(request.showRecommendations());
+        settings.setShowCombos(request.showCombos());
+        settings.setBillTitle(normalizeRequiredText(request.billTitle(), "Bill title is required"));
+        settings.setBillFooterMessage(
+                normalizeRequiredText(request.billFooterMessage(), "Bill footer message is required"));
+        settings.setBillPaperSize(request.billPaperSize());
+        settings.setShowWifiOnBill(request.showWifiOnBill());
+        settings.setAutoPrintBill(request.autoPrintBill());
+        settings.setNewOrderNotificationEnabled(request.newOrderNotificationEnabled());
+        settings.setPaymentNotificationEnabled(request.paymentNotificationEnabled());
+        settings.setKitchenOverdueNotificationEnabled(request.kitchenOverdueNotificationEnabled());
     }
 
     private String normalizeRequiredText(String value) {
+        return normalizeRequiredText(value, "Restaurant name cannot be empty");
+    }
+
+    private String normalizeRequiredText(String value, String message) {
         if (value == null || value.isBlank()) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Restaurant name cannot be empty");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, message);
         }
         return value.trim();
     }

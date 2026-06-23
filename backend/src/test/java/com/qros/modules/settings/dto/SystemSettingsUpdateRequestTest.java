@@ -58,6 +58,22 @@ class SystemSettingsUpdateRequestTest {
                 BigDecimal.ZERO,
                 true,
                 false,
+                true,
+                true,
+                20,
+                false,
+                20,
+                false,
+                true,
+                true,
+                "HÓA ĐƠN THANH TOÁN",
+                "CẢM ƠN QUÝ KHÁCH",
+                "80",
+                true,
+                true,
+                true,
+                true,
+                true,
                 0L);
     }
 }

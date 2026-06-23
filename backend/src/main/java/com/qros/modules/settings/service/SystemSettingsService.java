@@ -1,5 +1,6 @@
 package com.qros.modules.settings.service;
 
+import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.settings.dto.request.SystemSettingsUpdateRequest;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.dto.response.SystemSettingsResponse;
@@ -11,6 +12,7 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import com.qros.shared.validation.ImageFileValidator;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class SystemSettingsService {
 
     private static final Long SETTINGS_ID = 1L;
+    private static final String LOGO_FOLDER = "order_by_qr/settings";
 
     private final SystemSettingsRepository settingsRepository;
     private final SystemSettingsMapper settingsMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionSideEffectService sideEffects;
+    private final StorageService storageService;
+    private final ImageFileValidator imageFileValidator;
 
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.SETTINGS, key = "'admin'")
@@ -56,7 +62,7 @@ public class SystemSettingsService {
 
         settingsMapper.updateEntity(settings, request);
 
-        SystemSettings saved = settingsRepository.save(settings);
+        SystemSettings saved = settingsRepository.saveAndFlush(settings);
         PublicSettingsResponse publicSettings = settingsMapper.toPublicResponse(saved);
 
         // Cache invalidation and notification listeners both consume this event after commit.
@@ -69,6 +75,35 @@ public class SystemSettingsService {
                 "write system settings audit log");
 
         return settingsMapper.toResponse(saved);
+    }
+
+    @Transactional
+    public SystemSettingsResponse uploadLogo(@NonNull MultipartFile file, @NonNull String actorEmail) {
+        imageFileValidator.validate(file);
+        SystemSettings settings = loadSettingsEntity();
+        String oldUrl = settings.getLogoUrl();
+
+        try {
+            String newUrl = storageService.upload(file, LOGO_FOLDER);
+            sideEffects.afterRollback(() -> storageService.delete(newUrl), "delete rolled back restaurant logo upload");
+
+            settings.setLogoUrl(newUrl);
+            SystemSettings saved = settingsRepository.saveAndFlush(settings);
+
+            if (oldUrl != null && !oldUrl.isBlank() && oldUrl.startsWith("http")) {
+                sideEffects.afterCommit(() -> storageService.delete(oldUrl), "delete replaced restaurant logo");
+            }
+
+            eventPublisher.publishEvent(new SettingsChangeEvent(settingsMapper.toPublicResponse(saved)));
+            sideEffects.afterCommit(
+                    () -> log.info("Restaurant logo updated by {}", actorEmail), "write restaurant logo audit log");
+            return settingsMapper.toResponse(saved);
+        } catch (BusinessException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            log.error("Unable to upload restaurant logo: {}", exception.getMessage(), exception);
+            throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload restaurant logo", exception);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -124,6 +159,56 @@ public class SystemSettingsService {
                 request.serviceChargePercent());
         addIfChanged(changedFields, "orderingEnabled", settings.getOrderingEnabled(), request.orderingEnabled());
         addIfChanged(changedFields, "maintenanceMode", settings.getMaintenanceMode(), request.maintenanceMode());
+        addIfChanged(
+                changedFields, "cashPaymentEnabled", settings.getCashPaymentEnabled(), request.cashPaymentEnabled());
+        addIfChanged(
+                changedFields,
+                "onlinePaymentEnabled",
+                settings.getOnlinePaymentEnabled(),
+                request.onlinePaymentEnabled());
+        addIfChanged(
+                changedFields,
+                "paymentQrExpiresInMinutes",
+                settings.getPaymentQrExpiresInMinutes(),
+                request.paymentQrExpiresInMinutes());
+        addIfChanged(changedFields, "autoConfirmOrders", settings.getAutoConfirmOrders(), request.autoConfirmOrders());
+        addIfChanged(
+                changedFields,
+                "kitchenOverdueThresholdMinutes",
+                settings.getKitchenOverdueThresholdMinutes(),
+                request.kitchenOverdueThresholdMinutes());
+        addIfChanged(
+                changedFields,
+                "showUnavailableItems",
+                settings.getShowUnavailableItems(),
+                request.showUnavailableItems());
+        addIfChanged(
+                changedFields, "showRecommendations", settings.getShowRecommendations(), request.showRecommendations());
+        addIfChanged(changedFields, "showCombos", settings.getShowCombos(), request.showCombos());
+        addIfChanged(changedFields, "billTitle", settings.getBillTitle(), normalize(request.billTitle()));
+        addIfChanged(
+                changedFields,
+                "billFooterMessage",
+                settings.getBillFooterMessage(),
+                normalize(request.billFooterMessage()));
+        addIfChanged(changedFields, "billPaperSize", settings.getBillPaperSize(), request.billPaperSize());
+        addIfChanged(changedFields, "showWifiOnBill", settings.getShowWifiOnBill(), request.showWifiOnBill());
+        addIfChanged(changedFields, "autoPrintBill", settings.getAutoPrintBill(), request.autoPrintBill());
+        addIfChanged(
+                changedFields,
+                "newOrderNotificationEnabled",
+                settings.getNewOrderNotificationEnabled(),
+                request.newOrderNotificationEnabled());
+        addIfChanged(
+                changedFields,
+                "paymentNotificationEnabled",
+                settings.getPaymentNotificationEnabled(),
+                request.paymentNotificationEnabled());
+        addIfChanged(
+                changedFields,
+                "kitchenOverdueNotificationEnabled",
+                settings.getKitchenOverdueNotificationEnabled(),
+                request.kitchenOverdueNotificationEnabled());
         return List.copyOf(changedFields);
     }
 

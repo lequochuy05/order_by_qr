@@ -73,7 +73,8 @@ public final class SecurityRoutes {
         ApiRoutes.TABLES + "/**",
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
-        ApiRoutes.AI + "/chat"
+        ApiRoutes.AI + "/chat",
+        ApiRoutes.SETTINGS + "/logo"
     };
 
     public static final String[] MANAGER_PUT = {
