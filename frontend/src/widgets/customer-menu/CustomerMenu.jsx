@@ -44,6 +44,7 @@ const CustomerMenuContent = ({ tableCode }) => {
   const weather = 'Trời mát';
 
   const { data: menuData, isLoading: loadingMenu, refetch: refetchMenu } = useCustomerMenuQuery();
+  const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
   const closeCurrentOrderSheet = useCallback(() => setShowCurrentOrderSheet(false), []);
   const session = useCustomerMenuSession(tableCode, {
     onSessionEnded: closeCurrentOrderSheet,
@@ -51,6 +52,7 @@ const CustomerMenuContent = ({ tableCode }) => {
   const { data: recommendationsData, refetch: refetchRecommendations } = useRecommendationsQuery(
     timeContext,
     weather,
+    { enabled: Boolean(menuData) && restaurantSettings.showRecommendations !== false },
   );
   const wsConnected = useCustomerMenuRealtime({
     tableCode,
@@ -60,7 +62,6 @@ const CustomerMenuContent = ({ tableCode }) => {
   const categories = menuData?.categories || [];
   const menuItems = useMemo(() => menuData?.menuItems || [], [menuData?.menuItems]);
   const combos = menuData?.combos || [];
-  const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
   const orderingUnavailable =
     restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
   const orderPaymentLocked = session.paymentInProgress;
@@ -86,10 +87,16 @@ const CustomerMenuContent = ({ tableCode }) => {
     [menuItemsById],
   );
   const recommendations = useMemo(
-    () => hydrateRecommendationItems(recommendationsData),
-    [hydrateRecommendationItems, recommendationsData],
+    () =>
+      restaurantSettings.showRecommendations === false
+        ? []
+        : hydrateRecommendationItems(recommendationsData),
+    [hydrateRecommendationItems, recommendationsData, restaurantSettings.showRecommendations],
   );
-  const crossSell = useCrossSellRecommendations(hydrateRecommendationItems);
+  const crossSell = useCrossSellRecommendations(
+    hydrateRecommendationItems,
+    restaurantSettings.showRecommendations !== false,
+  );
   const customerCart = useCustomerCart({
     orderingUnavailable,
     orderPaymentLocked,

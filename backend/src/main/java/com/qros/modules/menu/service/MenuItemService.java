@@ -66,16 +66,28 @@ public class MenuItemService {
 
     @Cacheable(value = CacheNames.MENU, key = "'public_items'")
     public List<PublicMenuItem> getPublicMenuItems() {
-        return menuItemRepository.findAllPublicAvailableItems().stream()
-                .map(publicMenuMapper::toMenuItem)
-                .toList();
+        return getPublicMenuItems(false);
+    }
+
+    @Cacheable(value = CacheNames.MENU, key = "'public_items:' + #includeUnavailable")
+    public List<PublicMenuItem> getPublicMenuItems(boolean includeUnavailable) {
+        List<MenuItem> items = includeUnavailable
+                ? menuItemRepository.findAllPublicItems()
+                : menuItemRepository.findAllPublicAvailableItems();
+        return items.stream().map(publicMenuMapper::toMenuItem).toList();
     }
 
     @Cacheable(value = CacheNames.MENU, key = "'public_category_' + #categoryId")
     public List<PublicMenuItem> getPublicItemsByCategory(@NonNull Long categoryId) {
-        return menuItemRepository.findPublicAvailableItemsByCategoryId(categoryId).stream()
-                .map(publicMenuMapper::toMenuItem)
-                .toList();
+        return getPublicItemsByCategory(categoryId, false);
+    }
+
+    @Cacheable(value = CacheNames.MENU, key = "'public_category:' + #categoryId + ':' + #includeUnavailable")
+    public List<PublicMenuItem> getPublicItemsByCategory(@NonNull Long categoryId, boolean includeUnavailable) {
+        List<MenuItem> items = includeUnavailable
+                ? menuItemRepository.findPublicItemsByCategoryId(categoryId)
+                : menuItemRepository.findPublicAvailableItemsByCategoryId(categoryId);
+        return items.stream().map(publicMenuMapper::toMenuItem).toList();
     }
 
     @Transactional

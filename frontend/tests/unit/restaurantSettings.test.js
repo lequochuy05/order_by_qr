@@ -16,6 +16,9 @@ test('restaurant settings provide safe defaults', () => {
     orderingEnabled: true,
     maintenanceMode: false,
     enableAiAssistant: true,
+    showRecommendations: true,
+    showCombos: true,
+    showUnavailableItems: false,
   });
 });
 

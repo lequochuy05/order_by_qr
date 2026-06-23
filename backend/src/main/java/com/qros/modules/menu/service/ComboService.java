@@ -52,9 +52,14 @@ public class ComboService {
 
     @Cacheable(value = CacheNames.COMBOS, key = "'public_all_active'")
     public List<PublicComboItem> getPublicActive() {
-        return comboRepo.findAllActiveWithItems().stream()
-                .map(publicMenuMapper::toComboItem)
-                .toList();
+        return getPublicActive(false);
+    }
+
+    @Cacheable(value = CacheNames.COMBOS, key = "'public_all_active:' + #includeUnavailable")
+    public List<PublicComboItem> getPublicActive(boolean includeUnavailable) {
+        List<Combo> combos =
+                includeUnavailable ? comboRepo.findAllPublicWithItems() : comboRepo.findAllActiveWithItems();
+        return combos.stream().map(publicMenuMapper::toComboItem).toList();
     }
 
     public Page<ComboResponse> searchManagementSummary(String keyword, Boolean active, @NonNull Pageable pageable) {

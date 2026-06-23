@@ -59,4 +59,16 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
         ORDER BY c.displayOrder ASC, c.name ASC
     """)
     List<Combo> findAllActiveWithItems();
+
+    @Query(
+            """
+        SELECT DISTINCT c
+        FROM Combo c
+        LEFT JOIN FETCH c.items ci
+        LEFT JOIN FETCH ci.menuItem mi
+        LEFT JOIN FETCH mi.category
+        WHERE c.active = true
+        ORDER BY c.displayOrder ASC, c.name ASC
+    """)
+    List<Combo> findAllPublicWithItems();
 }

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { menuService } from '@features/customer-ordering';
 
-const useCrossSellRecommendations = (hydrateRecommendationItems) => {
+const useCrossSellRecommendations = (hydrateRecommendationItems, enabled = true) => {
   const [crossSellItems, setCrossSellItems] = useState([]);
   const cacheRef = useRef(new Map());
 
@@ -13,7 +13,7 @@ const useCrossSellRecommendations = (hydrateRecommendationItems) => {
 
   const loadCrossSellRecommendations = useCallback(
     (itemId) => {
-      if (!itemId) return;
+      if (!enabled || !itemId) return;
 
       const cached = cacheRef.current.get(itemId);
       if (Array.isArray(cached)) {
@@ -41,11 +41,11 @@ const useCrossSellRecommendations = (hydrateRecommendationItems) => {
       cacheRef.current.set(itemId, request);
       request.then(setCrossSellItems).catch(() => {});
     },
-    [hydrateRecommendationItems],
+    [enabled, hydrateRecommendationItems],
   );
 
   return {
-    crossSellItems,
+    crossSellItems: enabled ? crossSellItems : [],
     setCrossSellItems,
     clearCrossSell,
     loadCrossSellRecommendations,

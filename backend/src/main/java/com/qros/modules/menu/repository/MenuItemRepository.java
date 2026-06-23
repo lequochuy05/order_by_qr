@@ -81,6 +81,17 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
             """
           SELECT DISTINCT m
           FROM MenuItem m
+          WHERE m.active = true
+            AND m.category.active = true
+          ORDER BY m.displayOrder ASC, m.name ASC
+      """)
+    List<MenuItem> findAllPublicItems();
+
+    @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
+    @Query(
+            """
+          SELECT DISTINCT m
+          FROM MenuItem m
           WHERE m.category.id = :categoryId
             AND m.active = true
             AND m.available = true
@@ -88,6 +99,18 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
           ORDER BY m.displayOrder ASC, m.name ASC
       """)
     List<MenuItem> findPublicAvailableItemsByCategoryId(@Param("categoryId") Long categoryId);
+
+    @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
+    @Query(
+            """
+          SELECT DISTINCT m
+          FROM MenuItem m
+          WHERE m.category.id = :categoryId
+            AND m.active = true
+            AND m.category.active = true
+          ORDER BY m.displayOrder ASC, m.name ASC
+      """)
+    List<MenuItem> findPublicItemsByCategoryId(@Param("categoryId") Long categoryId);
 
     @EntityGraph(attributePaths = {"category"})
     List<MenuItem> findByActiveTrueAndAvailableTrueOrderByIdDesc(Pageable pageable);

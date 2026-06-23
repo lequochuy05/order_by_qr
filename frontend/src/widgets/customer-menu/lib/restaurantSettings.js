@@ -16,6 +16,9 @@ const DEFAULT_RESTAURANT_SETTINGS = {
   orderingEnabled: true,
   maintenanceMode: false,
   enableAiAssistant: true,
+  showRecommendations: true,
+  showCombos: true,
+  showUnavailableItems: false,
 };
 
 export const translateRecommendationReason = (reason) =>
@@ -28,6 +31,9 @@ export const normalizeRestaurantSettings = (settings = {}) => ({
   orderingEnabled: settings.orderingEnabled ?? true,
   maintenanceMode: settings.maintenanceMode ?? false,
   enableAiAssistant: settings.enableAiAssistant ?? true,
+  showRecommendations: settings.showRecommendations ?? true,
+  showCombos: settings.showCombos ?? true,
+  showUnavailableItems: settings.showUnavailableItems ?? false,
 });
 
 export const getTimeContext = (date = new Date()) => {

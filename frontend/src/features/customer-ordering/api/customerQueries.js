@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { menuService } from './menuService.js';
 
@@ -93,6 +93,7 @@ export const useTableSessionQuery = (tableCode, sessionToken, options = {}) =>
     enabled: !!tableCode,
     retry: false,
     staleTime: 15 * 1000,
+    placeholderData: keepPreviousData,
     ...options,
   });
 
