@@ -11,6 +11,9 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
+import com.qros.shared.time.AppTime;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -84,6 +87,9 @@ public class RefreshTokenService {
         if (user.getStatus() != UserStatus.ACTIVE || !user.isEnabled()) {
             throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         }
+        if (wasIssuedBeforePasswordChange(refreshToken, user)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
+        }
 
         String newAccessToken = jwtService.generateAccessToken(
                 user.getEmail(),
@@ -112,5 +118,18 @@ public class RefreshTokenService {
         if (uid != null) {
             refreshTokenStore.revoke("auth:refresh:user:" + uid);
         }
+    }
+
+    private boolean wasIssuedBeforePasswordChange(String refreshToken, User user) {
+        LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return false;
+        }
+        Date issuedAt = jwtService.extractIssuedAt(refreshToken);
+        if (issuedAt == null) {
+            return true;
+        }
+        LocalDateTime issuedAtLocal = LocalDateTime.ofInstant(issuedAt.toInstant(), AppTime.ZONE);
+        return issuedAtLocal.isBefore(passwordChangedAt);
     }
 }

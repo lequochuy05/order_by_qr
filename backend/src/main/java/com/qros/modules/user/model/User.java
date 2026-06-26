@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.shared.entity.BaseEntity;
+import com.qros.shared.security.PasswordVersionedUserDetails;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
 import lombok.*;
@@ -30,7 +32,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 @SQLDelete(sql = "UPDATE users SET is_deleted = true WHERE id = ?")
 @SQLRestriction("is_deleted = false")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class User extends BaseEntity implements UserDetails {
+public class User extends BaseEntity implements UserDetails, PasswordVersionedUserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -47,6 +49,8 @@ public class User extends BaseEntity implements UserDetails {
     @Column(length = 255, nullable = false)
     @JsonIgnore
     private String password;
+
+    private LocalDateTime passwordChangedAt;
 
     @Column(length = 15)
     private String phone;

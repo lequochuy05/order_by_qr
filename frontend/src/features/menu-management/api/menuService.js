@@ -134,4 +134,15 @@ export const menuItemService = {
     await api.delete(`/menu-items/${id}`);
     clearMenuCache();
   },
+
+  // AI Generate description
+  generateDescription: async (itemName, categoryName, price, ingredients) => {
+    const res = await api.post('/ai/menu-item/description', {
+      itemName,
+      categoryName,
+      price,
+      ingredients,
+    });
+    return res;
+  },
 };

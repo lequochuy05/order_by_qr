@@ -17,9 +17,10 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
+import com.qros.shared.time.AppTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -101,6 +102,16 @@ class RefreshTokenServiceTest {
                         .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
+    @Test
+    void refreshTokenIssuedBeforePasswordChangeCannotBeRefreshed() {
+        String refreshToken = refreshTokenService.createRefreshToken(AuthenticatedUser.from(user));
+        user.setPasswordChangedAt(AppTime.now().plusSeconds(1));
+
+        assertThatThrownBy(() -> refreshTokenService.refreshAccessToken(refreshToken))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+    }
+
     private boolean attemptRefresh(String refreshToken, CountDownLatch ready, CountDownLatch start) throws Exception {
         ready.countDown();
         start.await();
@@ -125,21 +136,26 @@ class RefreshTokenServiceTest {
 
     private static class InMemoryRefreshTokenStore implements RefreshTokenStore {
 
-        private final Set<String> activeKeys = ConcurrentHashMap.newKeySet();
+        private final Map<String, String> activeTokens = new ConcurrentHashMap<>();
 
         @Override
-        public void create(String key, long ttlMs) {
-            activeKeys.add(key);
+        public void create(String key, String value, long ttlMs) {
+            activeTokens.put(key, value);
+        }
+
+        @Override
+        public String get(String key) {
+            return activeTokens.get(key);
         }
 
         @Override
         public boolean consumeAtomically(String key) {
-            return activeKeys.remove(key);
+            return activeTokens.remove(key) != null;
         }
 
         @Override
         public void revoke(String key) {
-            activeKeys.remove(key);
+            activeTokens.remove(key);
         }
     }
 }

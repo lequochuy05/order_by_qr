@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import {
   CheckboxCard,
   ImageUploadField,
@@ -25,6 +25,8 @@ const MenuItemModal = ({
   selectedFile,
   errors = {},
   setErrors,
+  isAiGenerating = false,
+  onAiGenerate,
 }) => {
   const isChanged = React.useMemo(() => {
     if (!initialFormData) return true;
@@ -240,8 +242,25 @@ const MenuItemModal = ({
         </div>
 
         <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-gray-700">Mô tả món ăn</label>
+            {onAiGenerate && formData.name && (
+              <button
+                type="button"
+                onClick={onAiGenerate}
+                disabled={isAiGenerating || !formData.name}
+                className="flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-[10px] font-bold text-orange-600 transition-all hover:bg-orange-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAiGenerating ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                {isAiGenerating ? 'Đang tạo...' : 'AI tạo mô tả'}
+              </button>
+            )}
+          </div>
           <TextareaField
-            label="Mô tả món ăn"
             rows={3}
             maxLength={500}
             placeholder="Mô tả ngắn gọn về món ăn..."

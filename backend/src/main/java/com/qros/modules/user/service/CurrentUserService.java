@@ -9,6 +9,7 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +79,7 @@ public class CurrentUserService {
         }
 
         u.setPassword(passwordEncoder.encode(req.newPassword()));
+        u.setPasswordChangedAt(AppTime.now());
         userRepository.save(u);
         // log.info("User changed own password: {}", u.getEmail());
     }

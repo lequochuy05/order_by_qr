@@ -25,12 +25,12 @@ import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.service.OrderCreationService;
 import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.order.service.OrderStatusService;
 import com.qros.modules.order.service.OrderTableSyncService;
 import com.qros.modules.order.service.OrderValidator;
-import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.settings.model.SystemSettings;
 import com.qros.modules.settings.service.SystemSettingsService;
@@ -145,8 +145,10 @@ class OrderCreationServiceTest {
         MenuItem tea = menuItem(2L, "Tea", "8000", optionValue(21L, "Honey", "1000"));
 
         when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
-        when(orderRepository.findActiveByTableSessionIdForUpdate(any(), any())).thenReturn(List.of());
-        when(orderRepository.findActiveByTableIdForUpdate(any(), any())).thenReturn(List.of());
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(orderRepository.findActiveOrderLocksByTableIdForUpdate(any(), any()))
+                .thenReturn(List.of());
         when(menuItemRepository.findAllByIdIn(Set.of(1L, 2L))).thenReturn(List.of(coffee, tea));
         when(itemOptionValueRepository.findAllByIdIn(argThat(ids -> idsEqual(ids, Set.of(11L, 21L)))))
                 .thenReturn(List.of(firstOptionValue(coffee), firstOptionValue(tea)));
@@ -159,8 +161,6 @@ class OrderCreationServiceTest {
             order.setId(100L);
             return order;
         });
-        when(paymentTransactionRepository.findPendingOnlineTransactionsByOrderId(100L))
-                .thenReturn(List.of());
 
         orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
                 "T1",
@@ -172,6 +172,7 @@ class OrderCreationServiceTest {
                         new OrderItemRequest(2L, 3, null, List.of(21L)))));
 
         verify(itemOptionValueRepository).findAllByIdIn(argThat(ids -> idsEqual(ids, Set.of(11L, 21L))));
+        verify(paymentTransactionRepository, never()).findPendingOnlineTransactionsByOrderId(any());
     }
 
     @Test
@@ -188,15 +189,11 @@ class OrderCreationServiceTest {
                 Order.builder().id(100L).table(table).tableSession(session).build();
 
         when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
-        when(orderRepository.findActiveByTableSessionIdForUpdate(any(), any())).thenReturn(List.of(activeOrder));
-        when(paymentTransactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
-                        org.mockito.ArgumentMatchers.eq(100L),
-                        org.mockito.ArgumentMatchers.eq(com.qros.shared.enums.PaymentMethod.PAYOS),
-                        any()))
-                .thenReturn(Optional.of(com.qros.modules.payment.model.PaymentTransaction.builder()
-                        .id(1L)
-                        .status(PaymentTransactionStatus.PENDING)
-                        .build()));
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of(activeOrderLock(100L, 77L)));
+        when(orderRepository.findDetailById(100L)).thenReturn(Optional.of(activeOrder));
+        when(paymentTransactionRepository.existsByOrderIdAndStatusIn(org.mockito.ArgumentMatchers.eq(100L), any()))
+                .thenReturn(true);
 
         assertThatThrownBy(() -> orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
                         "T1", "SESSION", "req-2", null, List.of(new OrderItemRequest(1L, 1, null, List.of())))))
@@ -268,5 +265,19 @@ class OrderCreationServiceTest {
     private boolean idsEqual(Iterable<Long> actualIds, Set<Long> expectedIds) {
         Set<Long> actual = StreamSupport.stream(actualIds.spliterator(), false).collect(Collectors.toSet());
         return actual.equals(expectedIds);
+    }
+
+    private ActiveOrderLockProjection activeOrderLock(Long id, Long tableSessionId) {
+        return new ActiveOrderLockProjection() {
+            @Override
+            public Long getId() {
+                return id;
+            }
+
+            @Override
+            public Long getTableSessionId() {
+                return tableSessionId;
+            }
+        };
     }
 }

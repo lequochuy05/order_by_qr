@@ -211,6 +211,7 @@ class PayosServiceImplTest {
         assertThat(response.qrCode()).isNull();
         assertThat(response.amount()).isEqualByComparingTo("125000");
         assertThat(pendingOnline.getStatus()).isEqualTo(PaymentTransactionStatus.CANCELLED);
+        verify(transactionRepository).saveAll(List.of(pendingOnline));
     }
 
     @Test

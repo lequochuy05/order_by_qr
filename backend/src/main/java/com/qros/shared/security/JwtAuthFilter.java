@@ -3,6 +3,8 @@ package com.qros.shared.security;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Date;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -51,7 +53,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && "access".equals(jwtService.extractTokenType(token))) {
             String email = jwtService.extractSubject(token);
             UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-            if (isUsableAccount(userDetails)) {
+            if (isUsableAccount(userDetails) && isFreshForPasswordVersion(token, userDetails)) {
                 var auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -67,5 +69,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && userDetails.isAccountNonLocked()
                 && userDetails.isAccountNonExpired()
                 && userDetails.isCredentialsNonExpired();
+    }
+
+    private boolean isFreshForPasswordVersion(String token, UserDetails userDetails) {
+        if (!(userDetails instanceof PasswordVersionedUserDetails passwordVersionedUser)) {
+            return true;
+        }
+
+        LocalDateTime passwordChangedAt = passwordVersionedUser.getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return true;
+        }
+
+        Date issuedAt = jwtService.extractIssuedAt(token);
+        if (issuedAt == null) {
+            return false;
+        }
+
+        LocalDateTime issuedAtLocal = LocalDateTime.ofInstant(issuedAt.toInstant(), com.qros.shared.time.AppTime.ZONE);
+        return !issuedAtLocal.isBefore(passwordChangedAt);
     }
 }

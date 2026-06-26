@@ -25,7 +25,7 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.payment.model.PaymentTransaction;
+import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.settings.service.SystemSettingsService;
@@ -61,6 +61,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class OrderCreationService {
+
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
+            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
+    private static final List<String> ACTIVE_ORDER_STATUS_NAMES =
+            ACTIVE_ORDER_STATUSES.stream().map(Enum::name).toList();
 
     private final OrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
@@ -140,8 +145,6 @@ public class OrderCreationService {
 
         Order saved = orderRepository.save(order);
 
-        expirePendingOnlineTransactions(saved.getId());
-
         orderStatusService.tryAutoPromoteOrder(saved);
         orderTableSyncService.recalcTableStatus(saved);
 
@@ -165,8 +168,9 @@ public class OrderCreationService {
 
     private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {
         if (session != null) {
-            List<Order> activeSessionOrders = orderRepository.findActiveByTableSessionIdForUpdate(
-                    session.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+            List<ActiveOrderLockProjection> activeSessionOrders =
+                    orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(
+                            session.getId(), ACTIVE_ORDER_STATUS_NAMES);
 
             if (!activeSessionOrders.isEmpty()) {
                 if (activeSessionOrders.size() > 1) {
@@ -176,20 +180,21 @@ public class OrderCreationService {
                             activeSessionOrders.size());
                 }
 
-                return activeSessionOrders.get(0);
+                return loadActiveOrderDetail(activeSessionOrders.get(0).getId());
             }
         }
 
-        List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
-                table.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+        List<ActiveOrderLockProjection> activeOrders =
+                orderRepository.findActiveOrderLocksByTableIdForUpdate(table.getId(), ACTIVE_ORDER_STATUS_NAMES);
 
         if (!activeOrders.isEmpty()) {
             if (activeOrders.size() > 1) {
                 log.warn("Table {} has {} active orders. Using the latest one.", table.getId(), activeOrders.size());
             }
 
-            Order activeOrder = activeOrders.get(0);
-            if (session != null && activeOrder.getTableSession() == null) {
+            ActiveOrderLockProjection activeOrderLock = activeOrders.get(0);
+            Order activeOrder = loadActiveOrderDetail(activeOrderLock.getId());
+            if (session != null && activeOrderLock.getTableSessionId() == null) {
                 activeOrder.setTableSession(session);
             }
 
@@ -210,35 +215,24 @@ public class OrderCreationService {
                 .build();
     }
 
+    private Order loadActiveOrderDetail(Long orderId) {
+        return orderRepository
+                .findDetailById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+    }
+
     private void ensureNoPaymentInProgress(Order order) {
         if (order == null || order.getId() == null) {
             return;
         }
 
-        boolean hasPendingPayment = paymentTransactionRepository
-                .findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
-                        order.getId(),
-                        com.qros.shared.enums.PaymentMethod.PAYOS,
-                        List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING))
-                .isPresent();
+        boolean hasPendingPayment = paymentTransactionRepository.existsByOrderIdAndStatusIn(
+                order.getId(), List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
 
         if (hasPendingPayment) {
             throw new BusinessException(
                     ErrorCode.ORDER_PAYMENT_IN_PROGRESS,
                     "The table is currently being paid. Please contact a staff member.");
-        }
-    }
-
-    private void expirePendingOnlineTransactions(Long orderId) {
-        if (orderId == null) {
-            return;
-        }
-
-        for (PaymentTransaction transaction :
-                paymentTransactionRepository.findPendingOnlineTransactionsByOrderId(orderId)) {
-            transaction.setStatus(PaymentTransactionStatus.EXPIRED);
-            transaction.setFailureReason("Expired because the order changed after payment link creation");
-            transaction.setUpdatedAt(AppTime.now());
         }
     }
 

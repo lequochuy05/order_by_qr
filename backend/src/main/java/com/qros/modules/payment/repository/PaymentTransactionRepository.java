@@ -42,6 +42,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
 
+    boolean existsByOrderIdAndStatusIn(Long orderId, Collection<PaymentTransactionStatus> statuses);
+
     @Query(
             """
                         SELECT t

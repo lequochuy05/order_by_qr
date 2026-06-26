@@ -11,6 +11,7 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,7 @@ public class UserService {
         u.setEmail(email);
         u.setPhone(phone);
         u.setPassword(passwordEncoder.encode(req.password()));
+        u.setPasswordChangedAt(AppTime.now());
         u.setStatus(req.status());
         u.setRole(req.role());
 
@@ -134,6 +136,7 @@ public class UserService {
         }
 
         u.setPassword(passwordEncoder.encode(newPassword));
+        u.setPasswordChangedAt(AppTime.now());
         userRepository.save(u);
         // log.info("Password reset for user: {}", u.getEmail());
     }

@@ -1,6 +1,7 @@
 package com.qros.modules.auth.service;
 
 import com.qros.infrastructure.mail.SmtpEmailService;
+import com.qros.infrastructure.sms.SmsService;
 import com.qros.modules.auth.config.PasswordResetProperties;
 import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
@@ -34,6 +35,7 @@ public class PasswordResetService {
     private final UserRepository userRepo;
     private final PasswordResetTokenRepository tokenRepo;
     private final SmtpEmailService emailService;
+    private final SmsService smsService;
     private final PasswordResetProperties passwordResetProperties;
     private final Environment environment;
 
@@ -92,6 +94,7 @@ public class PasswordResetService {
         User user = resetToken.getUser();
         resetToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(AppTime.now());
         userRepo.save(user);
         tokenRepo.save(resetToken);
     }
@@ -112,6 +115,10 @@ public class PasswordResetService {
 
         User user = userRepo.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PHONE_NOT_FOUND));
+        boolean logOtpInDev = shouldLogOtpInDev();
+        if (!logOtpInDev && !smsService.isAvailable()) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED, "SMS delivery is not configured");
+        }
 
         tokenRepo.markAllActiveTokensUsedByUserId(user.getId());
 
@@ -127,12 +134,11 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev"));
-
-        if (isDevProfile && passwordResetProperties.isDevLogOtp()) {
+        if (logOtpInDev) {
             log.warn("[DEV ONLY] Password reset OTP for phone {} is {}", maskPhone(normalizedPhone), rawOtpCode);
         } else {
-            log.info("Password reset OTP generated for phone {}", maskPhone(normalizedPhone));
+            sideEffects.afterCommit(
+                    () -> smsService.sendOtp(toSmsPhone(normalizedPhone), rawOtpCode), "send password reset OTP SMS");
         }
     }
 
@@ -166,6 +172,7 @@ public class PasswordResetService {
         User user = otpToken.getUser();
         otpToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(AppTime.now());
         userRepo.save(user);
         tokenRepo.save(otpToken);
     }
@@ -179,6 +186,13 @@ public class PasswordResetService {
             return "0" + phone.substring(3);
         }
         return phone;
+    }
+
+    private String toSmsPhone(String normalizedPhone) {
+        if (normalizedPhone != null && normalizedPhone.startsWith("0") && normalizedPhone.length() > 1) {
+            return "+84" + normalizedPhone.substring(1);
+        }
+        return normalizedPhone;
     }
 
     /**
@@ -200,5 +214,9 @@ public class PasswordResetService {
         }
 
         return "****" + phone.substring(phone.length() - 4);
+    }
+
+    private boolean shouldLogOtpInDev() {
+        return environment.acceptsProfiles(Profiles.of("dev")) && passwordResetProperties.isDevLogOtp();
     }
 }

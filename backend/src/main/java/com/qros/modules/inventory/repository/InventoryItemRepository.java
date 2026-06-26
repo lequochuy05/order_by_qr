@@ -2,6 +2,7 @@ package com.qros.modules.inventory.repository;
 
 import com.qros.modules.inventory.model.InventoryItem;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -72,6 +73,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             WHERE i.id = :id
             """)
     Optional<InventoryItem> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query(
+            """
+            SELECT i
+            FROM InventoryItem i
+            WHERE i.id IN :ids
+            ORDER BY i.id ASC
+            """)
+    List<InventoryItem> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
 
     @Query(
             """

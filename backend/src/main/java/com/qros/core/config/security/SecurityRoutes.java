@@ -57,11 +57,12 @@ public final class SecurityRoutes {
         ApiRoutes.ORDERS + "/table/*/preview",
         ApiRoutes.TABLES + "/**",
         ApiRoutes.ORDERS + "/active",
-        ApiRoutes.KITCHEN + "/orders",
         ApiRoutes.INVENTORY + "/**",
         ApiRoutes.FORECAST + "/**",
         ApiRoutes.ANALYTICS + "/**"
     };
+
+    public static final String[] KITCHEN_GET = {ApiRoutes.KITCHEN + "/orders"};
 
     public static final String[] MANAGER_POST = {
         ApiRoutes.USERS,
@@ -74,6 +75,8 @@ public final class SecurityRoutes {
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
         ApiRoutes.AI + "/chat",
+        ApiRoutes.AI + "/menu-item/**",
+        ApiRoutes.AI + "/combo/**",
         ApiRoutes.SETTINGS + "/logo"
     };
 
@@ -116,6 +119,8 @@ public final class SecurityRoutes {
     public static final String[] KITCHEN_PATCH = {
         ApiRoutes.KITCHEN + "/items/*/status", ApiRoutes.KITCHEN + "/items/*/prepared"
     };
+
+    public static final String[] STAFF_AI_POST = {ApiRoutes.AI + "/staff/query"};
 
     public static final String[] STAFF_OPERATION_POST = {
         ApiRoutes.ORDERS, ApiRoutes.ORDERS + "/preview", ApiRoutes.ORDERS + "/*/reconcile"

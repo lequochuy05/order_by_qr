@@ -3,7 +3,9 @@ package com.qros.modules.order.repository;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.repository.projection.ActiveOrderSummary;
+import com.qros.modules.table.model.TableSession;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -58,6 +60,48 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                         """)
     List<Order> findActiveByTableSessionIdForUpdate(
             @Param("sessionId") Long sessionId, @Param("statuses") List<OrderStatus> statuses);
+
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_id = :tableId
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdForUpdate(
+            @Param("tableId") Long tableId, @Param("statuses") Collection<String> statuses);
+
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_session_id = :sessionId
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableSessionIdForUpdate(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<String> statuses);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE Order o
+            SET o.tableSession = :session
+            WHERE o.id = :orderId
+              AND o.tableSession IS NULL
+            """)
+    int attachTableSessionIfMissing(@Param("orderId") Long orderId, @Param("session") TableSession session);
 
     boolean existsByTableIdAndStatusIn(Long tableId, Collection<OrderStatus> statuses);
 

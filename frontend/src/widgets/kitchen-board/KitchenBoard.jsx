@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
+import { useAuth } from '@features/auth';
 import { ErrorBoundary } from '@shared/ui';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSound.js';
@@ -10,11 +11,13 @@ import { KITCHEN_COLUMNS } from './lib/kitchenItems.js';
 import useKitchenFilters from './model/useKitchenFilters.js';
 import useKitchenNotifications from './model/useKitchenNotifications.js';
 import useKitchenOrders from './model/useKitchenOrders.js';
+import AiStaffPanel from './ui/AiStaffPanel.jsx';
 import KitchenFilters from './ui/KitchenFilters.jsx';
 import KitchenSummaryCards from './ui/KitchenSummaryCards.jsx';
 import KitchenToolbar from './ui/KitchenToolbar.jsx';
 
 const KitchenBoardContent = () => {
+  const { user } = useAuth();
   const settings = useSettingsStore((state) => state.settings);
   const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
   const kitchen = useKitchenOrders();
@@ -57,6 +60,8 @@ const KitchenBoardContent = () => {
         </div>
         <KitchenSummaryCards summary={filters.summary} overdueMinutes={overdueMinutes} />
       </section>
+
+      {['MANAGER', 'CHEF'].includes(user?.role) && <AiStaffPanel />}
 
       <KitchenFilters
         searchTerm={filters.searchTerm}

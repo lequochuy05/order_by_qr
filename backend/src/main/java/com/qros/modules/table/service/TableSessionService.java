@@ -134,7 +134,7 @@ public class TableSessionService {
 
         validateSessionBelongsToTable(session, tableCode);
 
-        touch(session);
+        touchIfStale(session, AppTime.now());
         return session;
     }
 
@@ -171,8 +171,10 @@ public class TableSessionService {
         validateOpenSession(session);
 
         LocalDateTime now = AppTime.now();
-        token.setLastSeenAt(now);
-        tokenRepository.save(token);
+        if (shouldWriteHeartbeat(token, now)) {
+            token.setLastSeenAt(now);
+            tokenRepository.save(token);
+        }
 
         return session;
     }
@@ -381,12 +383,19 @@ public class TableSessionService {
         tableRepository.save(table);
     }
 
-    private void touch(TableSession session) {
+    private void touchIfStale(TableSession session, LocalDateTime now) {
         if (session == null || session.getId() == null) {
             return;
         }
 
-        sessionRepository.touchOpenSessionActivity(session.getId(), AppTime.now());
+        LocalDateTime lastActivityAt = session.getLastActivityAt();
+        boolean shouldTouch = lastActivityAt == null
+                || !lastActivityAt.isAfter(now.minus(tableSessionProperties.getHeartbeatWriteInterval()));
+
+        if (shouldTouch) {
+            sessionRepository.touchOpenSessionActivity(session.getId(), now);
+            session.setLastActivityAt(now);
+        }
     }
 
     private void evictTableSessionCaches(DiningTable table) {

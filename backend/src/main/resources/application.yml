@@ -79,6 +79,15 @@ auth:
   password-reset:
     phone-enabled: false
     dev-log-otp: false
+    sms:
+      otp-message-template: ${SMS_OTP_MESSAGE_TEMPLATE:Your QROS password reset OTP is %s. It expires in 5 minutes.}
+      twilio:
+        enabled: ${TWILIO_SMS_ENABLED:false}
+        account-sid: ${TWILIO_ACCOUNT_SID:}
+        auth-token: ${TWILIO_AUTH_TOKEN:}
+        from-phone: ${TWILIO_FROM_PHONE:}
+        api-base-url: ${TWILIO_API_BASE_URL:https://api.twilio.com/2010-04-01}
+        timeout-seconds: ${TWILIO_TIMEOUT_SECONDS:10}
   rate-limit:
     login-ip:
       max-requests: 10
@@ -160,6 +169,11 @@ rate-limit:
       path: /api/v1/recommendations/**
       method: GET
       max-requests: 30
+      window: 1m
+    - scope: public:webhooks
+      path: /api/v1/webhooks/**
+      method: POST
+      max-requests: 60
       window: 1m
 
 cloudinary:

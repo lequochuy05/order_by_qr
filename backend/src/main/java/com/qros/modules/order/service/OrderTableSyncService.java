@@ -23,25 +23,29 @@ public class OrderTableSyncService {
 
         DiningTable table = order.getTable();
 
+        TableStatus nextStatus;
         if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.COMPLETED) {
-            table.setStatus(TableStatus.AVAILABLE);
+            nextStatus = TableStatus.AVAILABLE;
         } else if (order.getStatus() == OrderStatus.AWAITING_PAYMENT) {
-            table.setStatus(TableStatus.WAITING_FOR_PAYMENT);
+            nextStatus = TableStatus.WAITING_FOR_PAYMENT;
         } else {
             boolean hasBillableItems = order.getOrderItems().stream().anyMatch(OrderItem::isBillable);
 
             if (!hasBillableItems) {
-                table.setStatus(TableStatus.AVAILABLE);
+                nextStatus = TableStatus.AVAILABLE;
             } else {
                 boolean allBillableItemsFinished = order.getOrderItems().stream()
                         .filter(OrderItem::isBillable)
                         .allMatch(item -> item.getStatus() == OrderItemStatus.FINISHED);
 
-                table.setStatus(allBillableItemsFinished ? TableStatus.WAITING_FOR_PAYMENT : TableStatus.OCCUPIED);
+                nextStatus = allBillableItemsFinished ? TableStatus.WAITING_FOR_PAYMENT : TableStatus.OCCUPIED;
             }
         }
 
-        tableRepository.save(table);
+        if (table.getStatus() != nextStatus) {
+            table.setStatus(nextStatus);
+            tableRepository.save(table);
+        }
     }
 
     public void releaseTable(Order order) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, UtensilsCrossed } from 'lucide-react';
+import { Loader2, Sparkles, UtensilsCrossed } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
@@ -69,6 +69,7 @@ const MenuManager = () => {
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
   const pageSize = 24;
 
   const { confirm } = useConfirmModal();
@@ -153,6 +154,7 @@ const MenuManager = () => {
   };
 
   // DELETE
+  // DELETE
   const handleDelete = async (id) => {
     const confirmed = await confirm('Xóa món ăn', 'Bạn có chắc chắn muốn xóa món ăn này?');
     if (!confirmed) return;
@@ -162,6 +164,31 @@ const MenuManager = () => {
       invalidateMenu();
     } catch (err) {
       showErrorToast(err);
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!formData.name || isAiGenerating) return;
+    setIsAiGenerating(true);
+    try {
+      const categoryName =
+        categories.find((c) => c.id === formData.categoryId)?.name || '';
+      const res = await menuItemService.generateDescription(
+        formData.name,
+        categoryName,
+        String(formData.price || ''),
+        [],
+      );
+      if (res?.shortDescription) {
+        setFormData((prev) => ({ ...prev, description: res.shortDescription }));
+      }
+      if (res?.tasteTags?.length) {
+        showSuccessToast('AI đã gợi ý mô tả và tag: ' + res.tasteTags.join(', '));
+      }
+    } catch (err) {
+      showErrorToast(err);
+    } finally {
+      setIsAiGenerating(false);
     }
   };
 
@@ -253,6 +280,8 @@ const MenuManager = () => {
         selectedFile={selectedFile}
         errors={errors}
         setErrors={setErrors}
+        isAiGenerating={isAiGenerating}
+        onAiGenerate={handleAiGenerate}
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) {

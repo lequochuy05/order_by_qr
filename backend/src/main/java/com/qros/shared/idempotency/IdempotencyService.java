@@ -60,20 +60,21 @@ public class IdempotencyService {
 
         int claimed = repository.claim(normalizedNamespace, requestKey, requestHash, now, now.plus(REQUEST_TTL));
 
-        IdempotencyRequest request = repository
-                .findByNamespaceAndRequestKey(normalizedNamespace, requestKey)
-                .orElseThrow(() -> new IllegalStateException("Unable to load claimed idempotency request"));
-
         if (claimed == 0) {
+            IdempotencyRequest request = repository
+                    .findByNamespaceAndRequestKey(normalizedNamespace, requestKey)
+                    .orElseThrow(() -> new IllegalStateException("Unable to load claimed idempotency request"));
             return replayExisting(request, requestHash, responseType);
         }
 
         claimedCounter.increment();
         T response = action.get();
-        request.setStatus(IdempotencyRequestStatus.SUCCEEDED);
-        request.setResponseJson(writeResponse(response));
-        request.setCompletedAt(AppTime.now());
-        repository.save(request);
+        repository.complete(
+                normalizedNamespace,
+                requestKey,
+                IdempotencyRequestStatus.SUCCEEDED,
+                writeResponse(response),
+                AppTime.now());
         return response;
     }
 

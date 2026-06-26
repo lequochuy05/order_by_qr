@@ -42,6 +42,23 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
             @Param("expiresAt") LocalDateTime expiresAt);
 
     @Modifying
+    @Query(
+            """
+            UPDATE IdempotencyRequest request
+            SET request.status = :status,
+                request.responseJson = :responseJson,
+                request.completedAt = :completedAt
+            WHERE request.namespace = :namespace
+              AND request.requestKey = :requestKey
+            """)
+    int complete(
+            @Param("namespace") String namespace,
+            @Param("requestKey") String requestKey,
+            @Param("status") IdempotencyRequestStatus status,
+            @Param("responseJson") String responseJson,
+            @Param("completedAt") LocalDateTime completedAt);
+
+    @Modifying
     @Query("DELETE FROM IdempotencyRequest request WHERE request.expiresAt < :cutoff")
     int deleteExpired(@Param("cutoff") LocalDateTime cutoff);
 }

@@ -295,10 +295,14 @@ public class PaymentPersistenceService {
     }
 
     private void cancelPendingOnlineTransactions(Long orderId) {
-        for (PaymentTransaction transaction : transactionRepository.findPendingOnlineTransactionsByOrderId(orderId)) {
+        List<PaymentTransaction> transactions = transactionRepository.findPendingOnlineTransactionsByOrderId(orderId);
+        for (PaymentTransaction transaction : transactions) {
             transaction.setStatus(PaymentTransactionStatus.CANCELLED);
             transaction.setFailureReason("Cancelled because order was paid by cash");
             transaction.setUpdatedAt(AppTime.now());
+        }
+        if (!transactions.isEmpty()) {
+            transactionRepository.saveAll(transactions);
         }
     }
 
