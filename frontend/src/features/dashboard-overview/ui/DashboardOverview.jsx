@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import {
   PieChart,
   Pie,
@@ -20,109 +20,66 @@ import {
   Loader2,
   Sparkles,
   Banknote,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
-import { dashboardOverviewService } from '@features/dashboard-overview/api/dashboardOverviewService.js';
-import { fmtVND, fmtTime } from '@shared/lib/formatters.js';
+import { fmtVND, fmtTime, fmtCompactVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
-import { getBusinessToday } from '@shared/lib/businessTime.js';
+import {
+  getForecastSummary,
+  getTrendLabel,
+  getRevenueInsight,
+  getDemandLevel,
+} from '@shared/lib/analytics/forecastUtils.js';
+import useDashboard from '../model/useDashboard.js';
+
+const COLORS_PIE = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#f59e0b'];
 
 const Dashboard = () => {
-  const [loading, setLoading] = useState(true);
-  const [businessToday, setBusinessToday] = useState(getBusinessToday());
-
-  // Kpi data
-  const [todayRevenue, setTodayRevenue] = useState(0);
-  const [todayOrders, setTodayOrders] = useState({ total: 0, completed: 0 });
-  const [tablesContext, setTablesContext] = useState({ total: 0, occupied: 0 });
-
-  // Charts data
-  const [topDishes, setTopDishes] = useState([]);
-  const [categoryShares, setCategoryShares] = useState([]);
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [revenueForecast, setRevenueForecast] = useState([]);
-  const [popularDishesForecast, setPopularDishesForecast] = useState([]);
-
-  const revenueForecastData = useMemo(
-    () => buildRevenueForecastData(revenueForecast),
-    [revenueForecast],
-  );
-
-  useEffect(() => {
-    const syncBusinessDate = () => {
-      setBusinessToday((currentDate) => {
-        const nextDate = getBusinessToday();
-        return currentDate === nextDate ? currentDate : nextDate;
-      });
-    };
-
-    const intervalId = window.setInterval(syncBusinessDate, 30_000);
-    document.addEventListener('visibilitychange', syncBusinessDate);
-
-    return () => {
-      window.clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', syncBusinessDate);
-    };
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      try {
-        const dashboard = await dashboardOverviewService.getSummary(businessToday);
-
-        if (controller.signal.aborted) return;
-
-        const tables = dashboard.tables || {};
-        const todayOrderSummary = dashboard.todayOrders || {};
-        const dishes = Array.isArray(dashboard.topDishes) ? dashboard.topDishes : [];
-
-        setTablesContext({
-          total: toNumber(tables.total),
-          occupied: toNumber(tables.occupied),
-        });
-        setTodayRevenue(toNumber(dashboard.todayRevenue));
-        setTodayOrders({
-          total: toNumber(todayOrderSummary.total),
-          completed: toNumber(todayOrderSummary.completed),
-        });
-        setRecentOrders(Array.isArray(dashboard.recentOrders) ? dashboard.recentOrders : []);
-        setTopDishes(dishes.slice(0, 5));
-        setCategoryShares(buildCategoryShares(dishes));
-        setRevenueForecast(
-          Array.isArray(dashboard.revenueForecast) ? dashboard.revenueForecast : [],
-        );
-        setPopularDishesForecast(
-          Array.isArray(dashboard.popularDishesForecast) ? dashboard.popularDishesForecast : [],
-        );
-      } catch (error) {
-        if (error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError') return;
-        console.error('Lỗi khi tải dữ liệu Dashboard:', error);
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchDashboardData();
-
-    return () => {
-      controller.abort();
-    };
-  }, [businessToday]);
-
-  const COLORS_PIE = ['#f97316', '#3b82f6', '#10b981', '#14b8a6', '#ec4899', '#f59e0b'];
+  const {
+    loading,
+    error,
+    refetch,
+    todayRevenue,
+    todayOrders,
+    avgOrderValue,
+    tablesContext,
+    topDishes,
+    categoryShares,
+    recentOrders,
+    revenueForecastData,
+    popularDishesForecast,
+  } = useDashboard();
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-50">
+      <div className="flex min-h-[420px] items-center justify-center">
         <Loader2 className="animate-spin text-orange-500 w-12 h-12" />
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center p-6">
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center max-w-sm">
+          <AlertCircle className="mx-auto mb-3 text-red-400" size={32} />
+          <p className="font-semibold text-red-700 mb-1">Không thể tải dữ liệu</p>
+          <p className="text-sm text-red-500 mb-4">Vui lòng kiểm tra kết nối và thử lại.</p>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+          >
+            <RefreshCw size={14} />
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const forecastSummary = getForecastSummary(revenueForecastData);
 
   return (
     <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
@@ -161,7 +118,7 @@ const Dashboard = () => {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">Bàn hoạt động</p>
+              <p className="text-slate-500 text-sm font-medium mb-1">Bàn</p>
               <h3 className="text-2xl font-bold text-slate-800">
                 {tablesContext.occupied}{' '}
                 <span className="text-lg text-slate-400 font-medium">/ {tablesContext.total}</span>
@@ -176,16 +133,12 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Avg Order Value / Or other metric */}
+        {/* Avg Order Value */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Giá trị trung bình đơn</p>
-              <h3 className="text-2xl font-bold text-slate-800">
-                {todayOrders.completed > 0
-                  ? fmtVND(todayRevenue / todayOrders.completed)
-                  : fmtVND(0)}
-              </h3>
+              <h3 className="text-2xl font-bold text-slate-800">{fmtVND(avgOrderValue)}</h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
               <Banknote size={20} />
@@ -197,27 +150,60 @@ const Dashboard = () => {
       {/* Forecasting Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-              <TrendingUp size={18} className="text-orange-500" /> Dự báo doanh thu
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+              <TrendingUp size={18} className="text-orange-500" /> Dự báo doanh thu 7 ngày tới
             </h3>
-            <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
-              <span className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-emerald-500"></span> Thực tế
-              </span>
-              <span className="flex items-center gap-2">
-                <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500"></span> Dự báo
-              </span>
-            </div>
           </div>
-          <div className="h-80">
+
+          {/* Forecast KPI Summary */}
+          {revenueForecastData.length > 0 && (
+            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-xl bg-orange-50 p-3 dark:bg-orange-950/30">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Dự báo ngày mai
+                </p>
+                <p className="mt-1 text-lg font-bold text-orange-600 dark:text-orange-400">
+                  {fmtVND(forecastSummary.forecastTomorrow)}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  So với trung bình 7 ngày
+                </p>
+                <p className="mt-1 text-lg font-bold text-slate-800 dark:text-slate-100">
+                  {forecastSummary.diffPercent >= 0 ? '+' : ''}
+                  {Math.round(forecastSummary.diffPercent)}%
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Xu hướng</p>
+                <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  {getTrendLabel(forecastSummary.trend)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mb-3">
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-0.5 bg-emerald-500"></span> Thực tế
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-0.5 border-t-2 border-dashed border-amber-500"></span> Dự báo
+            </span>
+          </div>
+
+          <div className="h-64">
             {revenueForecastData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={revenueForecastData}
                   margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                   <XAxis
                     dataKey="label"
                     tick={{ fontSize: 12, fill: '#64748b' }}
@@ -226,11 +212,11 @@ const Dashboard = () => {
                     tickLine={false}
                   />
                   <YAxis
-                    tickFormatter={formatCompactVND}
+                    tickFormatter={fmtCompactVND}
                     tick={{ fontSize: 12, fill: '#64748b' }}
                     axisLine={false}
                     tickLine={false}
-                    width={72}
+                    width={52}
                   />
                   <Tooltip
                     formatter={(value, name) => [
@@ -267,36 +253,59 @@ const Dashboard = () => {
         </div>
 
         <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Sparkles size={18} className="text-amber-500" /> Món dự báo tuần tới
-          </h3>
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+              <Sparkles size={18} className="text-amber-500" /> Gợi ý chuẩn bị món
+            </h3>
+            <p className="text-sm text-slate-500">Dựa trên xu hướng bán ra 30 ngày qua</p>
+          </div>
           <div className="flex flex-col gap-4">
-            {popularDishesForecast.map((dish, idx) => (
-              <div
-                key={dish.id || idx}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent shadow-sm"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 ${idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-orange-500' : idx === 2 ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  >
-                    {idx + 1}
+            {popularDishesForecast.map((dish, idx) => {
+              const demand = getDemandLevel(dish.estimatedQty);
+              return (
+                <div
+                  key={dish.id || idx}
+                  className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex items-center gap-3">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0 ${idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-orange-500' : idx === 2 ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                      >
+                        {idx + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className="truncate font-semibold text-slate-800 dark:text-slate-100"
+                          title={dish.name}
+                        >
+                          {dish.name}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          Dự kiến bán ra:{' '}
+                          <span className="font-bold text-slate-700">{dish.estimatedQty}</span> suất
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase font-bold tracking-wide ${demand.className}`}
+                    >
+                      {demand.label}
+                    </span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-800 truncate" title={dish.name}>
-                      {dish.name}
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">
-                      {dish.category || 'Chưa phân loại'}
-                    </p>
+
+                  <div className="mt-3 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className={`h-full bg-${demand.color}-500`}
+                      style={{
+                        width: `${Math.min(100, (dish.estimatedQty / 30) * 100)}%`,
+                      }}
+                    />
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-slate-800">{dish.estimatedQty}</p>
-                  <p className="text-xs text-slate-500">suất</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {popularDishesForecast.length === 0 && (
               <p className="text-center text-slate-400 py-4">Chưa có dữ liệu dự báo món.</p>
             )}
@@ -306,9 +315,11 @@ const Dashboard = () => {
 
       {/* 2 & 4. Charts and Leaderboard Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        {/* Tỉ trọng danh mục (Pie Chart) - Nắm 1 cột */}
+        {/* Tỉ trọng danh mục (Pie Chart) */}
         <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Tỉ trọng Danh mục (7 ngày)</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">
+            Tỉ trọng danh mục (7 ngày)
+          </h3>
           <div className="h-72">
             {categoryShares.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -338,7 +349,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Top 5 Món Bán Chạy (Leaderboard) - Nắm 1 cột */}
+        {/* Top 5 Món Bán Chạy */}
         <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <UtensilsCrossed size={18} className="text-emerald-500" /> Top món (7 ngày)
@@ -349,15 +360,15 @@ const Dashboard = () => {
                 key={idx}
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent shadow-sm"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 min-w-0">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm ${idx === 0 ? 'bg-orange-500' : idx === 1 ? 'bg-blue-500' : idx === 2 ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 ${idx === 0 ? 'bg-orange-500' : idx === 1 ? 'bg-blue-500' : idx === 2 ? 'bg-emerald-500' : 'bg-slate-300'}`}
                   >
                     {idx + 1}
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-800 line-clamp-1" title={dish.name}>
-                      {dish.name.length > 18 ? dish.name.substring(0, 18) + '...' : dish.name}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-800 truncate" title={dish.name}>
+                      {dish.name}
                     </p>
                     <p className="text-xs text-slate-500">
                       Đã bán: <span className="font-medium">{dish.totalQty}</span>
@@ -375,7 +386,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Giao dịch gần nhất hôm nay (Recent Orders Activity) - Nắm 1 cột */}
+        {/* Giao dịch gần nhất */}
         <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
           <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
             <Clock size={18} className="text-blue-500" /> Đơn hàng mới nhất
@@ -416,50 +427,6 @@ const Dashboard = () => {
       </div>
     </div>
   );
-};
-
-const toNumber = (value) => Number(value || 0);
-
-const buildCategoryShares = (dishes) => {
-  const totalsByCategory = dishes.reduce((acc, dish) => {
-    const category = dish.category || 'Khác';
-    acc[category] = (acc[category] || 0) + toNumber(dish.totalRevenue);
-    return acc;
-  }, {});
-
-  return Object.entries(totalsByCategory).map(([name, value]) => ({ name, value }));
-};
-
-const buildRevenueForecastData = (points) => {
-  const rows = points.map((point) => ({
-    date: point.date,
-    label: formatChartDate(point.date),
-    actual: point.actual == null ? null : Number(point.actual),
-    forecast: point.forecast == null ? null : Number(point.forecast),
-    forecasted: point.forecasted,
-  }));
-
-  const firstForecastIndex = rows.findIndex((row) => row.forecasted);
-  if (firstForecastIndex > 0 && rows[firstForecastIndex - 1].actual != null) {
-    rows[firstForecastIndex - 1] = {
-      ...rows[firstForecastIndex - 1],
-      forecast: rows[firstForecastIndex - 1].actual,
-    };
-  }
-
-  return rows;
-};
-
-const formatChartDate = (date) => {
-  if (!date) return '';
-  const [, month, day] = date.split('-');
-  return `${day}/${month}`;
-};
-
-const formatCompactVND = (value) => {
-  if (value >= 1000000) return `${Math.round(value / 1000000)}tr`;
-  if (value >= 1000) return `${Math.round(value / 1000)}k`;
-  return value;
 };
 
 export default Dashboard;

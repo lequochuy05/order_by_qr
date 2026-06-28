@@ -3,10 +3,10 @@ import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
+import { useAuth } from '@features/auth';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
-import { userService } from '@features/user-management/api/userService.js';
+import { userService } from '@entities/user/api/userService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';

@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { queryClient } from '@shared/api/queryClient.js';
-import { categoryService } from '@features/category-management/api/categoryService.js';
+import { categoryService } from './categoryService.js';
 
 const invalidateCategories = () =>
   queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });

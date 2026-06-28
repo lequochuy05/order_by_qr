@@ -8,6 +8,7 @@ import com.qros.modules.analytics.repository.projection.RecentOrderProjection;
 import com.qros.modules.analytics.repository.projection.RevenuePointProjection;
 import com.qros.modules.analytics.repository.projection.SalesTrendPointProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
+import com.qros.modules.analytics.repository.projection.TodayRevenueSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
 import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.modules.order.model.Order;
@@ -166,6 +167,21 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
       """,
             nativeQuery = true)
     TableSummaryProjection tableSummary();
+
+    @Query(
+            value =
+                    """
+      SELECT COALESCE(SUM(summary.final_amount), 0) AS todayRevenue,
+             CASE
+                 WHEN COALESCE(SUM(summary.total_orders), 0) = 0 THEN 0
+                 ELSE COALESCE(SUM(summary.final_amount), 0)
+                      / COALESCE(SUM(summary.total_orders), 0)
+             END AS todayAvgOrderValue
+      FROM daily_revenue_summary summary
+      WHERE summary.business_date = :today
+      """,
+            nativeQuery = true)
+    TodayRevenueSummaryProjection todayRevenueSummary(@Param("today") LocalDate today);
 
     @Query(
             value =

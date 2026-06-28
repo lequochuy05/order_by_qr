@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { Boxes, PackagePlus, Pencil, SlidersHorizontal } from 'lucide-react';
 
-import { fmtQty, numberValue } from '@features/inventory-management/lib/inventoryFormat.js';
+import { fmtQty, numberValue } from '../../lib/inventoryFormat.js';
 import StockBadge from './StockBadge.jsx';
 
 const ActionButton = ({ icon, label, onClick, tone }) => {

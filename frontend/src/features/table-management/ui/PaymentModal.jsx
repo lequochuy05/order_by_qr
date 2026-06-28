@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 
-import usePaymentModal from '@features/table-management/model/usePaymentModal.js';
+import usePaymentModal from '../model/usePaymentModal.js';
 import { ErrorBoundary } from '@shared/ui';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import PaymentActions from './payment/PaymentActions.jsx';

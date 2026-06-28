@@ -72,6 +72,7 @@ const AppRouter = () => (
               <Route path="/admin/inventory" element={<InventoryPage />} />
               <Route path="/admin/voucher" element={<VoucherPage />} />
               <Route path="/admin/staffs" element={<UserPage />} />
+              <Route path="/admin/history" element={<OrderHistoryPage />} />
               <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
               <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
               <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
@@ -79,7 +80,6 @@ const AppRouter = () => (
 
             <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
               <Route path="/admin/tables" element={<TableMapPage />} />
-              <Route path="/admin/history" element={<OrderHistoryPage />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>

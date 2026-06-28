@@ -1,5 +1,10 @@
-import CustomerMenu from '@widgets/customer-menu/CustomerMenu.jsx';
+import CustomerMenu from '@features/customer-menu/ui/CustomerMenu.jsx';
+import { AiChatAssistant } from '@features/ai-assistant';
 
 export default function OrderingPage() {
-  return <CustomerMenu />;
+  return (
+    <CustomerMenu 
+      renderAiAssistant={(hidden) => <AiChatAssistant hidden={hidden} />}
+    />
+  );
 }

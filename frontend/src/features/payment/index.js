@@ -1,1 +1,1 @@
-export { paymentService } from './api/paymentService.js';
+export { paymentService } from '@entities/payment/api/paymentService.js';

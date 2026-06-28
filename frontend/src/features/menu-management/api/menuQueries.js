@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { menuItemService } from './menuService.js';
+import { menuItemService } from '@entities/menu-item';
 
 /**
  * Fetches a paginated, filtered list of menu items for the management view.

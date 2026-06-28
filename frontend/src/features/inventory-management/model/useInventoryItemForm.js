@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react';
 
-import { inventoryService } from '@features/inventory-management/api/inventoryService.js';
+import { inventoryService } from '@entities/inventory/api/inventoryService.js';
 import {
   defaultInventoryForm,
   INVENTORY_UNITS,
-} from '@features/inventory-management/lib/inventoryConstants.js';
+} from '../lib/inventoryConstants.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const useInventoryItemForm = ({ onSaved }) => {

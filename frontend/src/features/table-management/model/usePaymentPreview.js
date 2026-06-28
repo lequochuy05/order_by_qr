@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { orderService } from '@features/order-management';
+import { orderService } from '@entities/order/api/orderService.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,

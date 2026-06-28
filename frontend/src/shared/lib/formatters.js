@@ -52,6 +52,15 @@ export const fmtTime = (dateString) => {
 };
 
 /**
+ * Định dạng số tiền VND dạng compact cho chart axis (e.g. 1.5tr, 200k)
+ */
+export const fmtCompactVND = (value) => {
+  if (value >= 1_000_000) return `${Math.round(value / 1_000_000)}tr`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`;
+  return value;
+};
+
+/**
  * Định dạng vai trò người dùng
  */
 export const fmtRole = (role) => {

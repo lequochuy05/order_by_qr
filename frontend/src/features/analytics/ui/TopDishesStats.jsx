@@ -11,35 +11,23 @@ import {
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import { Loader2, UtensilsCrossed, ShoppingBag, TrendingUp, BarChart3, Award } from 'lucide-react';
-import { analyticsService } from '@features/analytics/api/analyticsService.js';
+import { analyticsService } from '@entities/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 import { formatBusinessDate } from '@shared/lib/businessTime.js';
+import useDateRangeFilter from '../model/useDateRangeFilter.js';
 
 const ITEMS_PER_PAGE = 10;
 
-const getDefaultDateRange = () => {
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(to.getDate() - 6);
-  return { from, to };
-};
-
 const TopDishesStats = () => {
-  const [dateRange, setDateRange] = useState(getDefaultDateRange);
-  const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
+  const { dateRange, setDateRange, appliedDateRange, handleApplyFilters: applyFilters } =
+    useDateRangeFilter();
   const [dishes, setDishes] = useState([]);
   const [trend, setTrend] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const handleApplyFilters = () => {
-    setCurrentPage(0);
-    setAppliedDateRange({
-      from: new Date(dateRange.from),
-      to: new Date(dateRange.to),
-    });
-  };
+  const handleApplyFilters = () => applyFilters(() => setCurrentPage(0));
 
   useEffect(() => {
     const load = async () => {

@@ -85,7 +85,7 @@ const menuItems = [
     title: 'Lịch sử đơn hàng',
     path: '/admin/history',
     icon: <ClipboardList size={22} />,
-    roles: ['MANAGER', 'STAFF'],
+    roles: ['MANAGER'],
   },
 
   {

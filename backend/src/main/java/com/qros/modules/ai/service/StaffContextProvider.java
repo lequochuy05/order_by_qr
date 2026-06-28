@@ -57,9 +57,11 @@ public class StaffContextProvider {
     private void appendKitchenContext(StringBuilder builder, LocalDateTime now) {
         List<KitchenItemContext> activeItems = kitchenService.getKitchenOrders().stream()
                 .flatMap(order -> order.orderItems().stream()
-                        .filter(item -> item.status() == OrderItemStatus.PENDING || item.status() == OrderItemStatus.COOKING)
+                        .filter(item ->
+                                item.status() == OrderItemStatus.PENDING || item.status() == OrderItemStatus.COOKING)
                         .map(item -> toKitchenItemContext(order, item, now)))
-                .sorted(Comparator.comparingLong(KitchenItemContext::waitMinutes).reversed())
+                .sorted(Comparator.comparingLong(KitchenItemContext::waitMinutes)
+                        .reversed())
                 .limit(ACTIVE_ITEM_LIMIT)
                 .toList();
 
@@ -80,7 +82,9 @@ public class StaffContextProvider {
         String tableNumber = order.table() != null ? order.table().tableNumber() : "chưa gán";
         String itemName = itemName(item);
         String category = categoryName(item);
-        String notes = item.notes() != null && !item.notes().isBlank() ? " | ghi chú: " + item.notes().trim() : "";
+        String notes = item.notes() != null && !item.notes().isBlank()
+                ? " | ghi chú: " + item.notes().trim()
+                : "";
         String options = optionsText(item.options());
         String optionSuffix = options.isBlank() ? "" : " | tuỳ chọn: " + options;
 
@@ -102,15 +106,13 @@ public class StaffContextProvider {
     private void appendTableContext(StringBuilder builder) {
         List<DiningTable> tables = diningTableRepository.findAllByOrderByTableNumberAsc();
         Map<TableStatus, Long> counts = tables.stream()
-                .collect(Collectors.groupingBy(DiningTable::getStatus, () -> new EnumMap<>(TableStatus.class), Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        DiningTable::getStatus, () -> new EnumMap<>(TableStatus.class), Collectors.counting()));
 
         builder.append("TRẠNG THÁI BÀN:\n");
         builder.append("  - Tổng: ").append(tables.size());
         for (TableStatus status : TableStatus.values()) {
-            builder.append(" | ")
-                    .append(tableStatusLabel(status))
-                    .append(": ")
-                    .append(counts.getOrDefault(status, 0L));
+            builder.append(" | ").append(tableStatusLabel(status)).append(": ").append(counts.getOrDefault(status, 0L));
         }
         builder.append("\n");
 
@@ -161,9 +163,9 @@ public class StaffContextProvider {
     }
 
     private List<Order> recentOrders() {
-        PageRequest pageable =
-                PageRequest.of(0, RECENT_ORDER_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
+        PageRequest pageable = PageRequest.of(0, RECENT_ORDER_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
         List<Long> orderIds = orderRepository.findAll(pageable).getContent().stream()
+                .filter(o -> o.getStatus() != OrderStatus.COMPLETED && o.getStatus() != OrderStatus.CANCELLED)
                 .map(Order::getId)
                 .toList();
 
@@ -172,12 +174,10 @@ public class StaffContextProvider {
         }
 
         Map<Long, Order> ordersById = orderRepository.findDistinctByIdIn(orderIds).stream()
-                .collect(Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+                .collect(
+                        Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        return orderIds.stream()
-                .map(ordersById::get)
-                .filter(Objects::nonNull)
-                .toList();
+        return orderIds.stream().map(ordersById::get).filter(Objects::nonNull).toList();
     }
 
     private String orderItemsText(Order order) {
@@ -185,18 +185,22 @@ public class StaffContextProvider {
                 .filter(item -> item.getStatus() != OrderItemStatus.CANCELLED)
                 .sorted(Comparator.comparing(OrderItem::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                 .limit(8)
-                .map(item -> "%s x%d (%s)"
-                        .formatted(itemName(item), item.getQuantity(), itemStatusLabel(item.getStatus())))
+                .map(item ->
+                        "%s x%d (%s)".formatted(itemName(item), item.getQuantity(), itemStatusLabel(item.getStatus())))
                 .collect(Collectors.joining("; "));
 
         return text.isBlank() ? "không có món đang tính" : text;
     }
 
     private String itemName(KitchenOrderResponse.KitchenOrderItemResponse item) {
-        if (item.menuItem() != null && item.menuItem().name() != null && !item.menuItem().name().isBlank()) {
+        if (item.menuItem() != null
+                && item.menuItem().name() != null
+                && !item.menuItem().name().isBlank()) {
             return item.menuItem().name();
         }
-        if (item.combo() != null && item.combo().name() != null && !item.combo().name().isBlank()) {
+        if (item.combo() != null
+                && item.combo().name() != null
+                && !item.combo().name().isBlank()) {
             return item.combo().name();
         }
         return "Món chưa xác định";

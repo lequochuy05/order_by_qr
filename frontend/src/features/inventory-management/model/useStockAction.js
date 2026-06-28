@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { inventoryService } from '@features/inventory-management/api/inventoryService.js';
+import { inventoryService } from '@entities/inventory/api/inventoryService.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const EMPTY_STOCK_FORM = {

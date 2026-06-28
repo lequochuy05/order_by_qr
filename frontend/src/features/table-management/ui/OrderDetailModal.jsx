@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed } from 'lucide-react';
-import { orderService } from '@features/order-management/api/orderService.js';
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { orderService } from '@entities/order/api/orderService.js';
+import { useAuth } from '@features/auth';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
@@ -10,13 +9,15 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [prevOrder, setPrevOrder] = useState(order);
   const [editingId, setEditingId] = useState(null);
   const [editVal, setEditVal] = useState({ quantity: 1, notes: '' });
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [preparingItemIds, setPreparingItemIds] = useState(() => new Set());
   const preparingItemIdsRef = useRef(new Set());
   const preparedRequestQueueRef = useRef(Promise.resolve());
 
   const { user } = useAuth();
   const isManager = user?.role === 'MANAGER';
-  const { confirm } = useConfirmModal();
+  const isChef = user?.role === 'CHEF';
+  const canMarkPrepared = isManager || isChef;
 
   // Adjust state when order prop changes (React recommended pattern)
   if (order !== prevOrder) {
@@ -51,17 +52,19 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
       });
   };
 
+  const cancelDelete = () => setConfirmDeleteId(null);
+
   const handleDelete = async (itemId) => {
-    const confirmed = await confirm('Hủy món', 'Bạn có chắc chắn muốn hủy món này khỏi đơn hàng?');
-    if (!confirmed) return;
     try {
       await orderService.deleteOrderItem(itemId);
       setItems((prev) =>
         prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'CANCELLED' } : i)),
       );
+      setConfirmDeleteId(null);
       showSuccessToast('Đã hủy món thành công');
       await onOrderUpdate();
     } catch (error) {
+      setConfirmDeleteId(null);
       showErrorToast(error);
     }
   };
@@ -172,23 +175,37 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                   )}
 
                   {editingId === item.id ? (
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-20 p-2 border rounded-lg outline-none focus:ring-2 ring-blue-500"
-                        value={editVal.quantity}
-                        onChange={(e) =>
-                          setEditVal({ ...editVal, quantity: parseInt(e.target.value) })
-                        }
-                      />
-                      <input
-                        type="text"
-                        className="flex-1 p-2 border rounded-lg outline-none focus:ring-2 ring-blue-500"
-                        placeholder="Ghi chú..."
-                        value={editVal.notes}
-                        onChange={(e) => setEditVal({ ...editVal, notes: e.target.value })}
-                      />
+                    <div className="mt-3 bg-blue-50 rounded-xl border border-blue-100 p-3 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-semibold text-blue-700 w-16 shrink-0">Số lượng</label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditVal((v) => ({ ...v, quantity: Math.max(1, v.quantity - 1) }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors font-bold"
+                          >
+                            −
+                          </button>
+                          <span className="w-10 text-center font-bold text-blue-700 text-lg">
+                            {editVal.quantity}
+                          </span>
+                          <button
+                            onClick={() => setEditVal((v) => ({ ...v, quantity: Math.min(99, v.quantity + 1) }))}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors font-bold"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs font-semibold text-blue-700 w-16 shrink-0">Ghi chú</label>
+                        <input
+                          type="text"
+                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                          placeholder="Ghi chú cho món này..."
+                          value={editVal.notes}
+                          onChange={(e) => setEditVal((v) => ({ ...v, notes: e.target.value }))}
+                        />
+                      </div>
                     </div>
                   ) : (
                     item.notes && (
@@ -207,40 +224,65 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                   ) : (
                     <>
                       {editingId === item.id ? (
-                        <button
-                          onClick={() => saveEdit(item.id)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                        >
-                          <Save size={20} />
-                        </button>
-                      ) : (
                         <div className="flex gap-2">
-                          {/* Nút Báo Xong: Ai cũng thấy */}
+                          <button
+                            onClick={() => saveEdit(item.id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold shadow-sm"
+                          >
+                            <Save size={16} className="inline mr-1" /> Lưu
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="px-4 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      ) : confirmDeleteId === item.id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="rounded-lg bg-red-500 px-3 py-2 text-xs font-bold text-white hover:bg-red-600 transition-colors shadow-sm"
+                          >
+                            <Trash2 size={14} className="inline mr-1" /> Xác nhận hủy
+                          </button>
+                          <button
+                            onClick={cancelDelete}
+                            className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-200 transition-colors"
+                          >
+                            Quay lại
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1.5">
+                          {/* Nút Báo Xong */}
                           <button
                             onClick={() => handlePrepared(item.id)}
                             disabled={isPreparing}
-                            className="min-w-16 rounded-lg bg-green-100 px-3 py-2 text-sm font-bold text-green-700 transition-colors hover:bg-green-200 disabled:cursor-wait disabled:opacity-60"
+                            className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60 border border-emerald-200"
                           >
-                            {isPreparing ? 'Đợi...' : 'Xong'}
+                            {isPreparing ? (
+                              <span className="flex items-center gap-1"><Loader2 size={14} className="animate-spin" /> Đợi...</span>
+                            ) : (
+                              <span className="flex items-center gap-1"><CheckCircle size={14} /> Xong</span>
+                            )}
                           </button>
 
-                          {/* Nút Sửa / Xóa: Chỉ Manager thấy */}
-                          {isManager && (
-                            <>
-                              <button
-                                onClick={() => startEdit(item)}
-                                className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
-                              >
-                                <Edit3 size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(item.id)}
-                                className="p-2 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </>
-                          )}
+                          {/* Nút Sửa / Xóa: Cả Manager và Staff đều dùng được */}
+                          <button
+                            onClick={() => startEdit(item)}
+                            className="p-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200 hover:text-blue-600 transition-colors"
+                            title="Sửa số lượng/ghi chú"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(item.id)}
+                            className="p-2 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"
+                            title="Hủy món"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       )}
                     </>

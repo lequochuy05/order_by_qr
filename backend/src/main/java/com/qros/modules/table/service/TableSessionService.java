@@ -138,6 +138,28 @@ public class TableSessionService {
         return session;
     }
 
+    @Transactional
+    public TableSession getOrCreateStaffSession(@NonNull Long tableId) {
+        DiningTable table = tableRepository
+                .findByIdForUpdate(tableId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table ID invalid"));
+
+        TableSession session = sessionRepository
+                .findByTableIdAndStatusForUpdate(table.getId(), TableSessionStatus.OPEN)
+                .orElse(null);
+
+        if (session == null) {
+            session = createOpenSession(table);
+            session.setCreatedSource(TableSessionSource.STAFF);
+            table.setStatus(TableStatus.OCCUPIED);
+            tableRepository.save(table);
+        }
+
+        evictTableSessionCaches(table);
+        eventPublisher.publishEvent(new TableChangeEvent());
+        return session;
+    }
+
     @Transactional(readOnly = true)
     public TableSession requireOpenSessionForRead(@NonNull String tableCode, @NonNull String sessionToken) {
         TableSession session = requireSessionForRead(tableCode, sessionToken);

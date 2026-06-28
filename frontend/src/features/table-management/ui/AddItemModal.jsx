@@ -1,5 +1,5 @@
-import { ItemOptionsModal } from '@features/customer-ordering';
-import useAddItemsCart from '@features/table-management/model/useAddItemsCart.js';
+import { ItemOptionsModal } from '@shared/ui';
+import useAddItemsCart from '../model/useAddItemsCart.js';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import AddItemCartPane from './add-item/AddItemCartPane.jsx';
 import AddItemCatalogPane from './add-item/AddItemCatalogPane.jsx';

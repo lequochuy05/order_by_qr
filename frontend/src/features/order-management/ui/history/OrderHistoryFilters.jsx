@@ -1,7 +1,7 @@
 import { Calendar, Filter, Hash, RefreshCcw, Search } from 'lucide-react';
 
 import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
-import { DATE_PRESETS } from '@features/order-management/lib/orderHistoryDates.js';
+import { DATE_PRESETS } from '../../lib/orderHistoryDates.js';
 
 const OrderHistoryFilters = ({
   orderId,

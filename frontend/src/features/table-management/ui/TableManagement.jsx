@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
+import { useAuth } from '@features/auth';
 
-import { orderService } from '@features/order-management/api/orderService.js';
+import { orderService } from '@entities/order/api/orderService.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
@@ -94,26 +94,24 @@ const TableManager = () => {
   const regenerateQrMutation = useRegenerateQrMutation();
 
   // 3. Handlers
-  const handleAction = async ({ type, table }) => {
+  const handleAction = async ({ type, table, order }) => {
     switch (type) {
       case 'ADD_ITEM':
         setAddItemModal({ open: true, table });
         break;
       case 'DETAIL':
-        orderService
-          .getCurrentOrder(table.id)
-          .then((res) => setDetailModal({ open: true, table, order: res || null }))
-          .catch(() => setDetailModal({ open: true, table, order: null }));
+        const fullOrder = order?.id ? await orderService.getCurrentOrder(table.id) : null;
+        setDetailModal({ open: true, table, order: fullOrder || null });
         break;
       case 'PAY':
         try {
-          const latestOrder = await orderService.getCurrentOrder(table.id);
-          if (!latestOrder) {
+          // Try to use the passed order first, fallback to checking order existence 
+          if (!order) {
             showError('Không tìm thấy đơn đang hoạt động của bàn này');
             queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
             break;
           }
-          setPayModal({ open: true, table, order: latestOrder });
+          setPayModal({ open: true, table, order: order });
         } catch (error) {
           showError(error);
         }
@@ -216,6 +214,7 @@ const TableManager = () => {
           }
         }}
         addButtonText="Thêm bàn"
+        hideAddButton={userRole !== 'MANAGER'}
       />
       <div className="mt-6">
         {loading ? (

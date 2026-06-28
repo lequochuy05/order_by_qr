@@ -8,31 +8,16 @@ import {
   Legend,
 } from 'recharts';
 import { Loader2, Award, Users } from 'lucide-react';
-import { analyticsService } from '@features/analytics/api/analyticsService.js';
+import { analyticsService } from '@entities/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 
 import { fmtVND } from '@shared/lib/formatters.js';
-
-const getDefaultDateRange = () => {
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(to.getDate() - 6);
-  return { from, to };
-};
+import useDateRangeFilter from '../model/useDateRangeFilter.js';
 
 const StaffStats = () => {
-  // State thời gian
-  const [dateRange, setDateRange] = useState(getDefaultDateRange);
-  const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
+  const { dateRange, setDateRange, appliedDateRange, handleApplyFilters } = useDateRangeFilter();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const handleApplyFilters = () => {
-    setAppliedDateRange({
-      from: new Date(dateRange.from),
-      to: new Date(dateRange.to),
-    });
-  };
 
   // Load data
   useEffect(() => {

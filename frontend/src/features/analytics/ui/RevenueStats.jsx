@@ -11,25 +11,18 @@ import {
   Tooltip as RechartsTooltip,
   Tooltip,
 } from 'recharts';
-import { Loader2, Receipt } from 'lucide-react'; // Thêm icon Receipt
-import { analyticsService } from '@features/analytics/api/analyticsService.js';
+import { Loader2, Receipt } from 'lucide-react';
+import { analyticsService } from '@entities/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import useDateRangeFilter from '../model/useDateRangeFilter.js';
 
 const ITEMS_PER_PAGE = 10;
 
-const getDefaultDateRange = () => {
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(to.getDate() - 6);
-  return { from, to };
-};
-
 const RevenueStats = () => {
-  // Mặc định 7 ngày
-  const [dateRange, setDateRange] = useState(getDefaultDateRange);
-  const [appliedDateRange, setAppliedDateRange] = useState(dateRange);
+  const { dateRange, setDateRange, appliedDateRange, handleApplyFilters: applyFilters } =
+    useDateRangeFilter();
   const [revenueData, setRevenueData] = useState([]);
   const [orders, setOrders] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
@@ -41,13 +34,7 @@ const RevenueStats = () => {
   const revenueFetchSeqRef = useRef(0);
   const ordersFetchSeqRef = useRef(0);
 
-  const handleApplyFilters = () => {
-    setCurrentPage(0);
-    setAppliedDateRange({
-      from: new Date(dateRange.from),
-      to: new Date(dateRange.to),
-    });
-  };
+  const handleApplyFilters = () => applyFilters(() => setCurrentPage(0));
 
   useEffect(() => {
     isMountedRef.current = true;

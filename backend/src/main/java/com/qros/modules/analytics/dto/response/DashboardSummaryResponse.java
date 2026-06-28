@@ -8,6 +8,8 @@ public record DashboardSummaryResponse(
         Long totalOrders,
         Long totalItemsSold,
         BigDecimal averageOrderValue,
+        BigDecimal todayRevenue,
+        BigDecimal todayAvgOrderValue,
         List<RevenuePointResponse> revenue,
         List<UserPerformanceResponse> users,
         List<OrderDetailResponse> recentCompletedOrders,

@@ -1,5 +1,3 @@
-import api from '@shared/api/httpClient.js';
+// Re-exported from shared/api — moved to avoid cross-feature imports
+export { aiStaffService } from '@shared/api/aiService.js';
 
-export const aiStaffService = {
-  query: (message, history = []) => api.post('/ai/staff/query', { message, history }),
-};

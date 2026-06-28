@@ -1,6 +1,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { orderService } from './orderService.js';
+import { orderService } from '@entities/order/api/orderService.js';
 
 export const useOrdersHistoryQuery = (filters = {}, options = {}) =>
   useQuery({

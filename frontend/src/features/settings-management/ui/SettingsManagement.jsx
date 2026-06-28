@@ -11,7 +11,7 @@ import {
   Wifi,
 } from 'lucide-react';
 
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
+import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { getErrorDetails } from '@shared/lib/errorMessages.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';

@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { queryClient } from '@shared/api/queryClient.js';
-import { orderService } from './orderService.js';
+import { orderService } from '@entities/order/api/orderService.js';
 
 // Temporary invalidation hook for Sprint 3B. Will be consolidated in Sprint 3D.
 const invalidateOrders = () => {

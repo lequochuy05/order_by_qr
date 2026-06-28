@@ -111,11 +111,10 @@ public class OrderCreationService {
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
-        DiningTable table = tableRepository
-                .findByIdForUpdate(request.tableId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table ID invalid"));
+        TableSession session = tableSessionService.getOrCreateStaffSession(request.tableId());
+        DiningTable table = session.getTable();
 
-        return createOrder(table, null, request.items(), request.combos(), BatchSource.STAFF);
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.STAFF);
     }
 
     private OrderResponse createOrder(

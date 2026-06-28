@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { queryClient } from '@shared/api/queryClient.js';
-import { menuItemService } from './menuService.js';
+import { menuItemService } from '@entities/menu-item';
 
 const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 

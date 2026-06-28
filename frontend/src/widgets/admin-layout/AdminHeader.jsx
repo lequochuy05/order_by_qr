@@ -70,7 +70,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
         {/* WebSocket Status Badge */}
         {!isCompactViewport && (
           <div
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black tracking-wider transition-all ${
               wsConnected
                 ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400'
                 : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
@@ -78,7 +78,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
             title={wsConnected ? 'WebSocket connected' : 'WebSocket disconnected'}
           >
             {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {wsConnected ? 'LIVE' : 'OFFLINE'}
+            {wsConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
           </div>
         )}
 

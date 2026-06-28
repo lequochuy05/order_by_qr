@@ -1,7 +1,7 @@
 import { Loader2, Plus } from 'lucide-react';
 
-import { STOCK_FILTER_OPTIONS } from '@features/inventory-management/lib/inventoryConstants.js';
-import useInventoryManagement from '@features/inventory-management/model/useInventoryManagement.js';
+import { STOCK_FILTER_OPTIONS } from '../lib/inventoryConstants.js';
+import useInventoryManagement from '../model/useInventoryManagement.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import InventoryGrid from './components/InventoryGrid.jsx';

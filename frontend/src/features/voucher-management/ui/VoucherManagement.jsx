@@ -3,7 +3,7 @@ import { Loader2, Ticket } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
-import { voucherService } from '@features/voucher-management/api/voucherService.js';
+import { voucherService } from '@entities/voucher/api/voucherService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';

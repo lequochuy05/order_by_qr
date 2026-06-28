@@ -1,7 +1,7 @@
 import { ClipboardList, History } from 'lucide-react';
 
-import { movementLabels } from '@features/inventory-management/lib/inventoryConstants.js';
-import { fmtQty } from '@features/inventory-management/lib/inventoryFormat.js';
+import { movementLabels } from '../../lib/inventoryConstants.js';
+import { fmtQty } from '../../lib/inventoryFormat.js';
 
 const MovementList = ({ movements }) => (
   <div className="rounded-3xl border border-gray-100 bg-white shadow-sm">

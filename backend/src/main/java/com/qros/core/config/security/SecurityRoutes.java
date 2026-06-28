@@ -37,16 +37,15 @@ public final class SecurityRoutes {
 
     public static final String[] SELF_POST = {ApiRoutes.USERS + "/me/avatar"};
 
-    public static final String[] MANAGER_GET = {
-        ApiRoutes.USERS, ApiRoutes.USERS + "/*", ApiRoutes.SETTINGS, "/actuator/prometheus"
-    };
+    public static final String[] MANAGER_GET = {ApiRoutes.USERS, ApiRoutes.USERS + "/*", "/actuator/prometheus"};
 
     public static final String[] STAFF_READ_GET = {
         ApiRoutes.CATEGORIES + "/**",
         ApiRoutes.MENU_ITEMS + "/**",
         ApiRoutes.COMBOS + "/**",
         ApiRoutes.VOUCHERS + "/**",
-        ApiRoutes.PROMOTIONS + "/**"
+        ApiRoutes.PROMOTIONS + "/**",
+        ApiRoutes.SETTINGS
     };
 
     public static final String[] OPERATION_GET = {
@@ -128,7 +127,8 @@ public final class SecurityRoutes {
 
     public static final String[] STAFF_OPERATION_DELETE = {ApiRoutes.ORDER_ITEMS + "/*"};
 
-    public static final String[] STAFF_OPERATION_PATCH = {ApiRoutes.ORDERS + "/*/status", ApiRoutes.ORDER_ITEMS + "/**"
+    public static final String[] STAFF_OPERATION_PATCH = {
+        ApiRoutes.ORDERS + "/*/status", ApiRoutes.ORDER_ITEMS + "/**", ApiRoutes.KITCHEN + "/items/*/prepared"
     };
 
     public static final String[] PAYMENT_ROUTES = {ApiRoutes.PAYMENTS, ApiRoutes.PAYMENTS + "/**"};

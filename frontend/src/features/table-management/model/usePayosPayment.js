@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { orderService } from '@features/order-management';
-import { paymentService } from '@features/payment';
-import { calculatePayosTimeLeft } from '@features/payment/lib/paymentExpiry.js';
+import { orderService } from '@entities/order/api/orderService.js';
+import { paymentService } from '@entities/payment/api/paymentService.js';
+import { calculatePayosTimeLeft } from '@entities/payment/lib/paymentExpiry.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
   getOrderSubtotalAmount,
 } from '@entities/order/lib/orderMoney.js';
 import { printInvoice } from '@entities/order/lib/invoiceGenerator.js';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 import useSettingsStore from '@shared/model/settingsStore.js';
+import usePayosTimer from './usePayosTimer.js';
+import useCashPayment from './useCashPayment.js';
 
 const usePayosPayment = ({
   isOpen,
@@ -40,7 +41,6 @@ const usePayosPayment = ({
   const finishingRef = useRef(false);
   const paymentSuccessHandledRef = useRef(false);
   const payosSyncingRef = useRef(false);
-  const { confirm } = useConfirmModal();
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -64,18 +64,12 @@ const usePayosPayment = ({
     }
   }, [cashPaymentEnabled, onlinePaymentEnabled, paymentMethod]);
 
-  useEffect(() => {
-    if (payosStatus !== 'waiting' || !payosData?.expiresAt) return undefined;
-
-    const updateTimeLeft = () => {
-      const remaining = calculatePayosTimeLeft(payosData.expiresAt);
-      setTimeLeft(remaining);
-      if (remaining <= 0) setPayosStatus('expired');
-    };
-    updateTimeLeft();
-    const interval = window.setInterval(updateTimeLeft, 1000);
-    return () => window.clearInterval(interval);
-  }, [payosData?.expiresAt, payosStatus]);
+  usePayosTimer({
+    payosStatus,
+    expiresAt: payosData?.expiresAt,
+    setTimeLeft,
+    setPayosStatus,
+  });
 
   const buildInvoiceOrder = useCallback(
     (latestOrder, method) => {
@@ -267,29 +261,13 @@ const usePayosPayment = ({
     }
   }, [payosData]);
 
-  const handleConfirmCashPay = useCallback(async () => {
-    if (!cashPaymentEnabled) return;
-    const confirmed = await confirm(
-      'Xác nhận thanh toán',
-      `Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`,
-    );
-    if (!confirmed) return;
-
-    try {
-      const voucherCode = preview.voucherCode.trim() || null;
-      await paymentService.createPayment(order.id, 'CASH', voucherCode);
-      await finishPayment('CASH');
-    } catch (error) {
-      showErrorToast(error);
-    }
-  }, [
+  const { handleConfirmCashPay } = useCashPayment({
     cashPaymentEnabled,
-    confirm,
+    order,
+    preview,
+    table,
     finishPayment,
-    order?.id,
-    preview.voucherCode,
-    table?.tableNumber,
-  ]);
+  });
 
   const selectCash = useCallback(() => {
     if (!cashPaymentEnabled) return;

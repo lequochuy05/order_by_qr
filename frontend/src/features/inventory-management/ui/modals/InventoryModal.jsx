@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { getInventoryUnitOptions } from '@features/inventory-management/lib/inventoryFormat.js';
+import { getInventoryUnitOptions } from '../../lib/inventoryFormat.js';
 import {
   CheckboxCard,
   ModalActions,

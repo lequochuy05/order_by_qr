@@ -79,3 +79,4 @@ frontend.tar
 docker-data/
 *.md
 .cursor/
+*.patch

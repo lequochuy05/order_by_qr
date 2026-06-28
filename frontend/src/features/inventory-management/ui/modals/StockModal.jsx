@@ -1,4 +1,4 @@
-import { fmtQty } from '@features/inventory-management/lib/inventoryFormat.js';
+import { fmtQty } from '../../lib/inventoryFormat.js';
 import { ModalActions, ModalHeader, SharedModal, TextField } from '@shared/ui';
 
 const StockModal = ({ action, form, setForm, onClose, onSubmit, isSubmitting = false }) => (

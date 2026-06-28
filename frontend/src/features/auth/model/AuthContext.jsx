@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
-import { authService } from '@features/auth/api/authService.js';
+import { authService } from '../api/authService.js';
 import { setAccessToken } from '@shared/api/httpClient.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { adminWsService } from '@shared/lib/websocket.js';

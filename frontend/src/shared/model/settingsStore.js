@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { settingsService } from '@shared/api/settingsService.js';
 
 const defaultSettings = {
-  restaurantName: 'Sắc Màu Quán',
+  restaurantName: 'QROS',
   restaurantAddress: '',
   restaurantPhone: '',
   restaurantEmail: '',

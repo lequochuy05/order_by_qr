@@ -8,6 +8,7 @@ const ManagementHeader = ({
   onAddClick,
   addButtonText = 'Thêm mới',
   addButtonIcon: AddButtonIcon,
+  hideAddButton = false,
 
   // Phần mở rộng cho bộ lọc
   showFilter = false,
@@ -50,6 +51,7 @@ const ManagementHeader = ({
     </div>
 
     {/* 3. Nút Thêm mới */}
+    {!hideAddButton && (
     <button
       onClick={onAddClick}
       className="flex min-w-0 items-center justify-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-600 active:scale-95 sm:w-auto"
@@ -61,6 +63,7 @@ const ManagementHeader = ({
       )}
       <span className="truncate">{addButtonText}</span>
     </button>
+    )}
   </div>
 );
 

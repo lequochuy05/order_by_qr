@@ -16,6 +16,7 @@ import com.qros.modules.analytics.repository.projection.DashboardSummaryProjecti
 import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
 import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
+import com.qros.modules.analytics.repository.projection.TodayRevenueSummaryProjection;
 import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.service.OrderService;
@@ -67,11 +68,15 @@ public class AnalyticsService {
 
         TableSummaryProjection tableSummary = analyticsQueryRepository.tableSummary();
 
+        TodayRevenueSummaryProjection todayRevenueSummary = analyticsQueryRepository.todayRevenueSummary(today);
+
         return new DashboardSummaryResponse(
                 safeMoney(summary != null ? summary.getTotalRevenue() : null),
                 safeLong(summary != null ? summary.getTotalOrders() : null),
                 safeLong(summary != null ? summary.getTotalItemsSold() : null),
                 safeMoney(summary != null ? summary.getAverageOrderValue() : null),
+                safeMoney(todayRevenueSummary != null ? todayRevenueSummary.getTodayRevenue() : null),
+                safeMoney(todayRevenueSummary != null ? todayRevenueSummary.getTodayAvgOrderValue() : null),
                 getRevenueSeries(range.from(), range.to()),
                 getUserPerformance(range.from(), range.to(), 5),
                 getOrderDetails(range.from(), range.to(), PageRequest.of(0, 5)).getContent(),

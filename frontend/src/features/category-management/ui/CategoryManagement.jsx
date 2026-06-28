@@ -11,7 +11,7 @@ import { queryKeys } from '@shared/api/queryKeys.js';
 import { useCategoriesPageQuery } from '../api/categoryQueries.js';
 
 // Import Service (for create/update/delete — used inside handleSubmit/handleDelete)
-import { categoryService } from '@features/category-management/api/categoryService.js';
+import { categoryService } from '../api/categoryService.js';
 
 // Import Component
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';

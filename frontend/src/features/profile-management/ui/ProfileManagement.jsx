@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
+import { useAuth } from '@features/auth';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import { profileService } from '@features/profile-management/api/profileService.js';
+import { profileService } from '../api/profileService.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import ProfileAvatarCard from './ProfileAvatarCard.jsx';

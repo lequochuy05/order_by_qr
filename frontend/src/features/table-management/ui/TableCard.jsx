@@ -1,5 +1,5 @@
-import React from 'react';
-import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock, Clock } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { getTableStatusMeta } from '@entities/table/lib/tableStatus.js';
@@ -10,10 +10,36 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
   const isManager = userRole === 'MANAGER'; // Kiểm tra quyền
 
   const status = getTableStatusMeta(table.status);
+  const isWaitingPayment = table.status === 'WAITING_FOR_PAYMENT';
+
+  // Tính toán thời gian đã ngồi, tự động cập nhật mỗi 30s
+  const calcTime = (createdAt) => {
+    if (!createdAt) return null;
+    const start = new Date(createdAt);
+    const now = new Date();
+    const diffMs = now - start;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 60) return `${diffMins} phút`;
+    const hours = Math.floor(diffMins / 60);
+    return `${hours}h ${diffMins % 60}p`;
+  };
+  const [timeElapsed, setTimeElapsed] = useState(() => calcTime(order?.createdAt));
+  useEffect(() => {
+    setTimeElapsed(calcTime(order?.createdAt));
+    if (!order?.createdAt) return;
+    const interval = setInterval(() => {
+      setTimeElapsed(calcTime(order?.createdAt));
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, [order?.createdAt]);
 
   return (
     <div
-      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg ${status.classes}`}
+      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg 
+      ${status.classes} 
+      ${isWaitingPayment ? 'ring-2 ring-amber-400 ring-offset-2 animate-pulse bg-amber-50/50' : ''}
+      `}
+      style={isWaitingPayment ? { animationDuration: '2s' } : {}}
     >
       {/* Header và Nội dung chính giữ nguyên */}
       <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
@@ -23,8 +49,15 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
         </span>
       </div>
 
-      <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
-        <Users size={16} /> <span>{table.capacity} khách</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 text-sm mb-4">
+        <div className="flex items-center gap-1">
+          <Users size={14} /> <span>{table.capacity} khách</span>
+        </div>
+        {timeElapsed && (
+          <div className="flex items-center gap-1 text-amber-600 font-medium bg-amber-50 px-1.5 rounded">
+            <Clock size={14} /> <span>{timeElapsed}</span>
+          </div>
+        )}
       </div>
 
       <div className="mb-4">
@@ -59,22 +92,24 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
       </div>
 
       {/* */}
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onEdit}
-          className="p-1.5 bg-white rounded-lg shadow-sm text-blue-500 hover:bg-blue-50 border border-gray-100"
-          title="Sửa bàn"
-        >
-          {isManager ? <Edit size={14} /> : <Lock size={14} className="text-gray-400" />}
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-1.5 bg-white rounded-lg shadow-sm text-red-500 hover:bg-red-50 border border-gray-100"
-          title="Xóa bàn"
-        >
-          {isManager ? <Trash2 size={14} /> : <Lock size={14} className="text-gray-400" />}
-        </button>
-      </div>
+      {isManager && (
+        <div className="absolute top-2 right-2 flex gap-1 transition-opacity">
+          <button
+            onClick={onEdit}
+            className="p-1.5 bg-white rounded-lg shadow-sm text-blue-500 hover:bg-blue-50 border border-gray-100"
+            title="Sửa bàn"
+          >
+            <Edit size={14} />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 bg-white rounded-lg shadow-sm text-red-500 hover:bg-red-50 border border-gray-100"
+            title="Xóa bàn"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

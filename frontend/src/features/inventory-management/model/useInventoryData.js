@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { inventoryService } from '@features/inventory-management/api/inventoryService.js';
-import { INVENTORY_PAGE_SIZE } from '@features/inventory-management/lib/inventoryConstants.js';
+import { inventoryService } from '@entities/inventory/api/inventoryService.js';
+import { INVENTORY_PAGE_SIZE } from '../lib/inventoryConstants.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';

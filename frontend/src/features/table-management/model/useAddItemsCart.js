@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { tableOrderCatalogService } from '@features/table-management/api/tableOrderCatalogService.js';
+import { tableOrderCatalogService } from '../api/tableOrderCatalogService.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 
 const useAddItemsCart = ({ isOpen, table, onSubmit }) => {

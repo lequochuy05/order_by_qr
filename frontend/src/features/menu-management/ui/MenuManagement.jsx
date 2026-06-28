@@ -8,9 +8,9 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { useMenuPageQuery } from '../api/menuQueries.js';
-import { useCategoriesPageQuery } from '@features/category-management/api/categoryQueries.js';
+import { useCategoriesPageQuery } from '@entities/category';
 
-import { menuItemService } from '@features/menu-management/api/menuService.js';
+import { menuItemService } from '@entities/menu-item/api/menuItemService.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';

@@ -2,7 +2,7 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
-import { clearAnalyticsCache } from '@features/analytics';
+import { clearAnalyticsCache } from '@entities/analytics/api/analyticsService.js';
 import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
