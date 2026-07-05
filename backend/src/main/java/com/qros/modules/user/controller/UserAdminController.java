@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping(ApiRoutes.USERS)
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('MANAGER')")
 public class UserAdminController {
 
     private final UserService userService;

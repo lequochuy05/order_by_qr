@@ -15,6 +15,7 @@ public enum ErrorCode {
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "Request conflicts with existing data"),
     MALFORMED_REQUEST(HttpStatus.BAD_REQUEST, "Malformed request body"),
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
+    DEPENDENCY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Required dependency is unavailable"),
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, "Email not found"),

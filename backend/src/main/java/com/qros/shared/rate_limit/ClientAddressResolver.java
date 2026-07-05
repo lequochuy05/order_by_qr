@@ -15,8 +15,9 @@ public class ClientAddressResolver {
     public String resolve(HttpServletRequest request) {
         if (appProperties.getSecurity().isTrustProxyHeaders()) {
             String forwardedFor = request.getHeader("X-Forwarded-For");
-            if (StringUtils.hasText(forwardedFor) && !"unknown".equalsIgnoreCase(forwardedFor)) {
-                return forwardedFor.split(",")[0].trim();
+            String forwardedAddress = firstKnownForwardedAddress(forwardedFor);
+            if (forwardedAddress != null) {
+                return forwardedAddress;
             }
 
             String realIp = request.getHeader("X-Real-IP");
@@ -26,5 +27,18 @@ public class ClientAddressResolver {
         }
 
         return request.getRemoteAddr();
+    }
+
+    private String firstKnownForwardedAddress(String forwardedFor) {
+        if (!StringUtils.hasText(forwardedFor)) {
+            return null;
+        }
+        for (String candidate : forwardedFor.split(",")) {
+            String address = candidate.trim();
+            if (StringUtils.hasText(address) && !"unknown".equalsIgnoreCase(address)) {
+                return address;
+            }
+        }
+        return null;
     }
 }

@@ -49,7 +49,8 @@ public class AnalyticsForecastService {
         LocalDate toExclusive = today;
 
         Map<LocalDate, BigDecimal> actualRevenueMap = getActualRevenueByDate(from, toExclusive);
-        List<DailyRevenuePoint> series = buildContinuousRevenueSeries(actualRevenueMap, today.minusDays(1), FORECAST_HISTORY_DAYS);
+        List<DailyRevenuePoint> series =
+                buildContinuousRevenueSeries(actualRevenueMap, today.minusDays(1), FORECAST_HISTORY_DAYS);
 
         List<RevenueForecastResponse> result = new ArrayList<>();
 

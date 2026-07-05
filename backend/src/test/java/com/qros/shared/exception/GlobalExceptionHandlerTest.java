@@ -47,6 +47,18 @@ class GlobalExceptionHandlerTest {
                 response, 400, ErrorCode.MALFORMED_REQUEST, "Request body is malformed or contains an invalid value.");
     }
 
+    @Test
+    void mapsRefreshTokenStoreFailureToServiceUnavailable() {
+        ResponseEntity<ApiResponse<ErrorResponse>> response =
+                handler.handleIllegalState(new IllegalStateException("Refresh token store is unavailable"));
+
+        assertError(
+                response,
+                503,
+                ErrorCode.DEPENDENCY_UNAVAILABLE,
+                "Authentication service is temporarily unavailable. Please try again later.");
+    }
+
     private void assertError(
             ResponseEntity<ApiResponse<ErrorResponse>> response,
             int expectedStatus,

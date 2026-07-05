@@ -11,6 +11,12 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
 
     Optional<IdempotencyRequest> findByNamespaceAndRequestKey(String namespace, String requestKey);
 
+    default int claim(
+            String namespace, String requestKey, String requestHash, LocalDateTime createdAt, LocalDateTime expiresAt) {
+        return claimWithStatus(
+                namespace, requestKey, requestHash, IdempotencyRequestStatus.PROCESSING.name(), createdAt, expiresAt);
+    }
+
     @Modifying
     @Query(
             value =
@@ -27,17 +33,18 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
                         :namespace,
                         :requestKey,
                         :requestHash,
-                        'PROCESSING',
+                        :status,
                         :createdAt,
                         :expiresAt
                     )
                     ON CONFLICT (namespace, request_key) DO NOTHING
                     """,
             nativeQuery = true)
-    int claim(
+    int claimWithStatus(
             @Param("namespace") String namespace,
             @Param("requestKey") String requestKey,
             @Param("requestHash") String requestHash,
+            @Param("status") String status,
             @Param("createdAt") LocalDateTime createdAt,
             @Param("expiresAt") LocalDateTime expiresAt);
 

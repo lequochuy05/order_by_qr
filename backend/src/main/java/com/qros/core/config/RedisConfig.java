@@ -36,13 +36,10 @@ public class RedisConfig implements CachingConfigurer {
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
                 log.warn(
-                        "Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
+                        "Redis Cache GET failed for cache={}, key={}: {}. Falling back to source data.",
                         cache != null ? cache.getName() : "unknown",
                         key,
                         exception.getMessage());
-                if (cache != null && key != null) {
-                    cache.evictIfPresent(key);
-                }
             }
 
             @Override

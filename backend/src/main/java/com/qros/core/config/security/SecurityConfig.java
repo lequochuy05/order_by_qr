@@ -11,13 +11,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
@@ -26,6 +29,12 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
+                .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'"))
+                        .referrerPolicy(referrer -> referrer.policy(
+                                ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .permissionsPolicyHeader(permissions -> permissions.policy(
+                                "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)")))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
                 }))
