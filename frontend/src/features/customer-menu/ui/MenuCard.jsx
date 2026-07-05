@@ -7,7 +7,7 @@ const MenuCard = ({ item, onAddToCart, quantity = 0, onFly }) => {
   const available = item.available !== false;
   const cardRef = useRef(null);
 
-  const handlePlus = (e) => {
+  const handlePlus = () => {
     const img = cardRef.current?.querySelector('img');
     if (onFly && img) {
       const rect = img.getBoundingClientRect();

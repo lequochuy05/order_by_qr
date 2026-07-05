@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
 import { isTerminalSessionError, useTableSessionQuery, useStartTableSessionMutation } from '@entities/table';
 import { getSessionStorageKey } from '../lib/restaurantSettings.js';
@@ -53,7 +54,7 @@ const useCustomerMenuSession = (tableCode, { onSessionEnded } = {}) => {
   }, [clearSessionToken, hasTerminalSessionError, onSessionEnded, sessionEnded, sessionToken]);
 
   useEffect(() => {
-    if (query.data?.currentOrder?.status === 'AWAITING_PAYMENT') return;
+    if (query.data?.currentOrder?.status === ORDER_STATUSES.AWAITING_PAYMENT) return;
     const timeout = window.setTimeout(() => setPaymentInProgress(false), 0);
     return () => window.clearTimeout(timeout);
   }, [query.data?.currentOrder?.status]);

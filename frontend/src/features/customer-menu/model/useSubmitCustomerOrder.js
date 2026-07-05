@@ -1,10 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
 import { useSubmitOrderMutation } from '@entities/order/api/orderMutations.js';
+import { queryClient } from '@shared/api/queryClient.js';
 
 const createClientRequestId = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-import { queryClient } from '@shared/api/queryClient.js';
 
 const useSubmitCustomerOrder = ({
   tableCode,

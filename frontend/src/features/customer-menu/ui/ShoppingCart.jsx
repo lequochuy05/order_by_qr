@@ -16,10 +16,13 @@ const ShoppingCartButton = forwardRef(({ cart, onOpenCart }, ref) => {
 
   useEffect(() => {
     if (totalItems > prevTotal.current && prevTotal.current > 0) {
-      setBumping(true);
-      const timer = setTimeout(() => setBumping(false), 300);
+      const startTimer = setTimeout(() => setBumping(true), 0);
+      const stopTimer = setTimeout(() => setBumping(false), 300);
       prevTotal.current = totalItems;
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(startTimer);
+        clearTimeout(stopTimer);
+      };
     }
     prevTotal.current = totalItems;
   }, [totalItems]);

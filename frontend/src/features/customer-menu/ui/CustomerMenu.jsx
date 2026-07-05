@@ -12,11 +12,12 @@ import {
 } from '../index.js';
 import { ItemOptionsModal } from '@shared/ui';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import useFlyToCart, { FlyingImageOverlay } from '@shared/hooks/useFlyToCart.jsx';
+import useFlyToCart from '@shared/hooks/useFlyToCart.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { ErrorBoundary, PullToRefresh } from '@shared/ui';
 import CategoryFilter from './CategoryFilter.jsx';
 import CustomerMenuSkeleton from './CustomerMenuSkeleton.jsx';
+import FlyingImageOverlay from './FlyingImageOverlay.jsx';
 import {
   getTimeContext,
   normalizeRestaurantSettings,
@@ -159,7 +160,6 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
               isDarkMode={isDarkMode}
               onToggleDarkMode={() => setIsDarkMode((current) => !current)}
               wsConnected={wsConnected}
-              timeContext={timeContext}
               weatherLine={weatherLine}
               loadingWeather={loadingWeather}
             />

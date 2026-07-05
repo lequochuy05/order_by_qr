@@ -13,7 +13,6 @@ const CustomerMenuHeader = ({
   isDarkMode,
   onToggleDarkMode,
   wsConnected,
-  timeContext,
   weatherLine,
   loadingWeather,
 }) => (

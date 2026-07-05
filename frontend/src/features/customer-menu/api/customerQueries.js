@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
 
