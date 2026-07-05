@@ -19,6 +19,7 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,10 +42,16 @@ public class PaymentService {
         validatePaymentMethodEnabled(request.paymentMethod());
 
         if (request.paymentMethod() == PaymentMethod.CASH) {
+            List<PaymentTransaction> pendingOnlineTransactions =
+                    persistenceService.findPendingOnlineTransactions(request.orderId());
             try {
-                return paymentMapper.toCreateResponse(persistenceService.settleCash(request, userId));
+                PaymentTransaction transaction = persistenceService.settleCash(request, userId);
+                cancelPendingOnlineGatewayLinks(pendingOnlineTransactions);
+                return paymentMapper.toCreateResponse(transaction);
             } catch (DataIntegrityViolationException exception) {
-                return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
+                PaymentTransaction transaction = persistenceService.recoverIdempotency(request);
+                cancelPendingOnlineGatewayLinks(pendingOnlineTransactions);
+                return paymentMapper.toCreateResponse(transaction);
             }
         }
 
@@ -55,19 +62,41 @@ public class PaymentService {
             return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
         }
 
-        if (!preparation.gatewayCallRequired()) {
+        final PaymentGateway gateway = gatewayResolver.resolve(request.paymentMethod());
+
+        // Nếu reuse transaction cũ đã có QR sẵn thì trả về luôn
+        if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() != null) {
             return paymentMapper.toCreateResponse(preparation.transaction());
         }
 
-        PaymentTransaction transaction = preparation.transaction();
-        PaymentGateway gateway = gatewayResolver.resolve(request.paymentMethod());
+        // Transaction cũ bị stuck ở CREATING (gateway đã nhận nhưng chưa complete)
+        // → cancel link PayOS cũ để tránh "đơn đã tồn tại" khi tạo lại
+        if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() == null) {
+            final PaymentTransaction stuckTx = preparation.transaction();
+            try {
+                recordGatewayCall("cancel", request.paymentMethod(), () -> {
+                    gateway.cancelPayment(stuckTx, "Retry payment link creation");
+                    return null;
+                });
+            } catch (Exception ex) {
+                log.warn("Could not cancel stuck PayOS link {} before retry: {}", stuckTx.getId(), ex.getMessage());
+            }
+            persistenceService.markOnlineCreationFailed(stuckTx.getId(), "Cancelled to retry");
+            // Tạo transaction mới
+            try {
+                preparation = persistenceService.prepareOnline(request);
+            } catch (DataIntegrityViolationException exception) {
+                return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
+            }
+        }
+
+        final PaymentTransaction finalTx = preparation.transaction();
         try {
             PaymentGatewayCreateResult result =
-                    recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(transaction));
-            return paymentMapper.toCreateResponse(
-                    persistenceService.completeOnlineCreation(transaction.getId(), result));
+                    recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(finalTx));
+            return paymentMapper.toCreateResponse(persistenceService.completeOnlineCreation(finalTx.getId(), result));
         } catch (RuntimeException exception) {
-            persistenceService.markOnlineCreationFailed(transaction.getId(), exception.getMessage());
+            persistenceService.markOnlineCreationFailed(finalTx.getId(), exception.getMessage());
             throw exception;
         }
     }
@@ -135,6 +164,23 @@ public class PaymentService {
                     .tag("operation", operation)
                     .tag("method", Objects.toString(method, "unknown"))
                     .register(meterRegistry));
+        }
+    }
+
+    private void cancelPendingOnlineGatewayLinks(List<PaymentTransaction> transactions) {
+        for (PaymentTransaction transaction : transactions) {
+            try {
+                PaymentGateway gateway = gatewayResolver.resolve(transaction.getPaymentMethod());
+                recordGatewayCall("cancel", transaction.getPaymentMethod(), () -> {
+                    gateway.cancelPayment(transaction, "Order paid by cash");
+                    return null;
+                });
+            } catch (Exception exception) {
+                log.warn(
+                        "Could not cancel online payment link {} after cash settlement: {}",
+                        transaction.getId(),
+                        exception.getMessage());
+            }
         }
     }
 }

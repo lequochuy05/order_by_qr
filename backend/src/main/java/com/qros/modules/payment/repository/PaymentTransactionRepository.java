@@ -27,6 +27,12 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderByIdForUpdate(@Param("id") @NonNull Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"order", "order.table"})
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.gatewayOrderCode = :gatewayOrderCode")
+    Optional<PaymentTransaction> findWithOrderByGatewayOrderCodeForUpdate(
+            @Param("gatewayOrderCode") @NonNull Long gatewayOrderCode);
+
     Optional<PaymentTransaction> findFirstByIdempotencyKey(String idempotencyKey);
 
     Optional<PaymentTransaction> findByExternalReference(String externalReference);

@@ -7,6 +7,7 @@ const VoucherBox = ({
   loading,
   error,
   voucherValid,
+  voucherRequiresApply,
   discountAmount,
 }) => (
   <div className="space-y-3 animate-in slide-in-from-bottom-2 duration-300">
@@ -25,14 +26,19 @@ const VoucherBox = ({
       <button
         type="button"
         onClick={onApply}
-        disabled={loading || !voucherCode}
+        disabled={loading || !voucherCode.trim()}
         className="rounded-xl bg-gray-800 px-4 font-bold text-white transition-colors hover:bg-black disabled:opacity-50"
       >
         Áp dụng
       </button>
     </div>
     {error && <p className="ml-1 text-xs font-medium text-red-500">{error}</p>}
-    {voucherValid && voucherCode && (
+    {voucherRequiresApply && !error && (
+      <p className="ml-1 text-xs font-semibold text-amber-600">
+        Mã voucher chưa được áp dụng.
+      </p>
+    )}
+    {voucherValid && voucherCode && !voucherRequiresApply && (
       <p className="ml-1 flex items-center gap-1 text-xs font-bold text-green-600">
         <CheckCircle2 size={12} /> Voucher hợp lệ: -{discountAmount.toLocaleString()}đ
       </p>

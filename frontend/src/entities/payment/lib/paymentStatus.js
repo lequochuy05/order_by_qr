@@ -1,0 +1,13 @@
+export const PAYMENT_TRANSACTION_STATUSES = Object.freeze({
+  CREATING: 'CREATING',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+  FAILED: 'FAILED',
+});
+
+export const PAYMENT_METHODS = Object.freeze({
+  CASH: 'CASH',
+  PAYOS: 'PAYOS',
+});

@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 
+import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
 import usePaymentModal from '../model/usePaymentModal.js';
 import { ErrorBoundary } from '@shared/ui';
 import SharedModal from '@shared/ui/SharedModal.jsx';
@@ -46,10 +47,10 @@ const PaymentModalContent = (props) => {
           cashEnabled={payment.cashPaymentEnabled}
           onlineEnabled={payment.onlinePaymentEnabled}
           onSelectCash={payment.selectCash}
-          onSelectPayos={() => payment.setPaymentMethod('PAYOS')}
+          onSelectPayos={() => payment.setPaymentMethod(PAYMENT_METHODS.PAYOS)}
         />
 
-        {payment.paymentMethod === 'PAYOS' ? (
+        {payment.paymentMethod === PAYMENT_METHODS.PAYOS ? (
           <PayosQrPanel
             status={payment.payosStatus}
             data={payment.payosData}
@@ -67,6 +68,7 @@ const PaymentModalContent = (props) => {
             loading={payment.loading}
             error={payment.error}
             voucherValid={payment.previewData?.voucherValid}
+            voucherRequiresApply={payment.voucherRequiresApply}
             discountAmount={payment.amounts.discountAmount}
           />
         )}
@@ -77,6 +79,8 @@ const PaymentModalContent = (props) => {
       <PaymentActions
         paymentMethod={payment.paymentMethod}
         loading={payment.loading}
+        cashDisabled={payment.voucherRequiresApply}
+        cashDisabledReason="Vui lòng áp dụng hoặc xóa mã voucher trước khi thanh toán."
         onCashPay={payment.handleConfirmCashPay}
         onClose={onClose}
       />

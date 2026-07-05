@@ -12,11 +12,13 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(ApiRoutes.PAYMENTS)
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('MANAGER','STAFF')")
 public class PaymentController {
 
     private final PaymentService paymentService;

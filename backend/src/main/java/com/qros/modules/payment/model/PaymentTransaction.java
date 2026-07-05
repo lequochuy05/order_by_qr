@@ -60,6 +60,9 @@ public class PaymentTransaction extends BaseEntity {
     @Column(unique = true, length = 100)
     private String externalReference;
 
+    @Column(unique = true)
+    private Long gatewayOrderCode;
+
     @Column(unique = true, length = 100)
     private String idempotencyKey;
 

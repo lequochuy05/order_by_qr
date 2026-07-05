@@ -5,7 +5,7 @@ import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { clearAnalyticsCache } from '@entities/analytics/api/analyticsService.js';
 import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import useSettingsStore from '@shared/model/settingsStore.js';
 import { canSubscribeToOperations, isCustomerMenuPath } from './webSocketAccess.js';
 
@@ -23,20 +23,38 @@ export const WebSocketInvalidator = () => {
   const settings = useSettingsStore((state) => state.settings);
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
   const refreshSettings = useSettingsStore((state) => state.invalidateAndRefetch);
+  const tableInvalidationTimerRef = useRef(null);
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  useEffect(
+    () => () => {
+      if (tableInvalidationTimerRef.current) {
+        window.clearTimeout(tableInvalidationTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const scheduleTableInvalidation = () => {
+    if (tableInvalidationTimerRef.current) return;
+    tableInvalidationTimerRef.current = window.setTimeout(() => {
+      tableInvalidationTimerRef.current = null;
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
+    }, 300);
+  };
 
   // Lắng nghe /topic/tables trong khu vực quản trị
   useWebSocket(
     canSubscribeOperations ? '/topic/tables' : null,
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-        // Khi có thay đổi bàn -> Invalidate tables board, detail và orders active
-        queryClient.invalidateQueries({ queryKey: queryKeys.tables.all });
-        queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
-        queryClient.invalidateQueries({ queryKey: queryKeys.orders.active });
+        // Gom các event gần nhau như UPDATED + PAYMENT_SUCCESS thành một lượt refetch.
+        scheduleTableInvalidation();
       }
     },
     { scope: 'admin' },
@@ -54,7 +72,7 @@ export const WebSocketInvalidator = () => {
 
         // Cập nhật lại toàn bộ Lịch sử đơn hàng, Active orders, Table board
         queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
-        queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+        scheduleTableInvalidation();
         queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
         clearAnalyticsCache();
       }

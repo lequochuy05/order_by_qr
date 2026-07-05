@@ -33,6 +33,7 @@ public class PaymentPersistenceService {
 
     private static final List<PaymentTransactionStatus> ONLINE_ACTIVE_STATUSES =
             List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING);
+    private static final long PAYOS_ORDER_CODE_SUFFIX_SIZE = 1_000_000L;
 
     private final PaymentTransactionRepository transactionRepository;
     private final OrderSettlementService orderSettlementService;
@@ -43,21 +44,18 @@ public class PaymentPersistenceService {
     @Transactional
     public OnlinePaymentPreparation prepareOnline(@NonNull PaymentCreateRequest request) {
         PaymentMethod method = request.paymentMethod();
+        Long orderId = Objects.requireNonNull(request.orderId());
         String idempotencyKey = normalizeIdempotencyKey(request.idempotencyKey());
         if (idempotencyKey != null) {
             PaymentTransaction existing = transactionRepository
                     .findFirstByIdempotencyKey(idempotencyKey)
                     .orElse(null);
             if (existing != null) {
-                return new OnlinePaymentPreparation(
-                        validateReusable(
-                                existing, Objects.requireNonNull(request.orderId()), method, existing.getAmount()),
-                        false);
+                return new OnlinePaymentPreparation(validateReusable(existing, orderId, method), false);
             }
         }
 
-        Order order = orderSettlementService.prepareForPayment(
-                Objects.requireNonNull(request.orderId()), request.voucherCode());
+        Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode());
         BigDecimal payableAmount = currentFinalAmount(order);
 
         PaymentTransaction active = transactionRepository
@@ -79,6 +77,8 @@ public class PaymentPersistenceService {
                         .plusMinutes(settingsService.getSettingsEntity().getPaymentQrExpiresInMinutes()))
                 .build();
 
+        transaction = transactionRepository.saveAndFlush(transaction);
+        transaction.setGatewayOrderCode(generateGatewayOrderCode(transaction.getId()));
         return new OnlinePaymentPreparation(transactionRepository.saveAndFlush(transaction), true);
     }
 
@@ -93,8 +93,8 @@ public class PaymentPersistenceService {
         PaymentTransaction existing = transactionRepository
                 .findFirstByIdempotencyKey(idempotencyKey)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT));
-        return validateReusable(
-                existing, Objects.requireNonNull(request.orderId()), request.paymentMethod(), existing.getAmount());
+        Long orderId = Objects.requireNonNull(request.orderId());
+        return validateReusable(existing, orderId, request.paymentMethod());
     }
 
     @Transactional
@@ -136,7 +136,7 @@ public class PaymentPersistenceService {
         PaymentTransaction existing =
                 transactionRepository.findFirstByIdempotencyKey(idempotencyKey).orElse(null);
         if (existing != null) {
-            return validateReusable(existing, orderId, PaymentMethod.CASH, existing.getAmount());
+            return validateReusable(existing, orderId, PaymentMethod.CASH);
         }
 
         Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode());
@@ -156,6 +156,11 @@ public class PaymentPersistenceService {
         paymentCompletionService.completeSuccessfulTransaction(transaction);
         cancelPendingOnlineTransactions(order.getId());
         return transaction;
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentTransaction> findPendingOnlineTransactions(@NonNull Long orderId) {
+        return transactionRepository.findPendingOnlineTransactionsByOrderId(orderId);
     }
 
     @Transactional(readOnly = true)
@@ -221,7 +226,7 @@ public class PaymentPersistenceService {
             return;
         }
 
-        PaymentTransaction transaction = lockTransaction(webhookResult.transactionId());
+        PaymentTransaction transaction = lockTransactionByGatewayOrderCode(webhookResult.gatewayOrderCode());
         lockTransactionOrder(transaction);
 
         if (transaction.getStatus() == PaymentTransactionStatus.PAID) {
@@ -248,14 +253,12 @@ public class PaymentPersistenceService {
         paymentCompletionService.completeSuccessfulTransaction(transaction);
     }
 
-    private PaymentTransaction validateReusable(
-            PaymentTransaction transaction, Long orderId, PaymentMethod method, BigDecimal amount) {
+    private PaymentTransaction validateReusable(PaymentTransaction transaction, Long orderId, PaymentMethod method) {
         boolean sameOrder = transaction.getOrder() != null
                 && Objects.equals(transaction.getOrder().getId(), orderId);
         boolean sameMethod = transaction.getPaymentMethod() == method;
-        boolean sameAmount = transaction.getAmount().compareTo(amount) == 0;
 
-        if (!sameOrder || !sameMethod || !sameAmount) {
+        if (!sameOrder || !sameMethod) {
             throw new BusinessException(
                     ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
                     "Idempotency key is already associated with another payment request");
@@ -267,7 +270,22 @@ public class PaymentPersistenceService {
                     ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
                     "Idempotency key is already associated with an inactive payment transaction");
         }
+
+        BigDecimal currentAmount = currentPayableAmountForReuse(transaction, orderId);
+        if (transaction.getAmount().compareTo(currentAmount) != 0) {
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT,
+                    "Idempotency key is already associated with another payment request");
+        }
         return transaction;
+    }
+
+    private BigDecimal currentPayableAmountForReuse(PaymentTransaction transaction, Long orderId) {
+        if (transaction.getStatus() == PaymentTransactionStatus.PAID) {
+            return transaction.getAmount();
+        }
+        Order order = orderSettlementService.loadForPayment(orderId);
+        return currentFinalAmount(order);
     }
 
     private boolean isReusableActive(PaymentTransaction transaction, BigDecimal payableAmount) {
@@ -283,6 +301,12 @@ public class PaymentPersistenceService {
         return transactionRepository
                 .findWithOrderByIdForUpdate(transactionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_TRANSACTION_NOT_FOUND));
+    }
+
+    private PaymentTransaction lockTransactionByGatewayOrderCode(Long gatewayOrderCode) {
+        return transactionRepository
+                .findWithOrderByGatewayOrderCodeForUpdate(gatewayOrderCode)
+                .orElseGet(() -> lockTransaction(gatewayOrderCode));
     }
 
     private void lockTransactionOrder(PaymentTransaction transaction) {
@@ -328,5 +352,10 @@ public class PaymentPersistenceService {
             return "Payment gateway request failed";
         }
         return reason.length() <= 255 ? reason : reason.substring(0, 255);
+    }
+
+    private Long generateGatewayOrderCode(Long transactionId) {
+        long suffix = Math.floorMod(Objects.requireNonNull(transactionId), PAYOS_ORDER_CODE_SUFFIX_SIZE);
+        return (System.currentTimeMillis() / 1000L) * PAYOS_ORDER_CODE_SUFFIX_SIZE + suffix;
     }
 }

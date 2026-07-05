@@ -1,6 +1,7 @@
 package com.qros.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
@@ -30,6 +31,8 @@ import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.enums.PaymentMethod;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
@@ -124,6 +127,9 @@ class PayosServiceImplTest {
         PaymentTransaction created = transactionReference.get();
         assertThat(created.getAmount()).isEqualByComparingTo("125000");
         assertThat(created.getPaymentMethod()).isEqualTo(PaymentMethod.PAYOS);
+        assertThat(created.getGatewayOrderCode()).isNotNull();
+        assertThat(created.getGatewayOrderCode()).isNotEqualTo(created.getId());
+        assertThat(created.getGatewayOrderCode()).isGreaterThan(1_000_000_000_000L);
         assertThat(initialStatus.get()).isEqualTo(PaymentTransactionStatus.CREATING);
         assertThat(created.getStatus()).isEqualTo(PaymentTransactionStatus.PENDING);
         assertThat(created.getBusinessDate()).isEqualTo(AppTime.today());
@@ -148,12 +154,40 @@ class PayosServiceImplTest {
                 .build();
 
         when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(order);
 
         PaymentCreateResponse response =
                 paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, " idem-1 "), null);
 
         assertThat(response.transactionId()).isEqualTo(88L);
         assertThat(response.idempotencyKey()).isEqualTo("idem-1");
+        verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
+    }
+
+    @Test
+    void createPaymentRejectsIdempotencyReuseWhenCurrentOrderAmountChanged() {
+        Order originalOrder = payableOrder();
+        Order changedOrder = payableOrderWithFinalAmount("150000");
+        PaymentTransaction existing = PaymentTransaction.builder()
+                .id(88L)
+                .order(originalOrder)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .checkoutUrl("checkout")
+                .qrCode("qr")
+                .idempotencyKey("idem-1")
+                .build();
+
+        when(transactionRepository.findFirstByIdempotencyKey("idem-1")).thenReturn(Optional.of(existing));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(changedOrder);
+
+        assertThatThrownBy(() -> paymentService.createPayment(
+                        new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, "idem-1"), null))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
+                        .isEqualTo(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT));
+
+        verify(gatewayResolver, never()).resolve(any());
         verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
     }
 
@@ -192,6 +226,7 @@ class PayosServiceImplTest {
                     return order;
                 });
         when(transactionRepository.findPendingOnlineTransactionsByOrderId(1L)).thenReturn(List.of(pendingOnline));
+        when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
 
         PaymentCreateResponse response =
                 paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.CASH, null, "cash-idem"), 7L);
@@ -211,6 +246,7 @@ class PayosServiceImplTest {
         assertThat(response.qrCode()).isNull();
         assertThat(response.amount()).isEqualByComparingTo("125000");
         assertThat(pendingOnline.getStatus()).isEqualTo(PaymentTransactionStatus.CANCELLED);
+        verify(gateway).cancelPayment(pendingOnline, "Order paid by cash");
         verify(transactionRepository).saveAll(List.of(pendingOnline));
     }
 
@@ -242,22 +278,25 @@ class PayosServiceImplTest {
     void confirmPaymentFromWebhookLocksOrderBeforeTransaction() {
         Order orderReference = Order.builder().id(1L).build();
         Order lockedOrder = payableOrder();
+        long gatewayOrderCode = 1_762_625_408_000_099L;
         PaymentTransaction lockedTransaction = PaymentTransaction.builder()
                 .id(99L)
+                .gatewayOrderCode(gatewayOrderCode)
                 .order(orderReference)
                 .amount(BigDecimal.valueOf(125_000))
                 .status(PaymentTransactionStatus.PENDING)
                 .paymentMethod(PaymentMethod.PAYOS)
                 .build();
 
-        when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(lockedTransaction));
+        when(transactionRepository.findWithOrderByGatewayOrderCodeForUpdate(gatewayOrderCode))
+                .thenReturn(Optional.of(lockedTransaction));
         when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
 
         paymentService.confirmPaymentFromWebhook(
-                new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
+                new PaymentWebhookResult(gatewayOrderCode, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
 
         var ordered = inOrder(transactionRepository, orderSettlementService, paymentCompletionService);
-        ordered.verify(transactionRepository).findWithOrderByIdForUpdate(99L);
+        ordered.verify(transactionRepository).findWithOrderByGatewayOrderCodeForUpdate(gatewayOrderCode);
         ordered.verify(orderSettlementService).loadForPayment(1L);
         ordered.verify(paymentCompletionService).completeSuccessfulTransaction(lockedTransaction);
 
@@ -269,31 +308,63 @@ class PayosServiceImplTest {
     @Test
     void confirmPaymentFromWebhookIsIdempotentWhenAlreadyPaid() {
         Order orderReference = Order.builder().id(1L).build();
+        long gatewayOrderCode = 1_762_625_408_000_099L;
         PaymentTransaction existing = PaymentTransaction.builder()
                 .id(99L)
+                .gatewayOrderCode(gatewayOrderCode)
                 .order(orderReference)
                 .amount(BigDecimal.valueOf(125_000))
                 .status(PaymentTransactionStatus.PAID)
                 .paymentMethod(PaymentMethod.PAYOS)
                 .build();
 
-        when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(existing));
+        when(transactionRepository.findWithOrderByGatewayOrderCodeForUpdate(gatewayOrderCode))
+                .thenReturn(Optional.of(existing));
         when(orderSettlementService.loadForPayment(1L)).thenReturn(payableOrder());
 
         paymentService.confirmPaymentFromWebhook(
-                new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
+                new PaymentWebhookResult(gatewayOrderCode, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
 
         verify(paymentCompletionService, never()).completeSuccessfulTransaction(any(PaymentTransaction.class));
     }
 
+    @Test
+    void confirmPaymentFromWebhookFallsBackToLegacyTransactionId() {
+        Order orderReference = Order.builder().id(1L).build();
+        Order lockedOrder = payableOrder();
+        PaymentTransaction lockedTransaction = PaymentTransaction.builder()
+                .id(99L)
+                .order(orderReference)
+                .amount(BigDecimal.valueOf(125_000))
+                .status(PaymentTransactionStatus.PENDING)
+                .paymentMethod(PaymentMethod.PAYOS)
+                .build();
+
+        when(transactionRepository.findWithOrderByGatewayOrderCodeForUpdate(99L))
+                .thenReturn(Optional.empty());
+        when(transactionRepository.findWithOrderByIdForUpdate(99L)).thenReturn(Optional.of(lockedTransaction));
+        when(orderSettlementService.loadForPayment(1L)).thenReturn(lockedOrder);
+
+        paymentService.confirmPaymentFromWebhook(
+                new PaymentWebhookResult(99L, BigDecimal.valueOf(125_000), "payos-ref", "{}"));
+
+        verify(transactionRepository).findWithOrderByGatewayOrderCodeForUpdate(99L);
+        verify(transactionRepository).findWithOrderByIdForUpdate(99L);
+        verify(paymentCompletionService).completeSuccessfulTransaction(lockedTransaction);
+    }
+
     private Order payableOrder() {
+        return payableOrderWithFinalAmount("125000");
+    }
+
+    private Order payableOrderWithFinalAmount(String finalAmount) {
         return Order.builder()
                 .id(1L)
                 .status(OrderStatus.AWAITING_PAYMENT)
                 .paymentStatus(PaymentStatus.PENDING)
                 .subtotalAmount(BigDecimal.valueOf(125_000))
                 .discountAmount(BigDecimal.ZERO)
-                .finalAmount(BigDecimal.valueOf(125_000))
+                .finalAmount(new BigDecimal(finalAmount))
                 .paidAmount(BigDecimal.ZERO)
                 .businessDate(AppTime.today())
                 .build();
