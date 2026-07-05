@@ -98,6 +98,10 @@ public class OrderService {
         return orderQueryService.getActiveOrders();
     }
 
+    public List<OrderResponse> getActiveTakeawayOrders() {
+        return orderQueryService.getActiveTakeawayOrders();
+    }
+
     public TableBoardResponse getTableBoard() {
         return orderQueryService.getTableBoard();
     }

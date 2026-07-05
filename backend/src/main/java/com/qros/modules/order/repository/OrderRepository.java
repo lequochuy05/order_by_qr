@@ -3,6 +3,7 @@ package com.qros.modules.order.repository;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.repository.projection.ActiveOrderSummary;
 import com.qros.modules.table.model.TableSession;
@@ -185,6 +186,18 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "orderItems.orderItemOptions"
             })
     List<Order> findByStatusIn(List<OrderStatus> statuses);
+
+    @Query(
+            """
+            SELECT o FROM Order o
+            LEFT JOIN FETCH o.table
+            LEFT JOIN FETCH o.orderItems
+            WHERE o.orderType = :orderType
+              AND o.status IN :statuses
+            ORDER BY o.createdAt DESC
+            """)
+    List<Order> findActiveOrdersByType(
+            @Param("orderType") OrderType orderType, @Param("statuses") List<OrderStatus> statuses);
 
     /**
      * Fetch full detail for order detail screen.

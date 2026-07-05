@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { printInvoice } from '@entities/order/lib/invoiceGenerator.js';
+import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
@@ -29,7 +30,7 @@ const useOrderHistory = () => {
   }, []);
 
   const printOrder = useCallback((order) => {
-    if (order.status !== 'COMPLETED') {
+    if (order.status !== ORDER_STATUSES.COMPLETED) {
       showErrorToast('Chỉ có thể in hóa đơn cho đơn hàng đã hoàn tất');
       return;
     }

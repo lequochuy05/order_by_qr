@@ -1,6 +1,6 @@
 import { Eye, Printer, RotateCw } from 'lucide-react';
 
-import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderStatusMeta, ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 
@@ -45,7 +45,7 @@ const OrderHistoryRow = ({ order, onSelect, onPrint, onReconcile }) => (
       >
         <RotateCw size={18} />
       </button>
-      {order.status === 'COMPLETED' && (
+      {order.status === ORDER_STATUSES.COMPLETED && (
         <button
           type="button"
           className="rounded-xl p-2 text-gray-400 opacity-0 transition-all hover:bg-green-50 hover:text-green-500 group-hover:opacity-100"

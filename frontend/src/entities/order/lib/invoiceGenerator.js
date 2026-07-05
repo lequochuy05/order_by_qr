@@ -1,3 +1,4 @@
+import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import {
   getOrderDiscountAmount,
@@ -156,7 +157,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       <div class="info">Bàn: <span class="bold">${table?.tableNumber || 'Mang về'}</span></div>
       <div class="info">Thời gian: ${timeStr}</div>
       <div class="info">Thu ngân: ${paidBy || 'Hệ thống'}</div>
-      <div class="info">Hình thức thanh toán: <span class="bold">${order.paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}</span></div>
+      <div class="info">Hình thức thanh toán: <span class="bold">${order.paymentMethod === PAYMENT_METHODS.PAYOS ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}</span></div>
 
       <div class="divider"></div>
 

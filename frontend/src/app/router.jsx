@@ -22,10 +22,13 @@ const RevenueStatsPage = lazy(() => import('@pages/admin/RevenueStatsPage.jsx'))
 const TopDishesStatsPage = lazy(() => import('@pages/admin/TopDishesStatsPage.jsx'));
 const StaffStatsPage = lazy(() => import('@pages/admin/StaffStatsPage.jsx'));
 const TableMapPage = lazy(() => import('@pages/admin/TableMapPage.jsx'));
+const TakeawayPage = lazy(() => import('@pages/admin/TakeawayPage.jsx'));
 const OrderHistoryPage = lazy(() => import('@pages/admin/OrderHistoryPage.jsx'));
 const KitchenPage = lazy(() => import('@pages/admin/KitchenPage.jsx'));
 const LandingPage = lazy(() => import('@pages/landing/LandingPage.jsx'));
 const UnauthorizedPage = lazy(() => import('@pages/system/UnauthorizedPage.jsx'));
+const NotFoundPage = lazy(() => import('@pages/system/NotFoundPage.jsx'));
+const SystemStatusPage = lazy(() => import('@pages/system/SystemStatusPage.jsx'));
 
 const LoadingScreen = () => (
   <div className="flex min-h-screen items-center justify-center">Đang tải...</div>
@@ -80,6 +83,7 @@ const AppRouter = () => (
 
             <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
               <Route path="/admin/tables" element={<TableMapPage />} />
+              <Route path="/admin/takeaway" element={<TakeawayPage />} />
             </Route>
 
             <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>
@@ -90,7 +94,10 @@ const AppRouter = () => (
 
         <Route path="/" element={<LandingPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route path="*" element={<div>Trang không tồn tại</div>} />
+        <Route path="/not-found" element={<NotFoundPage />} />
+        <Route path="/offline" element={<SystemStatusPage statusCode="offline" />} />
+        <Route path="/error/:statusCode" element={<SystemStatusPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   </ErrorBoundary>

@@ -44,23 +44,6 @@ public class OrderStateFactory {
     }
 
     /**
-     * Retrieves the State handler object based on a status name string.
-     * Useful for processing input from API requests.
-     *
-     * @param statusName The name of the order status (case-insensitive)
-     * @return The corresponding OrderState implementation
-     * @throws IllegalArgumentException if the status name is invalid
-     */
-    public OrderState getState(String statusName) {
-        try {
-            OrderStatus status = OrderStatus.valueOf(statusName.toUpperCase());
-            return getState(status);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid order status: " + statusName);
-        }
-    }
-
-    /**
      * Validates that the given current status is allowed to transition into the
      * target status.
      *

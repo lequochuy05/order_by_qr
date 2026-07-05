@@ -43,26 +43,33 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
     @Query("SELECT s FROM TableSession s WHERE s.id = :id")
     Optional<TableSession> findByIdForUpdate(@Param("id") Long id);
 
+    default int touchOpenSessionActivity(Long id, LocalDateTime now) {
+        return touchSessionActivityByStatus(id, now, TableSessionStatus.OPEN);
+    }
+
     @Modifying
     @Query(
-            value =
-                    """
-            UPDATE table_sessions
-            SET last_activity_at = :now,
-                updated_at = :now
-            WHERE id = :id
-              AND status = 'OPEN'
-              AND is_deleted = false
-            """,
-            nativeQuery = true)
-    int touchOpenSessionActivity(@Param("id") Long id, @Param("now") LocalDateTime now);
+            """
+            UPDATE TableSession session
+            SET session.lastActivityAt = :now,
+                session.updatedAt = :now
+            WHERE session.id = :id
+              AND session.status = :status
+              AND session.isDeleted = false
+            """)
+    int touchSessionActivityByStatus(
+            @Param("id") Long id, @Param("now") LocalDateTime now, @Param("status") TableSessionStatus status);
+
+    default List<TableSession> findStaleOpenSessionsWithoutOrdersForUpdate(LocalDateTime cutoff) {
+        return findStaleSessionsByStatusWithoutOrdersForUpdate(cutoff, TableSessionStatus.OPEN.name());
+    }
 
     @Query(
             value =
                     """
             SELECT s.*
             FROM table_sessions s
-            WHERE s.status = 'OPEN'
+            WHERE s.status = :status
               AND s.is_deleted = false
               AND s.last_activity_at < :cutoff
               AND NOT EXISTS (
@@ -74,5 +81,6 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
             FOR UPDATE SKIP LOCKED
             """,
             nativeQuery = true)
-    List<TableSession> findStaleOpenSessionsWithoutOrdersForUpdate(@Param("cutoff") LocalDateTime cutoff);
+    List<TableSession> findStaleSessionsByStatusWithoutOrdersForUpdate(
+            @Param("cutoff") LocalDateTime cutoff, @Param("status") String status);
 }

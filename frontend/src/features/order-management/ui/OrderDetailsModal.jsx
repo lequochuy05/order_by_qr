@@ -1,3 +1,5 @@
+import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import {
   getOrderDiscountAmount,
@@ -77,7 +79,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
                   HÌNH THỨC THANH TOÁN
                 </span>
                 <span className="text-indigo-900 font-bold text-sm uppercase">
-                  {order.paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
+                  {order.paymentMethod === PAYMENT_METHODS.PAYOS ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
                 </span>
               </div>
             )}
@@ -146,7 +148,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
             <RotateCw size={18} />
             <span>Tra soát</span>
           </button>
-          {order.status === 'COMPLETED' && (
+          {order.status === ORDER_STATUSES.COMPLETED && (
             <button
               onClick={() => onPrint(order)}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-xl transition-all shadow-md shadow-orange-500/20"

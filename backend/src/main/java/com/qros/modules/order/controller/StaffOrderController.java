@@ -61,6 +61,11 @@ public class StaffOrderController {
         return ApiResponse.success(orderService.getActiveOrders());
     }
 
+    @GetMapping("/active-takeaway")
+    public ApiResponse<List<OrderResponse>> getActiveTakeawayOrders() {
+        return ApiResponse.success(orderService.getActiveTakeawayOrders());
+    }
+
     @PatchMapping("/{orderId}/status")
     public ApiResponse<OrderResponse> updateStatus(
             @PathVariable @NonNull Long orderId, @Valid @RequestBody @NonNull OrderStatusUpdateRequest request) {

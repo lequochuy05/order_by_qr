@@ -111,10 +111,57 @@ public class OrderCreationService {
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
+        if (request.orderType() == OrderType.TAKEAWAY) {
+            return createTakeawayOrder(request);
+        }
+
         TableSession session = tableSessionService.getOrCreateStaffSession(request.tableId());
         DiningTable table = session.getTable();
 
         return createOrder(table, session, request.items(), request.combos(), BatchSource.STAFF);
+    }
+
+    private OrderResponse createTakeawayOrder(@NonNull StaffCreateOrderRequest request) {
+        Order order = Order.builder()
+                .status(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .orderType(OrderType.TAKEAWAY)
+                .subtotalAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+
+        OrderBatch batch = OrderBatch.builder()
+                .submittedAt(AppTime.now())
+                .source(BatchSource.STAFF)
+                .build();
+        order.addBatch(batch);
+
+        Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
+
+        buildOrderItems(request.items(), order, batch, quantitiesToReserve);
+        buildOrderCombos(request.combos(), order, batch, quantitiesToReserve);
+
+        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
+
+        orderPricingService.recalculateOrderTotals(order);
+
+        if (Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
+            order.setStatus(OrderStatus.SERVING);
+        }
+
+        Order saved = orderRepository.save(order);
+
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
+
+        ordersCreatedCounter.increment();
+
+        eventPublisher.publishEvent(new OrderChangeEvent());
+        log.info("Takeaway order processed: ID #{}", saved.getId());
+
+        return orderMapper.toResponse(saved);
     }
 
     private OrderResponse createOrder(

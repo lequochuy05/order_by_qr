@@ -1,19 +1,27 @@
 import { getStatusClasses } from '@shared/lib/statusClasses.js';
+import { ORDER_ITEM_STATUSES, ORDER_STATUSES } from './orderConstants.js';
+
+export {
+  ORDER_ITEM_STATUSES,
+  ORDER_PAYMENT_STATUSES,
+  ORDER_STATUSES,
+  ORDER_TYPES,
+} from './orderConstants.js';
 
 export const ORDER_STATUS = {
-  PENDING: { label: 'Đã nhận đơn', helper: 'Quán đang kiểm tra', color: 'amber' },
-  SERVING: { label: 'Đang chuẩn bị', helper: 'Bếp đang làm món', color: 'blue' },
-  AWAITING_PAYMENT: { label: 'Chờ thanh toán', helper: 'Tất cả món đã lên đủ', color: 'cyan' },
-  COMPLETED: { label: 'Đã thanh toán', helper: 'Cảm ơn đã dùng bữa', color: 'emerald' },
-  CANCELLED: { label: 'Đã hủy', helper: 'Đơn đã bị hủy', color: 'rose' },
+  [ORDER_STATUSES.PENDING]: { label: 'Đã nhận đơn', helper: 'Quán đang kiểm tra', color: 'amber' },
+  [ORDER_STATUSES.SERVING]: { label: 'Đang chuẩn bị', helper: 'Bếp đang làm món', color: 'blue' },
+  [ORDER_STATUSES.AWAITING_PAYMENT]: { label: 'Chờ thanh toán', helper: 'Tất cả món đã lên đủ', color: 'cyan' },
+  [ORDER_STATUSES.COMPLETED]: { label: 'Đã thanh toán', helper: 'Cảm ơn đã dùng bữa', color: 'emerald' },
+  [ORDER_STATUSES.CANCELLED]: { label: 'Đã hủy', helper: 'Đơn đã bị hủy', color: 'rose' },
 };
 
 // ORDER ITEM STATUS (Kitchen workflow)
 export const ITEM_STATUS = {
-  PENDING: { label: 'Chờ nấu', color: 'amber' },
-  COOKING: { label: 'Đang chế biến', color: 'blue' },
-  FINISHED: { label: 'Hoàn thành', color: 'emerald' },
-  CANCELLED: { label: 'Đã hủy', color: 'rose' },
+  [ORDER_ITEM_STATUSES.PENDING]: { label: 'Chờ nấu', color: 'amber' },
+  [ORDER_ITEM_STATUSES.COOKING]: { label: 'Đang chế biến', color: 'blue' },
+  [ORDER_ITEM_STATUSES.FINISHED]: { label: 'Hoàn thành', color: 'emerald' },
+  [ORDER_ITEM_STATUSES.CANCELLED]: { label: 'Đã hủy', color: 'rose' },
 };
 
 // Utility functions

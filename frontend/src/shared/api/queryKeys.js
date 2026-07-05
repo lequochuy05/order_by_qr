@@ -62,6 +62,7 @@ export const queryKeys = {
   orders: {
     all: ['orders'],
     active: ['orders', 'active'],
+    activeTakeaway: ['orders', 'active-takeaway'],
     history: (filters = {}) => [
       'orders',
       'history',

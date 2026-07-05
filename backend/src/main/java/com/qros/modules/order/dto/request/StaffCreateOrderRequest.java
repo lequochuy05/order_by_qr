@@ -1,10 +1,9 @@
 package com.qros.modules.order.dto.request;
 
+import com.qros.modules.order.model.enums.OrderType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import java.util.List;
-
-import com.qros.modules.order.model.enums.OrderType;
 
 public record StaffCreateOrderRequest(
         Long tableId,

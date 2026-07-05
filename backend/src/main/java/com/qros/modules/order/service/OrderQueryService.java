@@ -7,6 +7,7 @@ import com.qros.modules.order.dto.response.TableBoardResponse;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
@@ -147,6 +148,12 @@ public class OrderQueryService {
 
     public List<OrderResponse> getActiveOrders() {
         return orderRepository.findByStatusIn(activeStatuses()).stream()
+                .map(orderMapper::toResponse)
+                .toList();
+    }
+
+    public List<OrderResponse> getActiveTakeawayOrders() {
+        return orderRepository.findActiveOrdersByType(OrderType.TAKEAWAY, activeStatuses()).stream()
                 .map(orderMapper::toResponse)
                 .toList();
     }

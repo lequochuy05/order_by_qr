@@ -80,6 +80,16 @@ export const orderService = {
     try { const res = await api.get(`/orders/table/${tableId}/current`); return res; }
     catch { return null; }
   },
+  getOrderById: async (id) => {
+    const res = await api.get(`/orders/${id}`);
+    return res;
+  },
+  updateOrderStatus: async (orderId, status) => {
+    clearOrderQueryCache();
+    const res = await api.patch(`/orders/${orderId}/status`, { status });
+    clearOrderQueryCache();
+    return res;
+  },
 
   addItemsToOrder: async (data) => { clearOrderQueryCache(); const res = await api.post('/orders', data); clearOrderQueryCache(); return res; },
   updateOrderItem: async (itemId, data) => { clearOrderQueryCache(); const res = await api.patch(`/orders/items/${itemId}`, data); clearOrderQueryCache(); return res; },
