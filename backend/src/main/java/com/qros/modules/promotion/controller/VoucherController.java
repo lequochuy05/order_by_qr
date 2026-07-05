@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +36,7 @@ public class VoucherController {
     private final VoucherCheckoutService voucherCheckoutService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<Page<VoucherResponse>> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String status,
@@ -43,21 +45,25 @@ public class VoucherController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<VoucherResponse> get(@PathVariable Long id) {
         return ApiResponse.success(voucherService.findById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<VoucherResponse> create(@Valid @RequestBody VoucherRequest request) {
         return ApiResponse.success("Voucher created successfully", voucherService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<VoucherResponse> update(@PathVariable Long id, @Valid @RequestBody VoucherRequest request) {
         return ApiResponse.success("Voucher updated successfully", voucherService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         voucherService.delete(id);
         return ApiResponse.success("Voucher deleted successfully", null);

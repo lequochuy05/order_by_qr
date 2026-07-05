@@ -4,6 +4,7 @@ import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { voucherService } from '@entities/voucher/api/voucherService.js';
+import { VOUCHER_STATUSES } from '@entities/voucher/lib/voucherStatus.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';
@@ -13,10 +14,10 @@ import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const VOUCHER_STATUS = {
-  ACTIVE: { text: 'Đang dùng', color: 'bg-green-100 text-green-700' },
-  INACTIVE: { text: 'Ngừng', color: 'bg-gray-100 text-gray-500' },
-  EXPIRED: { text: 'Hết hạn', color: 'bg-red-100 text-red-600' },
-  EXHAUSTED: { text: 'Hết lượt', color: 'bg-amber-100 text-amber-700' },
+  [VOUCHER_STATUSES.ACTIVE]: { text: 'Đang dùng', color: 'bg-green-100 text-green-700' },
+  [VOUCHER_STATUSES.INACTIVE]: { text: 'Ngừng', color: 'bg-gray-100 text-gray-500' },
+  [VOUCHER_STATUSES.EXPIRED]: { text: 'Hết hạn', color: 'bg-red-100 text-red-600' },
+  [VOUCHER_STATUSES.EXHAUSTED]: { text: 'Hết lượt', color: 'bg-amber-100 text-amber-700' },
 };
 
 const voucherStatusFilterOptions = Object.entries(VOUCHER_STATUS).map(([id, meta]) => ({
@@ -50,12 +51,12 @@ const VoucherManager = () => {
     const isUpcoming = from && now < from;
     const isExpired = to && now > to;
     const isExhausted = v.usageLimit > 0 && v.usedCount >= v.usageLimit;
-    let value = 'ACTIVE';
+    let value = VOUCHER_STATUSES.ACTIVE;
 
-    if (!v.active) value = 'INACTIVE';
-    else if (isUpcoming) value = 'INACTIVE';
-    else if (isExpired) value = 'EXPIRED';
-    else if (isExhausted) value = 'EXHAUSTED';
+    if (!v.active) value = VOUCHER_STATUSES.INACTIVE;
+    else if (isUpcoming) value = VOUCHER_STATUSES.INACTIVE;
+    else if (isExpired) value = VOUCHER_STATUSES.EXPIRED;
+    else if (isExhausted) value = VOUCHER_STATUSES.EXHAUSTED;
 
     return { value, ...VOUCHER_STATUS[value] };
   };
