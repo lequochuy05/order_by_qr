@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,11 +21,13 @@ public class SystemSettingsController {
     private final SystemSettingsService settingsService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<SystemSettingsResponse> getSettings() {
         return ApiResponse.success(settingsService.getSettings());
     }
 
     @PutMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<SystemSettingsResponse> updateSettings(
             @Valid @RequestBody SystemSettingsUpdateRequest request, @NonNull Principal principal) {
         return ApiResponse.success(
@@ -32,6 +35,7 @@ public class SystemSettingsController {
     }
 
     @PostMapping("/logo")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<SystemSettingsResponse> uploadLogo(
             @RequestParam("file") @NonNull MultipartFile file, @NonNull Principal principal) {
         return ApiResponse.success(

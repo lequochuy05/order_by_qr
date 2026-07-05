@@ -21,14 +21,14 @@ const OperationSettingsTab = ({ settings, setSettings, saving, saveDisabled, onS
         <div className="grid gap-5 md:grid-cols-2">
           <TextField
             label={copy.operation.openingTime}
-            description={copy.operation.openingTimeHelp}
+            // description={copy.operation.openingTimeHelp}
             type="time"
             value={settings.openingTime}
             onChange={(value) => setSettingsValue(setSettings, 'openingTime', value)}
           />
           <TextField
             label={copy.operation.closingTime}
-            description={copy.operation.closingTimeHelp}
+            // description={copy.operation.closingTimeHelp}
             type="time"
             value={settings.closingTime}
             onChange={(value) => setSettingsValue(setSettings, 'closingTime', value)}

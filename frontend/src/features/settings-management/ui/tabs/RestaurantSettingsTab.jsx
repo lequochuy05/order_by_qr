@@ -33,7 +33,7 @@ const RestaurantSettingsTab = ({
           <div className="grid gap-5 md:grid-cols-2">
             <TextField
               label={copy.restaurant.name}
-              description={copy.restaurant.nameHelp}
+              // description={copy.restaurant.nameHelp}
               value={settings.restaurantName}
               error={errors.restaurantName}
               onChange={(value) => {
@@ -43,20 +43,20 @@ const RestaurantSettingsTab = ({
             />
             <TextField
               label={copy.restaurant.hotline}
-              description={copy.restaurant.hotlineHelp}
+              // description={copy.restaurant.hotlineHelp}
               value={settings.restaurantPhone}
               onChange={(value) => setSettingsValue(setSettings, 'restaurantPhone', value)}
             />
             <TextField
               label={copy.restaurant.email}
-              description={copy.restaurant.emailHelp}
+              // description={copy.restaurant.emailHelp}
               type="email"
               value={settings.restaurantEmail}
               onChange={(value) => setSettingsValue(setSettings, 'restaurantEmail', value)}
             />
             <TextField
               label={copy.restaurant.address}
-              description={copy.restaurant.addressHelp}
+              // description={copy.restaurant.addressHelp}
               value={settings.restaurantAddress}
               onChange={(value) => setSettingsValue(setSettings, 'restaurantAddress', value)}
             />
@@ -67,14 +67,14 @@ const RestaurantSettingsTab = ({
           <div className="grid gap-5 md:grid-cols-3">
             <TextField
               label={copy.restaurant.currency}
-              description={copy.restaurant.currencyHelp}
+              // description={copy.restaurant.currencyHelp}
               maxLength="10"
               value={settings.currency}
               onChange={(value) => setSettingsValue(setSettings, 'currency', value)}
             />
             <TextField
               label={copy.restaurant.taxPercent}
-              description={copy.restaurant.taxPercentHelp}
+              // description={copy.restaurant.taxPercentHelp}
               type="number"
               min="0"
               max="100"
@@ -84,7 +84,7 @@ const RestaurantSettingsTab = ({
             />
             <TextField
               label={copy.restaurant.serviceChargePercent}
-              description={copy.restaurant.serviceChargePercentHelp}
+              // description={copy.restaurant.serviceChargePercentHelp}
               type="number"
               min="0"
               max="100"

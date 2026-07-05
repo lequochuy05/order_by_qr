@@ -107,6 +107,7 @@ public class SystemSettingsService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = CacheNames.SETTINGS, key = "'entity'")
     public SystemSettings getSettingsEntity() {
         return loadSettingsEntity();
     }
