@@ -9,3 +9,4 @@ import './unit/orderHistoryDates.test.js';
 import './unit/orderMoney.test.js';
 import './unit/restaurantSettings.test.js';
 import './unit/sessionStartCoordinator.test.js';
+import './unit/systemErrors.test.js';
