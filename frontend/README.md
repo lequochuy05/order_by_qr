@@ -90,6 +90,8 @@ VITE_WS_URL=https://order-by-qr.onrender.com/ws
 
 Nếu không đặt `VITE_API_URL`, Axios sẽ gọi relative path `/api/v1/...`; Vite dev server đã proxy `/api/v1` và `/ws` sang `http://localhost:8080`.
 
+Production nên đặt `VITE_WS_URL` trỏ trực tiếp backend WebSocket (`https://<backend>/ws`) thay vì phụ thuộc rewrite `/ws` trên Vercel. Nếu dùng Nginx reverse proxy, bảo đảm proxy có `Upgrade`/`Connection` header như `frontend/nginx.conf`.
+
 ## Cài đặt và chạy local
 
 ```bash
@@ -200,6 +202,7 @@ src/shared/hooks/useWebSocket.js
 Cấu hình:
 
 - SockJS endpoint: `VITE_WS_URL` hoặc fallback `/ws`.
+- Production ưu tiên `VITE_WS_URL` trực tiếp tới backend; fallback `/ws` chỉ phù hợp khi reverse proxy hỗ trợ WebSocket upgrade rõ ràng.
 - STOMP reconnect delay: 5 giây.
 - Heartbeat incoming/outgoing: 10 giây.
 - Header `Authorization` được gửi khi có access token.

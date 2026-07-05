@@ -74,9 +74,11 @@ yarn-error.log*
 .codegraph/
 .claude/
 *.tar
+*.zip
 backend.tar
 frontend.tar
 docker-data/
-*.md
 .cursor/
 *.patch
+CLAUDE.md
+*.md

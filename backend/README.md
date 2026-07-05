@@ -101,11 +101,13 @@ Các biến bắt buộc/quan trọng:
 | `APP_BASE_URL` | Public backend URL |
 | `APP_FRONTEND_BASE_URL` | Public frontend URL |
 | `APP_CORS_ALLOWED_ORIGINS` | Origin được phép, cách nhau bằng dấu phẩy |
+| `APP_TRUST_PROXY_HEADERS` | `true` khi backend chạy sau Render/Nginx/Cloudflare để rate limit dùng IP thật |
 | `PAYOS_CLIENT_ID`, `PAYOS_API_KEY`, `PAYOS_CHECKSUM_KEY` | Thanh toán PayOS |
 | `GEMINI_ENABLED` | Bật/tắt Gemini, mặc định `true` |
 | `GEMINI_API_KEY`, `GEMINI_API_URL` | Gemini chat assistant |
 | `GEMINI_CONNECT_TIMEOUT_SECONDS`, `GEMINI_READ_TIMEOUT_SECONDS` | Timeout Gemini |
 | `GEMINI_TEMPERATURE`, `GEMINI_TOP_P`, `GEMINI_MAX_OUTPUT_TOKENS` | Tham số sinh câu trả lời Gemini |
+| `AI_*_MAX_REQUESTS`, `AI_*_WINDOW` | Quota Gemini theo IP/user theo phút và theo ngày |
 
 ## Chạy local
 
@@ -316,6 +318,36 @@ Metrics:
 - Prometheus: `GET /actuator/prometheus`
 
 `/actuator/prometheus` yêu cầu quyền `MANAGER`; `/actuator/health` public.
+
+Redis failure behavior:
+
+- Public API rate-limit dùng fail-open: nếu Redis lỗi, request được đi tiếp và backend ghi warning.
+- AI quota dùng fail-closed: nếu Redis lỗi, Gemini bị chặn tạm thời để tránh rủi ro chi phí.
+- Refresh token store dùng fail-closed: login/refresh không cấp token mới nếu Redis không lưu/đọc được token.
+- Spring cache lỗi sẽ fallback về dữ liệu nguồn thay vì làm request fail.
+
+## Production operations
+
+Trước khi public production:
+
+- Bật `APP_TRUST_PROXY_HEADERS=true` khi deploy sau Render/Nginx/Cloudflare.
+- Đặt `APP_CORS_ALLOWED_ORIGINS` là origin chính xác, không dùng wildcard.
+- Đặt `JWT_SECRET` dài, ngẫu nhiên và riêng cho production.
+- Đặt `JWT_REFRESH_COOKIE_SECURE=true` khi chạy HTTPS.
+- Cấu hình quota `AI_*` nếu `GEMINI_ENABLED=true`.
+- Theo dõi `/actuator/health`, `/actuator/prometheus`, Redis, DB connection pool và webhook/payment failures.
+
+Backup PostgreSQL:
+
+```bash
+scripts/backup-postgres.sh
+```
+
+Restore vào môi trường đã chọn trong `.env`:
+
+```bash
+CONFIRM_RESTORE=YES scripts/restore-postgres.sh backups/qros-YYYYMMDD-HHMMSS.dump
+```
 
 ## Test và build
 

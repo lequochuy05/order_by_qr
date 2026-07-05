@@ -112,9 +112,11 @@ Các biến quan trọng:
 | `APP_BASE_URL` | Public URL backend |
 | `APP_FRONTEND_BASE_URL` | Public URL frontend |
 | `APP_CORS_ALLOWED_ORIGINS` | Danh sách origin được phép, cách nhau bằng dấu phẩy |
+| `APP_TRUST_PROXY_HEADERS` | Bật khi deploy sau proxy để rate limit dùng IP thật |
 | `PAYOS_*` | Thông tin PayOS |
 | `GEMINI_API_KEY`, `GEMINI_API_URL` | Cấu hình Gemini |
 | `GEMINI_ENABLED` | Bật/tắt Gemini, mặc định `true` |
+| `AI_*_MAX_REQUESTS`, `AI_*_WINDOW` | Quota Gemini theo IP/user |
 
 Frontend dùng các biến Vite:
 

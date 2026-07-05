@@ -1,6 +1,8 @@
 app:
   security:
     enable-default-admin: true
+    default-admin-email: admin@gmail.com
+    default-admin-password: admin123
     trust-proxy-headers: false
   cors:
     allowed-origins: http://localhost:5173
