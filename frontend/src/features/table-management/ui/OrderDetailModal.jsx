@@ -1,7 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { X, CheckCircle, Trash2, Edit3, Save, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { orderService } from '@entities/order/api/orderService.js';
+import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useAuth } from '@features/auth';
+import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
@@ -13,11 +15,24 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [preparingItemIds, setPreparingItemIds] = useState(() => new Set());
   const preparingItemIdsRef = useRef(new Set());
   const preparedRequestQueueRef = useRef(Promise.resolve());
+  const orderIdRef = useRef(order?.id);
 
   const { user } = useAuth();
-  const isManager = user?.role === 'MANAGER';
-  const isChef = user?.role === 'CHEF';
-  const canMarkPrepared = isManager || isChef;
+
+  useEffect(() => {
+    orderIdRef.current = order?.id;
+  }, [order?.id]);
+
+  // Realtime: tự động reload order khi có thay đổi từ WebSocket
+  const handleWsMessage = useCallback(
+    () => {
+      if (!isOpen || !orderIdRef.current || !onOrderUpdate) return;
+      // Delay nhẹ để backend kịp commit, rồi reload qua callback của parent
+      setTimeout(onOrderUpdate, 300);
+    },
+    [isOpen, onOrderUpdate],
+  );
+  useWebSocket('/topic/orders', handleWsMessage, { scope: 'admin' });
 
   // Adjust state when order prop changes (React recommended pattern)
   if (order !== prevOrder) {
@@ -38,7 +53,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
         try {
           await orderService.markItemPrepared(itemId, user?.userId);
           setItems((prev) =>
-            prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'FINISHED' } : i)),
+            prev.map((i) =>
+              i.id === itemId ? { ...i, prepared: true, status: ORDER_ITEM_STATUSES.FINISHED } : i,
+            ),
           );
           showSuccessToast('Đã hoàn tất chuẩn bị món');
           await onOrderUpdate();
@@ -58,7 +75,9 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     try {
       await orderService.deleteOrderItem(itemId);
       setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, prepared: true, status: 'CANCELLED' } : i)),
+        prev.map((i) =>
+            i.id === itemId ? { ...i, prepared: true, status: ORDER_ITEM_STATUSES.CANCELLED } : i,
+          ),
       );
       setConfirmDeleteId(null);
       showSuccessToast('Đã hủy món thành công');
@@ -92,7 +111,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
         <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
           <div>
             <h3 className="font-bold text-lg text-gray-800">
-              Bàn {table.tableNumber} - {items.length > 0 ? 'Chi tiết đơn' : 'Trạng thái'}
+              {table?.tableNumber ? `Bàn ${table.tableNumber} - ` : ''}{items.length > 0 ? 'Chi tiết đơn' : 'Trạng thái'}
             </h3>
             <span
               className={`text-xs px-2 py-0.5 rounded border ${items.length > 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
@@ -134,7 +153,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
               item.itemNameSnapshot ||
               (isCombo ? `Combo ${item.combo?.name || ''}` : item.menuItem?.name);
             const isPrepared = item.prepared;
-            const isCancelled = item.status === 'CANCELLED';
+            const isCancelled = item.status === ORDER_ITEM_STATUSES.CANCELLED;
             const isPreparing = preparingItemIds.has(item.id);
 
             return (

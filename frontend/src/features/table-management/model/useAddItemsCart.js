@@ -121,8 +121,8 @@ const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
       return;
     }
 
-    onSubmit({
-      tableId: table.id,
+    const payload = {
+      ...(table?.id && { tableId: table.id }),
       items: cart
         .filter((item) => item.type === 'ITEM')
         .map((item) => ({
@@ -138,7 +138,8 @@ const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
           quantity: item.qty,
           notes: item.notes,
         })),
-    });
+    };
+    onSubmit(payload);
   }, [cart, onSubmit, table?.id]);
 
   return {

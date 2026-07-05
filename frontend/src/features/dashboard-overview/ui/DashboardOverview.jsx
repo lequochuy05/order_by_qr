@@ -29,7 +29,6 @@ import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import {
   getForecastSummary,
   getTrendLabel,
-  getRevenueInsight,
   getDemandLevel,
 } from '@shared/lib/analytics/forecastUtils.js';
 import useDashboard from '../model/useDashboard.js';

@@ -42,7 +42,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
 
   return (
     <header
-      className={`sticky top-0 z-30 flex min-w-0 items-center justify-between border-b border-gray-100 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950 ${
+      className={`sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-between border-b border-gray-100 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950 ${
         isCompactViewport ? 'h-16 gap-2 px-3' : 'h-20 gap-4 px-6'
       }`}
     >

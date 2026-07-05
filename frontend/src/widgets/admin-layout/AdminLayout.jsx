@@ -1,5 +1,3 @@
-// src/components/admin/layout/AdminLayout.jsx
-
 import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
@@ -48,7 +46,7 @@ const AdminLayoutContent = () => {
 
   return (
     <div
-      className={`relative flex min-h-screen w-full max-w-full overflow-x-hidden bg-slate-50 transition-colors dark:bg-slate-950 ${
+      className={`relative flex h-dvh min-h-dvh w-full max-w-full overflow-hidden bg-slate-50 transition-colors dark:bg-slate-950 ${
         isCompactViewport ? 'safe-top safe-right safe-bottom safe-left' : ''
       }`}
       style={
@@ -70,23 +68,25 @@ const AdminLayoutContent = () => {
 
       {/* 3. Container chính */}
       <div
-        className={`flex min-h-screen min-w-0 max-w-full flex-1 flex-col transition-[padding] duration-300 ${
+        className={`flex h-full min-h-0 min-w-0 max-w-full flex-1 flex-col transition-[padding] duration-300 ${
           isCompactViewport ? 'pl-0' : isSidebarOpen ? 'pl-64' : 'pl-20'
         }`}
       >
         <AdminHeader toggleSidebar={toggleSidebar} isCompactViewport={isCompactViewport} />
 
-        <main
-          className={`min-w-0 flex-1 overflow-x-hidden text-slate-900 transition-colors dark:text-slate-100 ${
-            isCompactViewport ? 'p-3' : 'p-5 lg:p-8'
-          }`}
-        >
-          <div className="admin-content mx-auto w-full min-w-0 max-w-7xl">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+          <main
+            className={`min-w-0 flex-1 text-slate-900 transition-colors dark:text-slate-100 ${
+              isCompactViewport ? 'p-3' : 'p-5 lg:p-8'
+            }`}
+          >
+            <div className="admin-content mx-auto w-full min-w-0 max-w-7xl">
+              <Outlet />
+            </div>
+          </main>
 
-        <AdminFooter />
+          <AdminFooter />
+        </div>
       </div>
     </div>
   );

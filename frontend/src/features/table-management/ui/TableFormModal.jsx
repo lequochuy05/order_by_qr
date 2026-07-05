@@ -8,7 +8,7 @@ import {
   SharedModal,
   TextField,
 } from '@shared/ui';
-import { TABLE_STATUS } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
 
 const TABLE_STATUS_OPTIONS = Object.entries(TABLE_STATUS).map(([value, meta]) => ({
   value,
@@ -27,7 +27,13 @@ const TableFormModal = ({
   isRegeneratingQr,
 }) => {
   const [formData, setFormData] = useState(
-    initialData || { id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' },
+    initialData || {
+      id: null,
+      tableNumber: '',
+      capacity: 4,
+      status: TABLE_STATUSES.AVAILABLE,
+      qrCodeUrl: '',
+    },
   );
   const [errors, setErrors] = useState({});
   const [isQrPreviewOpen, setIsQrPreviewOpen] = useState(false);

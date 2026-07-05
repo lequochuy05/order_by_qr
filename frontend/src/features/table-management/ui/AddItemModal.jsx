@@ -7,7 +7,7 @@ import AddItemCatalogPane from './add-item/AddItemCatalogPane.jsx';
 const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
   const addItems = useAddItemsCart({ isOpen, table, onSubmit });
 
-  if (!isOpen || !table) return null;
+  if (!isOpen) return null;
 
   return (
     <>
@@ -15,10 +15,10 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         isOpen={isOpen}
         onClose={onClose}
         className="max-w-5xl !h-[94vh] !flex-col !overflow-hidden !rounded-2xl !p-0 md:!h-[90vh] md:!flex-row"
-        ariaLabel={`Thêm món cho bàn ${table.tableNumber}`}
+        ariaLabel={table ? `Thêm món cho bàn ${table.tableNumber}` : 'Thêm món mang về'}
       >
         <AddItemCatalogPane
-          tableNumber={table.tableNumber}
+          tableNumber={table?.tableNumber}
           activeTab={addItems.activeTab}
           onTabChange={addItems.setActiveTab}
           categories={addItems.categories}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
@@ -22,6 +22,7 @@ import TableGrid from './TableGrid.jsx';
 import OrderDetailModal from './OrderDetailModal.jsx';
 import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
+import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { TABLE_STATUS } from '@entities/table/lib/tableStatus.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
@@ -99,19 +100,26 @@ const TableManager = () => {
       case 'ADD_ITEM':
         setAddItemModal({ open: true, table });
         break;
-      case 'DETAIL':
+      case 'DETAIL': {
         const fullOrder = order?.id ? await orderService.getCurrentOrder(table.id) : null;
         setDetailModal({ open: true, table, order: fullOrder || null });
         break;
+      }
       case 'PAY':
         try {
-          // Try to use the passed order first, fallback to checking order existence 
           if (!order) {
             showError('Không tìm thấy đơn đang hoạt động của bàn này');
             queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
             break;
           }
-          setPayModal({ open: true, table, order: order });
+          // Cần đơn phải ở trạng thái AWAITING_PAYMENT (auto-promote khi món hoàn thành/hủy hết)
+          if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
+            showError('Vui lòng hoàn thành các món trước khi thanh toán');
+            break;
+          }
+          // Fetch full order detail để có subtotalAmount, discountAmount, orderItems
+          const fullOrder = await orderService.getOrderById(order.id);
+          setPayModal({ open: true, table, order: fullOrder || order });
         } catch (error) {
           showError(error);
         }

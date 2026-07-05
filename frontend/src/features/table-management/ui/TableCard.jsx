@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Lock, Clock } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
-import { getTableStatusMeta } from '@entities/table/lib/tableStatus.js';
+import { getTableStatusMeta, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
 
 const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete, userRole }) => {
   const finalAmount = getOrderFinalAmount(order);
@@ -10,7 +10,7 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
   const isManager = userRole === 'MANAGER'; // Kiểm tra quyền
 
   const status = getTableStatusMeta(table.status);
-  const isWaitingPayment = table.status === 'WAITING_FOR_PAYMENT';
+  const isWaitingPayment = table.status === TABLE_STATUSES.WAITING_FOR_PAYMENT;
 
   // Tính toán thời gian đã ngồi, tự động cập nhật mỗi 30s
   const calcTime = (createdAt) => {
@@ -25,12 +25,19 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
   };
   const [timeElapsed, setTimeElapsed] = useState(() => calcTime(order?.createdAt));
   useEffect(() => {
-    setTimeElapsed(calcTime(order?.createdAt));
-    if (!order?.createdAt) return;
+    const refreshTimer = setTimeout(() => {
+      setTimeElapsed(calcTime(order?.createdAt));
+    }, 0);
+    if (!order?.createdAt) {
+      return () => clearTimeout(refreshTimer);
+    }
     const interval = setInterval(() => {
       setTimeElapsed(calcTime(order?.createdAt));
     }, 30_000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(refreshTimer);
+      clearInterval(interval);
+    };
   }, [order?.createdAt]);
 
   return (

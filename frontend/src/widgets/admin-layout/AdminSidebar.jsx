@@ -18,6 +18,7 @@ import {
   Settings,
   ChevronRight,
   Circle,
+  ShoppingBag,
 } from 'lucide-react';
 
 const menuItems = [
@@ -26,6 +27,12 @@ const menuItems = [
     path: '/admin/dashboard',
     icon: <LayoutDashboard size={22} />,
     roles: ['MANAGER', 'STAFF', 'CHEF'],
+  },
+  {
+    title: 'Bán mang về',
+    path: '/admin/takeaway',
+    icon: <ShoppingBag size={22} />,
+    roles: ['MANAGER', 'STAFF'],
   },
   {
     title: 'Quản lý bàn',
@@ -115,7 +122,7 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
   const location = useLocation();
   const { user } = useAuth();
   const [preferences] = useAdminPreferences();
-  const { data: settings } = useSettingsQuery({ enabled: !!user });
+  const { data: settings } = useSettingsQuery({ enabled: !!user, stateTime: 5 * 60 * 1000 });
   const restaurantName = settings?.restaurantName?.trim() || 'QROS';
   const initial = restaurantName.charAt(0).toUpperCase();
   const label = (text) => getMenuLabel(text, preferences.language);
@@ -297,6 +304,7 @@ const englishMenuLabels = {
   'Doanh thu': 'Revenue',
   'Món ăn bán chạy': 'Top dishes',
   'Nhân viên': 'Staff',
+  'Bán mang về': 'Takeaway',
   'Cài đặt': 'Settings',
   'Thông tin cá nhân': 'Profile',
   'Cài đặt nhà hàng': 'Restaurant settings',
