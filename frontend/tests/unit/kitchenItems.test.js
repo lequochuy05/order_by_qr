@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { ORDER_ITEM_STATUSES } from '../../src/entities/order/lib/orderConstants.js';
 import {
   buildKitchenItems,
   groupKitchenItems,
   KITCHEN_COLUMNS,
   OVERDUE_MINUTES,
   summarizeKitchenItems,
-} from '../../src/widgets/kitchen-board/lib/kitchenItems.js';
+} from '../../src/features/kitchen-board/lib/kitchenItems.js';
 
 const NOW = new Date('2026-06-20T12:00:00.000Z').getTime();
 
@@ -19,7 +20,7 @@ const orders = [
     orderItems: [
       {
         id: 1,
-        status: 'PENDING',
+        status: ORDER_ITEM_STATUSES.PENDING,
         quantity: 2,
         createdAt: '2026-06-20T11:35:00.000Z',
         itemNameSnapshot: 'Cơm rang',
@@ -28,13 +29,13 @@ const orders = [
       },
       {
         id: 2,
-        status: 'COOKING',
+        status: ORDER_ITEM_STATUSES.COOKING,
         quantity: 1,
         createdAt: '2026-06-20T11:50:00.000Z',
         updatedAt: '2026-06-20T11:55:00.000Z',
         combo: { name: 'Combo trưa' },
       },
-      { id: 3, status: 'CANCELLED', quantity: 1 },
+      { id: 3, status: ORDER_ITEM_STATUSES.CANCELLED, quantity: 1 },
     ],
   },
 ];
@@ -42,7 +43,11 @@ const orders = [
 test('kitchen columns cover all visible statuses', () => {
   assert.deepEqual(
     KITCHEN_COLUMNS.map((column) => column.status),
-    ['PENDING', 'COOKING', 'FINISHED'],
+    [
+      ORDER_ITEM_STATUSES.PENDING,
+      ORDER_ITEM_STATUSES.COOKING,
+      ORDER_ITEM_STATUSES.FINISHED,
+    ],
   );
 });
 
@@ -82,8 +87,8 @@ test('combo items use Combo as their category', () => {
 
 test('groupKitchenItems sorts pending items by longest wait', () => {
   const grouped = groupKitchenItems([
-    { id: 1, status: 'PENDING', waitMinutes: 4 },
-    { id: 2, status: 'PENDING', waitMinutes: 12 },
+    { id: 1, status: ORDER_ITEM_STATUSES.PENDING, waitMinutes: 4 },
+    { id: 2, status: ORDER_ITEM_STATUSES.PENDING, waitMinutes: 12 },
   ]);
   assert.deepEqual(
     grouped.PENDING.map((item) => item.id),
@@ -93,8 +98,8 @@ test('groupKitchenItems sorts pending items by longest wait', () => {
 
 test('groupKitchenItems sorts finished items by latest update', () => {
   const grouped = groupKitchenItems([
-    { id: 1, status: 'FINISHED', statusUpdatedAt: '2026-06-20T10:00:00Z' },
-    { id: 2, status: 'FINISHED', statusUpdatedAt: '2026-06-20T11:00:00Z' },
+    { id: 1, status: ORDER_ITEM_STATUSES.FINISHED, statusUpdatedAt: '2026-06-20T10:00:00Z' },
+    { id: 2, status: ORDER_ITEM_STATUSES.FINISHED, statusUpdatedAt: '2026-06-20T11:00:00Z' },
   ]);
   assert.deepEqual(
     grouped.FINISHED.map((item) => item.id),
@@ -105,9 +110,9 @@ test('groupKitchenItems sorts finished items by latest update', () => {
 test('summarizeKitchenItems calculates counts and average wait', () => {
   assert.deepEqual(
     summarizeKitchenItems([
-      { status: 'PENDING', waitMinutes: 10, isOverdue: false },
-      { status: 'COOKING', waitMinutes: 30, isOverdue: true },
-      { status: 'FINISHED', waitMinutes: 40, isOverdue: false },
+      { status: ORDER_ITEM_STATUSES.PENDING, waitMinutes: 10, isOverdue: false },
+      { status: ORDER_ITEM_STATUSES.COOKING, waitMinutes: 30, isOverdue: true },
+      { status: ORDER_ITEM_STATUSES.FINISHED, waitMinutes: 40, isOverdue: false },
     ]),
     {
       pending: 1,

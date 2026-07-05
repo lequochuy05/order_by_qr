@@ -21,7 +21,7 @@ const KitchenToolbar = ({ wakeLock, soundEnabled, onToggleSound, refreshing, onR
     >
       <Sun size={17} className={wakeLock.isActive ? 'animate-pulse' : ''} />
       {wakeLock.isActive
-        ? 'Màn hình luôn bật'
+        ? ''
         : wakeLock.isSupported
           ? 'Bật giữ màn hình'
           : 'Không hỗ trợ Wake Lock'}
@@ -33,7 +33,6 @@ const KitchenToolbar = ({ wakeLock, soundEnabled, onToggleSound, refreshing, onR
       title="Bật hoặc tắt âm thanh thông báo"
     >
       {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-      {soundEnabled ? 'Có âm thanh' : 'Tắt âm thanh'}
     </button>
     <button
       type="button"

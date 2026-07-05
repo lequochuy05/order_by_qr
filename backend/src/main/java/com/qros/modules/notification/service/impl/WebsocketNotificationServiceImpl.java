@@ -3,6 +3,7 @@ package com.qros.modules.notification.service.impl;
 import com.qros.modules.notification.dto.internal.NotificationPayload;
 import com.qros.modules.notification.event.WebSocketEvent;
 import com.qros.modules.notification.service.NotificationService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -67,7 +68,8 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     public void notifyPaymentSuccess(Long orderId, Long transactionId) {
         publishInternalEvent(
                 TOPIC_TABLES,
-                NotificationPayload.event(EVENT_PAYMENT_SUCCESS),
+                NotificationPayload.eventWithIdAndData(
+                        EVENT_PAYMENT_SUCCESS, orderId, Map.of("orderId", orderId, "transactionId", transactionId)),
                 "Successful payment received for a customer order");
     }
 

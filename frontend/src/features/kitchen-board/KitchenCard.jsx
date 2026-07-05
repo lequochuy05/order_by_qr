@@ -9,6 +9,7 @@ import {
   StickyNote,
   Tag,
 } from 'lucide-react';
+import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 
 const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
@@ -77,14 +78,14 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
 
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800">
           <span>Nhận lúc {fmtTime(item.createdAt)}</span>
-          {status === 'COOKING' && <span>Đang nấu {item.stageMinutes} phút</span>}
-          {status === 'FINISHED' && <span>Xong lúc {fmtTime(item.statusUpdatedAt)}</span>}
+          {status === ORDER_ITEM_STATUSES.COOKING && <span>Đang nấu {item.stageMinutes} phút</span>}
+          {status === ORDER_ITEM_STATUSES.FINISHED && <span>Xong lúc {fmtTime(item.statusUpdatedAt)}</span>}
         </div>
 
         <div className="mt-3">
-          {status === 'PENDING' && (
+          {status === ORDER_ITEM_STATUSES.PENDING && (
             <ActionButton
-              onClick={() => onUpdateStatus(item.id, 'COOKING')}
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.COOKING)}
               disabled={isProcessing}
               loading={isProcessing}
               icon={Flame}
@@ -93,9 +94,9 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
               className="bg-blue-600 hover:bg-blue-700"
             />
           )}
-          {status === 'COOKING' && (
+          {status === ORDER_ITEM_STATUSES.COOKING && (
             <ActionButton
-              onClick={() => onUpdateStatus(item.id, 'FINISHED')}
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.FINISHED)}
               disabled={isProcessing}
               loading={isProcessing}
               icon={Check}
@@ -104,10 +105,10 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
               className="bg-emerald-600 hover:bg-emerald-700"
             />
           )}
-          {status === 'FINISHED' && (
+          {status === ORDER_ITEM_STATUSES.FINISHED && (
             <button
               type="button"
-              onClick={() => onUpdateStatus(item.id, 'COOKING')}
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.COOKING)}
               disabled={isProcessing}
               className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
@@ -126,7 +127,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
 };
 
 const WaitBadge = ({ item, priority }) => {
-  if (item.status === 'FINISHED') {
+  if (item.status === ORDER_ITEM_STATUSES.FINISHED) {
     return (
       <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
         <Check size={13} />
@@ -162,7 +163,7 @@ const ActionButton = ({ onClick, disabled, loading, icon, label, loadingLabel, c
 );
 
 const getPriority = (item) => {
-  if (item.status === 'FINISHED') {
+  if (item.status === ORDER_ITEM_STATUSES.FINISHED) {
     return {
       card: 'border-emerald-100 dark:border-emerald-500/20',
       bar: 'bg-emerald-500',
