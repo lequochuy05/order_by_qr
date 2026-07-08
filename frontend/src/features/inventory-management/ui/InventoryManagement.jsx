@@ -22,7 +22,7 @@ const InventoryManagement = () => {
   const inventory = useInventoryManagement();
 
   return (
-    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 dark:bg-slate-950 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm nguyên liệu..."
         searchTerm={inventory.searchTerm}

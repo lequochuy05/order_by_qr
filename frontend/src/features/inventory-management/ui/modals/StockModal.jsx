@@ -15,7 +15,7 @@ const StockModal = ({ action, form, setForm, onClose, onSubmit, isSubmitting = f
         disabled={isSubmitting}
       />
       <div className="space-y-5 p-8">
-        <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700">
+        <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 dark:bg-orange-950/30 dark:text-orange-300">
           {action.item.name}: {fmtQty(action.item.quantityOnHand)} {action.item.unit}
         </div>
         {action.type === 'stock-in' ? (

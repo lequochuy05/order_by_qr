@@ -13,9 +13,9 @@ const InventoryToolbar = ({
   onOpenRecipe,
   onRefresh,
 }) => (
-  <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+  <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900">
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="grid min-w-0 grid-cols-2 gap-1 rounded-2xl bg-gray-50 p-1 sm:flex sm:items-center sm:gap-2">
+      <div className="grid min-w-0 grid-cols-2 gap-1 rounded-2xl bg-slate-50 p-1 dark:bg-slate-950 sm:flex sm:items-center sm:gap-2">
         <TabButton
           active={activeTab === 'items'}
           icon={Boxes}
@@ -36,7 +36,7 @@ const InventoryToolbar = ({
           onFocus={onMenuItemFocus}
           onChange={(e) => onMenuItemChange(e.target.value)}
           disabled={menuItemsLoading}
-          className="min-h-10 w-full min-w-0 rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-orange-500 disabled:cursor-wait disabled:opacity-60 md:w-64"
+          className="min-h-10 w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:ring-2 focus:ring-orange-500 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 md:w-64"
         >
           {menuItemsLoading && <option value="">Đang tải món...</option>}
           {!menuItemsLoading && menuItems.length === 0 && (
@@ -52,7 +52,7 @@ const InventoryToolbar = ({
           type="button"
           onClick={onOpenRecipe}
           disabled={menuItemsLoading}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-black text-white transition-colors hover:bg-slate-700 disabled:opacity-50"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-black text-white transition-colors hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
         >
           {menuItemsLoading ? (
             <Loader2 size={16} className="animate-spin" />
@@ -64,7 +64,7 @@ const InventoryToolbar = ({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 text-sm font-black text-gray-700 transition-colors hover:bg-gray-200"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
         >
           <RefreshCw size={16} /> Đồng bộ
         </button>
