@@ -1,6 +1,7 @@
 import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import {
+  getBillableOrderItems,
   getOrderDiscountAmount,
   getOrderFinalAmount,
   getOrderSubtotalAmount,
@@ -25,7 +26,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const billFooterMessage = settings.billFooterMessage || 'CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!';
   const paperWidth = settings.billPaperSize === '58' ? '58mm' : '80mm';
 
-  const items = order.orderItems || [];
+  const items = getBillableOrderItems(order);
   const subtotalAmount = getOrderSubtotalAmount(order);
   const discountAmount = getOrderDiscountAmount(order);
   const finalAmount = getOrderFinalAmount(order);
