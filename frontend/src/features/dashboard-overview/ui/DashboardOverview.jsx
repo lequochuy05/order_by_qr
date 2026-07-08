@@ -62,10 +62,10 @@ const Dashboard = () => {
   if (error) {
     return (
       <div className="flex min-h-[420px] items-center justify-center p-6">
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center max-w-sm">
+        <div className="rounded-2xl border border-red-100 dark:border-red-800 bg-red-50 dark:bg-red-950/30 p-8 text-center max-w-sm">
           <AlertCircle className="mx-auto mb-3 text-red-400" size={32} />
-          <p className="font-semibold text-red-700 mb-1">Không thể tải dữ liệu</p>
-          <p className="text-sm text-red-500 mb-4">Vui lòng kiểm tra kết nối và thử lại.</p>
+          <p className="font-semibold text-red-700 dark:text-red-400 mb-1">Không thể tải dữ liệu</p>
+          <p className="text-sm text-red-500 dark:text-red-400 mb-4">Vui lòng kiểm tra kết nối và thử lại.</p>
           <button
             onClick={() => refetch()}
             className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
@@ -81,15 +81,15 @@ const Dashboard = () => {
   const forecastSummary = getForecastSummary(revenueForecastData);
 
   return (
-    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
+    <div className="min-h-screen min-w-0 bg-slate-50 dark:bg-slate-950 p-0 sm:p-3 lg:p-6">
       {/* 1. KPI Cards */}
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-4 sm:mt-6 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Revenue Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm dark:shadow-slate-900/30 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md dark:hover:shadow-slate-900/40 transition-shadow">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">Doanh thu (Hôm nay)</p>
-              <h3 className="text-2xl font-bold text-slate-800">{fmtVND(todayRevenue)}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Doanh thu (Hôm nay)</p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{fmtVND(todayRevenue)}</h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
               <TrendingUp size={20} />
@@ -98,46 +98,46 @@ const Dashboard = () => {
         </div>
 
         {/* Orders Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm dark:shadow-slate-900/30 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md dark:hover:shadow-slate-900/40 transition-shadow">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">Đơn hàng (Hôm nay)</p>
-              <h3 className="text-2xl font-bold text-slate-800">{todayOrders.total}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Đơn hàng (Hôm nay)</p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{todayOrders.total}</h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
               <ShoppingBag size={20} />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
-            <span className="text-green-600 font-semibold">{todayOrders.completed}</span> hoàn thành
+          <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="text-green-600 dark:text-green-400 font-semibold">{todayOrders.completed}</span> hoàn thành
           </div>
         </div>
 
         {/* Tables Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm dark:shadow-slate-900/30 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md dark:hover:shadow-slate-900/40 transition-shadow">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">Bàn</p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Bàn</p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 {tablesContext.occupied}{' '}
-                <span className="text-lg text-slate-400 font-medium">/ {tablesContext.total}</span>
+                <span className="text-lg text-slate-400 dark:text-slate-500 font-medium">/ {tablesContext.total}</span>
               </h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
               <UtensilsCrossed size={20} />
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
+          <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             Đang có khách ngồi
           </div>
         </div>
 
         {/* Avg Order Value */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm dark:shadow-slate-900/30 border border-slate-100 dark:border-slate-800 flex flex-col justify-between hover:shadow-md dark:hover:shadow-slate-900/40 transition-shadow">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">Giá trị trung bình đơn</p>
-              <h3 className="text-2xl font-bold text-slate-800">{fmtVND(avgOrderValue)}</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">Giá trị trung bình đơn</p>
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100">{fmtVND(avgOrderValue)}</h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
               <Banknote size={20} />
@@ -148,9 +148,9 @@ const Dashboard = () => {
 
       {/* Forecasting Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6 lg:col-span-2">
+        <div className="min-w-0 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-slate-900/30 sm:p-6 lg:col-span-2">
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-1">
               <TrendingUp size={18} className="text-orange-500" /> Dự báo doanh thu 7 ngày tới
             </h3>
           </div>
@@ -186,7 +186,7 @@ const Dashboard = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mb-3">
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 mb-3">
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-emerald-500"></span> Thực tế
             </span>
@@ -244,19 +244,19 @@ const Dashboard = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400">
+              <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
                 Chưa có dữ liệu dự báo doanh thu
               </div>
             )}
           </div>
         </div>
 
-        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="min-w-0 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-slate-900/30 sm:p-6">
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-1">
               <Sparkles size={18} className="text-amber-500" /> Gợi ý chuẩn bị món
             </h3>
-            <p className="text-sm text-slate-500">Dựa trên xu hướng bán ra 30 ngày qua</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Dựa trên xu hướng bán ra 30 ngày qua</p>
           </div>
           <div className="flex flex-col gap-4">
             {popularDishesForecast.map((dish, idx) => {
@@ -282,7 +282,7 @@ const Dashboard = () => {
                         </p>
                         <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                           Dự kiến bán ra:{' '}
-                          <span className="font-bold text-slate-700">{dish.estimatedQty}</span> suất
+                          <span className="font-bold text-slate-700 dark:text-slate-200">{dish.estimatedQty}</span> suất
                         </p>
                       </div>
                     </div>
@@ -306,7 +306,7 @@ const Dashboard = () => {
               );
             })}
             {popularDishesForecast.length === 0 && (
-              <p className="text-center text-slate-400 py-4">Chưa có dữ liệu dự báo món.</p>
+              <p className="text-center text-slate-400 dark:text-slate-500 py-4">Chưa có dữ liệu dự báo món.</p>
             )}
           </div>
         </div>
@@ -315,8 +315,8 @@ const Dashboard = () => {
       {/* 2 & 4. Charts and Leaderboard Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Tỉ trọng danh mục (Pie Chart) */}
-        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">
+        <div className="min-w-0 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-slate-900/30 sm:p-6">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6">
             Tỉ trọng danh mục (7 ngày)
           </h3>
           <div className="h-72">
@@ -341,7 +341,7 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400">
+              <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
                 Chưa có thông tin bán hàng
               </div>
             )}
@@ -349,15 +349,15 @@ const Dashboard = () => {
         </div>
 
         {/* Top 5 Món Bán Chạy */}
-        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <div className="min-w-0 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-slate-900/30 sm:p-6">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
             <UtensilsCrossed size={18} className="text-emerald-500" /> Top món (7 ngày)
           </h3>
           <div className="flex flex-col gap-4">
             {topDishes.map((dish, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors border border-transparent shadow-sm"
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent shadow-sm dark:shadow-slate-900/30"
               >
                 <div className="flex items-center gap-4 min-w-0">
                   <div
@@ -366,28 +366,28 @@ const Dashboard = () => {
                     {idx + 1}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-800 truncate" title={dish.name}>
+                    <p className="font-semibold text-slate-800 dark:text-slate-100 truncate" title={dish.name}>
                       {dish.name}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Đã bán: <span className="font-medium">{dish.totalQty}</span>
                     </p>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-slate-800">{fmtVND(dish.totalRevenue)}</p>
+                  <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{fmtVND(dish.totalRevenue)}</p>
                 </div>
               </div>
             ))}
             {topDishes.length === 0 && (
-              <p className="text-center text-slate-400 py-4">Chưa có món nào được bán ra.</p>
+              <p className="text-center text-slate-400 dark:text-slate-500 py-4">Chưa có món nào được bán ra.</p>
             )}
           </div>
         </div>
 
         {/* Giao dịch gần nhất */}
-        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6">
-          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+        <div className="min-w-0 rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm dark:shadow-slate-900/30 sm:p-6">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2">
             <Clock size={18} className="text-blue-500" /> Đơn hàng mới nhất
           </h3>
           <div className="flex flex-col gap-4">
@@ -398,11 +398,11 @@ const Dashboard = () => {
               return (
                 <div
                   key={order.id || idx}
-                  className="flex justify-between items-start p-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-xl transition-colors"
+                  className="flex justify-between items-start p-3 border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-700">Đơn #{order.id}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Đơn #{order.id}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {tableNumber ? `Bàn ${tableNumber}` : 'Mang đi'} •{' '}
                       {fmtTime(order.paymentTime || order.createdAt)}
                     </p>
@@ -413,13 +413,13 @@ const Dashboard = () => {
                     >
                       {getOrderStatusMeta(order.status).label}
                     </span>
-                    <span className="text-sm font-bold text-slate-800">{fmtVND(orderAmount)}</span>
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{fmtVND(orderAmount)}</span>
                   </div>
                 </div>
               );
             })}
             {recentOrders.length === 0 && (
-              <p className="text-center text-slate-400 py-4">Hôm nay chưa có đơn hàng nào.</p>
+              <p className="text-center text-slate-400 dark:text-slate-500 py-4">Hôm nay chưa có đơn hàng nào.</p>
             )}
           </div>
         </div>

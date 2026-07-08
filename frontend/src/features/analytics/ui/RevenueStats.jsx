@@ -126,7 +126,7 @@ const RevenueStats = () => {
     (loadingRevenue || loadingOrders) && revenueData.length === 0 && orders.length === 0;
 
   return (
-    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -150,8 +150,8 @@ const RevenueStats = () => {
           {/* 2. Biểu đồ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Biểu đồ miền (Doanh thu) */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="font-bold text-gray-800 mb-6">Xu hướng doanh thu</h3>
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
+              <h3 className="font-bold text-gray-800 mb-6 dark:text-slate-100">Xu hướng doanh thu</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -198,8 +198,8 @@ const RevenueStats = () => {
             </div>
 
             {/* Biểu đồ cột (Số lượng đơn) */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="font-bold text-gray-800 mb-6">Số lượng đơn hàng</h3>
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
+              <h3 className="font-bold text-gray-800 mb-6 dark:text-slate-100">Số lượng đơn hàng</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
@@ -235,18 +235,18 @@ const RevenueStats = () => {
           </div>
 
           {/* === 3. BẢNG CHI TIẾT ĐƠN HÀNG (MỚI THÊM) === */}
-          <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                <Receipt size={20} className="text-gray-500" />
+          <div className="bg-white rounded-3xl shadow-sm border overflow-hidden dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2 dark:text-slate-100">
+                <Receipt size={20} className="text-gray-500 dark:text-slate-400" />
                 Chi tiết giao dịch
               </h3>
-              <span className="text-sm text-gray-500">{totalElements} đơn hàng</span>
+              <span className="text-sm text-gray-500 dark:text-slate-400">{totalElements} đơn hàng</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold dark:bg-slate-950 dark:text-slate-400">
                   <tr>
                     <th className="p-4">Mã đơn</th>
                     <th className="p-4">Thời gian</th>
@@ -258,14 +258,14 @@ const RevenueStats = () => {
                 <tbody className="text-sm">
                   {loadingOrders ? (
                     <tr key="loading-revenue-orders">
-                      <td colSpan="5" className="p-8 text-center text-gray-500">
+                      <td colSpan="5" className="p-8 text-center text-gray-500 dark:text-slate-400">
                         <Loader2 className="animate-spin inline mr-2 text-orange-500" size={18} />
                         Đang tải giao dịch...
                       </td>
                     </tr>
                   ) : orders.length === 0 ? (
                     <tr key="empty-revenue-row">
-                      <td colSpan="5" className="p-8 text-center text-gray-400">
+                      <td colSpan="5" className="p-8 text-center text-gray-400 dark:text-slate-500">
                         Không có dữ liệu giao dịch trong khoảng thời gian này.
                       </td>
                     </tr>
@@ -273,19 +273,19 @@ const RevenueStats = () => {
                     orders.map((order) => (
                       <tr
                         key={order.id}
-                        className="border-b last:border-0 hover:bg-slate-50 transition-colors"
+                        className="border-b last:border-0 hover:bg-slate-50 transition-colors dark:border-slate-800 dark:hover:bg-slate-800/50"
                       >
                         <td className="p-4 font-medium text-blue-600">#{order.id}</td>
-                        <td className="p-4 text-gray-600">
+                        <td className="p-4 text-gray-600 dark:text-slate-300">
                           {fmtDateTime(order.paymentTime || order.createdAt)}
                         </td>
-                        <td className="p-4 text-gray-800 font-medium">{order.empName || '—'}</td>
+                        <td className="p-4 text-gray-800 font-medium dark:text-slate-100">{order.empName || '—'}</td>
                         <td className="p-4 text-center">
                           <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
                             Đã thanh toán
                           </span>
                         </td>
-                        <td className="p-4 text-right font-bold text-gray-800">
+                        <td className="p-4 text-right font-bold text-gray-800 dark:text-slate-100">
                           {fmtVND(getOrderFinalAmount(order))}
                         </td>
                       </tr>
@@ -294,24 +294,24 @@ const RevenueStats = () => {
                 </tbody>
               </table>
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100">
+                <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100 dark:border-slate-800">
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage === 0}
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
-                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
                   >
                     Trước
                   </button>
-                  <span className="text-gray-500 font-medium px-4">
+                  <span className="text-gray-500 font-medium px-4 dark:text-slate-400">
                     Trang {currentPage + 1} / {totalPages}
-                    <span className="text-gray-400 ml-2 text-sm">({totalElements} đơn)</span>
+                    <span className="text-gray-400 ml-2 text-sm dark:text-slate-500">({totalElements} đơn)</span>
                   </span>
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage >= totalPages - 1}
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1))}
-                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
                   >
                     Sau
                   </button>
@@ -327,9 +327,9 @@ const RevenueStats = () => {
 
 // Component con hiển thị thẻ KPI nhỏ (Tốt nhất nên tách ra file riêng như đã bàn, nhưng để tạm ở đây cho chạy được ngay)
 const KpiItem = ({ title, value, color }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center hover:shadow-md transition-shadow">
+  <div className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30 dark:hover:shadow-slate-900/40">
     <div>
-      <p className="text-gray-500 text-sm font-medium">{title}</p>
+      <p className="text-gray-500 text-sm font-medium dark:text-slate-400">{title}</p>
       <h3 className={`text-2xl font-black mt-1 ${color}`}>{value}</h3>
     </div>
   </div>

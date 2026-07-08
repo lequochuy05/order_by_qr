@@ -66,7 +66,7 @@ const StaffStats = () => {
   const maxRev = employees.length > 0 ? Math.max(...employees.map((e) => e.revenue || 0)) : 1;
 
   return (
-    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -81,7 +81,7 @@ const StaffStats = () => {
       ) : (
         <div className="flex flex-col lg:flex-row gap-6 mt-6">
           {/* === PHẦN TRÁI: BIỂU ĐỒ TRÒN === */}
-          <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 lg:sticky lg:top-6 lg:w-1/3">
+          <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 lg:sticky lg:top-6 lg:w-1/3 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
             <div className="h-[300px] w-full relative">
               {pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -109,7 +109,7 @@ const StaffStats = () => {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500">
                   <Users size={48} className="opacity-20 mb-2" />
                   <p>Chưa có dữ liệu</p>
                 </div>
@@ -118,8 +118,8 @@ const StaffStats = () => {
               {/* Tổng doanh thu ở giữa biểu đồ */}
               {pieData.length > 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs text-gray-400 font-medium">Tổng</span>
-                  <span className="text-sm font-bold text-gray-800">
+                  <span className="text-xs text-gray-400 font-medium dark:text-slate-500">Tổng</span>
+                  <span className="text-sm font-bold text-gray-800 dark:text-slate-100">
                     {fmtVND(pieData.reduce((a, b) => a + b.value, 0))}
                   </span>
                 </div>
@@ -133,7 +133,7 @@ const StaffStats = () => {
               {employees.map((emp, idx) => (
                 <div
                   key={`staff-${emp.fullName || idx}`}
-                  className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg transition-all duration-300 relative overflow-hidden group"
+                  className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg transition-all duration-300 relative overflow-hidden group dark:bg-slate-900 dark:border-slate-800"
                 >
                   {/* Huy hiệu Top 1-3 */}
                   {idx < 3 && (
@@ -185,23 +185,23 @@ const StaffStats = () => {
                       </div>
                     )}
                     <div>
-                      <h4 className="font-bold text-gray-800 text-lg line-clamp-1">
+                      <h4 className="font-bold text-gray-800 text-lg line-clamp-1 dark:text-slate-100">
                         {emp.fullName}
                       </h4>
-                      <p className="text-sm text-gray-500">{emp.orders} đơn hàng</p>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">{emp.orders} đơn hàng</p>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm items-end">
-                      <span className="text-gray-500">Doanh thu</span>
-                      <span className="font-bold text-green-600 text-lg">
+                      <span className="text-gray-500 dark:text-slate-400">Doanh thu</span>
+                      <span className="font-bold text-green-600 text-lg dark:text-green-400">
                         {fmtVND(emp.revenue)}
                       </span>
                     </div>
 
                     {/* Thanh Progress bar đồng bộ màu */}
-                    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden dark:bg-slate-800">
                       <div
                         className="h-2.5 rounded-full transition-all duration-1000 ease-out"
                         style={{
@@ -216,7 +216,7 @@ const StaffStats = () => {
             </div>
 
             {employees.length === 0 && (
-              <div className="bg-white p-10 rounded-3xl border border-dashed text-center text-gray-400">
+              <div className="bg-white p-10 rounded-3xl border border-dashed text-center text-gray-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-500">
                 <Users className="w-12 h-12 mx-auto mb-2 opacity-30" />
                 <p>Không có dữ liệu nhân viên trong khoảng thời gian này</p>
               </div>

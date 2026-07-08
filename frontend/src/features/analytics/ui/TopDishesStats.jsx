@@ -136,7 +136,7 @@ const TopDishesStats = () => {
   ];
 
   return (
-    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -182,8 +182,8 @@ const TopDishesStats = () => {
           {/* 2. Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Horizontal BarChart - Top 10 */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
+              <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 dark:text-slate-100">
                 <BarChart3 size={18} className="text-blue-500" /> Top 10 món bán chạy nhất
               </h3>
               <div className="h-[400px]">
@@ -228,8 +228,8 @@ const TopDishesStats = () => {
             </div>
 
             {/* AreaChart - Xu hướng bán theo ngày */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6">
-              <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
+              <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2 dark:text-slate-100">
                 <TrendingUp size={18} className="text-orange-500" /> Xu hướng bán theo ngày
               </h3>
               <div className="h-[400px]">
@@ -282,17 +282,17 @@ const TopDishesStats = () => {
           </div>
 
           {/* 3. Bảng xếp hạng */}
-          <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2">
+          <div className="bg-white rounded-3xl shadow-sm border overflow-hidden dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
+              <h3 className="font-bold text-gray-800 flex items-center gap-2 dark:text-slate-100">
                 <Award size={20} className="text-yellow-500" /> Bảng xếp hạng toàn bộ
               </h3>
-              <span className="text-sm text-gray-500">{dishes.length} món</span>
+              <span className="text-sm text-gray-500 dark:text-slate-400">{dishes.length} món</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold dark:bg-slate-950 dark:text-slate-400">
                   <tr>
                     <th className="p-4 w-16 text-center">#</th>
                     <th className="p-4 w-16">Hình</th>
@@ -310,7 +310,7 @@ const TopDishesStats = () => {
                     return (
                       <tr
                         key={`dish-${dish.menuItemId || rank}`}
-                        className="border-b last:border-0 hover:bg-slate-50 transition-colors"
+                        className="border-b last:border-0 hover:bg-slate-50 transition-colors dark:border-slate-800 dark:hover:bg-slate-800/50"
                       >
                         {/* Rank */}
                         <td className="p-4 text-center">
@@ -322,7 +322,7 @@ const TopDishesStats = () => {
                               {rank}
                             </span>
                           ) : (
-                            <span className="text-gray-400 font-medium">{rank}</span>
+                            <span className="text-gray-400 font-medium dark:text-slate-500">{rank}</span>
                           )}
                         </td>
                         {/* Thumbnail */}
@@ -334,36 +334,36 @@ const TopDishesStats = () => {
                               className="w-10 h-10 rounded-lg object-cover shadow-sm"
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                              <UtensilsCrossed size={16} className="text-gray-300" />
+                            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center dark:bg-slate-800">
+                              <UtensilsCrossed size={16} className="text-gray-300 dark:text-slate-600" />
                             </div>
                           )}
                         </td>
                         {/* Name */}
                         <td className="p-4">
-                          <p className="font-semibold text-gray-800 line-clamp-1" title={dish.name}>
+                          <p className="font-semibold text-gray-800 line-clamp-1 dark:text-slate-100" title={dish.name}>
                             {dish.name}
                           </p>
                         </td>
                         {/* Category */}
                         <td className="p-4">
-                          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                          <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium dark:bg-blue-950/30 dark:text-blue-400">
                             {dish.categoryName || dish.category || 'Khác'}
                           </span>
                         </td>
                         {/* Quantity */}
                         <td className="p-4 text-center">
-                          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold">
+                          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-bold dark:bg-emerald-950/30 dark:text-emerald-400">
                             {dish.totalQty}
                           </span>
                         </td>
                         {/* Revenue */}
-                        <td className="p-4 text-right font-bold text-gray-800">
+                        <td className="p-4 text-right font-bold text-gray-800 dark:text-slate-100">
                           {fmtVND(dish.totalRevenue)}
                         </td>
                         {/* Progress bar */}
                         <td className="p-4 pr-6">
-                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden dark:bg-slate-800">
                             <div
                               className="h-2 rounded-full transition-all duration-700 ease-out"
                               style={{
@@ -379,7 +379,7 @@ const TopDishesStats = () => {
 
                   {dishes.length === 0 && (
                     <tr key="empty-row">
-                      <td colSpan="7" className="p-8 text-center text-gray-400">
+                      <td colSpan="7" className="p-8 text-center text-gray-400 dark:text-slate-500">
                         <UtensilsCrossed className="w-12 h-12 mx-auto mb-2 opacity-20" />
                         <p>Không có dữ liệu món ăn trong khoảng thời gian này.</p>
                       </td>
@@ -389,24 +389,24 @@ const TopDishesStats = () => {
               </table>
             </div>
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100">
+              <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100 dark:border-slate-800">
                 <button
                   type="button"
                   disabled={currentPage === 0}
                   onClick={() => setCurrentPage((prev) => prev - 1)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
                 >
                   Trước
                 </button>
-                <span className="text-gray-500 font-medium px-4">
+                <span className="text-gray-500 font-medium px-4 dark:text-slate-400">
                   Trang {currentPage + 1} / {totalPages}
-                  <span className="text-gray-400 ml-2 text-sm">({dishes.length} món)</span>
+                  <span className="text-gray-400 ml-2 text-sm dark:text-slate-500">({dishes.length} món)</span>
                 </span>
                 <button
                   type="button"
                   disabled={currentPage >= totalPages - 1}
                   onClick={() => setCurrentPage((prev) => prev + 1)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium"
+                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
                 >
                   Sau
                 </button>
@@ -430,9 +430,9 @@ const KpiCard = ({ title, value, icon, color }) => {
   const c = colorMap[color] || colorMap.orange;
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex justify-between items-center hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30 dark:hover:shadow-slate-900/40">
       <div>
-        <p className="text-gray-500 text-sm font-medium">{title}</p>
+        <p className="text-gray-500 text-sm font-medium dark:text-slate-400">{title}</p>
         <h3 className={`text-2xl font-black mt-1 ${c.text}`}>{value}</h3>
       </div>
       <div className={`w-10 h-10 rounded-full ${c.bg} flex items-center justify-center ${c.text}`}>
@@ -443,7 +443,7 @@ const KpiCard = ({ title, value, icon, color }) => {
 };
 
 const EmptyState = () => (
-  <div className="h-full flex flex-col items-center justify-center text-gray-400">
+  <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-slate-500">
     <UtensilsCrossed size={48} className="opacity-20 mb-2" />
     <p>Chưa có dữ liệu</p>
   </div>
