@@ -212,7 +212,7 @@ const CategoryManager = () => {
       )}
 
       {!loading && categories.length === 0 && (
-        <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
           <Layers size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy danh mục phù hợp hoặc chưa có dữ liệu.
         </div>

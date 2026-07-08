@@ -1,10 +1,12 @@
+import { comboService } from '@entities/combo/api/comboService.js';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { comboService } from '@entities/combo/api/comboService.js';
+import { useComboPageQuery } from '../api/comboQueries.js';
+import { useCreateComboMutation, useUpdateComboMutation, useDeleteComboMutation, useToggleComboActiveMutation } from '../api/comboMutations.js';
 import { menuItemService } from '@entities/menu-item/api/menuItemService.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -14,10 +16,8 @@ import ConfirmToggleModal from './ConfirmToggleModal';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 
 const ComboManager = () => {
-  const [combos, setCombos] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,14 +26,27 @@ const ComboManager = () => {
   const [errors, setErrors] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const isMountedRef = useRef(true);
-  const fetchSeqRef = useRef(0);
-  const pageSize = 24;
+      const isMountedRef = useRef(true);
+    const pageSize = 24;
 
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+  const queryParams = {
+    page: currentPage,
+    size: pageSize,
+    ...(debouncedSearchTerm.trim() ? { q: debouncedSearchTerm.trim() } : {}),
+    ...(statusFilter === 'ACTIVE' ? { active: true } : {}),
+    ...(statusFilter === 'INACTIVE' ? { active: false } : {})
+  };
+  const { data: comboData, isFetching: loading } = useComboPageQuery(queryParams);
+  const combos = comboData?.content || [];
+  const totalPages = comboData?.totalPages || 0;
+  const totalElements = comboData?.totalElements || 0;
+  const { mutateAsync: createCombo } = useCreateComboMutation();
+  const { mutateAsync: updateCombo } = useUpdateComboMutation();
+  const { mutateAsync: deleteCombo } = useDeleteComboMutation();
+  const { mutateAsync: toggleActive } = useToggleComboActiveMutation();
+  
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -42,35 +55,7 @@ const ComboManager = () => {
     };
   }, []);
 
-  const fetchCombos = useCallback(
-    async (showLoading = false, { force = false } = {}) => {
-      const fetchSeq = ++fetchSeqRef.current;
-      if (showLoading) setLoading(true);
-      try {
-        const params = {
-          page: currentPage,
-          size: pageSize,
-        };
-        if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
-        if (statusFilter === 'ACTIVE') params.active = true;
-        if (statusFilter === 'INACTIVE') params.active = false;
-
-        const comboData = await comboService.getPage(params, { force });
-        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-        setCombos(comboData.content || []);
-        setTotalPages(comboData.totalPages || 0);
-        setTotalElements(comboData.totalElements || 0);
-      } catch (err) {
-        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-        console.error('Lỗi đồng bộ dữ liệu:', err);
-      } finally {
-        if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [currentPage, debouncedSearchTerm, statusFilter],
-  );
+  
 
   const ensureMenuItems = useCallback(async () => {
     if (menuItems.length > 0) return menuItems;
@@ -86,7 +71,7 @@ const ComboManager = () => {
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         playNotificationSound();
-        fetchCombos(false, { force: true });
+        
       }
     },
     { scope: 'admin' },
@@ -96,22 +81,18 @@ const ComboManager = () => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
 
-  useEffect(() => {
-    fetchCombos(true);
-  }, [fetchCombos]);
-
   const handleSubmit = async (data) => {
     try {
       if (data.id) {
-        await comboService.update(data.id, data);
+        await updateCombo({ id: data.id, data });
         showSuccessToast('Cập nhật Combo thành công!');
       } else {
-        await comboService.create(data);
+        await createCombo(data);
         showSuccessToast('Thêm mới Combo thành công!');
       }
       setErrors({});
       setIsModalOpen(false);
-      fetchCombos(false, { force: true });
+      
     } catch (err) {
       console.error('Error saving combo:', err);
       const errorMsg = err.message || '';
@@ -130,9 +111,9 @@ const ComboManager = () => {
     const confirmed = await confirm('Xóa combo', 'Bạn có chắc chắn muốn xóa combo này?');
     if (!confirmed) return;
     try {
-      await comboService.delete(id);
+      await deleteCombo(id);
       showSuccessToast('Đã xóa Combo thành công!');
-      fetchCombos(false, { force: true });
+      
     } catch (err) {
       showErrorToast(err);
     }
@@ -145,13 +126,9 @@ const ComboManager = () => {
   const handleConfirmToggle = async () => {
     const { id } = toggleConfirm;
     try {
-      const updated = await comboService.toggleActive(id);
-      setCombos((prev) =>
-        prev.map((combo) => (combo.id === id ? { ...combo, active: updated.active } : combo)),
-      );
-
+      await toggleActive(id);
       setToggleConfirm({ isOpen: false, id: null, active: false });
-      fetchCombos(false, { force: true });
+      
     } catch (err) {
       setToggleConfirm({ isOpen: false, id: null, active: false });
       showErrorToast(err);
@@ -199,7 +176,7 @@ const ComboManager = () => {
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50/50 p-0 font-sans sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50/50 p-0 font-sans dark:bg-slate-950/50 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm kiếm combo..."
         searchTerm={searchTerm}
@@ -236,7 +213,7 @@ const ComboManager = () => {
       )}
 
       {!loading && combos.length === 0 && (
-        <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
           <Package size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy combo phù hợp hoặc chưa có dữ liệu.
         </div>

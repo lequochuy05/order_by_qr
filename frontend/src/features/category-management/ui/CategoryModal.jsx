@@ -96,7 +96,7 @@ const CategoryModal = ({
           />
 
           <div>
-            <p className="mb-2 ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">
+            <p className="mb-2 ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
               Trạng thái
             </p>
             <CheckboxCard

@@ -144,14 +144,16 @@ const ComboModal = ({
             <FormLabel required className="!mb-0">
               Thành phần Combo
             </FormLabel>
-            <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-lg">
+            <span className="rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
               Chọn các món lẻ
             </span>
           </div>
 
           <div
-            className={`border-2 rounded-[1.5rem] divide-y overflow-hidden transition-all ${
-              errors.items ? 'border-red-500 bg-red-50/10' : 'border-gray-100 bg-gray-50/30'
+            className={`overflow-hidden rounded-[1.5rem] border-2 divide-y divide-slate-100 transition-all dark:divide-slate-800 ${
+              errors.items
+                ? 'border-red-500 bg-red-50/10 dark:bg-red-500/10'
+                : 'border-slate-100 bg-slate-50/30 dark:border-slate-800 dark:bg-slate-950/40'
             }`}
           >
             <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -160,15 +162,15 @@ const ComboModal = ({
                 return (
                   <div
                     key={m.id}
-                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-orange-50/50' : 'hover:bg-white'}`}
+                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-orange-50/50 dark:bg-orange-500/10' : 'hover:bg-white dark:hover:bg-slate-900'}`}
                   >
                     <label className="flex items-center gap-3 cursor-pointer flex-1 group">
                       <div
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                          selected
-                            ? 'bg-orange-500 border-orange-500 shadow-sm'
-                            : 'border-gray-200 bg-white group-hover:border-orange-300'
-                        }`}
+	                          selected
+	                            ? 'bg-orange-500 border-orange-500 shadow-sm'
+	                            : 'border-slate-200 bg-white group-hover:border-orange-300 dark:border-slate-700 dark:bg-slate-900'
+	                        }`}
                       >
                         {selected && (
                           <div className="w-2 h-2 bg-white rounded-full animate-in zoom-in duration-200" />
@@ -182,22 +184,22 @@ const ComboModal = ({
                       />
                       <div>
                         <p
-                          className={`text-sm font-bold transition-colors ${selected ? 'text-gray-800' : 'text-gray-500 group-hover:text-gray-700'}`}
+	                          className={`text-sm font-bold transition-colors ${selected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'}`}
                         >
                           {m.name}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-medium">{fmtVND(m.price)}</p>
+	                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">{fmtVND(m.price)}</p>
                       </div>
                     </label>
                     {selected && (
                       <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
                         <input
                           type="number"
-                          className="w-14 px-2 py-2 bg-white border border-orange-200 rounded-xl text-center text-xs font-black text-orange-600 outline-none shadow-sm"
+	                          className="w-14 rounded-xl border border-orange-200 bg-white px-2 py-2 text-center text-xs font-black text-orange-600 shadow-sm outline-none dark:border-orange-500/30 dark:bg-slate-900 dark:text-orange-300"
                           value={selected.quantity}
                           onChange={(e) => handleUpdateQty(m.id, parseInt(e.target.value))}
                         />
-                        <span className="text-[10px] font-bold text-gray-400">món</span>
+	                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">món</span>
                       </div>
                     )}
                   </div>
