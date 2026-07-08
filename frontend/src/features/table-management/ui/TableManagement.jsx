@@ -208,7 +208,7 @@ const TableManager = () => {
   };
 
   return (
-    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6">
+    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
       <ManagementHeader
         title="Quản lý bàn ăn"
         showFilter={true}

@@ -15,7 +15,7 @@ const PayosQrPanel = ({ status, data, loading, timeLeft, error, onCreate, onCanc
           type="button"
           onClick={onCreate}
           disabled={loading}
-          className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl bg-blue-600 py-8 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700"
+          className="flex w-full flex-col items-center justify-center gap-3 rounded-2xl bg-blue-600 py-8 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 dark:shadow-none"
         >
           {loading ? <Loader2 size={32} className="animate-spin" /> : <QrCode size={32} />}
           <span className="text-lg">Tạo mã QR PayOS</span>
@@ -25,25 +25,27 @@ const PayosQrPanel = ({ status, data, loading, timeLeft, error, onCreate, onCanc
     )}
 
     {(status === 'waiting' || status === 'expired') && data && (
-      <div className="relative space-y-4 overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 bg-gray-50 p-6 text-center">
+      <div className="relative space-y-4 overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 bg-slate-50 p-6 text-center dark:border-blue-500/30 dark:bg-slate-950/60">
         {status === 'expired' && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 p-4 text-center backdrop-blur-[2px]">
-            <div className="mb-2 rounded-full bg-red-50 p-3 text-red-600">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 p-4 text-center backdrop-blur-[2px] dark:bg-slate-950/80">
+            <div className="mb-2 rounded-full bg-red-50 p-3 text-red-600 dark:bg-red-500/10 dark:text-red-300">
               <XCircle size={32} />
             </div>
             <p className="font-bold text-red-600">Mã thanh toán đã hết hạn</p>
-            <p className="mb-4 text-xs text-gray-500">Vui lòng tạo lại mã mới để tiếp tục</p>
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Vui lòng tạo lại mã mới để tiếp tục
+            </p>
             <button
               type="button"
               onClick={onCreate}
-              className="mx-auto flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700"
+              className="mx-auto flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2 font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 dark:shadow-none"
             >
               <RefreshCw size={18} /> Tạo mã mới
             </button>
           </div>
         )}
         <div className="flex justify-center">
-          <div className="rounded-xl border bg-white p-3 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <QRCodeSVG value={data.qrCode} size={220} level="H" includeMargin />
           </div>
         </div>
@@ -52,18 +54,20 @@ const PayosQrPanel = ({ status, data, loading, timeLeft, error, onCreate, onCanc
             <div
               className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
                 timeLeft < 60
-                  ? 'animate-pulse bg-red-100 text-red-600'
-                  : 'bg-blue-100 text-blue-600'
+                  ? 'animate-pulse bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400'
+                  : 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400'
               }`}
             >
               <Loader2 size={12} className={status === 'waiting' ? 'animate-spin' : ''} />
               Hết hạn sau: {formatTime(timeLeft)}
             </div>
           </div>
-          <p className="flex items-center justify-center gap-2 font-bold text-gray-700">
-            Đang chờ thanh toán...
+            <p className="flex items-center justify-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+              Đang chờ thanh toán...
+            </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Quét mã bằng ứng dụng Ngân hàng để thanh toán
           </p>
-          <p className="text-xs text-gray-500">Quét mã bằng ứng dụng Ngân hàng để thanh toán</p>
         </div>
         <button
           type="button"
@@ -77,11 +81,13 @@ const PayosQrPanel = ({ status, data, loading, timeLeft, error, onCreate, onCanc
 
     {status === 'success' && (
       <div className="space-y-3 py-8 text-center animate-in zoom-in duration-500">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-500/10 dark:text-green-300">
           <CheckCircle2 size={48} />
         </div>
-        <h4 className="text-xl font-bold text-green-700">Thanh toán thành công!</h4>
-        <p className="text-gray-500">Hệ thống đang chuẩn bị in hóa đơn...</p>
+        <h4 className="text-xl font-bold text-green-700 dark:text-green-300">
+          Thanh toán thành công!
+        </h4>
+        <p className="text-slate-500 dark:text-slate-400">Hệ thống đang chuẩn bị in hóa đơn...</p>
       </div>
     )}
   </div>

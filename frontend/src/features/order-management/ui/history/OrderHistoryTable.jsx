@@ -3,11 +3,11 @@ import { Search } from 'lucide-react';
 import OrderHistoryRow from './OrderHistoryRow.jsx';
 
 const OrderHistoryTable = ({ orders, loading, onSelect, onPrint, onReconcile }) => (
-  <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+  <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
         <thead>
-          <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wider text-gray-500">
+          <tr className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wider text-gray-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
             {['Mã ĐH', 'Thời gian', 'Bàn', 'Tổng tiền', 'Trạng thái', 'Thao tác'].map((label) => (
               <th
                 key={label}
@@ -21,18 +21,18 @@ const OrderHistoryTable = ({ orders, loading, onSelect, onPrint, onReconcile }) 
         <tbody className="text-sm">
           {loading ? (
             <tr>
-              <td colSpan="6" className="p-12 text-center text-gray-500">
+              <td colSpan="6" className="p-12 text-center text-gray-500 dark:text-slate-400">
                 <div className="flex flex-col items-center justify-center gap-3">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-orange-500" />
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-orange-500 dark:border-slate-700" />
                   <p>Đang tải dữ liệu...</p>
                 </div>
               </td>
             </tr>
           ) : orders.length === 0 ? (
             <tr>
-              <td colSpan="6" className="p-12 text-center text-gray-500">
+              <td colSpan="6" className="p-12 text-center text-gray-500 dark:text-slate-400">
                 <div className="flex flex-col items-center justify-center gap-2">
-                  <Search size={32} className="mb-2 text-gray-300" />
+                  <Search size={32} className="mb-2 text-gray-300 dark:text-slate-600" />
                   <p>Không tìm thấy đơn hàng nào phù hợp.</p>
                 </div>
               </td>

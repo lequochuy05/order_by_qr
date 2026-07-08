@@ -31,7 +31,7 @@ const OrderHistoryFilters = ({
             className={`rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
               datePreset === preset.value
                 ? 'border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-200'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50'
             }`}
           >
             {preset.label}
@@ -43,7 +43,7 @@ const OrderHistoryFilters = ({
           className={`flex items-center gap-1.5 rounded-xl border px-4 py-2 text-sm font-medium transition-all ${
             datePreset === 'custom'
               ? 'border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-200'
-              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50'
           }`}
         >
           <Calendar size={14} /> Tùy chọn
@@ -59,39 +59,39 @@ const OrderHistoryFilters = ({
       <button
         type="button"
         onClick={onRefresh}
-        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50"
+        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 font-medium text-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:shadow-slate-900/30 dark:hover:bg-slate-800/50"
       >
         <RefreshCcw
           size={18}
-          className={loading ? 'animate-spin text-orange-500' : 'text-gray-400'}
+          className={loading ? 'animate-spin text-orange-500' : 'text-gray-400 dark:text-slate-500'}
         />
         Làm mới
       </button>
     </div>
 
     {datePreset === 'custom' && (
-      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <Calendar size={18} className="text-gray-400" />
+      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-900/30">
+        <Calendar size={18} className="text-gray-400 dark:text-slate-500" />
         <input
           type="date"
           value={customStartDate}
           onChange={(event) => onCustomStartDateChange(event.target.value)}
-          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
         />
-        <span className="text-gray-400">→</span>
+        <span className="text-gray-400 dark:text-slate-500">→</span>
         <input
           type="date"
           value={customEndDate}
           onChange={(event) => onCustomEndDateChange(event.target.value)}
-          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+          className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
         />
       </div>
     )}
 
-    <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:grid-cols-12">
+    <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:grid-cols-12 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-900/30">
       <div className="group relative md:col-span-3">
         <Search
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500 dark:text-slate-500"
           size={18}
         />
         <input
@@ -99,12 +99,12 @@ const OrderHistoryFilters = ({
           placeholder="Mã ĐH..."
           value={orderId}
           onChange={(event) => onOrderIdChange(event.target.value)}
-          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
       <div className="group relative md:col-span-3">
         <Hash
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500 dark:text-slate-500"
           size={18}
         />
         <input
@@ -112,18 +112,18 @@ const OrderHistoryFilters = ({
           placeholder="Số bàn..."
           value={tableNumber}
           onChange={(event) => onTableNumberChange(event.target.value)}
-          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+          className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all placeholder:text-gray-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
         />
       </div>
       <div className="group relative md:col-span-4">
         <Filter
-          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500"
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-orange-500 dark:text-slate-500"
           size={18}
         />
         <select
           value={status}
           onChange={(event) => onStatusChange(event.target.value)}
-          className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+          className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-800 outline-none transition-all focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         >
           <option value="">Tất cả trạng thái</option>
           {Object.keys(ORDER_STATUS).map((key) => (

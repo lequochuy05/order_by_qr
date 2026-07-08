@@ -4,6 +4,7 @@ import { Clock3, ReceiptText, X } from 'lucide-react';
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta, getItemStatusMeta } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const getItemName = (item) =>
   item.itemNameSnapshot || item.menuItem?.name || item.combo?.name || 'Món đã gọi';
@@ -21,11 +22,14 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
   const items = order.items || order.orderItems || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/60 animate-in fade-in duration-300">
-      <div
-        className="mx-auto flex max-h-[85vh] w-full max-w-md flex-col rounded-t-[2rem] bg-white p-6 shadow-2xl transition-colors animate-in slide-in-from-bottom duration-500 dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      placement="bottom"
+      closeOnBackdrop
+      ariaLabel={`Chi tiết đơn ${order.id}`}
+      className="!max-h-[85vh] !max-w-md !p-6"
+    >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-orange-600 dark:text-orange-300">
@@ -122,8 +126,7 @@ const CurrentOrderSheet = ({ isOpen, order, onClose }) => {
             </span>
           </div>
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

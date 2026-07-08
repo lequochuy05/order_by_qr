@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShoppingBasket, X, Sparkles, Loader2 } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const CartModal = ({
   isOpen,
@@ -21,8 +22,14 @@ const CartModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end z-50 animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-[2rem] p-6 max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-500 transition-colors">
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      placement="bottom"
+      closeOnBackdrop
+      ariaLabel="Giỏ hàng của bạn"
+      className="!max-h-[85vh] !max-w-md !p-6"
+    >
         {/* Header Modal */}
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-bold flex items-center gap-2 text-gray-800 dark:text-white transition-colors">
@@ -189,8 +196,7 @@ const CartModal = ({
             </p>
           )}
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

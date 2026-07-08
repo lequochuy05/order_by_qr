@@ -42,34 +42,35 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
 
   return (
     <div
-      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg 
+      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg dark:bg-slate-900 dark:hover:shadow-slate-900/40
       ${status.classes} 
-      ${isWaitingPayment ? 'ring-2 ring-amber-400 ring-offset-2 animate-pulse bg-amber-50/50' : ''}
+      ${isWaitingPayment ? 'animate-pulse bg-amber-50/50 ring-2 ring-amber-400 ring-offset-2 dark:bg-amber-500/10 dark:ring-offset-slate-950' : ''}
       `}
       style={isWaitingPayment ? { animationDuration: '2s' } : {}}
     >
-      {/* Header và Nội dung chính giữ nguyên */}
       <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
-        <h3 className="min-w-0 text-xl font-bold text-gray-800">Bàn {table.tableNumber}</h3>
-        <span className="shrink-0 whitespace-nowrap rounded border bg-white/50 px-2 py-1 text-[10px] font-bold uppercase sm:text-xs">
+        <h3 className="min-w-0 text-xl font-bold text-slate-800 dark:text-slate-100">
+          Bàn {table.tableNumber}
+        </h3>
+        <span className="shrink-0 whitespace-nowrap rounded border border-white/60 bg-white/50 px-2 py-1 text-[10px] font-bold uppercase dark:border-slate-700 dark:bg-slate-900/60 sm:text-xs">
           {status.label}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 text-sm mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1">
           <Users size={14} /> <span>{table.capacity} khách</span>
         </div>
         {timeElapsed && (
-          <div className="flex items-center gap-1 text-amber-600 font-medium bg-amber-50 px-1.5 rounded">
+          <div className="flex items-center gap-1 rounded bg-amber-50 px-1.5 font-medium text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
             <Clock size={14} /> <span>{timeElapsed}</span>
           </div>
         )}
       </div>
 
       <div className="mb-4">
-        <p className="text-sm text-gray-500">Tạm tính:</p>
-        <p className="text-2xl font-black text-orange-600">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Tạm tính:</p>
+        <p className="text-2xl font-black text-orange-600 dark:text-orange-300">
           {hasOrder ? fmtVND(finalAmount) : fmtVND(0)}
         </p>
       </div>
@@ -77,13 +78,13 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
       <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <button
           onClick={onDetail}
-          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-lg border bg-white px-2 py-2 hover:bg-gray-50"
+          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           <FileText className="shrink-0" size={16} /> <span className="truncate">Chi tiết</span>
         </button>
         <button
           onClick={onAddItems}
-          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-lg bg-orange-100 px-2 py-2 text-orange-600 hover:bg-orange-200"
+          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-lg bg-orange-100 px-2 py-2 text-orange-600 transition hover:bg-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20"
         >
           <PlusCircle className="shrink-0" size={16} /> <span className="truncate">Thêm món</span>
         </button>
@@ -98,19 +99,18 @@ const TableCard = ({ table, order, onDetail, onAddItems, onPay, onEdit, onDelete
         )}
       </div>
 
-      {/* */}
       {isManager && (
-        <div className="absolute top-2 right-2 flex gap-1 transition-opacity">
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <button
             onClick={onEdit}
-            className="p-1.5 bg-white rounded-lg shadow-sm text-blue-500 hover:bg-blue-50 border border-gray-100"
+            className="rounded-lg border border-slate-100 bg-white p-1.5 text-blue-500 shadow-sm transition hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-blue-500/10"
             title="Sửa bàn"
           >
             <Edit size={14} />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 bg-white rounded-lg shadow-sm text-red-500 hover:bg-red-50 border border-gray-100"
+            className="rounded-lg border border-slate-100 bg-white p-1.5 text-red-500 shadow-sm transition hover:bg-red-50 dark:border-slate-700 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-500/10"
             title="Xóa bàn"
           >
             <Trash2 size={14} />

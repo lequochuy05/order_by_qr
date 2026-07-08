@@ -18,8 +18,8 @@ const PaymentMethodTabs = ({
         disabled={payosStatus === 'waiting'}
         className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 py-3 font-bold transition-all ${
           paymentMethod === PAYMENT_METHODS.CASH
-            ? 'border-green-500 bg-green-50 text-green-700 shadow-sm'
-            : 'border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200'
+            ? 'border-green-500 bg-green-50 text-green-700 shadow-sm dark:bg-green-500/10 dark:text-green-300'
+            : 'border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
         } ${payosStatus === 'waiting' ? 'cursor-not-allowed opacity-50' : ''}`}
       >
         <Banknote size={20} /> Tiền mặt
@@ -32,8 +32,8 @@ const PaymentMethodTabs = ({
         disabled={payosStatus === 'waiting' && paymentMethod !== PAYMENT_METHODS.PAYOS}
         className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 py-3 font-bold transition-all ${
           paymentMethod === PAYMENT_METHODS.PAYOS
-            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
-            : 'border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200'
+            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm dark:bg-blue-500/10 dark:text-blue-300'
+            : 'border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
         <QrCode size={20} /> Chuyển khoản

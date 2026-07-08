@@ -11,9 +11,11 @@ const AddItemCatalogPane = ({
   displayList,
   onItemClick,
 }) => (
-  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b bg-gray-50 md:border-b-0 md:border-r">
-    <div className="border-b bg-white p-4">
-      <h3 className="mb-4 text-lg font-bold">Thêm món - Bàn {tableNumber}</h3>
+  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-slate-200 bg-slate-50 transition-colors dark:border-slate-800 dark:bg-slate-950/60 md:border-b-0 md:border-r">
+    <div className="border-b border-slate-200 bg-white p-4 transition-colors dark:border-slate-800 dark:bg-slate-900">
+      <h3 className="mb-4 text-lg font-bold text-slate-900 dark:text-slate-100">
+        Thêm món - Bàn {tableNumber}
+      </h3>
       <div className="mb-4 flex gap-2">
         {[
           ['ITEMS', 'Món lẻ'],
@@ -24,7 +26,9 @@ const AddItemCatalogPane = ({
             type="button"
             onClick={() => onTabChange(value)}
             className={`flex-1 rounded-lg py-2 font-bold ${
-              activeTab === value ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+              activeTab === value
+                ? 'bg-orange-500 text-white'
+                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
             }`}
           >
             {label}
@@ -39,8 +43,8 @@ const AddItemCatalogPane = ({
             onClick={() => onCategoryChange('ALL')}
             className={`whitespace-nowrap rounded-full border px-3 py-1 text-sm ${
               selectedCategory === 'ALL'
-                ? 'border-orange-500 bg-orange-100 text-orange-700'
-                : 'bg-white'
+                ? 'border-orange-500 bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300'
+                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
             }`}
           >
             Tất cả
@@ -52,8 +56,8 @@ const AddItemCatalogPane = ({
               onClick={() => onCategoryChange(category.id)}
               className={`whitespace-nowrap rounded-full border px-3 py-1 text-sm ${
                 selectedCategory === category.id
-                  ? 'border-orange-500 bg-orange-100 text-orange-700'
-                  : 'bg-white'
+                  ? 'border-orange-500 bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300'
+                  : 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
               }`}
             >
               {category.name}
@@ -65,7 +69,7 @@ const AddItemCatalogPane = ({
 
     <div className="grid flex-1 grid-cols-1 content-start gap-3 overflow-y-auto p-3 min-[380px]:grid-cols-2 sm:p-4 lg:grid-cols-3">
       {catalogLoading ? (
-        <div className="col-span-full flex h-52 items-center justify-center text-gray-400">
+        <div className="col-span-full flex h-52 items-center justify-center text-slate-400 dark:text-slate-500">
           <Loader2 className="mr-2 h-5 w-5 animate-spin text-orange-500" />
           <span className="text-sm font-bold">Đang tải món...</span>
         </div>
@@ -78,19 +82,21 @@ const AddItemCatalogPane = ({
               type="button"
               disabled={!available}
               onClick={() => onItemClick(item, activeTab === 'ITEMS' ? 'ITEM' : 'COMBO')}
-              className={`flex min-h-[80px] flex-col justify-between rounded-xl border bg-white p-3 text-left shadow-sm transition-all ${
+              className={`flex min-h-[80px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition-all dark:border-slate-800 dark:bg-slate-900 ${
                 available
                   ? 'cursor-pointer hover:border-orange-500 hover:shadow-md active:scale-95'
                   : 'cursor-not-allowed opacity-55'
               }`}
             >
-              <div className="text-sm font-bold leading-tight text-gray-800">{item.name}</div>
+              <div className="text-sm font-bold leading-tight text-slate-800 dark:text-slate-100">
+                {item.name}
+              </div>
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className="text-sm font-bold text-orange-600">
                   {item.price.toLocaleString()}đ
                 </span>
                 {!available && (
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-black uppercase text-gray-500">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                     Hết kho
                   </span>
                 )}
@@ -100,7 +106,7 @@ const AddItemCatalogPane = ({
         })
       )}
       {!catalogLoading && displayList.length === 0 && (
-        <div className="col-span-full flex h-52 items-center justify-center text-sm font-bold text-gray-400">
+        <div className="col-span-full flex h-52 items-center justify-center text-sm font-bold text-slate-400 dark:text-slate-500">
           Không có món phù hợp
         </div>
       )}

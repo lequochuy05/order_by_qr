@@ -5,6 +5,7 @@ import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useAuth } from '@features/auth';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [items, setItems] = useState(order?.orderItems || []);
@@ -106,41 +107,45 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 animate-in fade-in duration-200 sm:p-4">
-      <div className="flex h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[80vh] sm:w-full">
-        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      ariaLabel={table?.tableNumber ? `Chi tiết đơn bàn ${table.tableNumber}` : 'Chi tiết đơn'}
+      className="max-w-2xl !h-[calc(100dvh-1rem)] !w-[calc(100vw-1rem)] !overflow-hidden !rounded-2xl !p-0 sm:!h-[80vh] sm:!w-full"
+    >
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4 transition-colors dark:border-slate-800 dark:bg-slate-950/60">
           <div>
-            <h3 className="font-bold text-lg text-gray-800">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               {table?.tableNumber ? `Bàn ${table.tableNumber} - ` : ''}{items.length > 0 ? 'Chi tiết đơn' : 'Trạng thái'}
             </h3>
             <span
-              className={`text-xs px-2 py-0.5 rounded border ${items.length > 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+              className={`rounded border px-2 py-0.5 text-xs ${items.length > 0 ? 'border-green-200 bg-green-100 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300' : 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}
             >
               {items.length > 0 ? `Mã đơn: #${order?.id}` : 'Bàn trống'}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+            className="rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           >
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50/50">
+        <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto bg-slate-50/50 p-6 transition-colors dark:bg-slate-950/40">
           {/* Empty State */}
           {items.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
+            <div className="flex h-full flex-col items-center justify-center space-y-4 text-slate-400 dark:text-slate-500">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
                 <UtensilsCrossed size={40} className="opacity-50" />
               </div>
               <div className="text-center">
-                <p className="text-lg font-medium text-gray-600">Bàn này đang trống</p>
+                <p className="text-lg font-medium text-slate-600 dark:text-slate-300">Bàn này đang trống</p>
                 <p className="text-sm">Chưa có món ăn nào được gọi.</p>
               </div>
               <button
                 onClick={onClose}
-                className="mt-4 px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 font-medium shadow-sm"
+                className="mt-4 rounded-lg border border-slate-300 bg-white px-6 py-2 font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Đóng
               </button>
@@ -159,21 +164,21 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             return (
               <div
                 key={item.id}
-                className={`p-4 rounded-xl border flex gap-4 transition-all ${isCancelled ? 'bg-rose-50 border-rose-200' : isPrepared ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200 shadow-sm'}`}
+                className={`flex gap-4 rounded-xl border p-4 transition-all ${isCancelled ? 'border-rose-200 bg-rose-50 dark:border-rose-500/30 dark:bg-rose-500/10' : isPrepared ? 'border-green-200 bg-green-50 dark:border-green-500/30 dark:bg-green-500/10' : 'border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'}`}
               >
                 <div className="flex-1">
-                  <div className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-slate-100">
                     {name}
                     <span className="text-orange-600">
                       x{editingId === item.id ? editVal.quantity : item.quantity}
                     </span>
                     {isCancelled && (
-                      <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-xs bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-bold dark:bg-rose-500/20 dark:text-rose-300">
                         Đã hủy
                       </span>
                     )}
                     {isPrepared && !isCancelled && (
-                      <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold dark:bg-green-500/20 dark:text-green-300">
                         Đã phục vụ
                       </span>
                     )}
@@ -185,7 +190,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                       {item.options.map((opt, idx) => (
                         <span
                           key={idx}
-                          className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 font-medium"
+                          className="rounded border border-blue-100 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
                         >
                           {opt.optionName}: {opt.optionValueName}
                         </span>
@@ -194,32 +199,32 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                   )}
 
                   {editingId === item.id ? (
-                    <div className="mt-3 bg-blue-50 rounded-xl border border-blue-100 p-3 space-y-3">
+                    <div className="mt-3 space-y-3 rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-500/30 dark:bg-blue-500/10">
                       <div className="flex items-center gap-3">
-                        <label className="text-xs font-semibold text-blue-700 w-16 shrink-0">Số lượng</label>
+                        <label className="w-16 shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300">Số lượng</label>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setEditVal((v) => ({ ...v, quantity: Math.max(1, v.quantity - 1) }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors font-bold"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
                             −
                           </button>
-                          <span className="w-10 text-center font-bold text-blue-700 text-lg">
+                          <span className="w-10 text-center text-lg font-bold text-blue-700 dark:text-blue-300">
                             {editVal.quantity}
                           </span>
                           <button
                             onClick={() => setEditVal((v) => ({ ...v, quantity: Math.min(99, v.quantity + 1) }))}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors font-bold"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white font-bold text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
                             +
                           </button>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <label className="text-xs font-semibold text-blue-700 w-16 shrink-0">Ghi chú</label>
+                        <label className="w-16 shrink-0 text-xs font-semibold text-blue-700 dark:text-blue-300">Ghi chú</label>
                         <input
                           type="text"
-                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                          className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                           placeholder="Ghi chú cho món này..."
                           value={editVal.notes}
                           onChange={(e) => setEditVal((v) => ({ ...v, notes: e.target.value }))}
@@ -228,7 +233,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                     </div>
                   ) : (
                     item.notes && (
-                      <p className="text-sm text-gray-500 italic mt-1 bg-gray-50 p-1.5 rounded-lg inline-block">
+                      <p className="mt-1 inline-block rounded-lg bg-slate-50 p-1.5 text-sm italic text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         Note: {item.notes}
                       </p>
                     )
@@ -252,7 +257,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                           </button>
                           <button
                             onClick={() => setEditingId(null)}
-                            className="px-4 py-2 bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+                            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                           >
                             Hủy
                           </button>
@@ -267,7 +272,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                           </button>
                           <button
                             onClick={cancelDelete}
-                            className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-200 transition-colors"
+                            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                           >
                             Quay lại
                           </button>
@@ -278,7 +283,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                           <button
                             onClick={() => handlePrepared(item.id)}
                             disabled={isPreparing}
-                            className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60 border border-emerald-200"
+                            className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-500/30 dark:hover:bg-emerald-500/20"
                           >
                             {isPreparing ? (
                               <span className="flex items-center gap-1"><Loader2 size={14} className="animate-spin" /> Đợi...</span>
@@ -290,14 +295,14 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                           {/* Nút Sửa / Xóa: Cả Manager và Staff đều dùng được */}
                           <button
                             onClick={() => startEdit(item)}
-                            className="p-2 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200 hover:text-blue-600 transition-colors"
+                            className="rounded-lg bg-slate-100 p-2 text-slate-500 transition-colors hover:bg-slate-200 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-blue-300"
                             title="Sửa số lượng/ghi chú"
                           >
                             <Edit3 size={16} />
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(item.id)}
-                            className="p-2 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors"
+                            className="p-2 bg-red-50 text-red-400 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-500/20 dark:hover:text-red-300"
                             title="Hủy món"
                           >
                             <Trash2 size={16} />
@@ -311,8 +316,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
             );
           })}
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 
