@@ -26,7 +26,7 @@ const SelectField = ({
     {label && <FormLabel required={required}>{label}</FormLabel>}
     <span className="relative block">
       {icon && (
-        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
           {createElement(icon, { size: 18 })}
         </span>
       )}

@@ -17,16 +17,16 @@ const ManagementHeader = ({
   setFilterValue,
   filterOptions = [],
 }) => (
-  <div className="mb-6 grid min-w-0 grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:p-4">
+  <div className="mb-6 grid min-w-0 grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:p-4">
     <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:gap-4">
       {/* 1. Ô tìm kiếm */}
       {setSearchTerm && (
         <div className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
           <input
             type="text"
             placeholder={searchPlaceholder}
-            className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+            className="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-9 pr-4 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -36,7 +36,7 @@ const ManagementHeader = ({
       {/* 2. Bộ lọc Select */}
       {showFilter && (
         <select
-          className="min-w-0 max-w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none cursor-pointer focus:ring-2 focus:ring-orange-500 sm:py-1.5"
+          className="min-w-0 max-w-full cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 sm:py-1.5"
           value={filterValue}
           onChange={(e) => setFilterValue(e.target.value)}
         >

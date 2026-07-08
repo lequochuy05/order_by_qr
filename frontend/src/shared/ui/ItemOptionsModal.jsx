@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
+import SharedModal from './SharedModal.jsx';
 
 const ItemOptionsModal = ({
   item,
@@ -138,11 +139,14 @@ const ItemOptionsModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end bg-black/60 animate-in fade-in duration-200">
-      <div
-        className="bg-white dark:bg-slate-900 w-full max-w-md mx-auto rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300 transition-colors overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      placement="bottom"
+      closeOnBackdrop
+      ariaLabel={`Tùy chọn món ${item.name}`}
+      className="!max-h-[88vh] !max-w-md !overflow-hidden !p-0"
+    >
         <div className="sticky top-0 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-5 pt-5 pb-4 border-b border-gray-100 dark:border-slate-800 transition-colors">
           <div className="flex items-start gap-3">
             {item.img && (
@@ -249,8 +253,7 @@ const ItemOptionsModal = ({
             <span>{labels.addToCart}</span>
           </button>
         </div>
-      </div>
-    </div>
+    </SharedModal>
   );
 };
 

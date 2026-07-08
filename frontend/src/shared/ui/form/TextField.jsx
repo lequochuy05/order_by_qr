@@ -27,12 +27,12 @@ const TextField = ({
     {label && <FormLabel required={required}>{label}</FormLabel>}
     <span className="relative block">
       {icon && (
-        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
           {createElement(icon, { size: 18 })}
         </span>
       )}
       {prefix && (
-        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 dark:text-slate-500">
           {prefix}
         </span>
       )}
@@ -47,7 +47,7 @@ const TextField = ({
         {...props}
       />
       {suffix && (
-        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-gray-400">
+        <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">
           {suffix}
         </span>
       )}
