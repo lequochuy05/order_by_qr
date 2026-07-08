@@ -227,7 +227,7 @@ const VoucherModal = ({
             <button
               type="button"
               onClick={generateCode}
-              className="mt-[26px] rounded-2xl bg-gray-100 p-4 text-gray-600 transition-colors hover:bg-gray-200"
+              className="mt-[26px] rounded-2xl bg-slate-100 p-4 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               title="Tạo mã ngẫu nhiên"
               aria-label="Tạo mã voucher ngẫu nhiên"
             >
@@ -236,7 +236,7 @@ const VoucherModal = ({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-orange-100 bg-orange-50/60 p-5">
+        <div className="rounded-3xl border border-orange-100 bg-orange-50/60 p-5 dark:border-orange-500/20 dark:bg-orange-950/20">
           <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
             Hình thức giảm giá
           </p>

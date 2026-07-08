@@ -28,16 +28,16 @@ const UserCard = ({ staff, onEdit, onDelete }) => {
   const getRoleColor = () => {
     switch (staff.role) {
       case 'MANAGER':
-        return 'bg-emerald-100 text-emerald-600';
+        return 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300';
       case 'CHEF':
-        return 'bg-orange-100 text-orange-600';
+        return 'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300';
       default:
-        return 'bg-blue-100 text-blue-600';
+        return 'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300';
     }
   };
 
   return (
-    <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all flex flex-col h-full group">
+    <div className="group flex h-full flex-col rounded-3xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
       {/* Header: Role & Status */}
       <div className="flex justify-between items-start mb-4">
         <div className={`p-2.5 rounded-2xl ${getRoleColor()}`}>{getRoleIcon()}</div>
@@ -50,7 +50,7 @@ const UserCard = ({ staff, onEdit, onDelete }) => {
 
       {/* Avatar & Name */}
       <div className="flex flex-col items-center mb-6">
-        <div className="w-20 h-20 rounded-full p-1 border-2 border-dashed border-gray-200 mb-3 group-hover:border-orange-400 transition-colors">
+        <div className="mb-3 h-20 w-20 rounded-full border-2 border-dashed border-slate-200 p-1 transition-colors group-hover:border-orange-400 dark:border-slate-700">
           <img
             src={
               staff.avatarUrl ||
@@ -60,22 +60,24 @@ const UserCard = ({ staff, onEdit, onDelete }) => {
             className="w-full h-full rounded-full object-cover"
           />
         </div>
-        <h3 className="text-lg font-bold text-gray-800 text-center line-clamp-1">
+        <h3 className="line-clamp-1 text-center text-lg font-bold text-slate-800 dark:text-slate-100">
           {staff.fullName}
         </h3>
-        <span className="text-xs text-gray-500 font-medium">{fmtRole(staff.role)}</span>
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {fmtRole(staff.role)}
+        </span>
       </div>
 
       {/* Info Details */}
-      <div className="space-y-3 text-sm text-gray-600 mb-6 flex-1">
-        <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-xl">
-          <Mail size={16} className="text-gray-400 flex-shrink-0" />
+      <div className="mb-6 flex-1 space-y-3 text-sm text-slate-600 dark:text-slate-300">
+        <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-950/60">
+          <Mail size={16} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
           <span className="truncate" title={staff.email}>
             {staff.email}
           </span>
         </div>
-        <div className="flex items-center gap-3 bg-gray-50 p-2.5 rounded-xl">
-          <Phone size={16} className="text-gray-400 flex-shrink-0" />
+        <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-950/60">
+          <Phone size={16} className="flex-shrink-0 text-slate-400 dark:text-slate-500" />
           <span>{staff.phone || 'Chưa cập nhật'}</span>
         </div>
       </div>

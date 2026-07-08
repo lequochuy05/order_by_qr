@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
@@ -6,7 +6,8 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@features/auth';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
-import { userService } from '@entities/user/api/userService.js';
+import { useUserPageQuery } from '../api/userQueries.js';
+import { useCreateUserMutation, useUpdateUserMutation, useDeleteUserMutation, useUploadUserAvatarMutation } from '../api/userMutations.js';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -23,9 +24,7 @@ const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) =>
 }));
 
 const StaffManager = () => {
-  const [staffs, setStaffs] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+      const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Modal State
@@ -33,15 +32,27 @@ const StaffManager = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const isMountedRef = useRef(true);
-  const fetchSeqRef = useRef(0);
-  const pageSize = 24;
+      const isMountedRef = useRef(true);
+    const pageSize = 24;
 
   const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+  const queryParams = {
+    page: currentPage,
+    size: pageSize,
+    ...(debouncedSearchTerm.trim() ? { q: debouncedSearchTerm.trim() } : {}),
+    ...(statusFilter !== 'ALL' ? { status: statusFilter } : {})
+  };
+  const { data: staffData, isFetching: loading } = useUserPageQuery(queryParams);
+  const staffs = staffData?.content || [];
+  const totalPages = staffData?.totalPages || 0;
+  const totalElements = staffData?.totalElements || 0;
+  const { mutateAsync: createUser } = useCreateUserMutation();
+  const { mutateAsync: updateUserMut } = useUpdateUserMutation();
+  const { mutateAsync: uploadAvatar } = useUploadUserAvatarMutation();
+  const { mutateAsync: deleteUser } = useDeleteUserMutation();
+  
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -50,35 +61,7 @@ const StaffManager = () => {
     };
   }, []);
 
-  // Tải dữ liệu
-  const fetchStaffs = useCallback(
-    async (showLoading = false, { force = false } = {}) => {
-      const fetchSeq = ++fetchSeqRef.current;
-      if (showLoading) setLoading(true);
-      try {
-        const params = {
-          page: currentPage,
-          size: pageSize,
-        };
-        if (debouncedSearchTerm.trim()) params.q = debouncedSearchTerm.trim();
-        if (statusFilter !== 'ALL') params.status = statusFilter;
-
-        const data = await userService.getPage(params, { force });
-        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-        setStaffs(data.content || []);
-        setTotalPages(data.totalPages || 0);
-        setTotalElements(data.totalElements || 0);
-      } catch (err) {
-        if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-        console.error('Lỗi tải nhân viên:', err);
-      } finally {
-        if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-          setLoading(false);
-        }
-      }
-    },
-    [currentPage, debouncedSearchTerm, statusFilter],
-  );
+  
 
   // WebSocket Realtime
   useWebSocket(
@@ -86,19 +69,18 @@ const StaffManager = () => {
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         playNotificationSound();
-        fetchStaffs(false, { force: true });
+        
       }
     },
     { scope: 'admin' },
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
 
-  useEffect(() => {
-    fetchStaffs(true);
-  }, [fetchStaffs]);
+
 
   // Submit
   const handleSubmit = async (formData, selectedFile) => {
@@ -125,16 +107,16 @@ const StaffManager = () => {
       let actionType = '';
 
       if (formData.id) {
-        result = await userService.update(formData.id, payload);
+        result = await updateUserMut({ id: formData.id, data: payload });
         actionType = 'Cập nhật';
       } else {
-        result = await userService.create(payload);
+        result = await createUser(payload);
         actionType = 'Thêm';
       }
 
       let avatarResult = null;
       if (selectedFile) {
-        avatarResult = await userService.uploadAvatar(result.id, selectedFile);
+        avatarResult = await uploadAvatar({ id: result.id, file: selectedFile });
       }
 
       const savedStaff = avatarResult || result;
@@ -148,7 +130,7 @@ const StaffManager = () => {
 
       setIsModalOpen(false);
       showSuccessToast(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
-      fetchStaffs(false, { force: true });
+      
     } catch (err) {
       console.error('Error saving staff:', err);
       const errorMsg = err.message || '';
@@ -172,16 +154,16 @@ const StaffManager = () => {
     const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
     if (!confirmed) return;
     try {
-      await userService.delete(id);
+      await deleteUser(id);
       showSuccessToast('Đã xóa nhân viên thành công!');
-      fetchStaffs(false, { force: true });
+      
     } catch (err) {
       showErrorToast(err);
     }
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6 dark:bg-slate-950">
       <ManagementHeader
         searchPlaceholder="Tìm tên, email, sđt..."
         searchTerm={searchTerm}
