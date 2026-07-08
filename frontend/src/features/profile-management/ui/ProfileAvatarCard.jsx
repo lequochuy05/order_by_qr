@@ -10,7 +10,7 @@ const ProfileAvatarCard = ({
   fileInputRef,
   onAvatarChange,
 }) => (
-  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:shadow-slate-900/30 transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
     <div className="flex flex-col items-center text-center">
       <div className="relative">
         <div className="h-36 w-36 overflow-hidden rounded-full border-4 border-orange-100 bg-orange-50 dark:border-orange-500/30 dark:bg-slate-950">

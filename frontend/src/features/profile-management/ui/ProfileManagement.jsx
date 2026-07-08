@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { useAuth } from '@features/auth';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import { profileService } from '../api/profileService.js';
+import { useProfileQuery } from '../api/profileQueries.js';
+import { useUpdateProfileMutation, useUploadProfileAvatarMutation, useChangePasswordMutation } from '../api/profileMutations.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import ProfileAvatarCard from './ProfileAvatarCard.jsx';
@@ -34,7 +35,7 @@ const passwordRules = [
 const strengthMeta = [
   { label: 'Yếu', barClass: 'bg-red-500', textClass: 'text-red-600' },
   { label: 'Trung bình', barClass: 'bg-orange-500', textClass: 'text-orange-600' },
-  { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600' },
+  { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600 dark:text-emerald-400' },
   { label: 'Mạnh', barClass: 'bg-emerald-600', textClass: 'text-emerald-700' },
 ];
 
@@ -44,9 +45,12 @@ const ProfilePage = () => {
   const fileInputRef = useRef(null);
 
   const [profile, setProfile] = useState(initialProfile);
+  const { data: profileData, isLoading: loading } = useProfileQuery();
+  const { mutateAsync: updateProfileMut } = useUpdateProfileMutation();
+  const { mutateAsync: uploadAvatarMut } = useUploadProfileAvatarMutation();
+  const { mutateAsync: changePasswordMut } = useChangePasswordMutation();
   const [avatarPreview, setAvatarPreview] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [savingProfile, setSavingProfile] = useState(false);
+    const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPassword);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -54,8 +58,7 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
 
   const isMountedRef = useRef(true);
-  const fetchSeqRef = useRef(0);
-  const initialProfileRef = useRef(null);
+    const initialProfileRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -64,19 +67,14 @@ const ProfilePage = () => {
     };
   }, []);
 
-  const loadProfile = useCallback(async () => {
-    const fetchSeq = ++fetchSeqRef.current;
-    setLoading(true);
-    try {
-      const data = await profileService.getMe();
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-
+  useEffect(() => {
+    if (profileData) {
       const nextProfile = {
-        fullName: data.fullName || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        role: data.role || '',
-        avatarUrl: data.avatarUrl || '',
+        fullName: profileData.fullName || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        role: profileData.role || '',
+        avatarUrl: profileData.avatarUrl || '',
       };
       setProfile(nextProfile);
       initialProfileRef.current = nextProfile;
@@ -88,19 +86,8 @@ const ProfilePage = () => {
         role: nextProfile.role,
         avatarUrl: nextProfile.avatarUrl,
       });
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      showError(err, 'Không thể tải hồ sơ');
-    } finally {
-      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-        setLoading(false);
-      }
     }
-  }, [showError, updateUser]);
-
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  }, [profileData, updateUser]);
 
   const strength = useMemo(() => {
     const passed = passwordRules.filter((rule) => rule.test(passwordForm.newPassword)).length;
@@ -137,7 +124,7 @@ const ProfilePage = () => {
 
     setSavingProfile(true);
     try {
-      const updated = await profileService.updateMe({
+      const updated = await updateProfileMut({
         fullName: profile.fullName.trim(),
         phone: profile.phone.trim() || null,
       });
@@ -169,7 +156,7 @@ const ProfilePage = () => {
     setAvatarPreview(URL.createObjectURL(file));
     setUploadingAvatar(true);
     try {
-      const updated = await profileService.uploadAvatar(file);
+      const updated = await uploadAvatarMut(file);
       setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || '' }));
       setAvatarPreview(updated.avatarUrl || '');
       updateUser({ avatarUrl: updated.avatarUrl || '' });
@@ -208,7 +195,7 @@ const ProfilePage = () => {
 
     setSavingPassword(true);
     try {
-      await profileService.changePassword({
+      await changePasswordMut({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
@@ -230,7 +217,7 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 dark:bg-slate-950 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <ProfileAvatarCard
           profile={profile}

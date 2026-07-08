@@ -13,7 +13,7 @@ const ProfilePasswordForm = ({
   passwordRules,
   onSubmit,
 }) => (
-  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:shadow-slate-900/30 transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
     <div className="mb-6 flex min-w-0 items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
@@ -87,7 +87,7 @@ const ProfilePasswordForm = ({
                   key={rule.label}
                   className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
                     passed
-                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      ? 'border-emerald-100 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700'
                       : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400'
                   }`}
                 >
@@ -102,7 +102,7 @@ const ProfilePasswordForm = ({
         <button
           type="submit"
           disabled={savingPassword}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
+          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm dark:shadow-slate-900/30 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
         >
           {savingPassword ? <Loader2 className="animate-spin" size={17} /> : <Lock size={17} />}
           Cập nhật mật khẩu

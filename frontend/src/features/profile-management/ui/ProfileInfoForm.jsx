@@ -13,7 +13,7 @@ const ProfileInfoForm = ({
   profileChanged,
   onSubmit,
 }) => (
-  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+  <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:shadow-slate-900/30 transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
     <div className="mb-6 flex min-w-0 items-center gap-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
         <User size={20} />
@@ -30,7 +30,7 @@ const ProfileInfoForm = ({
       <label className="space-y-2">
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Họ và tên</span>
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
           <input
             value={profile.fullName}
             onChange={(event) => setProfile((prev) => ({ ...prev, fullName: event.target.value }))}
@@ -47,7 +47,7 @@ const ProfileInfoForm = ({
       <label className="space-y-2">
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Số điện thoại</span>
         <div className="relative">
-          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
           <input
             value={profile.phone}
             onChange={(event) => setProfile((prev) => ({ ...prev, phone: event.target.value }))}
@@ -67,7 +67,7 @@ const ProfileInfoForm = ({
           Email đăng nhập
         </span>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
           <input
             value={profile.email}
             disabled
@@ -80,7 +80,7 @@ const ProfileInfoForm = ({
         <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Vai trò</span>
         <div className="relative">
           <ShieldCheck
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
             size={18}
           />
           <input
