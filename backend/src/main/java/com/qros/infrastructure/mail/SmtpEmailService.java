@@ -1,13 +1,14 @@
 package com.qros.infrastructure.mail;
 
 import com.qros.core.config.AppProperties;
+import com.qros.infrastructure.mail.template.Admin2faTemplateBuilder;
 import com.qros.infrastructure.mail.template.ResetPasswordTemplateBuilder;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.mail.MailProperties;
 import org.springframework.lang.NonNull;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -18,13 +19,20 @@ import org.springframework.stereotype.Service;
 /**
  * SmtpEmailService - Manages sending emails in the system.
  */
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class SmtpEmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(SmtpEmailService.class);
+
     private final JavaMailSender mailSender;
     private final MailProperties mailProperties;
     private final AppProperties appProperties;
+
+    public SmtpEmailService(JavaMailSender mailSender, MailProperties mailProperties, AppProperties appProperties) {
+        this.mailSender = mailSender;
+        this.mailProperties = mailProperties;
+        this.appProperties = appProperties;
+    }
 
     /**
      * Sends a password reset email to the specified recipient.
@@ -38,6 +46,18 @@ public class SmtpEmailService {
         String subject = "Reset password";
         AppProperties.Email email = appProperties.getEmail();
         String htmlContent = ResetPasswordTemplateBuilder.build(resetLink, email.getBrandName(), email.getCopyright());
+
+        sendHtmlEmail(toEmail, subject, htmlContent);
+    }
+
+    /**
+     * Sends a 2FA OTP verification email to an administrator.
+     */
+    @Async
+    public void sendAdmin2faOtpEmail(@NonNull String toEmail, @NonNull String otp) {
+        AppProperties.Email email = appProperties.getEmail();
+        String subject = "[" + email.getBrandName() + "] Mã xác thực đăng nhập 2FA";
+        String htmlContent = Admin2faTemplateBuilder.build(otp, email.getBrandName(), email.getCopyright());
 
         sendHtmlEmail(toEmail, subject, htmlContent);
     }

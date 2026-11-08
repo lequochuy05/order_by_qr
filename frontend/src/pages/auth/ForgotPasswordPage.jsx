@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { authService } from '@features/auth';
+import { authService } from '@shared/api/authService.js';
 import { Mail, ArrowLeft, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
@@ -28,11 +28,7 @@ const ForgotPasswordPage = () => {
       } else if (err.status === 429) {
         setError('Gửi yêu cầu quá nhiều lần. Vui lòng thử lại sau.');
       } else {
-        setError(
-          err.message === 'Email not found'
-            ? 'Email không tồn tại trong hệ thống'
-            : err.message || 'Gửi yêu cầu thất bại',
-        );
+        setError(err.message || 'Gửi yêu cầu thất bại');
       }
     } finally {
       setIsSubmitting(false);

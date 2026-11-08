@@ -71,14 +71,10 @@ public class RefreshTokenService {
 
         String key = "auth:refresh:user:" + userId;
 
-        // So sánh jti trong token vs jti trong Redis
-        String storedJti = refreshTokenStore.get(key);
-        if (jti.isBlank() || storedJti == null || !storedJti.equals(jti)) {
+        // Atomically compare and consume the stored jti so a refresh token can only be rotated once.
+        if (jti.isBlank() || !refreshTokenStore.consumeAtomically(key, jti)) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
-
-        // Xoá key cũ — không cho dùng lại token này
-        refreshTokenStore.revoke(key);
 
         User user = userRepository
                 .findByEmailIgnoreCase(email)
@@ -120,6 +116,18 @@ public class RefreshTokenService {
         }
     }
 
+    /**
+     * Revokes all active refresh tokens for the specified user ID.
+     * Used when an administrator deactivates, changes role, or deletes the user.
+     *
+     * @param userId The ID of the user whose refresh tokens should be invalidated
+     */
+    public void revokeUserTokens(Long userId) {
+        if (userId != null) {
+            refreshTokenStore.revoke("auth:refresh:user:" + userId);
+        }
+    }
+
     private boolean wasIssuedBeforePasswordChange(String refreshToken, User user) {
         LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
         if (passwordChangedAt == null) {
@@ -129,7 +137,8 @@ public class RefreshTokenService {
         if (issuedAt == null) {
             return true;
         }
-        LocalDateTime issuedAtLocal = LocalDateTime.ofInstant(issuedAt.toInstant(), AppTime.ZONE);
-        return issuedAtLocal.isBefore(passwordChangedAt);
+        long issuedAtSec = issuedAt.getTime() / 1000;
+        long passwordChangedAtSec = passwordChangedAt.atZone(AppTime.ZONE).toEpochSecond();
+        return issuedAtSec < passwordChangedAtSec;
     }
 }

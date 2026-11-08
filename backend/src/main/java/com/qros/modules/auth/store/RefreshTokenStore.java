@@ -6,7 +6,7 @@ public interface RefreshTokenStore {
 
     String get(String key);
 
-    boolean consumeAtomically(String key);
+    boolean consumeAtomically(String key, String expectedValue);
 
     void revoke(String key);
 }

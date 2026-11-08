@@ -22,6 +22,54 @@ public class JwtProperties {
     @Pattern(regexp = "Lax|Strict|None", message = "Refresh cookie SameSite must be Lax, Strict, or None")
     private String refreshCookieSameSite = "Lax";
 
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public long getExpirationMs() {
+        return expirationMs;
+    }
+
+    public void setExpirationMs(long expirationMs) {
+        this.expirationMs = expirationMs;
+    }
+
+    public long getRefreshExpirationMs() {
+        return refreshExpirationMs;
+    }
+
+    public void setRefreshExpirationMs(long refreshExpirationMs) {
+        this.refreshExpirationMs = refreshExpirationMs;
+    }
+
+    public String getRefreshCookieName() {
+        return refreshCookieName;
+    }
+
+    public void setRefreshCookieName(String refreshCookieName) {
+        this.refreshCookieName = refreshCookieName;
+    }
+
+    public boolean isRefreshCookieSecure() {
+        return refreshCookieSecure;
+    }
+
+    public void setRefreshCookieSecure(boolean refreshCookieSecure) {
+        this.refreshCookieSecure = refreshCookieSecure;
+    }
+
+    public String getRefreshCookieSameSite() {
+        return refreshCookieSameSite;
+    }
+
+    public void setRefreshCookieSameSite(String refreshCookieSameSite) {
+        this.refreshCookieSameSite = refreshCookieSameSite;
+    }
+
     @AssertTrue(message = "Refresh cookie must be secure when SameSite=None")
     public boolean isRefreshCookieConfigurationSecure() {
         return !"None".equals(refreshCookieSameSite) || refreshCookieSecure;

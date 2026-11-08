@@ -12,6 +12,7 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.security.SecureRandom;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,8 @@ public class PasswordResetService {
 
     private final PasswordEncoder passwordEncoder;
     private final TransactionSideEffectService sideEffects;
+    private final RefreshTokenService refreshTokenService;
+    private final AccountLockoutService accountLockoutService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -94,9 +97,12 @@ public class PasswordResetService {
         User user = resetToken.getUser();
         resetToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
-        user.setPasswordChangedAt(AppTime.now());
+        user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        user.setMustChangePassword(false);
         userRepo.save(user);
         tokenRepo.save(resetToken);
+        refreshTokenService.revokeUserTokens(user.getId());
+        accountLockoutService.unlock(user.getEmail());
     }
 
     /**
@@ -172,9 +178,12 @@ public class PasswordResetService {
         User user = otpToken.getUser();
         otpToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
-        user.setPasswordChangedAt(AppTime.now());
+        user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        user.setMustChangePassword(false);
         userRepo.save(user);
         tokenRepo.save(otpToken);
+        refreshTokenService.revokeUserTokens(user.getId());
+        accountLockoutService.unlock(user.getEmail());
     }
 
     /**

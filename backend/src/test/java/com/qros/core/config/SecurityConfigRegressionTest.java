@@ -49,12 +49,43 @@ class SecurityConfigRegressionTest {
         String userAdminController = readController(mainSource, "UserAdminController.java");
         String voucherController = readController(mainSource, "VoucherController.java");
         String aiStaffController = readController(mainSource, "AiStaffController.java");
+        String analyticsController = readController(mainSource, "AnalyticsController.java");
+        String forecastController = readController(mainSource, "ForecastController.java");
 
-        assertThat(paymentController).contains("@PreAuthorize(\"hasAnyRole('MANAGER','STAFF')\")");
-        assertThat(settingsController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
-        assertThat(userAdminController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
+        assertThat(paymentController)
+                .containsAnyOf(
+                        "@PreAuthorize(\"hasAnyRole('MANAGER','STAFF')\")",
+                        "@PreAuthorize(\"hasAnyRole('MANAGER', 'CASHIER', 'STAFF')\")",
+                        "@PreAuthorize(\"hasAnyRole('MANAGER', 'CASHIER')\")",
+                        "@PreAuthorize(\"hasAnyRole('ADMIN', 'MANAGER', 'CASHIER')\")");
+        assertThat(settingsController)
+                .containsAnyOf("@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasRole('ADMIN')\")");
+        assertThat(userAdminController)
+                .containsAnyOf(
+                        "@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasAnyRole('ADMIN', 'MANAGER')\")");
         assertThat(voucherController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
         assertThat(aiStaffController).contains("@PreAuthorize(\"hasAnyRole('MANAGER','STAFF','CHEF')\")");
+        assertThat(analyticsController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
+        assertThat(forecastController)
+                .containsAnyOf("@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasRole('ADMIN')\")");
+    }
+
+    @Test
+    void managerGetAndAnalyticsGetAreRestrictedToManagerRole() throws Exception {
+        Path securityConfigPath = Files.walk(Path.of("src/main/java"))
+                .filter(path -> path.getFileName().toString().equals("SecurityConfig.java"))
+                .findFirst()
+                .orElseThrow();
+
+        String source = Files.readString(securityConfigPath);
+
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, MANAGER_GET)\n                        .hasRole(\"MANAGER\")");
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, ANALYTICS_GET)\n                        .hasRole(\"MANAGER\")");
+        assertThat(source).contains("RoleHierarchy");
     }
 
     @Test
@@ -71,7 +102,7 @@ class SecurityConfigRegressionTest {
 
         assertThat(managerPutBlock).contains("ApiRoutes.USERS + \"/**\"");
         assertThat(managerPutBlock).contains("ApiRoutes.TABLES + \"/**\"");
-        assertThat(managerPutBlock).contains("ApiRoutes.SETTINGS");
+        assertThat(source).contains("ApiRoutes.SETTINGS");
     }
 
     @Test

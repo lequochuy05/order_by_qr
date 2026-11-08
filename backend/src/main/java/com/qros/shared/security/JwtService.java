@@ -113,7 +113,19 @@ public class JwtService {
     }
 
     public Date extractIssuedAt(String token) {
-        return parse(token).getBody().getIssuedAt();
+        try {
+            return parse(token).getBody().getIssuedAt();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public Date extractExpiration(String token) {
+        try {
+            return parse(token).getBody().getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
 
     public String extractJti(String token) {

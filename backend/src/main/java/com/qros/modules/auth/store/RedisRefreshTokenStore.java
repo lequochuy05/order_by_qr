@@ -2,23 +2,28 @@ package com.qros.modules.auth.store;
 
 import java.time.Duration;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class RedisRefreshTokenStore implements RefreshTokenStore {
 
-    private static final String STORED_VALUE = "1";
+    private static final Logger log = LoggerFactory.getLogger(RedisRefreshTokenStore.class);
+
     private static final DefaultRedisScript<Long> CONSUME_SCRIPT = new DefaultRedisScript<>(
-            "local value = redis.call('GETDEL', KEYS[1]); " + "if value then return 1 else return 0 end", Long.class);
+            "local value = redis.call('GET', KEYS[1]); "
+                    + "if value == ARGV[1] then redis.call('DEL', KEYS[1]); return 1 else return 0 end",
+            Long.class);
 
     private final StringRedisTemplate redisTemplate;
+
+    public RedisRefreshTokenStore(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     @Override
     public void create(@NonNull String key, @NonNull String value, long ttlMs) {
@@ -43,9 +48,9 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     }
 
     @Override
-    public boolean consumeAtomically(@NonNull String key) {
+    public boolean consumeAtomically(@NonNull String key, @NonNull String expectedValue) {
         try {
-            Long consumed = redisTemplate.execute(CONSUME_SCRIPT, List.of(key));
+            Long consumed = redisTemplate.execute(CONSUME_SCRIPT, List.of(key), expectedValue);
             return Long.valueOf(1L).equals(consumed);
         } catch (RuntimeException e) {
             throw new IllegalStateException("Refresh token store is unavailable", e);

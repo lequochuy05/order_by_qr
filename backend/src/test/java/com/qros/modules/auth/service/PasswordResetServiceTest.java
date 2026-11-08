@@ -36,10 +36,13 @@ class PasswordResetServiceTest {
         UserRepository userRepository = mock(UserRepository.class);
         PasswordResetTokenRepository tokenRepository = mock(PasswordResetTokenRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
+        RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
+        AccountLockoutService accountLockoutService = mock(AccountLockoutService.class);
         User user = User.builder()
                 .id(7L)
                 .email("manager@example.com")
                 .password("old-password")
+                .mustChangePassword(true)
                 .build();
         PasswordResetToken token = PasswordResetToken.builder()
                 .id(11L)
@@ -59,16 +62,21 @@ class PasswordResetServiceTest {
                 new PasswordResetProperties(),
                 mock(Environment.class),
                 passwordEncoder,
-                mock(TransactionSideEffectService.class));
+                mock(TransactionSideEffectService.class),
+                refreshTokenService,
+                accountLockoutService);
 
         service.resetPassword("raw-token", "new-password");
 
         assertThat(token.isUsed()).isTrue();
         assertThat(user.getPassword()).isEqualTo("encoded-password");
         assertThat(user.getPasswordChangedAt()).isNotNull();
+        assertThat(user.isMustChangePassword()).isFalse();
         verify(tokenRepository).findByTokenForUpdate(anyString());
         verify(tokenRepository).save(token);
         verify(userRepository).save(user);
+        verify(refreshTokenService).revokeUserTokens(7L);
+        verify(accountLockoutService).unlock("manager@example.com");
     }
 
     @Test
@@ -94,7 +102,9 @@ class PasswordResetServiceTest {
                 properties,
                 environment,
                 mock(PasswordEncoder.class),
-                sideEffects);
+                sideEffects,
+                mock(RefreshTokenService.class),
+                mock(AccountLockoutService.class));
 
         service.createOtpAndSendOtp("0912345678");
 
@@ -127,7 +137,9 @@ class PasswordResetServiceTest {
                 properties,
                 environment,
                 mock(PasswordEncoder.class),
-                mock(TransactionSideEffectService.class));
+                mock(TransactionSideEffectService.class),
+                mock(RefreshTokenService.class),
+                mock(AccountLockoutService.class));
 
         assertThatThrownBy(() -> service.createOtpAndSendOtp("0912345678"))
                 .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())

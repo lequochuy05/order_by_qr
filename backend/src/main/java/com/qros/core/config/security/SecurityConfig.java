@@ -4,11 +4,14 @@ import static com.qros.core.config.security.SecurityRoutes.*;
 
 import com.qros.shared.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+import org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,11 +22,29 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
-@RequiredArgsConstructor
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+        this.jwtAuthFilter = jwtAuthFilter;
+    }
+
+    @Bean
+    RoleHierarchy roleHierarchy() {
+        return RoleHierarchyImpl.fromHierarchy("ROLE_ADMIN > ROLE_MANAGER \n"
+                + "ROLE_MANAGER > ROLE_CASHIER \n"
+                + "ROLE_MANAGER > ROLE_CHEF \n"
+                + "ROLE_CASHIER > ROLE_STAFF");
+    }
+
+    @Bean
+    static MethodSecurityExpressionHandler methodSecurityExpressionHandler(RoleHierarchy roleHierarchy) {
+        DefaultMethodSecurityExpressionHandler expressionHandler = new DefaultMethodSecurityExpressionHandler();
+        expressionHandler.setRoleHierarchy(roleHierarchy);
+        return expressionHandler;
+    }
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -58,8 +79,18 @@ public class SecurityConfig {
                         .authenticated()
                         .requestMatchers(HttpMethod.POST, SELF_POST)
                         .authenticated()
+                        .requestMatchers(HttpMethod.GET, ADMIN_GET)
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, ADMIN_POST)
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, ADMIN_PUT)
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, ADMIN_DELETE)
+                        .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, MANAGER_GET)
-                        .hasAnyRole("MANAGER", "CHEF")
+                        .hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.GET, ANALYTICS_GET)
+                        .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.GET, STAFF_READ_GET)
                         .hasAnyRole("MANAGER", "CHEF", "STAFF")
                         .requestMatchers(HttpMethod.GET, OPERATION_GET)
@@ -67,7 +98,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, KITCHEN_GET)
                         .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.PATCH, KITCHEN_PATCH)
-                        .hasAnyRole("MANAGER", "CHEF", "STAFF")
+                        .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.POST, STAFF_AI_POST)
                         .hasAnyRole("MANAGER", "STAFF", "CHEF")
                         .requestMatchers(HttpMethod.POST, STAFF_OPERATION_POST)
@@ -77,7 +108,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)
                         .hasAnyRole("MANAGER", "STAFF")
                         .requestMatchers(PAYMENT_ROUTES)
-                        .hasAnyRole("MANAGER", "STAFF")
+                        .hasAnyRole("ADMIN", "MANAGER", "CASHIER")
+                        .requestMatchers(HttpMethod.POST, INVENTORY_OPERATION_POST)
+                        .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.POST, MANAGER_POST)
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PUT, MANAGER_PUT)
