@@ -21,13 +21,13 @@ const PaymentModalContent = (props) => {
       isOpen={isOpen}
       onClose={onClose}
       className="max-w-lg !overflow-hidden !p-0"
-      ariaLabel={`Thanh toán hóa đơn bàn ${table.tableNumber}`}
+      ariaLabel={table?.displayName ? `Thanh toán ${table.displayName}` : `Thanh toán hóa đơn bàn ${table.tableNumber}`}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4 transition-colors dark:border-slate-800 dark:bg-slate-950/60">
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Thanh toán hóa đơn</h3>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Bàn {table.tableNumber} • #{order.id.toString().slice(-6)}
+            {table?.displayName || `Bàn ${table.tableNumber}`} • #{order.id.toString().slice(-6)}
           </p>
         </div>
         <button

@@ -13,6 +13,7 @@ import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
+import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.modules.table.service.TableActiveOrderChecker;
 import com.qros.modules.table.service.TableCodeGenerator;
@@ -47,6 +48,7 @@ class DiningTableServiceTest {
                 mock(ApplicationEventPublisher.class),
                 mock(TransactionSideEffectService.class),
                 sessionRepository,
+                mock(TableSessionTableRepository.class),
                 activeOrderChecker);
     }
 

@@ -4,7 +4,11 @@ import { startTableSessionOnce } from './sessionStartCoordinator.js';
 
 export const useStartTableSessionMutation = (options = {}) =>
   useMutation({
-    mutationFn: (tableCode) => startTableSessionOnce(tableCode, publicMenuService.startSession),
+    mutationFn: (param) => {
+      const tableCode = typeof param === 'object' && param !== null ? param.tableCode : param;
+      const sig = typeof param === 'object' && param !== null ? param.sig : undefined;
+      return startTableSessionOnce(tableCode, (code) => publicMenuService.startSession(code, sig));
+    },
     onSuccess: (...args) => {
       options.onSuccess?.(...args);
     },

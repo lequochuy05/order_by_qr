@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { paymentService } from '@entities/payment/api/paymentService.js';
 import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
+import { ORDER_PAYMENT_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 
@@ -23,8 +24,22 @@ const useCashPayment = ({ cashPaymentEnabled, order, preview, table, finishPayme
 
     try {
       const voucherCode = preview.payableVoucherCode;
-      await paymentService.createPayment(orderId, PAYMENT_METHODS.CASH, voucherCode);
-      await finishPayment(PAYMENT_METHODS.CASH);
+      const payment = await paymentService.createPayment(orderId, PAYMENT_METHODS.CASH, voucherCode);
+      await finishPayment(
+        PAYMENT_METHODS.CASH,
+        {
+          ...order,
+          id: payment?.orderId ?? orderId,
+          subtotalAmount: payment?.subtotalAmount ?? order?.subtotalAmount,
+          discountAmount: payment?.discountAmount ?? order?.discountAmount,
+          finalAmount: payment?.finalAmount ?? payment?.amount ?? order?.finalAmount,
+          voucherCode: payment?.voucherCode ?? voucherCode ?? order?.voucherCode,
+          paymentMethod: PAYMENT_METHODS.CASH,
+          paymentStatus: ORDER_PAYMENT_STATUSES.PAID,
+          paymentTime: payment?.createdAt ?? new Date().toISOString(),
+        },
+        { skipReconcile: true },
+      );
     } catch (error) {
       showErrorToast(error);
     }
@@ -32,6 +47,7 @@ const useCashPayment = ({ cashPaymentEnabled, order, preview, table, finishPayme
     cashPaymentEnabled,
     confirm,
     finishPayment,
+    order,
     orderId,
     preview.payableVoucherCode,
     preview.voucherRequiresApply,

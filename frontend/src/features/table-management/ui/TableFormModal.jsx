@@ -32,10 +32,12 @@ const TableFormModal = ({
       tableNumber: '',
       capacity: 4,
       status: TABLE_STATUSES.AVAILABLE,
+      initialStatus: TABLE_STATUSES.AVAILABLE,
       qrCodeUrl: '',
     },
   );
   const [errors, setErrors] = useState({});
+  const initialStatus = initialData?.status ?? TABLE_STATUSES.AVAILABLE;
   const [isQrPreviewOpen, setIsQrPreviewOpen] = useState(false);
   const fieldErrors = {
     tableNumber: errors.tableNumber || serverErrors.tableNumber,
@@ -65,7 +67,7 @@ const TableFormModal = ({
   const handleSave = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      onSubmit({ ...formData, initialStatus });
     }
   };
 

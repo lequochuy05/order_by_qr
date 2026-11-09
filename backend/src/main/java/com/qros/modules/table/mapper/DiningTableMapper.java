@@ -21,7 +21,8 @@ public class DiningTableMapper {
                 table.getCapacity(),
                 table.getQrCodeUrl(),
                 table.getCreatedAt(),
-                table.getUpdatedAt());
+                table.getUpdatedAt(),
+                table.getVersion());
     }
 
     public PublicTable toPublicTable(DiningTable table) {

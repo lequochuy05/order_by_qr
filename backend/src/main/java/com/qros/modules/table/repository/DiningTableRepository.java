@@ -27,6 +27,10 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
     Optional<DiningTable> findByIdForUpdate(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM DiningTable t WHERE t.id IN :ids ORDER BY t.id ASC")
+    List<DiningTable> findAllByIdInForUpdate(@Param("ids") List<Long> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM DiningTable t WHERE t.tableCode = :tableCode")
     Optional<DiningTable> findByTableCodeForUpdate(@Param("tableCode") String tableCode);
 

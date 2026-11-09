@@ -8,13 +8,16 @@ import { orderService } from '@entities/order/api/orderService.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { useTableBoardQuery } from '../api/tableQueries.js';
+import { tableOrderCatalogService } from '@entities/public-menu';
 import {
   useCreateTableMutation,
   useUpdateTableMutation,
+  useUpdateTableStatusMutation,
   useDeleteTableMutation,
   useRegenerateQrMutation,
-} from '../api/tableMutations.js';
+  useMergeTablesMutation,
+  useTableBoardQuery,
+} from '@entities/table';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import TableFormModal from './TableFormModal.jsx';
@@ -22,8 +25,9 @@ import TableGrid from './TableGrid.jsx';
 import OrderDetailModal from './OrderDetailModal.jsx';
 import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
+import MergeTableModal from './MergeTableModal.jsx';
 import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { TABLE_STATUS } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 const tableStatusFilterOptions = Object.entries(TABLE_STATUS).map(([id, meta]) => ({
@@ -39,6 +43,7 @@ const TableManager = () => {
   const [detailModal, setDetailModal] = useState({ open: false, table: null, order: null });
   const [addItemModal, setAddItemModal] = useState({ open: false, table: null });
   const [payModal, setPayModal] = useState({ open: false, table: null, order: null });
+  const [mergeModal, setMergeModal] = useState({ open: false, table: null });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegeneratingQr, setIsRegeneratingQr] = useState(false);
   const [formErrors, setFormErrors] = useState({});
@@ -58,6 +63,14 @@ const TableManager = () => {
   };
 
   const { data: board, isLoading: loading } = useTableBoardQuery();
+
+  React.useEffect(() => {
+    if (loading) return undefined;
+    const timeout = window.setTimeout(() => {
+      tableOrderCatalogService.getCatalog().catch(() => {});
+    }, 800);
+    return () => window.clearTimeout(timeout);
+  }, [loading]);
 
   const tables = React.useMemo(() => {
     const tableData = Array.isArray(board?.tables) ? board.tables : [];
@@ -86,13 +99,12 @@ const TableManager = () => {
     return newOrdersMap;
   }, [board?.activeOrders]);
 
-  // === 2. Realtime Updates ===
-  // (Đã được chuyển sang WebSocketInvalidator ở Sprint 3D)
-
   const createMutation = useCreateTableMutation();
   const updateMutation = useUpdateTableMutation();
+  const updateStatusMutation = useUpdateTableStatusMutation();
   const deleteMutation = useDeleteTableMutation();
   const regenerateQrMutation = useRegenerateQrMutation();
+  const mergeMutation = useMergeTablesMutation();
 
   // 3. Handlers
   const handleAction = async ({ type, table, order }) => {
@@ -112,17 +124,18 @@ const TableManager = () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
             break;
           }
-          // Cần đơn phải ở trạng thái AWAITING_PAYMENT (auto-promote khi món hoàn thành/hủy hết)
           if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
             showError('Vui lòng hoàn thành các món trước khi thanh toán');
             break;
           }
-          // Fetch full order detail để có subtotalAmount, discountAmount, orderItems
           const fullOrder = await orderService.getOrderById(order.id);
           setPayModal({ open: true, table, order: fullOrder || order });
         } catch (error) {
           showError(error);
         }
+        break;
+      case 'MERGE':
+        setMergeModal({ open: true, table });
         break;
       case 'EDIT':
         if (checkPermission()) {
@@ -142,8 +155,19 @@ const TableManager = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      if (data.id) await updateMutation.mutateAsync({ id: data.id, data });
-      else await createMutation.mutateAsync(data);
+      if (data.id) {
+        const { status, initialStatus, ...tableData } = data;
+        const updatedTable = await updateMutation.mutateAsync({ id: data.id, data: tableData });
+        if (status && status !== initialStatus) {
+          await updateStatusMutation.mutateAsync({
+            id: data.id,
+            status,
+            version: updatedTable?.version ?? data.version,
+          });
+        }
+      } else {
+        await createMutation.mutateAsync(data);
+      }
       showSuccessToast(data.id ? 'Cập nhật bàn thành công' : 'Thêm bàn thành công');
       setFormErrors({});
       setFormModal({ open: false, data: null });
@@ -199,6 +223,21 @@ const TableManager = () => {
       await orderService.addItemsToOrder(payload);
       showSuccessToast('Đã thêm món vào bàn');
       setAddItemModal({ open: false, table: null });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+    } catch (e) {
+      showErrorToast(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMergeTables = async (payload) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await mergeMutation.mutateAsync(payload);
+      showSuccessToast('Đã gộp bàn thành công');
+      setMergeModal({ open: false, table: null });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
     } catch (e) {
       showErrorToast(e);
@@ -274,10 +313,11 @@ const TableManager = () => {
         onClose={() => setDetailModal({ open: false, table: null, order: null })}
         table={detailModal.table}
         order={detailModal.order}
-        onOrderUpdate={async () => {
-          // Khi cập nhật món (bếp xong/hủy), cần reload lại order ngay trong modal
-          const res = await orderService.getCurrentOrder(detailModal.table.id);
-          setDetailModal((prev) => ({ ...prev, order: res }));
+        onOrderUpdate={async ({ reloadOrder = true } = {}) => {
+          if (reloadOrder && detailModal.table?.id) {
+            const res = await orderService.getCurrentOrder(detailModal.table.id, { force: true });
+            setDetailModal((prev) => ({ ...prev, order: res }));
+          }
           await queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
         }}
       />
@@ -291,8 +331,43 @@ const TableManager = () => {
         currentUser={user}
         onPaymentSuccess={() => {
           showSuccessToast('Thanh toán thành công');
-          queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
+          const paidOrderId = payModal.order?.id;
+          const paidTableIds = new Set(
+            [
+              payModal.table?.id,
+              payModal.table?.primaryTableId,
+              ...(payModal.table?.memberTableIds || []),
+            ]
+              .filter((id) => id != null)
+              .map(String),
+          );
+          queryClient.setQueryData(queryKeys.tables.board, (current) => {
+            if (!current) return current;
+            return {
+              ...current,
+              activeOrders: Array.isArray(current.activeOrders)
+                ? current.activeOrders.filter((ord) => String(ord.id) !== String(paidOrderId))
+                : current.activeOrders,
+              tables: Array.isArray(current.tables)
+                ? current.tables.map((currentTable) =>
+                    paidTableIds.has(String(currentTable.id))
+                      ? { ...currentTable, status: TABLE_STATUSES.AVAILABLE }
+                      : currentTable,
+                  )
+                : current.tables,
+            };
+          });
         }}
+      />
+
+      <MergeTableModal
+        key={mergeModal.open ? mergeModal.table?.id || 'new' : 'merge-closed'}
+        isOpen={mergeModal.open}
+        onClose={() => setMergeModal({ open: false, table: null })}
+        tables={tables}
+        initialTable={mergeModal.table}
+        onSubmit={handleMergeTables}
+        isSubmitting={isSubmitting}
       />
     </div>
   );

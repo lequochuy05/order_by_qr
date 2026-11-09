@@ -1,12 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+
+import { orderService } from '@entities/order';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { orderService } from '@entities/order/api/orderService.js';
 import { tableService } from './tableService.js';
 
-/**
- * Fetches the aggregated table board which includes both all tables and active orders.
- * Key: queryKeys.tables.board
- */
 export const useTableBoardQuery = (options = {}) =>
   useQuery({
     queryKey: queryKeys.tables.board,
@@ -14,9 +11,6 @@ export const useTableBoardQuery = (options = {}) =>
     ...options,
   });
 
-/**
- * Fetches all tables without active orders data.
- */
 export const useAllTablesQuery = (options = {}) =>
   useQuery({
     queryKey: queryKeys.tables.all,
@@ -24,9 +18,6 @@ export const useAllTablesQuery = (options = {}) =>
     ...options,
   });
 
-/**
- * Fetches a single table's details.
- */
 export const useTableDetailQuery = (id, options = {}) =>
   useQuery({
     queryKey: queryKeys.tables.detail(id),
