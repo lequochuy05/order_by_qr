@@ -78,7 +78,7 @@ const CategoryModal = ({
         <TextareaField
           label="Mô tả"
           rows={3}
-          maxLength={255}
+          maxLength={500}
           value={formData.description || ''}
           onChange={(value) => updateField('description', value)}
           error={errors.description}

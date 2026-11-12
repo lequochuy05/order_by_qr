@@ -12,4 +12,18 @@ public record UserResponse(
         UserRole role,
         UserStatus status,
         LocalDateTime createdAt,
-        String avatarUrl) {}
+        String avatarUrl,
+        boolean mustChangePassword) {
+
+    public UserResponse(
+            Long id,
+            String fullName,
+            String email,
+            String phone,
+            UserRole role,
+            UserStatus status,
+            LocalDateTime createdAt,
+            String avatarUrl) {
+        this(id, fullName, email, phone, role, status, createdAt, avatarUrl, false);
+    }
+}

@@ -2,6 +2,7 @@ package com.qros.modules.menu.dto.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +22,9 @@ public record ComboRequest(
                 BigDecimal price,
         Boolean active,
         Boolean available,
-        Integer displayOrder,
-        @Valid @NotEmpty(message = "Combo must contain at least one item") List<ComboItemRequest> items,
+        @Min(value = 0, message = "Display order cannot be negative") Integer displayOrder,
+        @Valid
+                @NotEmpty(message = "Combo must contain at least one item")
+                @Size(min = 2, message = "Combo must contain at least two items")
+                List<ComboItemRequest> items,
         Long version) {}

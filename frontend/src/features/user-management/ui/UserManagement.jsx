@@ -6,8 +6,13 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@features/auth';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
-import { useUserPageQuery } from '../api/userQueries.js';
-import { useCreateUserMutation, useUpdateUserMutation, useDeleteUserMutation, useUploadUserAvatarMutation } from '../api/userMutations.js';
+import {
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+  useUploadUserAvatarMutation,
+  useUserPageQuery,
+} from '@entities/user';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -24,7 +29,7 @@ const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) =>
 }));
 
 const StaffManager = () => {
-      const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Modal State
@@ -32,8 +37,8 @@ const StaffManager = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-      const isMountedRef = useRef(true);
-    const pageSize = 24;
+  const isMountedRef = useRef(true);
+  const pageSize = 24;
 
   const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
@@ -42,7 +47,7 @@ const StaffManager = () => {
     page: currentPage,
     size: pageSize,
     ...(debouncedSearchTerm.trim() ? { q: debouncedSearchTerm.trim() } : {}),
-    ...(statusFilter !== 'ALL' ? { status: statusFilter } : {})
+    ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
   };
   const { data: staffData, isFetching: loading } = useUserPageQuery(queryParams);
   const staffs = staffData?.content || [];
@@ -52,7 +57,6 @@ const StaffManager = () => {
   const { mutateAsync: updateUserMut } = useUpdateUserMutation();
   const { mutateAsync: uploadAvatar } = useUploadUserAvatarMutation();
   const { mutateAsync: deleteUser } = useDeleteUserMutation();
-  
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -61,15 +65,12 @@ const StaffManager = () => {
     };
   }, []);
 
-  
-
   // WebSocket Realtime
   useWebSocket(
     '/topic/users',
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         playNotificationSound();
-        
       }
     },
     { scope: 'admin' },
@@ -79,8 +80,6 @@ const StaffManager = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
-
-
 
   // Submit
   const handleSubmit = async (formData, selectedFile) => {
@@ -130,7 +129,6 @@ const StaffManager = () => {
 
       setIsModalOpen(false);
       showSuccessToast(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
-      
     } catch (err) {
       console.error('Error saving staff:', err);
       const errorMsg = err.message || '';
@@ -156,7 +154,6 @@ const StaffManager = () => {
     try {
       await deleteUser(id);
       showSuccessToast('Đã xóa nhân viên thành công!');
-      
     } catch (err) {
       showErrorToast(err);
     }

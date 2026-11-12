@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { inventoryService } from '@entities/inventory/api/inventoryService.js';
-import { menuItemService } from '@entities/menu-item/api/menuItemService.js';
+import { menuItemService } from '@entities/menu-item';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 

@@ -3,6 +3,7 @@ package com.qros.modules.menu.service;
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.menu.dto.publicmenu.PublicCategoryItem;
 import com.qros.modules.menu.dto.request.CategoryRequest;
+import com.qros.modules.menu.dto.response.CategoryImageResponse;
 import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.mapper.CategoryMapper;
 import com.qros.modules.menu.mapper.PublicMenuMapper;
@@ -16,12 +17,12 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -83,7 +84,7 @@ public class CategoryService {
                 .displayOrder(req.displayOrder() != null ? req.displayOrder() : 0)
                 .build();
 
-        Category saved = categoryRepo.save(category);
+        Category saved = saveCategory(category);
         eventPublisher.publishEvent(new CategoryChangeEvent("created", saved.getId()));
 
         return categoryMapper.toResponse(saved);
@@ -111,7 +112,7 @@ public class CategoryService {
             category.setDisplayOrder(req.displayOrder());
         }
 
-        Category saved = categoryRepo.save(category);
+        Category saved = saveCategory(category);
         eventPublisher.publishEvent(new CategoryChangeEvent("updated", saved.getId()));
 
         return categoryMapper.toResponse(saved);
@@ -139,7 +140,7 @@ public class CategoryService {
     }
 
     @Transactional
-    public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
+    public CategoryImageResponse uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
         Category category = getEntityById(id);
@@ -159,7 +160,7 @@ public class CategoryService {
 
             eventPublisher.publishEvent(new CategoryChangeEvent("image_updated", id));
 
-            return Map.of("img", newUrl);
+            return new CategoryImageResponse(newUrl);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -170,6 +171,14 @@ public class CategoryService {
 
     private Category getEntityById(Long id) {
         return categoryRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    private Category saveCategory(Category category) {
+        try {
+            return categoryRepo.saveAndFlush(category);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.CATEGORY_NAME_EXISTS, "Category name already exists", exception);
+        }
     }
 
     private String normalizeBlank(String value) {
@@ -185,7 +194,12 @@ public class CategoryService {
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+        if (expectedVersion == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Category version is required. Please refresh and try again.");
+        }
+
+        if (!Objects.equals(currentVersion, expectedVersion)) {
             throw new BusinessException(
                     ErrorCode.CONCURRENT_MODIFICATION,
                     "This category was changed by another request. Please refresh and try again.");

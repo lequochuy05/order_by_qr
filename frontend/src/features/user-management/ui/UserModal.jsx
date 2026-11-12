@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, Mail, Phone, Power, Shield, User } from 'lucide-react';
+import { useAuth } from '@features/auth';
 import { USER_STATUS } from '@shared/lib/formatters.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 import {
@@ -16,7 +17,26 @@ const USER_STATUS_OPTIONS = Object.entries(USER_STATUS).map(([value, meta]) => (
   label: meta.label,
 }));
 
+const USER_ROLE_OPTIONS = [
+  { value: 'STAFF', label: 'Nhân viên' },
+  { value: 'CASHIER', label: 'Thu ngân' },
+  { value: 'CHEF', label: 'Bếp' },
+  { value: 'MANAGER', label: 'Quản lý' },
+  { value: 'ADMIN', label: 'Quản trị viên' },
+];
+
+const isValidPassword = (value) =>
+  /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(value);
+
 const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
+  const { user: currentUser } = useAuth();
+  const availableRoleOptions = React.useMemo(() => {
+    if (currentUser?.role === 'MANAGER') {
+      return USER_ROLE_OPTIONS.filter((opt) => opt.value !== 'ADMIN' && opt.value !== 'MANAGER');
+    }
+    return USER_ROLE_OPTIONS;
+  }, [currentUser?.role]);
+
   const [formData, setFormData] = useState(() => {
     if (data) {
       return {
@@ -42,6 +62,16 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(data?.avatarUrl || '');
+  const previewObjectUrlRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+    },
+    [],
+  );
 
   // Sử dụng errors và setErrors từ props truyền xuống
 
@@ -70,8 +100,12 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
         showErrorToast('File ảnh quá lớn (Max 5MB)');
         return;
       }
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+      }
+      previewObjectUrlRef.current = URL.createObjectURL(file);
       setSelectedFile(file);
-      setPreview(URL.createObjectURL(file));
+      setPreview(previewObjectUrlRef.current);
     }
   };
 
@@ -98,8 +132,8 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
     if (!formData.id) {
       if (!formData.password) {
         newErrors.password = 'Mật khẩu không được để trống';
-      } else if (formData.password.length < 6) {
-        newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+      } else if (!isValidPassword(formData.password)) {
+        newErrors.password = 'Mật khẩu cần 8 ký tự, chữ hoa, số và ký tự đặc biệt';
       }
     }
 
@@ -195,43 +229,42 @@ const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) 
           />
 
           {!formData.id && (
-            <TextField
-              label="Mật khẩu khởi tạo"
-              required
-              type="password"
-              icon={KeyRound}
-              className="md:col-span-2"
-              value={formData.password}
-              onChange={(value) => {
-                setFormData({ ...formData, password: value });
-                if (errors.password) setErrors({ ...errors, password: '' });
-              }}
-              placeholder="Tối thiểu 6 ký tự"
-              error={errors.password}
-            />
+            <div className="md:col-span-2 space-y-1">
+              <TextField
+                label="Mật khẩu khởi tạo"
+                required
+                type="password"
+                icon={KeyRound}
+                value={formData.password}
+                onChange={(value) => {
+                  setFormData({ ...formData, password: value });
+                  if (errors.password) setErrors({ ...errors, password: '' });
+                }}
+                placeholder="8 ký tự, chữ hoa, số và ký tự đặc biệt"
+                error={errors.password}
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Nhân viên sẽ được yêu cầu đổi mật khẩu ở lần đăng nhập đầu tiên.
+              </p>
+            </div>
           )}
 
+          <SelectField
+            label="Vai trò"
+            icon={Shield}
+            value={formData.role}
+            onChange={(value) => setFormData({ ...formData, role: value })}
+            options={availableRoleOptions}
+          />
+
           {formData.id && (
-            <>
-              <SelectField
-                label="Vai trò"
-                icon={Shield}
-                value={formData.role}
-                onChange={(value) => setFormData({ ...formData, role: value })}
-                options={[
-                  { value: 'STAFF', label: 'Nhân viên' },
-                  { value: 'MANAGER', label: 'Quản lý' },
-                  { value: 'CHEF', label: 'Bếp' },
-                ]}
-              />
-              <SelectField
-                label="Trạng thái"
-                icon={Power}
-                value={formData.status}
-                onChange={(value) => setFormData({ ...formData, status: value })}
-                options={USER_STATUS_OPTIONS}
-              />
-            </>
+            <SelectField
+              label="Trạng thái"
+              icon={Power}
+              value={formData.status}
+              onChange={(value) => setFormData({ ...formData, status: value })}
+              options={USER_STATUS_OPTIONS}
+            />
           )}
         </div>
       </form>

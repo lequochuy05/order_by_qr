@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { dashboardOverviewService } from '../api/dashboardOverviewService.js';
+import { dashboardOverviewService } from '@entities/analytics';
 import { getBusinessToday } from '@shared/lib/businessTime.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 
@@ -61,7 +61,12 @@ const useDashboard = () => {
     };
   }, []);
 
-  const { data: dashboard, isLoading, error, refetch } = useQuery({
+  const {
+    data: dashboard,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.analytics.dashboard({ businessDate: businessToday }),
     queryFn: ({ signal }) => dashboardOverviewService.getSummary(businessToday, { signal }),
     staleTime: 10_000,

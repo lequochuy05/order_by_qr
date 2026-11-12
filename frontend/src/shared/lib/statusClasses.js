@@ -39,6 +39,16 @@ const COLOR_CLASSES = {
     text: 'text-orange-600 dark:text-orange-300',
     border: 'border-orange-400 dark:border-orange-500/30',
   },
+  brand: {
+    bg: 'bg-[#56372B]/10 dark:bg-[#EAD8C7]/15',
+    text: 'text-[#56372B] dark:text-[#EAD8C7]',
+    border: 'border-[#56372B]/30 dark:border-[#EAD8C7]/30',
+  },
+  terracotta: {
+    bg: 'bg-[#C17C4A]/10 dark:bg-[#D8986A]/15',
+    text: 'text-[#C17C4A] dark:text-[#D8986A]',
+    border: 'border-[#C17C4A]/30 dark:border-[#D8986A]/30',
+  },
 };
 
 const FALLBACK_COLOR = COLOR_CLASSES.slate;

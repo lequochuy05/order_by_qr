@@ -19,10 +19,10 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
   };
 
   return (
-    <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 sm:p-4 md:flex-row md:items-center md:justify-between">
+    <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-2xl border border-[#E8DCD1] bg-white p-3 shadow-sm transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] sm:p-4 md:flex-row md:items-center md:justify-between">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <span className="mr-2 font-bold text-slate-700 dark:text-slate-200">{title}</span>
-        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950 min-[480px]:flex min-[480px]:items-center">
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950 min-[480px]:flex min-[480px]:items-center">
           <Calendar size={18} className="text-slate-500 dark:text-slate-400" />
           <input
             type="date"
@@ -44,14 +44,14 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
           <button
             type="button"
             onClick={() => setPreset(7)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             7 ngày
           </button>
           <button
             type="button"
             onClick={() => setPreset(30)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             30 ngày
           </button>
@@ -59,7 +59,7 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
             <button
               type="button"
               onClick={onApply}
-              className="flex items-center gap-1.5 rounded-lg border border-indigo-500 bg-indigo-500 px-3 py-2 text-xs font-bold text-white shadow-sm shadow-indigo-100 transition hover:bg-indigo-600 dark:shadow-none"
+              className="flex items-center gap-1.5 rounded-xl bg-[#56372B] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#432A21] dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
             >
               <Filter size={14} />
               Áp dụng
@@ -71,7 +71,7 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
         <button
           type="button"
           onClick={onExport}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-green-700 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 sm:w-auto"
         >
           <Download size={16} /> Xuất CSV
         </button>

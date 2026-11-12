@@ -65,7 +65,9 @@ export const fmtCompactVND = (value) => {
  */
 export const fmtRole = (role) => {
   const roles = {
+    ADMIN: 'Quản trị viên',
     MANAGER: 'Quản lý',
+    CASHIER: 'Thu ngân',
     STAFF: 'Nhân viên',
     CHEF: 'Bếp',
   };

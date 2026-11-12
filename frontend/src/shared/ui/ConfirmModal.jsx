@@ -16,7 +16,7 @@ const ConfirmModal = ({
       isOpen={isOpen}
       onClose={loading ? undefined : onClose}
       ariaLabel={title || 'Xác nhận'}
-      className="max-w-sm overflow-hidden p-0 sm:p-0 dark:bg-slate-900"
+      className="max-w-sm overflow-hidden p-0 sm:p-0 dark:bg-[#1F1A17] dark:border dark:border-[#352C26]"
       backdropClassName="bg-black/40 backdrop-blur-[2px]"
     >
       {/* Header Icon */}

@@ -5,13 +5,21 @@ import { publicMenuService } from '@entities/public-menu/api/publicMenuService.j
 import { isTerminalSessionError, useTableSessionQuery, useStartTableSessionMutation } from '@entities/table';
 import { getSessionStorageKey } from '../lib/restaurantSettings.js';
 
-const useCustomerMenuSession = (tableCode, { onSessionEnded } = {}) => {
+const getSigStorageKey = (code) => `qros_qr_sig_${code}`;
+
+const useCustomerMenuSession = (tableCode, { onSessionEnded, sig } = {}) => {
   const [sessionToken, setSessionToken] = useState(() =>
     tableCode ? sessionStorage.getItem(getSessionStorageKey(tableCode)) || '' : '',
   );
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const { mutateAsync: startTableSession } = useStartTableSessionMutation();
   const query = useTableSessionQuery(tableCode, sessionToken);
+
+  useEffect(() => {
+    if (tableCode && sig) {
+      sessionStorage.setItem(getSigStorageKey(tableCode), sig);
+    }
+  }, [tableCode, sig]);
 
   const sessionEnded = query.data?.sessionEnded;
   const sessionError = query.data?.sessionError;
@@ -29,6 +37,7 @@ const useCustomerMenuSession = (tableCode, { onSessionEnded } = {}) => {
   const clearSessionToken = useCallback(() => {
     if (tableCode) {
       sessionStorage.removeItem(getSessionStorageKey(tableCode));
+      sessionStorage.removeItem(getSigStorageKey(tableCode));
     }
     setSessionToken('');
   }, [tableCode]);
@@ -39,10 +48,11 @@ const useCustomerMenuSession = (tableCode, { onSessionEnded } = {}) => {
       throw new Error('Vui lòng quét mã QR trên bàn để đặt món.');
     }
 
-    const startedSession = await startTableSession(tableCode);
+    const currentSig = sig || (tableCode ? sessionStorage.getItem(getSigStorageKey(tableCode)) : null);
+    const startedSession = await startTableSession({ tableCode, sig: currentSig });
     persistSessionToken(startedSession.sessionToken);
     return startedSession.sessionToken;
-  }, [persistSessionToken, sessionToken, startTableSession, tableCode]);
+  }, [persistSessionToken, sessionToken, startTableSession, tableCode, sig]);
 
   useEffect(() => {
     if (!sessionToken || (!sessionEnded && !hasTerminalSessionError)) return;

@@ -1,5 +1,7 @@
 package com.qros.modules.user.service;
 
+import com.qros.modules.auth.service.AccountLockoutService;
+import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -10,9 +12,8 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
@@ -22,13 +23,28 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class CurrentUserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
+    private final AccountLockoutService accountLockoutService;
+
+    public CurrentUserService(
+            UserRepository userRepository,
+            UserMapper userMapper,
+            ApplicationEventPublisher eventPublisher,
+            PasswordEncoder passwordEncoder,
+            RefreshTokenService refreshTokenService,
+            AccountLockoutService accountLockoutService) {
+        this.userRepository = userRepository;
+        this.userMapper = userMapper;
+        this.eventPublisher = eventPublisher;
+        this.passwordEncoder = passwordEncoder;
+        this.refreshTokenService = refreshTokenService;
+        this.accountLockoutService = accountLockoutService;
+    }
 
     public UserResponse getCurrentProfile(@NonNull String email) {
         return userRepository
@@ -79,8 +95,11 @@ public class CurrentUserService {
         }
 
         u.setPassword(passwordEncoder.encode(req.newPassword()));
-        u.setPasswordChangedAt(AppTime.now());
+        u.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        u.setMustChangePassword(false);
         userRepository.save(u);
+        refreshTokenService.revokeUserTokens(u.getId());
+        accountLockoutService.unlock(u.getEmail());
         // log.info("User changed own password: {}", u.getEmail());
     }
 }

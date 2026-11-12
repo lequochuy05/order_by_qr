@@ -59,35 +59,41 @@ const AppRouter = () => (
         <Route
           element={
             <ErrorBoundary fullScreen>
-              <ProtectedRoute allowedRoles={['MANAGER', 'STAFF', 'CHEF']} />
+              <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF']} />
             </ErrorBoundary>
           }
         >
           <Route element={<AdminLayout />}>
-            <Route path="/admin/dashboard" element={<DashboardPage />} />
             <Route path="/admin/profile" element={<ProfilePage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
 
-            <Route element={<ProtectedRoute allowedRoles={['MANAGER']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
+              <Route path="/admin/dashboard" element={<DashboardPage />} />
               <Route path="/admin/categories" element={<CategoryPage />} />
               <Route path="/admin/menu" element={<MenuPage />} />
               <Route path="/admin/combo" element={<ComboPage />} />
-              <Route path="/admin/inventory" element={<InventoryPage />} />
               <Route path="/admin/voucher" element={<VoucherPage />} />
               <Route path="/admin/staffs" element={<UserPage />} />
-              <Route path="/admin/history" element={<OrderHistoryPage />} />
-              <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
               <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
               <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'STAFF']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CASHIER']} />}>
+              <Route path="/admin/history" element={<OrderHistoryPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CASHIER', 'STAFF']} />}>
               <Route path="/admin/tables" element={<TableMapPage />} />
               <Route path="/admin/takeaway" element={<TakeawayPage />} />
             </Route>
 
-            <Route element={<ProtectedRoute allowedRoles={['MANAGER', 'CHEF']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CHEF']} />}>
               <Route path="/admin/kitchen" element={<KitchenPage />} />
+              <Route path="/admin/inventory" element={<InventoryPage />} />
             </Route>
           </Route>
         </Route>

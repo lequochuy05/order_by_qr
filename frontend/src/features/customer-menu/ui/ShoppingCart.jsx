@@ -37,16 +37,16 @@ const ShoppingCartButton = forwardRef(({ cart, onOpenCart }, ref) => {
     >
       <button
         onClick={onOpenCart}
-        className={`max-w-md mx-auto w-full bg-orange-500/95 backdrop-blur-lg hover:bg-orange-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between transition-all active:scale-95 ${bumping ? 'animate-cart-bump' : ''}`}
+        className={`max-w-md mx-auto w-full bg-[#56372B]/95 backdrop-blur-lg hover:bg-[#432A21] border border-[#C17C4A]/40 text-white p-4 rounded-2xl shadow-2xl shadow-[#56372B]/40 flex items-center justify-between transition-all active:scale-95 ${bumping ? 'animate-cart-bump' : ''}`}
       >
         <div className="flex items-center gap-3">
           <div className="relative">
             <ShoppingCart size={24} />
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] font-bold w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+            <span className="absolute -top-2 -right-2 bg-[#C17C4A] text-white text-[11px] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 border-[#56372B] shadow-sm">
               {totalItems}
             </span>
           </div>
-          <span className="font-bold">Xem giỏ hàng</span>
+          <span className="font-bold text-sm">Xem giỏ hàng</span>
         </div>
         <span className="font-black text-lg">{fmtVND(cartAmount)}</span>
       </button>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { useAuth } from '@features/auth';
@@ -7,17 +7,19 @@ import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSound.js';
 import useSettingsStore from '@shared/model/settingsStore.js';
 import KitchenColumn from './KitchenColumn.jsx';
-import { KITCHEN_COLUMNS } from './lib/kitchenItems.js';
+import { aggregateBatchCookingItems, KITCHEN_COLUMNS } from './lib/kitchenItems.js';
 import useKitchenFilters from './model/useKitchenFilters.js';
 import useKitchenNotifications from './model/useKitchenNotifications.js';
 import useKitchenOrders from './model/useKitchenOrders.js';
 import AiStaffPanel from './ui/AiStaffPanel.jsx';
+import BatchCookingView from './ui/BatchCookingView.jsx';
 import KitchenFilters from './ui/KitchenFilters.jsx';
 import KitchenSummaryCards from './ui/KitchenSummaryCards.jsx';
 import KitchenToolbar from './ui/KitchenToolbar.jsx';
 
 const KitchenBoardContent = () => {
   const { user } = useAuth();
+  const [viewMode, setViewMode] = useState('kanban');
   const settings = useSettingsStore((state) => state.settings);
   const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
   const kitchen = useKitchenOrders();
@@ -27,6 +29,11 @@ const KitchenBoardContent = () => {
     settings.newOrderNotificationEnabled !== false,
   );
   const previousOverdueCountRef = useRef(null);
+
+  const batchCount = useMemo(
+    () => aggregateBatchCookingItems(filters.filteredItems).length,
+    [filters.filteredItems],
+  );
 
   useEffect(() => {
     const previousCount = previousOverdueCountRef.current;
@@ -56,12 +63,15 @@ const KitchenBoardContent = () => {
             onToggleSound={notifications.toggleSound}
             refreshing={kitchen.refreshing}
             onRefresh={() => kitchen.fetchKitchenOrders()}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            batchCount={batchCount}
           />
         </div>
         <KitchenSummaryCards summary={filters.summary} overdueMinutes={overdueMinutes} />
       </section>
 
-      {['MANAGER', 'CHEF'].includes(user?.role) && <AiStaffPanel />}
+      {['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role) && <AiStaffPanel />}
 
       <KitchenFilters
         searchTerm={filters.searchTerm}
@@ -78,6 +88,14 @@ const KitchenBoardContent = () => {
         <div className="flex h-64 items-center justify-center">
           <Loader2 className="animate-spin text-orange-500" size={42} />
         </div>
+      ) : viewMode === 'batch' ? (
+        <BatchCookingView
+          items={filters.filteredItems}
+          onBatchUpdateStatus={kitchen.batchUpdateStatus}
+          onUpdateStatus={kitchen.updateStatus}
+          onCancelItem={kitchen.cancelItem}
+          processingItems={kitchen.processingItems}
+        />
       ) : (
         <div className="mt-5 grid gap-5 xl:grid-cols-3">
           {KITCHEN_COLUMNS.map((column) => (
@@ -86,6 +104,7 @@ const KitchenBoardContent = () => {
               {...column}
               items={filters.itemsByStatus[column.status]}
               onUpdateStatus={kitchen.updateStatus}
+              onCancelItem={kitchen.cancelItem}
               processingItems={kitchen.processingItems}
             />
           ))}

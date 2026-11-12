@@ -56,8 +56,19 @@ public class PaymentCompletionService {
     }
 
     @Transactional
+    public Order completeSuccessfulCashTransaction(
+            @NonNull PaymentTransaction transaction, @NonNull Order lockedOrder) {
+        return completeSuccessfulTransaction(transaction, null, lockedOrder);
+    }
+
+    @Transactional
     public Order completeSuccessfulTransaction(
             @NonNull PaymentTransaction transaction, VoucherPaymentResult voucherPaymentResult) {
+        return completeSuccessfulTransaction(transaction, voucherPaymentResult, null);
+    }
+
+    private Order completeSuccessfulTransaction(
+            @NonNull PaymentTransaction transaction, VoucherPaymentResult voucherPaymentResult, Order lockedOrder) {
         Order order = transaction.getOrder();
 
         if (order == null) {
@@ -65,7 +76,7 @@ public class PaymentCompletionService {
                     ErrorCode.ORDER_NOT_FOUND, "Payment transaction is not associated with an order");
         }
 
-        order = orderSettlementService.loadForPayment(order.getId());
+        order = lockedOrder != null ? lockedOrder : orderSettlementService.loadForPayment(order.getId());
         transaction.setOrder(order);
 
         if (order.isPaid() || order.isCompleted()) {
@@ -92,7 +103,13 @@ public class PaymentCompletionService {
             return order;
         }
 
-        Order savedOrder = settleOrderIfNeeded(order, transaction, totalPaid, voucherPaymentResult);
+        VoucherClaimResult voucherClaim = claimVoucherUsage(order, transaction, voucherPaymentResult);
+        if (!voucherClaim.settlementAllowed()) {
+            return order;
+        }
+
+        Order savedOrder = settleOrderIfNeeded(order, transaction, totalPaid);
+        recordVoucherDiscount(savedOrder, voucherClaim.voucherPaymentResult());
 
         notifyPaymentSuccess(transaction);
         paymentsCompletedCounter.increment();
@@ -138,18 +155,10 @@ public class PaymentCompletionService {
                 transaction.getOrder() != null ? transaction.getOrder().getId() : null);
     }
 
-    private Order settleOrderIfNeeded(
-            Order order,
-            PaymentTransaction transaction,
-            BigDecimal totalPaid,
-            VoucherPaymentResult voucherPaymentResult) {
-
+    private Order settleOrderIfNeeded(Order order, PaymentTransaction transaction, BigDecimal totalPaid) {
         String auditReason = "payment-" + transaction.getPaymentMethod().name().toLowerCase();
-        Order savedOrder = orderSettlementService.settleAfterPayment(
+        return orderSettlementService.settleAfterPayment(
                 order, transaction.getPaymentMethod(), transaction.getCreatedBy(), totalPaid, auditReason);
-
-        recordAndConsumeVoucher(savedOrder, voucherPaymentResult);
-        return savedOrder;
     }
 
     private void notifyPaymentSuccess(PaymentTransaction transaction) {
@@ -166,32 +175,63 @@ public class PaymentCompletionService {
         return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
     }
 
-    private BigDecimal currentSubtotalAmount(Order order) {
-        return order.getSubtotalAmount() != null ? order.getSubtotalAmount() : BigDecimal.ZERO;
-    }
-
-    private void recordAndConsumeVoucher(Order order, VoucherPaymentResult voucherPaymentResult) {
+    private VoucherClaimResult claimVoucherUsage(
+            Order order, PaymentTransaction transaction, VoucherPaymentResult voucherPaymentResult) {
+        if (transaction.getVoucherUsageClaimed()) {
+            return VoucherClaimResult.allowed(voucherPaymentResult);
+        }
         if (order.getVoucherCode() == null || order.getVoucherCode().isBlank()) {
-            return;
+            return VoucherClaimResult.allowed(voucherPaymentResult);
         }
 
         VoucherPaymentResult resolvedVoucherResult = voucherPaymentResult != null
                 ? voucherPaymentResult
                 : voucherCheckoutService.snapshotForSettledOrder(
                         order.getVoucherCode(),
-                        currentSubtotalAmount(order),
+                        order.getSubtotalAmount(),
                         order.getDiscountAmount(),
                         currentFinalAmount(order));
-
         if (resolvedVoucherResult == null
                 || resolvedVoucherResult.appliedDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
-            return;
+            return VoucherClaimResult.allowed(resolvedVoucherResult);
         }
 
         Voucher voucher = resolvedVoucherResult.voucher();
-        DiscountResult result = resolvedVoucherResult.discountResult();
+        if (!voucherService.tryIncrementUsage(voucher.getId())) {
+            transaction.setFailureReason(
+                    "Voucher capacity was exhausted after payment confirmation; manual refund required");
+            transactionRepository.save(transaction);
+            log.error(
+                    "Payment transaction {} is paid but order {} cannot settle because voucher {} is exhausted",
+                    transaction.getId(),
+                    order.getId(),
+                    voucher.getCode());
+            return VoucherClaimResult.reconciliationRequired();
+        }
 
+        transaction.setVoucherUsageClaimed(true);
+        transactionRepository.save(transaction);
+        return VoucherClaimResult.allowed(resolvedVoucherResult);
+    }
+
+    private void recordVoucherDiscount(Order order, VoucherPaymentResult voucherPaymentResult) {
+        if (voucherPaymentResult == null
+                || voucherPaymentResult.appliedDiscountAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        Voucher voucher = voucherPaymentResult.voucher();
+        DiscountResult result = voucherPaymentResult.discountResult();
         orderDiscountService.recordVoucherDiscount(order, voucher, result);
-        voucherService.incrementUsage(voucher.getId());
+    }
+
+    private record VoucherClaimResult(boolean settlementAllowed, VoucherPaymentResult voucherPaymentResult) {
+        private static VoucherClaimResult allowed(VoucherPaymentResult voucherPaymentResult) {
+            return new VoucherClaimResult(true, voucherPaymentResult);
+        }
+
+        private static VoucherClaimResult reconciliationRequired() {
+            return new VoucherClaimResult(false, null);
+        }
     }
 }

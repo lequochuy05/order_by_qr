@@ -3,6 +3,12 @@ import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { clearAnalyticsCache } from '@entities/analytics/api/analyticsService.js';
+import { categoryService } from '@entities/category';
+import { comboService } from '@entities/combo';
+import { inventoryService } from '@entities/inventory';
+import { menuItemService } from '@entities/menu-item';
+import { userService } from '@entities/user';
+import { voucherService } from '@entities/voucher';
 import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
@@ -18,6 +24,7 @@ export const WebSocketInvalidator = () => {
   const { user } = useAuth();
   const location = useLocation();
   const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
+  const canSubscribeProtectedTopics = Boolean(user) && canSubscribeOperations;
   const canSubscribePublicCatalog = isCustomerMenuPath(location.pathname);
   const canSubscribeSettings = Boolean(user) || canSubscribePublicCatalog;
   const settings = useSettingsStore((state) => state.settings);
@@ -83,6 +90,9 @@ export const WebSocketInvalidator = () => {
   // Lắng nghe cập nhật catalog công khai cho trang khách hàng
   const handleCatalogUpdate = (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+      categoryService.clearCache?.();
+      menuItemService.clearCache?.();
+      comboService.clearCache?.();
       queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
@@ -99,6 +109,50 @@ export const WebSocketInvalidator = () => {
   useWebSocket(canSubscribePublicCatalog ? '/topic/categories' : null, handleCatalogUpdate, {
     scope: 'public',
   });
+  useWebSocket(
+    canSubscribeProtectedTopics ? '/topic/users' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        userService.clearCache?.();
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      }
+    },
+    { scope: 'admin' },
+  );
+
+  useWebSocket(
+    canSubscribeProtectedTopics ? '/topic/vouchers' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        voucherService.clearCache?.();
+        queryClient.invalidateQueries({ queryKey: queryKeys.vouchers.all });
+      }
+    },
+    { scope: 'admin' },
+  );
+
+  useWebSocket(
+    canSubscribeProtectedTopics ? '/topic/promotions' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all });
+      }
+    },
+    { scope: 'admin' },
+  );
+
+  useWebSocket(
+    canSubscribeProtectedTopics ? '/topic/inventory' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        inventoryService.clearCache?.();
+        queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all });
+        handleCatalogUpdate(message);
+      }
+    },
+    { scope: 'admin' },
+  );
+
   useWebSocket(
     canSubscribeSettings ? '/topic/settings' : null,
     (message) => {

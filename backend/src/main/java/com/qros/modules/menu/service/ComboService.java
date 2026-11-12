@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -62,11 +63,9 @@ public class ComboService {
         return combos.stream().map(publicMenuMapper::toComboItem).toList();
     }
 
-    public Page<ComboResponse> searchManagementSummary(String keyword, Boolean active, @NonNull Pageable pageable) {
+    public Page<ComboResponse> searchSummaries(String keyword, Boolean active, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return comboRepo
-                .searchManagementSummaries(normalizedKeyword, active, pageable)
-                .map(comboMapper::toSummaryResponse);
+        return comboRepo.searchSummaries(normalizedKeyword, active, pageable).map(comboMapper::toSummaryResponse);
     }
 
     @Cacheable(value = CacheNames.COMBOS, key = "'item_' + #id", unless = "#result == null")
@@ -112,7 +111,7 @@ public class ComboService {
                             .build());
         }
 
-        Combo saved = comboRepo.save(combo);
+        Combo saved = saveCombo(combo);
         eventPublisher.publishEvent(new ComboChangeEvent("created", saved.getId()));
 
         return comboMapper.toResponse(saved);
@@ -149,7 +148,7 @@ public class ComboService {
 
         syncComboItems(combo, req.items());
 
-        Combo saved = comboRepo.save(combo);
+        Combo saved = saveCombo(combo);
         eventPublisher.publishEvent(new ComboChangeEvent("updated", saved.getId()));
 
         return comboMapper.toResponse(saved);
@@ -166,8 +165,9 @@ public class ComboService {
     }
 
     @Transactional
-    public ComboResponse toggleActive(@NonNull Long id) {
+    public ComboResponse toggleActive(@NonNull Long id, @NonNull Long expectedVersion) {
         Combo combo = getEntityByIdWithItems(id);
+        assertVersionMatches(combo.getVersion(), expectedVersion);
 
         combo.setActive(!Boolean.TRUE.equals(combo.getActive()));
 
@@ -178,8 +178,9 @@ public class ComboService {
     }
 
     @Transactional
-    public ComboResponse toggleAvailable(@NonNull Long id) {
+    public ComboResponse toggleAvailable(@NonNull Long id, @NonNull Long expectedVersion) {
         Combo combo = getEntityByIdWithItems(id);
+        assertVersionMatches(combo.getVersion(), expectedVersion);
 
         combo.setAvailable(!Boolean.TRUE.equals(combo.getAvailable()));
 
@@ -232,6 +233,14 @@ public class ComboService {
                             ErrorCode.BUSINESS_ERROR, "Combo item not found in this combo: " + itemReq.id());
                 }
 
+                Long existingMenuItemId =
+                        existing.getMenuItem() != null ? existing.getMenuItem().getId() : null;
+                if (!Objects.equals(existingMenuItemId, itemReq.menuItemId())) {
+                    throw new BusinessException(
+                            ErrorCode.BUSINESS_ERROR,
+                            "Combo item menu item cannot be changed. Remove it and add a new item instead.");
+                }
+
                 existing.setQuantity(quantity);
                 continue;
             }
@@ -266,8 +275,8 @@ public class ComboService {
     }
 
     private void validateItems(List<ComboItemRequest> items) {
-        if (items == null || items.isEmpty()) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Combo must contain at least one item");
+        if (items == null || items.size() < 2) {
+            throw new BusinessException(ErrorCode.BUSINESS_ERROR, "Combo must contain at least two items");
         }
 
         Set<Long> menuItemIds = new HashSet<>();
@@ -289,10 +298,23 @@ public class ComboService {
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+        if (expectedVersion == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Combo version is required. Please refresh and try again.");
+        }
+
+        if (!Objects.equals(currentVersion, expectedVersion)) {
             throw new BusinessException(
                     ErrorCode.CONCURRENT_MODIFICATION,
                     "This combo was changed by another request. Please refresh and try again.");
+        }
+    }
+
+    private Combo saveCombo(Combo combo) {
+        try {
+            return comboRepo.saveAndFlush(combo);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.COMBO_NAME_EXISTS, "Combo name already exists", exception);
         }
     }
 

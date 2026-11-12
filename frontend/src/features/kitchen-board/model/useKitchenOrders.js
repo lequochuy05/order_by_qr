@@ -87,6 +87,75 @@ const useKitchenOrders = () => {
     [fetchKitchenOrders, processingItems, showError, user?.userId],
   );
 
+  const batchUpdateStatus = useCallback(
+    async (itemIds, newStatus) => {
+      if (!itemIds || itemIds.length === 0) return;
+      const idsToProcess = itemIds.filter((id) => !processingItems.has(id));
+      if (idsToProcess.length === 0) return;
+
+      const idSet = new Set(idsToProcess);
+      setProcessingItems((current) => {
+        const next = new Set(current);
+        idsToProcess.forEach((id) => next.add(id));
+        return next;
+      });
+
+      setOrders((current) =>
+        current.map((order) => ({
+          ...order,
+          orderItems: order.orderItems.map((item) =>
+            idSet.has(item.id)
+              ? { ...item, status: newStatus, updatedAt: new Date().toISOString() }
+              : item,
+          ),
+        })),
+      );
+
+      try {
+        await orderService.batchUpdateItemStatus(idsToProcess, newStatus, user?.userId);
+      } catch {
+        showError('Không thể cập nhật trạng thái các món');
+        fetchKitchenOrders({ silent: true });
+      } finally {
+        setProcessingItems((current) => {
+          const next = new Set(current);
+          idsToProcess.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [fetchKitchenOrders, processingItems, showError, user?.userId],
+  );
+
+  const cancelItem = useCallback(
+    async (itemId, reason) => {
+      if (processingItems.has(itemId)) return;
+      setProcessingItems((current) => new Set(current).add(itemId));
+      setOrders((current) =>
+        current
+          .map((order) => ({
+            ...order,
+            orderItems: order.orderItems.filter((item) => item.id !== itemId),
+          }))
+          .filter((order) => order.orderItems.length > 0),
+      );
+
+      try {
+        await orderService.cancelKitchenItem(itemId, reason);
+      } catch {
+        showError('Không thể hủy món ăn');
+        fetchKitchenOrders({ silent: true });
+      } finally {
+        setProcessingItems((current) => {
+          const next = new Set(current);
+          next.delete(itemId);
+          return next;
+        });
+      }
+    },
+    [fetchKitchenOrders, processingItems, showError],
+  );
+
   return {
     orders,
     loading,
@@ -96,6 +165,8 @@ const useKitchenOrders = () => {
     lastUpdatedAt,
     fetchKitchenOrders,
     updateStatus,
+    batchUpdateStatus,
+    cancelItem,
   };
 };
 

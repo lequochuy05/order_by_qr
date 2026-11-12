@@ -17,7 +17,7 @@ const ComboCard = ({ combo, onAddToCart, quantity = 0, onFly }) => {
   return (
     <div
       ref={cardRef}
-      className={`p-5 bg-gradient-to-br from-orange-500 via-amber-500 to-orange-500 text-white rounded-3xl shadow-[0_8px_20px_rgb(249,115,22,0.25)] relative overflow-hidden transition-all duration-300 active:scale-[0.98] h-full flex flex-col justify-between ${available ? '' : 'opacity-70'}`}
+      className={`p-5 bg-gradient-to-br from-[#56372B] via-[#7A4B34] to-[#C17C4A] text-white rounded-3xl shadow-[0_8px_25px_rgba(193,124,74,0.3)] relative overflow-hidden transition-all duration-300 active:scale-[0.98] h-full flex flex-col justify-between ${available ? '' : 'opacity-70'}`}
     >
       {/* Decorative flame */}
       <div className="absolute -right-4 -top-8 opacity-10 rotate-12 scale-150">
@@ -29,11 +29,11 @@ const ComboCard = ({ combo, onAddToCart, quantity = 0, onFly }) => {
 
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-1">
-          <span className="bg-white/20 backdrop-blur-md text-white text-xs px-2 py-0.5 rounded-full uppercase font-bold tracking-widest border border-white/20">
+          <span className="bg-white/20 backdrop-blur-md text-white text-xs px-2.5 py-0.5 rounded-full uppercase font-black tracking-widest border border-white/20">
             COMBO
           </span>
           {!available && (
-            <span className="bg-white text-red-600 text-xs px-2 py-0.5 rounded-full uppercase font-black">
+            <span className="bg-white text-rose-600 text-xs px-2.5 py-0.5 rounded-full uppercase font-black shadow-sm">
               Hết hàng
             </span>
           )}
@@ -46,7 +46,6 @@ const ComboCard = ({ combo, onAddToCart, quantity = 0, onFly }) => {
 
       <div className="relative z-10 mt-6 flex items-end justify-between">
         <div>
-          {/* <p className="text-[10px] font-bold uppercase tracking-widest text-white mb-0.5">Giá chỉ còn</p> */}
           <span className="font-black text-2xl drop-shadow-md">{fmtVND(combo.price)}</span>
         </div>
 
@@ -56,15 +55,15 @@ const ComboCard = ({ combo, onAddToCart, quantity = 0, onFly }) => {
             disabled={quantity === 0}
             className="w-8 h-8 rounded-full flex items-center justify-center text-white disabled:opacity-30 hover:bg-white/20 transition-colors font-bold"
           >
-            <Minus size={16} />
+            <Minus size={15} />
           </button>
           <span className="text-sm font-black w-3 text-center">{quantity}</span>
           <button
             onClick={handlePlus}
             disabled={!available}
-            className="w-8 h-8 rounded-full flex items-center justify-center bg-white text-black hover:scale-105 transition-all shadow-sm font-bold disabled:bg-gray-200 disabled:text-gray-400"
+            className="w-8 h-8 rounded-full flex items-center justify-center bg-white text-[#56372B] hover:scale-105 transition-all shadow-sm font-bold disabled:bg-slate-200 disabled:text-slate-400"
           >
-            <Plus size={16} />
+            <Plus size={15} />
           </button>
         </div>
       </div>

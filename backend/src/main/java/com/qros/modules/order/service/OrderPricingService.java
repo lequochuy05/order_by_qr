@@ -14,6 +14,7 @@ import com.qros.modules.order.dto.response.OrderPreviewResponse;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
+import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
@@ -50,6 +51,18 @@ public class OrderPricingService {
         BigDecimal discount = safe(order.getDiscountAmount());
 
         setOrderMoney(order, subtotal, discount);
+    }
+
+    public void applyVoucher(Order order, String voucherCode) {
+        if (voucherCode == null || voucherCode.isBlank()) {
+            return;
+        }
+
+        BigDecimal subtotal = calculateSubtotal(order);
+        VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode.trim(), subtotal);
+
+        order.setVoucherCode(voucherResult.voucherCode());
+        setOrderMoney(order, subtotal, voucherResult.appliedDiscountAmount());
     }
 
     public void setOrderMoney(Order order, BigDecimal subtotal, BigDecimal discount) {

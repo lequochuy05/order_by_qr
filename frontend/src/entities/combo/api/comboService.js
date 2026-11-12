@@ -1,4 +1,5 @@
 import api from '@shared/api/httpClient.js';
+import { createCachedRequest, createKeyedCachedRequest } from '@shared/lib/cacheUtils.js';
 
 const COMBO_LIST_CACHE_MS = 15_000;
 const COMBO_DETAIL_CACHE_MS = 10_000;
@@ -20,81 +21,66 @@ const normalizePageContent = (data) => {
   return [];
 };
 
-let comboListRequest = null;
-let comboListCache = { data: null, expiresAt: 0 };
-const comboDetailRequests = new Map();
-const comboDetailCache = new Map();
-const comboPageRequests = new Map();
-const comboPageCache = new Map();
+const { requestFn: getComboList, clearCache: clearComboListCache } = createCachedRequest(
+  () =>
+    api
+      .get('/combos', {
+        params: { size: 1000, sort: 'displayOrder,asc' },
+      })
+      .then(normalizePageContent),
+  COMBO_LIST_CACHE_MS,
+);
+
+const { requestFn: getComboPage, clearCache: clearComboPageCache } = createKeyedCachedRequest(
+  (params = {}) => {
+    const page = Number(params.page || 0);
+    const size = Number(params.size || 24);
+    return api.get('/combos', {
+      params: { page, size, sort: 'displayOrder,asc', ...params },
+    });
+  },
+  COMBO_LIST_CACHE_MS,
+  stableStringify,
+);
+
+const { requestFn: getComboDetail, clearCache: clearComboDetailCache } = createKeyedCachedRequest(
+  (id) => api.get(`/combos/${id}`),
+  COMBO_DETAIL_CACHE_MS,
+  (id) => String(id),
+);
 
 const clearComboCache = () => {
-  comboListRequest = null;
-  comboListCache = { data: null, expiresAt: 0 };
-  comboDetailRequests.clear();
-  comboDetailCache.clear();
-  comboPageRequests.clear();
-  comboPageCache.clear();
+  clearComboListCache();
+  clearComboPageCache();
+  clearComboDetailCache();
 };
 
 export const comboService = {
-  getAll: async ({ force = false } = {}) => {
-    const now = Date.now();
-    if (!force && comboListCache.data && comboListCache.expiresAt > now) {
-      return comboListCache.data;
-    }
-    if (!comboListRequest) {
-      comboListRequest = api
-        .get('/combos/management-summary', {
-          params: { size: 1000, sort: 'displayOrder,asc' },
-        })
-        .then((res) => {
-          const data = normalizePageContent(res);
-          comboListCache = { data, expiresAt: Date.now() + COMBO_LIST_CACHE_MS };
-          return data;
-        })
-        .finally(() => { comboListRequest = null; });
-    }
-    return comboListRequest;
+  clearCache: clearComboCache,
+  getAll: (options) => getComboList(options),
+  getPage: (params, options) => getComboPage(params, options),
+  getById: (id, options) => getComboDetail(id, options),
+  create: async (data) => {
+    clearComboCache();
+    const res = await api.post('/combos', data);
+    clearComboCache();
+    return res;
   },
-  getPage: async (params = {}, { force = false } = {}) => {
-    const page = Number(params.page || 0);
-    const size = Number(params.size || 24);
-    const requestParams = { page, size, sort: 'displayOrder,asc', ...params };
-    const key = stableStringify(requestParams);
-    const now = Date.now();
-    const cached = comboPageCache.get(key);
-    if (!force && cached && cached.expiresAt > now) return cached.data;
-    if (!comboPageRequests.has(key)) {
-      const request = api
-        .get('/combos/management-summary', { params: requestParams })
-        .then((res) => {
-          comboPageCache.set(key, { data: res, expiresAt: Date.now() + COMBO_LIST_CACHE_MS });
-          return res;
-        })
-        .finally(() => { comboPageRequests.delete(key); });
-      comboPageRequests.set(key, request);
-    }
-    return comboPageRequests.get(key);
+  update: async (id, data) => {
+    clearComboCache();
+    const res = await api.put(`/combos/${id}`, data);
+    clearComboCache();
+    return res;
   },
-  getById: async (id, { force = false } = {}) => {
-    const key = String(id);
-    const now = Date.now();
-    const cached = comboDetailCache.get(key);
-    if (!force && cached && cached.expiresAt > now) return cached.data;
-    if (!comboDetailRequests.has(key)) {
-      const request = api
-        .get(`/combos/${id}`)
-        .then((res) => {
-          comboDetailCache.set(key, { data: res, expiresAt: Date.now() + COMBO_DETAIL_CACHE_MS });
-          return res;
-        })
-        .finally(() => { comboDetailRequests.delete(key); });
-      comboDetailRequests.set(key, request);
-    }
-    return comboDetailRequests.get(key);
+  delete: async (id) => {
+    clearComboCache();
+    await api.delete(`/combos/${id}`);
+    clearComboCache();
   },
-  create: async (data) => { clearComboCache(); const res = await api.post('/combos', data); clearComboCache(); return res; },
-  update: async (id, data) => { clearComboCache(); const res = await api.put(`/combos/${id}`, data); clearComboCache(); return res; },
-  delete: async (id) => { clearComboCache(); await api.delete(`/combos/${id}`); clearComboCache(); },
-  toggleActive: async (id) => { clearComboCache(); const res = await api.patch(`/combos/${id}/toggle-active`); clearComboCache(); return res; },
+  toggleActive: async (id, version) => {
+    clearComboCache();
+    const res = await api.patch(`/combos/${id}/toggle-active`, null, { params: { version } });
+    clearComboCache();
+    return res;
+  },
 };

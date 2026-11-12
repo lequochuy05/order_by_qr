@@ -18,7 +18,7 @@ import org.springframework.data.repository.query.Param;
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
     /**
      * Lock active orders of a table when creating/adding order items.
-     * Service should take the newest one and handle duplicates if any.
+     * Service must reject duplicates before appending to an active order.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(
@@ -106,6 +106,64 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     boolean existsByTableIdAndStatusIn(Long tableId, Collection<OrderStatus> statuses);
 
+    boolean existsByTableSessionIdAndStatusIn(Long tableSessionId, Collection<OrderStatus> statuses);
+
+    @Query(
+            """
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE o.table.id IN :tableIds
+              AND o.status IN :statuses
+            """)
+    long countActiveByTableIds(
+            @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<OrderStatus> statuses);
+
+    @Query(
+            """
+            SELECT COUNT(o)
+            FROM Order o
+            JOIN o.orderItems item
+            WHERE o.tableSession.id = :sessionId
+              AND o.status IN :statuses
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            """)
+    long countBillableItemsByTableSessionId(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<OrderStatus> statuses);
+
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_id IN (:tableIds)
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdsForUpdate(
+            @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<String> statuses);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE Order o
+            SET o.status = com.qros.modules.order.model.enums.OrderStatus.CANCELLED,
+                o.paymentStatus = com.qros.modules.order.model.enums.PaymentStatus.CANCELLED
+            WHERE o.tableSession.id = :sessionId
+              AND o.status IN :statuses
+              AND NOT EXISTS (
+                    SELECT item.id
+                    FROM OrderItem item
+                    WHERE item.order = o
+                      AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+              )
+            """)
+    int cancelEmptyActiveOrdersByTableSessionId(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<OrderStatus> statuses);
+
     /**
      * Lock one order for payment/cancel/update flow.
      */
@@ -126,6 +184,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             })
     @Query("SELECT o FROM Order o WHERE o.id = :id")
     Optional<Order> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"table", "tableSession", "paidBy", "orderItems"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findPaymentByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"table", "tableSession", "orderItems"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findWorkflowByIdForUpdate(@Param("id") Long id);
 
     /**
      * Find latest active/current order of a table by table code.
@@ -249,6 +317,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                                o.final_amount AS finalAmount,
                                o.table_id AS tableId,
                                t.table_number AS tableNumber,
+                               o.table_session_id AS sessionId,
                                o.created_at AS createdAt
                         FROM orders o
                         JOIN tables t ON t.id = o.table_id AND t.is_deleted = false

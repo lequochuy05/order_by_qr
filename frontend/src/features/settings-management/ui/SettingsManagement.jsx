@@ -15,8 +15,8 @@ import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { getErrorDetails } from '@shared/lib/errorMessages.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { useSettingsQuery } from '../api/settingsQueries.js';
-import { useUpdateSettingsMutation, useUploadLogoMutation } from '../api/settingsMutations.js';
+import { useUpdateSettingsMutation, useUploadLogoMutation } from '@shared/api/settingsMutations.js';
+import { useSettingsQuery } from '@shared/api/settingsQueries.js';
 import SettingsLayout from './components/SettingsLayout.jsx';
 import BillSettingsTab from './tabs/BillSettingsTab.jsx';
 import CustomerMenuSettingsTab from './tabs/CustomerMenuSettingsTab.jsx';
@@ -36,15 +36,15 @@ import {
 
 const SettingsPage = () => {
   const { user } = useAuth();
-  const isManager = user?.role === 'MANAGER';
+  const isAdmin = user?.role === 'ADMIN';
 
   const [preferences, setPreferences] = useAdminPreferences();
-  const [activeTab, setActiveTab] = useState(isManager ? 'restaurant' : 'preferences');
+  const [activeTab, setActiveTab] = useState(isAdmin ? 'restaurant' : 'preferences');
   const [settingsErrors, setSettingsErrors] = useState({});
   const copy = settingsCopy[preferences.language] || settingsCopy.vi;
 
   const { data: serverSettings, isLoading: loading } = useSettingsQuery({
-    enabled: isManager,
+    enabled: isAdmin,
   });
 
   const normalizedServerSettings = useMemo(
@@ -69,7 +69,7 @@ const SettingsPage = () => {
 
   const tabs = useMemo(() => {
     const personalTab = { id: 'preferences', label: copy.tabs.preferences, icon: Bell };
-    if (!isManager) return [personalTab];
+    if (!isAdmin) return [personalTab];
 
     return [
       { id: 'restaurant', label: copy.tabs.restaurant, icon: Building2 },
@@ -81,7 +81,7 @@ const SettingsPage = () => {
       { id: 'wifi', label: copy.tabs.wifi, icon: Wifi },
       personalTab,
     ];
-  }, [copy, isManager]);
+  }, [copy, isAdmin]);
   const activeTabId = tabs.some((tab) => tab.id === activeTab) ? activeTab : tabs[0].id;
 
   const updateMutation = useUpdateSettingsMutation({

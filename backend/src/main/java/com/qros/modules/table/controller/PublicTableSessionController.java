@@ -1,5 +1,6 @@
 package com.qros.modules.table.controller;
 
+import com.qros.modules.table.dto.request.TablePaymentRequest;
 import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.dto.response.TableSessionStateResponse;
@@ -35,6 +36,13 @@ public class PublicTableSessionController {
     public ApiResponse<TableSessionStartResponse> startSession(
             @PathVariable @NonNull String tableCode, @RequestParam(value = "sig", required = false) String sig) {
         return ApiResponse.success("Table session started", tableSessionService.startPublicSession(tableCode, sig));
+    }
+
+    @PostMapping("/tables/{tableCode}/request-payment")
+    public ApiResponse<Void> requestPayment(
+            @PathVariable @NonNull String tableCode, @Valid @RequestBody @NonNull TablePaymentRequest request) {
+        tableSessionService.requestPayment(tableCode, request.sessionToken());
+        return ApiResponse.success("Payment requested", null);
     }
 
     @PostMapping("/sessions/heartbeat")

@@ -42,20 +42,21 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
 
   return (
     <header
-      className={`sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-between border-b border-gray-100 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950 ${
+      className={`sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-between border-b border-[#E8DCD1] bg-white shadow-sm transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] ${
         isCompactViewport ? 'h-16 gap-2 px-3' : 'h-20 gap-4 px-6'
       }`}
     >
       <div className={`flex min-w-0 items-center ${isCompactViewport ? 'gap-2' : 'gap-4'}`}>
         <button
           onClick={toggleSidebar}
-          className="flex shrink-0 p-2 hover:bg-gray-100 rounded-lg text-gray-600 transition-colors dark:text-slate-300 dark:hover:bg-slate-800"
+          className="flex shrink-0 p-2 hover:bg-[#F7F0E7] rounded-xl text-[#56372B] transition-colors dark:text-[#D8CCC4] dark:hover:bg-[#2A221E]"
+          aria-label="Chuyển đổi menu thanh bên"
         >
-          <Menu size={24} />
+          <Menu size={22} />
         </button>
 
         <h1
-          className={`truncate font-bold tracking-tight text-gray-800 dark:text-slate-100 ${
+          className={`truncate font-extrabold tracking-tight text-[#2D1D16] dark:text-[#F7F0E7] ${
             isCompactViewport ? 'text-base' : 'text-xl'
           }`}
         >
@@ -72,8 +73,8 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
           <div
             className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black tracking-wider transition-all ${
               wsConnected
-                ? 'bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400'
-                : 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400'
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400'
             }`}
             title={wsConnected ? 'WebSocket connected' : 'WebSocket disconnected'}
           >
@@ -83,23 +84,26 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
         )}
 
         {!isCompactViewport && (
-          <button className="relative p-2 text-gray-500 transition-colors hover:bg-gray-50 dark:text-slate-400 dark:hover:bg-slate-800">
-            <Bell size={20} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-950"></span>
+          <button
+            className="relative p-2.5 text-[#6B5D55] rounded-xl transition-colors hover:bg-[#F7F0E7] dark:text-[#BDB0A4] dark:hover:bg-[#2A221E]"
+            title="Thông báo hệ thống"
+          >
+            <Bell size={19} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-[#C17C4A] rounded-full border-2 border-white dark:border-[#1F1A17]"></span>
           </button>
         )}
 
         <div
-          className={`flex items-center border-l border-gray-100 dark:border-slate-800 ${
+          className={`flex items-center border-l border-[#E8DCD1] dark:border-[#352C26] ${
             isCompactViewport ? 'gap-1 pl-2' : 'gap-3 pl-4'
           }`}
         >
           {!isCompactViewport && (
-            <div className="max-w-32 text-right">
-              <p className="truncate text-sm font-bold leading-tight text-gray-800 dark:text-slate-100">
-                {user?.fullName || 'NaN'}
+            <div className="max-w-36 text-right">
+              <p className="truncate text-sm font-bold leading-tight text-[#2D1D16] dark:text-[#F7F0E7]">
+                {user?.fullName || 'Người dùng'}
               </p>
-              <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">
+              <p className="text-[10px] font-extrabold text-[#C17C4A] uppercase tracking-wider">
                 {preferences.language === 'en'
                   ? formatEnglishRole(user?.role)
                   : fmtRole(user?.role)}
@@ -107,31 +111,31 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
             </div>
           )}
 
-          {/* Avatar xử lý từ UserDto */}
+          {/* Avatar */}
           <div
-            className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-orange-100 bg-orange-50 dark:border-orange-500/30 dark:bg-slate-900 ${
+            className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8DCD1] bg-[#F7F0E7] dark:border-[#352C26] dark:bg-[#2A221E] ${
               isCompactViewport ? 'h-9 w-9' : 'h-10 w-10'
             }`}
           >
             {user?.avatarUrl ? (
               <img src={user?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <User className="text-orange-500" size={20} />
+              <User className="text-[#C17C4A]" size={20} />
             )}
           </div>
 
           <button
             onClick={logout}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors dark:text-slate-500 dark:hover:text-red-400"
+            className="p-2 text-[#9C8E85] hover:text-rose-600 transition-colors dark:text-[#82756B] dark:hover:text-rose-400"
             title={preferences.language === 'en' ? 'Sign out' : 'Đăng xuất'}
           >
-            <LogOut size={20} />
+            <LogOut size={19} />
           </button>
           {!isCompactViewport && (
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="p-2 text-gray-400 transition-colors hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400"
+              className="p-2 text-[#9C8E85] transition-colors hover:text-[#56372B] dark:text-[#82756B] dark:hover:text-[#D8CCC4]"
               title={
                 preferences.language === 'en'
                   ? isFullscreen
@@ -142,7 +146,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
                     : 'Toàn màn hình'
               }
             >
-              {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
             </button>
           )}
         </div>
@@ -195,7 +199,9 @@ const englishPageTitles = {
 
 const formatEnglishRole = (role) => {
   const roles = {
+    ADMIN: 'Admin',
     MANAGER: 'Manager',
+    CASHIER: 'Cashier',
     STAFF: 'Staff',
     CHEF: 'Chef',
   };

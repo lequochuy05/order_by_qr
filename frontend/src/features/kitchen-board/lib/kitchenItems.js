@@ -1,6 +1,7 @@
 import { CheckCircle2, Clock3, Flame } from 'lucide-react';
 
-import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderConstants.js';
+// eslint-disable-next-line no-restricted-imports
+import { ORDER_ITEM_STATUSES } from '../../../entities/order/lib/orderConstants.js';
 
 export const DEFAULT_OVERDUE_MINUTES = 20;
 export const OVERDUE_MINUTES = DEFAULT_OVERDUE_MINUTES;
@@ -56,7 +57,9 @@ export const buildKitchenItems = (orders, now, overdueMinutes = DEFAULT_OVERDUE_
           ...item,
           itemName,
           category: item.menuItem?.category?.name || (item.combo ? 'Combo' : 'Khác'),
-          tableName: order.table?.tableNumber || 'Chưa gán',
+          tableName:
+            order.table?.tableNumber || (order.orderType === 'TAKEAWAY' ? 'Mang về' : 'Chưa gán'),
+          orderType: order.orderType || 'DINE_IN',
           orderId: order.id,
           orderCreatedAt: order.createdAt,
           createdAt,
@@ -65,9 +68,61 @@ export const buildKitchenItems = (orders, now, overdueMinutes = DEFAULT_OVERDUE_
           stageMinutes: minutesSince(statusUpdatedAt, now),
           isOverdue: item.status !== ORDER_ITEM_STATUSES.FINISHED && waitMinutes >= overdueMinutes,
           hasNotes: Boolean(item.notes?.trim()),
+          batchId: item.batchId,
+          batchNumber: item.batchNumber || 1,
         };
       }),
   );
+
+export const aggregateBatchCookingItems = (items) => {
+  const activeItems = items.filter(
+    (item) =>
+      item.status === ORDER_ITEM_STATUSES.PENDING ||
+      item.status === ORDER_ITEM_STATUSES.COOKING,
+  );
+
+  const groupsMap = new Map();
+
+  for (const item of activeItems) {
+    const key = `${item.itemName}__${item.category}`;
+    if (!groupsMap.has(key)) {
+      groupsMap.set(key, {
+        key,
+        itemName: item.itemName,
+        category: item.category,
+        totalQuantity: 0,
+        pendingQuantity: 0,
+        cookingQuantity: 0,
+        items: [],
+        pendingItems: [],
+        cookingItems: [],
+        maxWaitMinutes: 0,
+        isOverdue: false,
+      });
+    }
+
+    const group = groupsMap.get(key);
+    group.totalQuantity += item.quantity || 1;
+    group.items.push(item);
+
+    if (item.status === ORDER_ITEM_STATUSES.PENDING) {
+      group.pendingQuantity += item.quantity || 1;
+      group.pendingItems.push(item);
+    } else if (item.status === ORDER_ITEM_STATUSES.COOKING) {
+      group.cookingQuantity += item.quantity || 1;
+      group.cookingItems.push(item);
+    }
+
+    if (item.waitMinutes > group.maxWaitMinutes) {
+      group.maxWaitMinutes = item.waitMinutes;
+    }
+    if (item.isOverdue) {
+      group.isOverdue = true;
+    }
+  }
+
+  return Array.from(groupsMap.values()).sort((a, b) => b.maxWaitMinutes - a.maxWaitMinutes);
+};
 
 export const groupKitchenItems = (items) => {
   const grouped = {

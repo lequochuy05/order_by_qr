@@ -12,9 +12,18 @@ export const publicMenuService = {
   getCombos: () => api.get('/public/combos'),
   getSettings: () => api.get('/public/settings'),
   getSessionState: (tableCode) => api.get(`/public/tables/${tableCode}/session-state`),
-  startSession: (tableCode) => api.post(`/public/tables/${tableCode}/start-session`),
+  startSession: (tableCode, sig) =>
+    api.post(`/public/tables/${tableCode}/start-session`, null, {
+      params: sig ? { sig } : undefined,
+    }),
   heartbeatSession: (sessionToken) =>
     api.post('/public/sessions/heartbeat', { sessionToken }, sessionHeaderConfig(sessionToken)),
+  requestPayment: (tableCode, sessionToken) =>
+    api.post(
+      `/public/tables/${tableCode}/request-payment`,
+      { sessionToken },
+      sessionHeaderConfig(sessionToken),
+    ),
   getCurrentOrderByTableCode: (tableCode, sessionToken) =>
     api.get(`/public/tables/code/${tableCode}/current-order`, { params: { sessionToken } }),
   createOrder: (orderData) =>

@@ -11,4 +11,5 @@ public record InventoryItemResponse(
         BigDecimal availableQuantity,
         BigDecimal lowStockThreshold,
         Boolean lowStock,
-        Boolean active) {}
+        Boolean active,
+        Long version) {}

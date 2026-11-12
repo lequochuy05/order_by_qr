@@ -137,6 +137,20 @@ class SecurityConfigRegressionTest {
         assertThat(source.indexOf("STAFF_OPERATION_DELETE")).isLessThan(source.indexOf("MANAGER_DELETE"));
     }
 
+    @Test
+    void staffOperationDeleteAllowsChefRole() throws Exception {
+        Path securityConfigPath = Files.walk(Path.of("src/main/java"))
+                .filter(path -> path.getFileName().toString().equals("SecurityConfig.java"))
+                .findFirst()
+                .orElseThrow();
+
+        String source = Files.readString(securityConfigPath);
+
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)\n                        .hasAnyRole(\"MANAGER\", \"STAFF\", \"CHEF\")");
+    }
+
     private String readController(Path mainSource, String filename) throws Exception {
         Path controllerPath = Files.walk(mainSource)
                 .filter(path -> path.getFileName().toString().equals(filename))

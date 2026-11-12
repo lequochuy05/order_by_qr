@@ -108,6 +108,11 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
         publishInternalEvent(TOPIC_INVENTORY, NotificationPayload.eventWithId(type, id), "Inventory state modified");
     }
 
+    @Override
+    public void notifyMenuAvailabilityChange() {
+        publishInternalEvent(TOPIC_MENU, NotificationPayload.event(EVENT_UPDATED), "Menu availability modified");
+    }
+
     private void publishInternalEvent(String topic, Object payload, String logMessage) {
         log.debug("[WebSocket Notification] Topic: {} | Action: {}", topic, logMessage);
         eventPublisher.publishEvent(new WebSocketEvent(topic, payload, logMessage));

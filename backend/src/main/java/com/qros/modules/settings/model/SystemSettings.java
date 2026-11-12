@@ -123,6 +123,9 @@ public class SystemSettings {
     @Column(nullable = false)
     private Boolean kitchenOverdueNotificationEnabled;
 
+    @Column(nullable = false)
+    private Boolean allowSettlementWithUnfinishedItems;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

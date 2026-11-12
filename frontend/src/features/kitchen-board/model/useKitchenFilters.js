@@ -50,6 +50,7 @@ const useKitchenFilters = (orders, now, overdueMinutes) => {
     attentionFilter,
     categoryFilter,
     categories,
+    filteredItems,
     itemsByStatus: useMemo(() => groupKitchenItems(filteredItems), [filteredItems]),
     summary: useMemo(() => summarizeKitchenItems(kitchenItems), [kitchenItems]),
     setSearchTerm,

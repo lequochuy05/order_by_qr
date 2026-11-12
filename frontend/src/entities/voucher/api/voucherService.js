@@ -22,6 +22,7 @@ const clearVoucherCache = () => {
 };
 
 export const voucherService = {
+  clearCache: clearVoucherCache,
   getPage: async (params = {}, { force = false } = {}) => {
     const page = Number(params.page || 0);
     const size = Number(params.size || 24);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
-import { useSettingsQuery } from '@features/settings-management/api/settingsQueries.js';
+import { useSettingsQuery } from '@shared/api/settingsQueries.js';
 import {
   LayoutDashboard,
   Layers,
@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Circle,
   ShoppingBag,
+  KeyRound,
 } from 'lucide-react';
 
 const menuItems = [
@@ -26,81 +27,81 @@ const menuItems = [
     title: 'Bảng điều khiển',
     path: '/admin/dashboard',
     icon: <LayoutDashboard size={22} />,
-    roles: ['MANAGER', 'STAFF', 'CHEF'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     title: 'Bán mang về',
     path: '/admin/takeaway',
     icon: <ShoppingBag size={22} />,
-    roles: ['MANAGER', 'STAFF'],
+    roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'],
   },
   {
     title: 'Quản lý bàn',
     path: '/admin/tables',
     icon: <Table size={22} />,
-    roles: ['MANAGER', 'STAFF'],
+    roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'],
   },
   {
     title: 'Nhà bếp',
     path: '/admin/kitchen',
     icon: <UtensilsCrossed size={22} />,
-    roles: ['MANAGER', 'CHEF'],
+    roles: ['ADMIN', 'MANAGER', 'CHEF'],
   },
   {
     title: 'Quản lý danh mục',
     path: '/admin/categories',
     icon: <Layers size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     title: 'Quản lý món ăn',
     path: '/admin/menu',
     icon: <UtensilsCrossed size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     title: 'Quản lý combo',
     path: '/admin/combo',
     icon: <Package size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     title: 'Quản lý kho',
     path: '/admin/inventory',
     icon: <Boxes size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER', 'CHEF'],
   },
   {
     title: 'Quản lý voucher',
     path: '/admin/voucher',
     icon: <TicketIcon size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   // {
   //   title: 'Quản lý khuyến mãi',
   //   path: '/admin/promotions',
   //   icon: <TicketPercent size={22} />,
-  //   roles: ['MANAGER']
+  //   roles: ['ADMIN', 'MANAGER']
   // },
   {
     title: 'Quản lý nhân viên',
     path: '/admin/staffs',
     icon: <Users size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
   },
   {
     title: 'Lịch sử đơn hàng',
     path: '/admin/history',
     icon: <ClipboardList size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER', 'CASHIER'],
   },
 
   {
     title: 'Thống kê',
     icon: <BarChart3 size={22} />,
-    roles: ['MANAGER'],
+    roles: ['ADMIN', 'MANAGER'],
     children: [
-      { title: 'Doanh thu', path: '/admin/statistics/revenue' },
+      { title: 'Doanh thu', path: '/admin/statistics/revenue', roles: ['ADMIN'] },
       { title: 'Món ăn bán chạy', path: '/admin/statistics/top-dishes' },
       { title: 'Nhân viên', path: '/admin/statistics/staff' },
     ],
@@ -109,11 +110,11 @@ const menuItems = [
   {
     title: 'Cài đặt',
     icon: <Settings size={22} />,
-    roles: ['MANAGER', 'STAFF', 'CHEF'],
+    roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF'],
     children: [
       { title: 'Thông tin cá nhân', path: '/admin/profile' },
-      { title: 'Cài đặt nhà hàng', path: '/admin/settings', roles: ['MANAGER'] },
-      { title: 'Tùy chọn cá nhân', path: '/admin/settings', roles: ['STAFF', 'CHEF'] },
+      { title: 'Cài đặt nhà hàng', path: '/admin/settings', roles: ['ADMIN'] },
+      { title: 'Tùy chọn cá nhân', path: '/admin/settings', roles: ['MANAGER', 'CASHIER', 'STAFF', 'CHEF'] },
     ],
   },
 ];
@@ -139,9 +140,20 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
     }
   };
 
+  const effectiveMenuItems = user?.mustChangePassword
+    ? [
+        {
+          title: 'Đổi mật khẩu',
+          path: '/admin/profile',
+          icon: <KeyRound size={22} />,
+          roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF'],
+        },
+      ]
+    : menuItems;
+
   // Tự động mở menu cha nếu đang ở trang con (UX tốt hơn)
   useEffect(() => {
-    menuItems.forEach((item) => {
+    effectiveMenuItems.forEach((item) => {
       if (item.children) {
         const isChildActive = item.children.some((child) => child.path === location.pathname);
         if (isChildActive) {
@@ -149,11 +161,11 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
         }
       }
     });
-  }, [location.pathname]);
+  }, [location.pathname, effectiveMenuItems]);
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-slate-900 text-slate-300 shadow-2xl transition-all duration-300 ease-in-out dark:bg-slate-950 ${
+      className={`fixed inset-y-0 left-0 z-40 flex flex-col bg-[#231712] text-[#D8CCC4] shadow-2xl transition-all duration-300 ease-in-out dark:bg-[#150E0B] border-r border-[#38261E] dark:border-[#2C1C16] ${
         isCompactViewport
           ? isOpen
             ? 'w-64 translate-x-0'
@@ -164,13 +176,13 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
       }`}
     >
       {/* Header Sidebar */}
-      <div className="h-20 flex items-center px-6 border-b border-slate-800 flex-shrink-0 dark:border-slate-900">
+      <div className="h-20 flex items-center px-6 border-b border-[#38261E] flex-shrink-0 dark:border-[#2C1C16]">
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold">
+          <div className="w-9 h-9 bg-[#C17C4A] rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black shadow-md shadow-[#C17C4A]/30">
             {initial}
           </div>
           {isOpen && (
-            <span className="text-xl font-black text-white italic tracking-tighter whitespace-nowrap">
+            <span className="text-xl font-black text-[#F7F0E7] tracking-tight whitespace-nowrap">
               {restaurantName}
             </span>
           )}
@@ -178,8 +190,16 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
       </div>
 
       {/* Menu Area */}
-      <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-        {menuItems.map((item, index) => {
+      <nav className="flex-1 p-4 space-y-2 mt-2 overflow-y-auto scrollbar-thin scrollbar-thumb-[#38261E]">
+        {user?.mustChangePassword && isOpen && (
+          <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+            <p className="font-semibold">Yêu cầu bảo mật</p>
+            <p className="mt-1 text-[#D8CCC4]">
+              Bạn cần đổi mật khẩu khởi tạo để tiếp tục sử dụng hệ thống.
+            </p>
+          </div>
+        )}
+        {effectiveMenuItems.map((item, index) => {
           if (user?.role && !item.roles.includes(user.role)) return null;
 
           // Logic kiểm tra Active
@@ -197,23 +217,23 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
                 <div
                   onClick={() => isOpen && toggleSubMenu(item.title)}
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative cursor-pointer select-none
-                    ${isActive && !isParentExpanded ? 'bg-slate-800 text-orange-500' : 'hover:bg-slate-800 hover:text-white'}
-                    ${isParentExpanded ? 'bg-slate-800 text-white' : ''}
+                    ${isActive && !isParentExpanded ? 'bg-[#35231B] text-[#D8986A]' : 'hover:bg-[#35231B] hover:text-[#F7F0E7]'}
+                    ${isParentExpanded ? 'bg-[#35231B] text-white' : ''}
                   `}
                 >
                   <div
-                    className={`${isActive ? 'text-orange-500' : 'text-slate-400 group-hover:text-orange-400'}`}
+                    className={`${isActive ? 'text-[#C17C4A]' : 'text-[#A8988F] group-hover:text-[#D8986A]'}`}
                   >
                     {item.icon}
                   </div>
 
                   {isOpen && (
                     <>
-                      <span className="font-medium whitespace-nowrap flex-1 text-sm">
+                      <span className="font-semibold whitespace-nowrap flex-1 text-sm text-[#F7F0E7]">
                         {label(item.title)}
                       </span>
                       {/* Icon mũi tên xoay */}
-                      <span className="text-slate-500">
+                      <span className="text-[#A8988F]">
                         {isParentExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                       </span>
                     </>
@@ -221,7 +241,7 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
 
                   {/* Tooltip khi đóng sidebar */}
                   {!isOpen && (
-                    <div className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700">
+                    <div className="absolute left-16 bg-[#231712] text-[#F7F0E7] text-xs px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-[#38261E]">
                       {label(item.title)}
                     </div>
                   )}
@@ -232,22 +252,22 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
                   className={`flex items-center gap-4 px-3 py-3 rounded-xl transition-all group relative
                     ${
                       isActive
-                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                        : 'hover:bg-slate-800 hover:text-white'
+                        ? 'bg-[#C17C4A] text-white shadow-lg shadow-[#C17C4A]/25 font-bold'
+                        : 'hover:bg-[#35231B] hover:text-[#F7F0E7]'
                     }`}
                 >
                   <div
-                    className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-orange-400'}`}
+                    className={`${isActive ? 'text-white' : 'text-[#A8988F] group-hover:text-[#D8986A]'}`}
                   >
                     {item.icon}
                   </div>
                   {isOpen && (
-                    <span className="font-medium whitespace-nowrap animate-in fade-in slide-in-from-left-2 text-sm">
+                    <span className="font-semibold whitespace-nowrap animate-in fade-in slide-in-from-left-2 text-sm text-[#F7F0E7]">
                       {label(item.title)}
                     </span>
                   )}
                   {!isOpen && (
-                    <div className="absolute left-16 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700">
+                    <div className="absolute left-16 bg-[#231712] text-[#F7F0E7] text-xs px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl border border-[#38261E]">
                       {label(item.title)}
                     </div>
                   )}
@@ -267,14 +287,14 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
                           ${
                             isChildActive
-                              ? 'text-orange-500 bg-slate-800 font-medium'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                              ? 'text-[#D8986A] bg-[#35231B] font-semibold'
+                              : 'text-[#A8988F] hover:text-[#F7F0E7] hover:bg-[#35231B]/50'
                           }`}
                       >
                         {/* Dấu chấm tròn nhỏ để trang trí */}
                         <Circle
                           size={8}
-                          className={isChildActive ? 'fill-orange-500' : 'fill-transparent'}
+                          className={isChildActive ? 'fill-[#C17C4A] text-[#C17C4A]' : 'fill-transparent text-[#A8988F]'}
                         />
                         <span className="whitespace-nowrap">{label(child.title)}</span>
                       </Link>

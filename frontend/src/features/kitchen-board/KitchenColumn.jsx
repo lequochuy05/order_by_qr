@@ -28,6 +28,7 @@ const KitchenColumn = ({
   icon,
   tone,
   onUpdateStatus,
+  onCancelItem,
   processingItems,
 }) => {
   const classes = toneClasses[tone];
@@ -80,6 +81,7 @@ const KitchenColumn = ({
               item={item}
               status={status}
               onUpdateStatus={onUpdateStatus}
+              onCancelItem={onCancelItem}
               isProcessing={processingItems.has(item.id)}
             />
           ))

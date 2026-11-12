@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.interceptor.CacheErrorHandler;
@@ -25,8 +26,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 /**
  * RedisConfig - Configuration for Redis caching and template.
  * Enables caching and sets up RedisTemplate with JSON serialization.
+ * Activated by spring.cache.type=redis. Dev uses Caffeine by default.
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
 @Slf4j
 public class RedisConfig implements CachingConfigurer {
 

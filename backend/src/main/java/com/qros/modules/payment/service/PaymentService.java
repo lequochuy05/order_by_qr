@@ -1,5 +1,6 @@
 package com.qros.modules.payment.service;
 
+import com.qros.modules.payment.dto.internal.CashSettlementResult;
 import com.qros.modules.payment.dto.internal.OnlinePaymentPreparation;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
@@ -19,7 +20,6 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,21 +37,25 @@ public class PaymentService {
     private final PaymentPersistenceService persistenceService;
     private final SystemSettingsService settingsService;
     private final MeterRegistry meterRegistry;
+    private final PaymentGatewayCancellationService gatewayCancellationService;
 
     public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId) {
         validatePaymentMethodEnabled(request.paymentMethod());
 
         if (request.paymentMethod() == PaymentMethod.CASH) {
-            List<PaymentTransaction> pendingOnlineTransactions =
-                    persistenceService.findPendingOnlineTransactions(request.orderId());
+            long startNanos = System.nanoTime();
             try {
-                PaymentTransaction transaction = persistenceService.settleCash(request, userId);
-                cancelPendingOnlineGatewayLinks(pendingOnlineTransactions);
-                return paymentMapper.toCreateResponse(transaction);
+                CashSettlementResult settlement = persistenceService.settleCash(request, userId);
+                if (!settlement.cancelledOnlineTransactions().isEmpty()) {
+                    gatewayCancellationService.cancelPendingOnlineGatewayLinks(
+                            settlement.cancelledOnlineTransactions(), "Order paid by cash");
+                }
+                return paymentMapper.toCreateResponse(settlement.transaction());
             } catch (DataIntegrityViolationException exception) {
                 PaymentTransaction transaction = persistenceService.recoverIdempotency(request);
-                cancelPendingOnlineGatewayLinks(pendingOnlineTransactions);
                 return paymentMapper.toCreateResponse(transaction);
+            } finally {
+                logSlowCashPayment(request.orderId(), startNanos);
             }
         }
 
@@ -167,20 +171,12 @@ public class PaymentService {
         }
     }
 
-    private void cancelPendingOnlineGatewayLinks(List<PaymentTransaction> transactions) {
-        for (PaymentTransaction transaction : transactions) {
-            try {
-                PaymentGateway gateway = gatewayResolver.resolve(transaction.getPaymentMethod());
-                recordGatewayCall("cancel", transaction.getPaymentMethod(), () -> {
-                    gateway.cancelPayment(transaction, "Order paid by cash");
-                    return null;
-                });
-            } catch (Exception exception) {
-                log.warn(
-                        "Could not cancel online payment link {} after cash settlement: {}",
-                        transaction.getId(),
-                        exception.getMessage());
-            }
+    private void logSlowCashPayment(Long orderId, long startNanos) {
+        long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+        if (elapsedMs >= 1_000L) {
+            log.warn("Cash payment for order {} took {} ms", orderId, elapsedMs);
+        } else {
+            log.debug("Cash payment for order {} took {} ms", orderId, elapsedMs);
         }
     }
 }

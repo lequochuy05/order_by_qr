@@ -35,4 +35,5 @@ public record SystemSettingsResponse(
         Boolean autoPrintBill,
         Boolean newOrderNotificationEnabled,
         Boolean paymentNotificationEnabled,
-        Boolean kitchenOverdueNotificationEnabled) {}
+        Boolean kitchenOverdueNotificationEnabled,
+        Boolean allowSettlementWithUnfinishedItems) {}

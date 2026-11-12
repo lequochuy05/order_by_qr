@@ -6,6 +6,4 @@ export { ItemOptionsModal } from '@shared/ui';
 export { default as QuantityStepper } from './ui/QuantityStepper.jsx';
 export { default as ShoppingCart } from './ui/ShoppingCart.jsx';
 export { default as SubmitOrderButton } from './ui/SubmitOrderButton.jsx';
-export * from './api/customerQueries.js';
-export * from './api/customerMutations.js';
 export * from './model/useCart.js';

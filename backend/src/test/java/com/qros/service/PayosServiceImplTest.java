@@ -24,6 +24,7 @@ import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.payment.service.PaymentCompletionService;
+import com.qros.modules.payment.service.PaymentGatewayCancellationService;
 import com.qros.modules.payment.service.PaymentPersistenceService;
 import com.qros.modules.payment.service.PaymentService;
 import com.qros.modules.settings.model.SystemSettings;
@@ -68,6 +69,9 @@ class PayosServiceImplTest {
     UserRepository userRepository;
 
     @Mock
+    PaymentGatewayCancellationService gatewayCancellationService;
+
+    @Mock
     SystemSettingsService settingsService;
 
     private PaymentService paymentService;
@@ -81,7 +85,12 @@ class PayosServiceImplTest {
                 userRepository,
                 settingsService);
         paymentService = new PaymentService(
-                gatewayResolver, new PaymentMapper(), persistenceService, settingsService, new SimpleMeterRegistry());
+                gatewayResolver,
+                new PaymentMapper(),
+                persistenceService,
+                settingsService,
+                new SimpleMeterRegistry(),
+                gatewayCancellationService);
         lenient()
                 .when(settingsService.getSettingsEntity())
                 .thenReturn(SystemSettings.builder()
@@ -218,7 +227,8 @@ class PayosServiceImplTest {
             }
             return transaction;
         });
-        when(paymentCompletionService.completeSuccessfulTransaction(any(PaymentTransaction.class)))
+        when(paymentCompletionService.completeSuccessfulCashTransaction(
+                        any(PaymentTransaction.class), any(Order.class)))
                 .thenAnswer(invocation -> {
                     PaymentTransaction transaction = invocation.getArgument(0);
                     transaction.setStatus(PaymentTransactionStatus.PAID);
@@ -226,7 +236,6 @@ class PayosServiceImplTest {
                     return order;
                 });
         when(transactionRepository.findPendingOnlineTransactionsByOrderId(1L)).thenReturn(List.of(pendingOnline));
-        when(gatewayResolver.resolve(PaymentMethod.PAYOS)).thenReturn(gateway);
 
         PaymentCreateResponse response =
                 paymentService.createPayment(new PaymentCreateRequest(1L, PaymentMethod.CASH, null, "cash-idem"), 7L);
@@ -246,7 +255,8 @@ class PayosServiceImplTest {
         assertThat(response.qrCode()).isNull();
         assertThat(response.amount()).isEqualByComparingTo("125000");
         assertThat(pendingOnline.getStatus()).isEqualTo(PaymentTransactionStatus.CANCELLED);
-        verify(gateway).cancelPayment(pendingOnline, "Order paid by cash");
+        verify(gatewayCancellationService)
+                .cancelPendingOnlineGatewayLinks(List.of(pendingOnline), "Order paid by cash");
         verify(transactionRepository).saveAll(List.of(pendingOnline));
     }
 

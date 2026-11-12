@@ -53,7 +53,7 @@ const useSettingsStore = create((set, get) => ({
   fetchSettings: async (force = false) => {
     if (get().loaded && !force) return get().settings;
     try {
-      const data = await settingsService.getPublic();
+      const data = await settingsService.getPublic({ force });
       const merged = normalizeSettings(data);
       set({ settings: merged, loaded: true });
       return merged;
@@ -64,6 +64,7 @@ const useSettingsStore = create((set, get) => ({
   },
 
   invalidateAndRefetch: async () => {
+    settingsService.clearCache();
     set({ loaded: false });
     await get().fetchSettings(true);
   },

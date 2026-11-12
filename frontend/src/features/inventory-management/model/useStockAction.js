@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { useStockInMutation, useAdjustStockMutation } from '../api/inventoryMutations.js';
+import { useAdjustStockMutation, useStockInMutation } from '@entities/inventory';
 
 const EMPTY_STOCK_FORM = {
   quantity: '',

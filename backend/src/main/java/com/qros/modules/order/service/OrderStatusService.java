@@ -15,12 +15,13 @@ import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
+import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class OrderStatusService {
 
     private final OrderRepository orderRepository;
@@ -40,6 +40,61 @@ public class OrderStatusService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
     private final TableSessionService tableSessionService;
+    private final UserRepository userRepository;
+
+    public OrderStatusService(
+            OrderRepository orderRepository,
+            OrderStateFactory orderStateFactory,
+            OrderAuditService orderAuditService,
+            OrderTableSyncService orderTableSyncService,
+            OrderCacheInvalidationService orderCacheInvalidationService,
+            InventoryReservationService inventoryReservationService,
+            ApplicationEventPublisher eventPublisher,
+            OrderMapper orderMapper,
+            TableSessionService tableSessionService) {
+        this(
+                orderRepository,
+                orderStateFactory,
+                orderAuditService,
+                orderTableSyncService,
+                orderCacheInvalidationService,
+                inventoryReservationService,
+                eventPublisher,
+                orderMapper,
+                tableSessionService,
+                null);
+    }
+
+    @Autowired
+    public OrderStatusService(
+            OrderRepository orderRepository,
+            OrderStateFactory orderStateFactory,
+            OrderAuditService orderAuditService,
+            OrderTableSyncService orderTableSyncService,
+            OrderCacheInvalidationService orderCacheInvalidationService,
+            InventoryReservationService inventoryReservationService,
+            ApplicationEventPublisher eventPublisher,
+            OrderMapper orderMapper,
+            TableSessionService tableSessionService,
+            UserRepository userRepository) {
+        this.orderRepository = orderRepository;
+        this.orderStateFactory = orderStateFactory;
+        this.orderAuditService = orderAuditService;
+        this.orderTableSyncService = orderTableSyncService;
+        this.orderCacheInvalidationService = orderCacheInvalidationService;
+        this.inventoryReservationService = inventoryReservationService;
+        this.eventPublisher = eventPublisher;
+        this.orderMapper = orderMapper;
+        this.tableSessionService = tableSessionService;
+        this.userRepository = userRepository;
+    }
+
+    private User resolveUserByEmail(String email) {
+        if (userRepository == null || email == null || email.isBlank()) {
+            return null;
+        }
+        return userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+    }
 
     @Transactional
     public OrderResponse updateStatus(@NonNull Long id, @NonNull OrderStatus targetStatus) {
@@ -79,6 +134,11 @@ public class OrderStatusService {
 
     @Transactional
     public OrderResponse cancelOrder(@NonNull Long id) {
+        return cancelOrder(id, null, null);
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(@NonNull Long id, String actorEmail, String reason) {
         Order order = orderRepository
                 .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
@@ -88,6 +148,8 @@ public class OrderStatusService {
         }
 
         OrderStatus fromStatus = order.getStatus();
+        User changedBy = resolveUserByEmail(actorEmail);
+        String auditReason = (reason != null && !reason.isBlank()) ? reason.trim() : "order-cancelled";
 
         order.getOrderItems().stream()
                 .filter(item -> item.getStatus() != OrderItemStatus.FINISHED)
@@ -99,20 +161,20 @@ public class OrderStatusService {
                     item.markStatus(OrderItemStatus.CANCELLED);
 
                     orderAuditService.recordItemStatus(
-                            item, fromItemStatus, OrderItemStatus.CANCELLED, null, "order-cancelled");
+                            item, fromItemStatus, OrderItemStatus.CANCELLED, changedBy, auditReason);
                 });
 
         order.setStatus(OrderStatus.CANCELLED);
         order.setPaymentStatus(PaymentStatus.CANCELLED);
 
-        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "order-cancelled");
+        orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), changedBy, auditReason);
 
         Order saved = orderRepository.save(order);
 
         orderTableSyncService.recalcTableStatus(saved);
         if (saved.getTableSession() != null) {
             tableSessionService.closeSession(
-                    saved.getTableSession().getId(), TableSessionStatus.CANCELLED, "Order cancelled");
+                    saved.getTableSession().getId(), TableSessionStatus.CANCELLED, auditReason);
         }
         orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());

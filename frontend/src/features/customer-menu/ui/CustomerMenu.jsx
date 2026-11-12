@@ -1,21 +1,16 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
-
-import {
-  CartModal,
-  CurrentOrderBanner,
-  CurrentOrderSheet,
-  ShoppingCart as ShoppingCartButton,
-  useCustomerMenuQuery,
-  useRecommendationsQuery,
-} from '../index.js';
-import { ItemOptionsModal } from '@shared/ui';
+import { useCustomerMenuQuery, useRecommendationsQuery } from '@entities/public-menu';
+import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import useFlyToCart from '@shared/hooks/useFlyToCart.js';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { ErrorBoundary, PullToRefresh } from '@shared/ui';
+import { ErrorBoundary, ItemOptionsModal, PullToRefresh } from '@shared/ui';
 import CategoryFilter from './CategoryFilter.jsx';
+import CartModal from './CartModal.jsx';
+import CurrentOrderBanner from './CurrentOrderBanner.jsx';
+import CurrentOrderSheet from './CurrentOrderSheet.jsx';
 import CustomerMenuSkeleton from './CustomerMenuSkeleton.jsx';
 import FlyingImageOverlay from './FlyingImageOverlay.jsx';
 import {
@@ -34,17 +29,18 @@ import CustomerMenuHeader from './CustomerMenuHeader.jsx';
 import MenuItemGrid from './MenuItemGrid.jsx';
 import OrderingUnavailableBanner from './OrderingUnavailableBanner.jsx';
 import RecommendationSection from './RecommendationSection.jsx';
+import ShoppingCartButton from './ShoppingCart.jsx';
 
 const PAYMENT_LOCKED_MESSAGE = 'Bàn đang trong quá trình thanh toán, vui lòng liên hệ nhân viên.';
 
-const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
+const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showCurrentOrderSheet, setShowCurrentOrderSheet] = useState(false);
   const { statusModal, showSuccess, showError } = useStatusModal();
   const timeContext = getTimeContext();
-  const { weather, weatherLine, isLoading: loadingWeather } = useRestaurantWeather();
+  const { weatherLine, isLoading: loadingWeather } = useRestaurantWeather();
   const { flyItem, cartRef, fly, clearFly } = useFlyToCart();
 
   const { data: menuData, isLoading: loadingMenu, refetch: refetchMenu } = useCustomerMenuQuery();
@@ -52,10 +48,10 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
   const closeCurrentOrderSheet = useCallback(() => setShowCurrentOrderSheet(false), []);
   const session = useCustomerMenuSession(tableCode, {
     onSessionEnded: closeCurrentOrderSheet,
+    sig,
   });
   const { data: recommendationsData, refetch: refetchRecommendations } = useRecommendationsQuery(
     timeContext,
-    weather,
     { enabled: Boolean(menuData) && restaurantSettings.showRecommendations !== false },
   );
   const wsConnected = useCustomerMenuRealtime({
@@ -131,6 +127,18 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
     await Promise.allSettled([refetchMenu(), session.refetch(), refetchRecommendations()]);
   }, [crossSell, refetchMenu, refetchRecommendations, session]);
 
+  const handleRequestPayment = useCallback(async () => {
+    if (!tableCode || !session.sessionToken) return;
+    try {
+      await publicMenuService.requestPayment(tableCode, session.sessionToken);
+      session.setPaymentInProgress(true);
+      showSuccess('Đã gửi yêu cầu thanh toán. Nhân viên sẽ tới bàn của bạn ngay!');
+    } catch (err) {
+      showError(err?.message || 'Không thể gửi yêu cầu thanh toán');
+      throw err;
+    }
+  }, [session, showSuccess, showError, tableCode]);
+
   const currentOrder = session.data?.currentOrder;
   const displayItems =
     selectedCategory === 'all'
@@ -165,7 +173,7 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
             />
 
             {currentOrder && (
-              <div className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/95">
+              <div className="sticky top-0 z-40 border-b border-[#E8DCD1] bg-[#F7F0E7]/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:border-[#352C26] dark:bg-[#14100E]/95">
                 <CurrentOrderBanner
                   order={currentOrder}
                   onClick={() => setShowCurrentOrderSheet(true)}
@@ -206,7 +214,11 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
             </div>
           </PullToRefresh>
 
-          <ShoppingCartButton ref={cartRef} cart={customerCart.cart} onOpenCart={() => setShowOrderModal(true)} />
+          <ShoppingCartButton
+            ref={cartRef}
+            cart={customerCart.cart}
+            onOpenCart={() => setShowOrderModal(true)}
+          />
           <CartModal
             isOpen={showOrderModal}
             onClose={() => setShowOrderModal(false)}
@@ -233,22 +245,22 @@ const CustomerMenuContent = ({ tableCode, renderAiAssistant }) => {
             onError={showError}
             onFly={fly}
           />
-          {restaurantSettings.enableAiAssistant !== false && renderAiAssistant &&
+          {restaurantSettings.enableAiAssistant !== false &&
+            renderAiAssistant &&
             renderAiAssistant(
-                showOrderModal ||
+              showOrderModal ||
                 showCurrentOrderSheet ||
                 statusModal.isOpen ||
-                customerCart.selectedItemForOptions
-            )
-          }
+                customerCart.selectedItemForOptions,
+            )}
           <CurrentOrderSheet
             isOpen={showCurrentOrderSheet}
             order={currentOrder}
             onClose={closeCurrentOrderSheet}
+            onRequestPayment={handleRequestPayment}
+            tableStatus={session.data?.tableInfo?.status}
           />
-          {flyItem && (
-            <FlyingImageOverlay item={flyItem} onEnd={clearFly} />
-          )}
+          {flyItem && <FlyingImageOverlay item={flyItem} onEnd={clearFly} />}
         </div>
       </div>
     </div>
@@ -259,8 +271,16 @@ const CustomerMenuRoute = ({ renderAiAssistant }) => {
   const { tableCode: routeTableCode } = useParams();
   const [searchParams] = useSearchParams();
   const tableCode = routeTableCode || searchParams.get('tableCode');
+  const sig = searchParams.get('sig');
 
-  return <CustomerMenuContent key={tableCode || 'no-table'} tableCode={tableCode} renderAiAssistant={renderAiAssistant} />;
+  return (
+    <CustomerMenuContent
+      key={tableCode || 'no-table'}
+      tableCode={tableCode}
+      sig={sig}
+      renderAiAssistant={renderAiAssistant}
+    />
+  );
 };
 
 const CustomerMenu = ({ renderAiAssistant }) => (

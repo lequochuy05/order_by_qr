@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Sparkles, UtensilsCrossed } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
@@ -7,10 +7,8 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { useMenuPageQuery } from '../api/menuQueries.js';
 import { useCategoriesPageQuery } from '@entities/category';
-
-import { menuItemService } from '@entities/menu-item/api/menuItemService.js';
+import { menuItemService, useMenuPageQuery } from '@entities/menu-item';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -28,6 +26,7 @@ const emptyMenuForm = {
   active: true,
   available: true,
   displayOrder: 0,
+  version: null,
 };
 
 const normalizeItemOptions = (itemOptions = []) =>
@@ -54,6 +53,7 @@ const toMenuFormData = (item) => ({
   active: item.active ?? true,
   available: item.available ?? true,
   displayOrder: item.displayOrder ?? 0,
+  version: item.version ?? null,
 });
 
 const MenuManager = () => {
@@ -70,6 +70,7 @@ const MenuManager = () => {
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
   const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const objectPreviewUrlRef = useRef(null);
   const pageSize = 24;
 
   const { confirm } = useConfirmModal();
@@ -96,12 +97,33 @@ const MenuManager = () => {
 
   const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 
+  const clearObjectPreview = () => {
+    if (objectPreviewUrlRef.current) {
+      URL.revokeObjectURL(objectPreviewUrlRef.current);
+      objectPreviewUrlRef.current = null;
+    }
+  };
+
+  const closeModal = () => {
+    clearObjectPreview();
+    setIsModalOpen(false);
+  };
+
   // WebSocket
   // WebSocket update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
 
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, filterCate]);
+
+  useEffect(
+    () => () => {
+      if (objectPreviewUrlRef.current) {
+        URL.revokeObjectURL(objectPreviewUrlRef.current);
+      }
+    },
+    [],
+  );
 
   // SUBMIT
   const handleSubmit = async (e) => {
@@ -119,22 +141,30 @@ const MenuManager = () => {
         active: formData.active ?? true,
         available: formData.available ?? true,
         displayOrder: Number(formData.displayOrder) || 0,
+        version: formData.version ?? null,
       };
 
       let res;
       if (formData.id) {
         res = await menuItemService.update(formData.id, payload);
-        showSuccessToast(`Đã cập nhật món ăn`);
       } else {
         res = await menuItemService.create(payload);
-        showSuccessToast(`Đã thêm món ăn`);
       }
 
       if (selectedFile) {
-        await menuItemService.uploadImage(res.id || formData.id, selectedFile);
+        try {
+          await menuItemService.uploadImage(res.id || formData.id, selectedFile);
+        } catch (uploadError) {
+          closeModal();
+          invalidateMenu();
+          console.error('Error uploading menu item image:', uploadError);
+          showErrorToast('Đã lưu món ăn, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
+          return;
+        }
       }
 
-      setIsModalOpen(false);
+      showSuccessToast(formData.id ? 'Đã cập nhật món ăn' : 'Đã thêm món ăn');
+      closeModal();
       invalidateMenu();
     } catch (err) {
       console.error('Error saving menu item:', err);
@@ -154,7 +184,6 @@ const MenuManager = () => {
   };
 
   // DELETE
-  // DELETE
   const handleDelete = async (id) => {
     const confirmed = await confirm('Xóa món ăn', 'Bạn có chắc chắn muốn xóa món ăn này?');
     if (!confirmed) return;
@@ -172,7 +201,7 @@ const MenuManager = () => {
     setIsAiGenerating(true);
     try {
       const categoryName =
-        categories.find((c) => c.id === formData.categoryId)?.name || '';
+        categories.find((c) => Number(c.id) === Number(formData.categoryId))?.name || '';
       const res = await menuItemService.generateDescription(
         formData.name,
         categoryName,
@@ -202,6 +231,7 @@ const MenuManager = () => {
       setInitialFormData(data);
       setErrors({});
       setSelectedFile(null);
+      clearObjectPreview();
       setPreview(detail.img || '');
       setIsModalOpen(true);
     } catch (err) {
@@ -226,6 +256,7 @@ const MenuManager = () => {
           setFormData(emptyForm);
           setInitialFormData(null);
           setErrors({});
+          clearObjectPreview();
           setPreview('');
           setSelectedFile(null);
           setIsModalOpen(true);
@@ -269,7 +300,7 @@ const MenuManager = () => {
 
       <MenuModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeModal}
         onSubmit={handleSubmit}
         categories={categories}
         formData={formData}
@@ -285,8 +316,11 @@ const MenuManager = () => {
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) {
+            clearObjectPreview();
+            const objectUrl = URL.createObjectURL(f);
+            objectPreviewUrlRef.current = objectUrl;
             setSelectedFile(f);
-            setPreview(URL.createObjectURL(f));
+            setPreview(objectUrl);
           }
         }}
       />

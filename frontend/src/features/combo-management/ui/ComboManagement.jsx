@@ -1,13 +1,13 @@
-import { comboService } from '@entities/combo/api/comboService.js';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { useComboPageQuery } from '../api/comboQueries.js';
-import { useCreateComboMutation, useUpdateComboMutation, useDeleteComboMutation, useToggleComboActiveMutation } from '../api/comboMutations.js';
-import { menuItemService } from '@entities/menu-item/api/menuItemService.js';
+import { comboService, useComboPageQuery } from '@entities/combo';
+import { menuItemService } from '@entities/menu-item';
+import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import ComboCard from './ComboCard';
@@ -15,19 +15,39 @@ import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
 
+const normalizeComboPayload = (data) => ({
+  name: data.name.trim(),
+  description: data.description?.trim() || null,
+  price: Number(data.price),
+  active: data.active ?? true,
+  available: data.available ?? true,
+  displayOrder: Number(data.displayOrder) || 0,
+  version: data.version ?? null,
+  items: (data.items || []).map((item) => ({
+    id: item.id,
+    menuItemId: Number(item.menuItemId),
+    quantity: Number(item.quantity) || 1,
+  })),
+});
+
 const ComboManager = () => {
   const [menuItems, setMenuItems] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCombo, setEditingCombo] = useState(null);
-  const [toggleConfirm, setToggleConfirm] = useState({ isOpen: false, id: null, active: false });
+  const [toggleConfirm, setToggleConfirm] = useState({
+    isOpen: false,
+    id: null,
+    active: false,
+    version: null,
+  });
   const [errors, setErrors] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-      const isMountedRef = useRef(true);
-    const pageSize = 24;
+  const isMountedRef = useRef(true);
+  const pageSize = 24;
 
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
@@ -36,17 +56,17 @@ const ComboManager = () => {
     size: pageSize,
     ...(debouncedSearchTerm.trim() ? { q: debouncedSearchTerm.trim() } : {}),
     ...(statusFilter === 'ACTIVE' ? { active: true } : {}),
-    ...(statusFilter === 'INACTIVE' ? { active: false } : {})
+    ...(statusFilter === 'INACTIVE' ? { active: false } : {}),
   };
   const { data: comboData, isFetching: loading } = useComboPageQuery(queryParams);
   const combos = comboData?.content || [];
   const totalPages = comboData?.totalPages || 0;
   const totalElements = comboData?.totalElements || 0;
-  const { mutateAsync: createCombo } = useCreateComboMutation();
-  const { mutateAsync: updateCombo } = useUpdateComboMutation();
-  const { mutateAsync: deleteCombo } = useDeleteComboMutation();
-  const { mutateAsync: toggleActive } = useToggleComboActiveMutation();
-  
+
+  const invalidateCombos = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -54,8 +74,6 @@ const ComboManager = () => {
       isMountedRef.current = false;
     };
   }, []);
-
-  
 
   const ensureMenuItems = useCallback(async () => {
     if (menuItems.length > 0) return menuItems;
@@ -70,8 +88,9 @@ const ComboManager = () => {
     '/topic/combos',
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        comboService.clearCache();
+        invalidateCombos();
         playNotificationSound();
-        
       }
     },
     { scope: 'admin' },
@@ -83,16 +102,18 @@ const ComboManager = () => {
 
   const handleSubmit = async (data) => {
     try {
+      const payload = normalizeComboPayload(data);
+
       if (data.id) {
-        await updateCombo({ id: data.id, data });
+        await comboService.update(data.id, payload);
         showSuccessToast('Cập nhật Combo thành công!');
       } else {
-        await createCombo(data);
+        await comboService.create(payload);
         showSuccessToast('Thêm mới Combo thành công!');
       }
       setErrors({});
       setIsModalOpen(false);
-      
+      invalidateCombos();
     } catch (err) {
       console.error('Error saving combo:', err);
       const errorMsg = err.message || '';
@@ -111,26 +132,26 @@ const ComboManager = () => {
     const confirmed = await confirm('Xóa combo', 'Bạn có chắc chắn muốn xóa combo này?');
     if (!confirmed) return;
     try {
-      await deleteCombo(id);
+      await comboService.delete(id);
       showSuccessToast('Đã xóa Combo thành công!');
-      
+      invalidateCombos();
     } catch (err) {
       showErrorToast(err);
     }
   };
 
-  const handleRequestToggle = (id, currentActive) => {
-    setToggleConfirm({ isOpen: true, id, active: currentActive });
+  const handleRequestToggle = (id, currentActive, version) => {
+    setToggleConfirm({ isOpen: true, id, active: currentActive, version });
   };
 
   const handleConfirmToggle = async () => {
-    const { id } = toggleConfirm;
+    const { id, version } = toggleConfirm;
     try {
-      await toggleActive(id);
-      setToggleConfirm({ isOpen: false, id: null, active: false });
-      
+      await comboService.toggleActive(id, version);
+      setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
+      invalidateCombos();
     } catch (err) {
-      setToggleConfirm({ isOpen: false, id: null, active: false });
+      setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
       showErrorToast(err);
     }
   };
@@ -204,7 +225,7 @@ const ComboManager = () => {
               key={c.id}
               combo={c}
               onEdit={() => handleEdit(c.id)}
-              onToggle={() => handleRequestToggle(c.id, c.active)}
+              onToggle={() => handleRequestToggle(c.id, c.active, c.version)}
               onDelete={() => handleDelete(c.id)}
               isEditing={detailLoadingId === c.id}
             />
@@ -232,7 +253,7 @@ const ComboManager = () => {
         isOpen={toggleConfirm.isOpen}
         currentActive={toggleConfirm.active}
         onConfirm={handleConfirmToggle}
-        onCancel={() => setToggleConfirm({ isOpen: false, id: null, active: false })}
+        onCancel={() => setToggleConfirm({ isOpen: false, id: null, active: false, version: null })}
       />
 
       <ComboModal

@@ -7,8 +7,8 @@ import StockBadge from './StockBadge.jsx';
 const ActionButton = ({ icon, label, onClick, tone }) => {
   const classes =
     tone === 'orange'
-      ? 'border border-orange-100 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300'
-      : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-800 hover:text-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300';
+      ? 'border border-[#C17C4A]/30 bg-[#F7F0E7] text-[#56372B] hover:bg-[#56372B] hover:text-white dark:border-[#C17C4A]/30 dark:bg-[#2A221E] dark:text-[#D8986A]'
+      : 'border border-[#E8DCD1] bg-white text-[#6B5D55] hover:bg-[#F7F0E7] dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#BDB0A4]';
   return (
     <button
       type="button"
@@ -20,7 +20,7 @@ const ActionButton = ({ icon, label, onClick, tone }) => {
   );
 };
 
-const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
+const InventoryCard = ({ item, onEdit, onStockIn, onAdjust, isManager = true }) => {
   const ratio =
     item.lowStockThreshold > 0
       ? Math.min(
@@ -32,20 +32,20 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
       : 100;
 
   return (
-    <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:border-orange-500 hover:shadow-xl dark:border-slate-800 dark:bg-slate-900">
+    <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#E8DCD1] bg-white p-6 shadow-sm transition-all hover:border-[#C17C4A] hover:shadow-xl dark:border-[#352C26] dark:bg-[#1F1A17]">
       {/* Trang trí góc thẻ */}
-      <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-orange-50 transition-colors group-hover:bg-orange-100 dark:bg-orange-500/10 dark:group-hover:bg-orange-500/20" />
+      <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#F7F0E7] transition-colors group-hover:bg-[#EAE0D5] dark:bg-[#2A221E] dark:group-hover:bg-[#352C26]" />
 
       <div className="mb-5 flex items-start justify-between gap-3 relative z-10">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="shrink-0 rounded-2xl bg-orange-50 p-3 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
+          <div className="shrink-0 rounded-2xl bg-[#F7F0E7] p-3 text-[#C17C4A] dark:bg-[#2A221E] dark:text-[#D8986A]">
             <Boxes size={22} />
           </div>
           <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold text-slate-800 transition-colors group-hover:text-orange-600 dark:text-slate-100 dark:group-hover:text-orange-300">
+            <h3 className="truncate text-lg font-bold text-[#2D1D16] transition-colors group-hover:text-[#C17C4A] dark:text-[#F7F0E7] dark:group-hover:text-[#D8986A]">
               {item.name}
             </h3>
-            <p className="text-xs font-bold text-slate-400 dark:text-slate-500">{item.unit}</p>
+            <p className="text-xs font-bold text-[#9C8E85] dark:text-[#82756B]">{item.unit}</p>
           </div>
         </div>
         <StockBadge item={item} />
@@ -91,14 +91,16 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust }) => {
           onClick={() => onAdjust(item)}
           tone="slate"
         />
-        <button
-          type="button"
-          title="Sửa"
-          onClick={() => onEdit(item)}
-          className="flex h-11 flex-[0.3] items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-600 hover:text-white dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
-        >
-          <Pencil size={18} />
-        </button>
+        {isManager && (
+          <button
+            type="button"
+            title="Sửa"
+            onClick={() => onEdit(item)}
+            className="flex h-11 flex-[0.3] items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 transition-colors hover:bg-blue-600 hover:text-white dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+          >
+            <Pencil size={18} />
+          </button>
+        )}
       </div>
     </div>
   );

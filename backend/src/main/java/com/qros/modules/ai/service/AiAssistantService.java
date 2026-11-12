@@ -28,6 +28,7 @@ public class AiAssistantService {
         this.aiChatGateway = aiChatGateway;
         this.promptBuilder = promptBuilder;
         this.aiRequestsCounter = Counter.builder("ai.requests.total")
+                .tag("feature", "assistant")
                 .description("Total number of AI chat requests processed")
                 .register(meterRegistry);
     }

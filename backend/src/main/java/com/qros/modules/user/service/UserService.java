@@ -1,5 +1,7 @@
 package com.qros.modules.user.service;
 
+import com.qros.modules.auth.service.AccountLockoutService;
+import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -12,9 +14,9 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,16 +31,39 @@ import org.springframework.util.StringUtils;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
+    private final RefreshTokenService refreshTokenService;
+    private final AccountLockoutService accountLockoutService;
+
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            ApplicationEventPublisher eventPublisher,
+            UserMapper userMapper,
+            RefreshTokenService refreshTokenService,
+            AccountLockoutService accountLockoutService) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
+        this.userMapper = userMapper;
+        this.refreshTokenService = refreshTokenService;
+        this.accountLockoutService = accountLockoutService;
+    }
 
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse create(@NonNull CreateUserRequest req) {
+        return create(req, null);
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.USERS, allEntries = true)
+    public UserResponse create(@NonNull CreateUserRequest req, String actorEmail) {
+        validateManagerHierarchyRestrictions(actorEmail, req.role(), "tạo");
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -53,7 +78,8 @@ public class UserService {
         u.setEmail(email);
         u.setPhone(phone);
         u.setPassword(passwordEncoder.encode(req.password()));
-        u.setPasswordChangedAt(AppTime.now());
+        u.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        u.setMustChangePassword(true);
         u.setStatus(req.status());
         u.setRole(req.role());
 
@@ -63,15 +89,28 @@ public class UserService {
         return userMapper.toDto(u);
     }
 
+    private static final List<UserRole> ADMIN_ROLES = List.of(UserRole.ADMIN, UserRole.MANAGER);
+
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req) {
+        return update(id, req, null);
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.USERS, allEntries = true)
+    public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req, String actorEmail) {
+        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "chỉnh sửa");
+        if (req.role() != null) {
+            validateManagerHierarchyRestrictions(actorEmail, req.role(), "phân quyền");
+        }
+
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
         List<User> activeManagers = mayRemoveActiveManager(req)
-                ? userRepository.findByRoleAndStatusForUpdate(UserRole.MANAGER, UserStatus.ACTIVE)
+                ? userRepository.findByRoleInAndStatusForUpdate(ADMIN_ROLES, UserStatus.ACTIVE)
                 : List.of();
-        User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         UserRole nextRole = req.role() != null ? req.role() : u.getRole();
         UserStatus nextStatus = req.status() != null ? req.status() : u.getStatus();
@@ -89,6 +128,10 @@ public class UserService {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
+        boolean emailChanged = !u.getEmail().equalsIgnoreCase(email);
+        boolean statusDeactivated = req.status() != null && req.status() != UserStatus.ACTIVE;
+        boolean roleChanged = req.role() != null && req.role() != u.getRole();
+
         userMapper.updateEntity(u, req);
         u.setEmail(email);
         u.setPhone(phone);
@@ -101,6 +144,9 @@ public class UserService {
         }
 
         userRepository.save(u);
+        if (statusDeactivated || roleChanged || emailChanged) {
+            refreshTokenService.revokeUserTokens(u.getId());
+        }
         // log.info("User updated: {}", u.getEmail());
         eventPublisher.publishEvent(new UserChangeEvent());
         return userMapper.toDto(u);
@@ -109,7 +155,7 @@ public class UserService {
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public void delete(@NonNull Long id, @NonNull String actorEmail) {
-        List<User> activeManagers = userRepository.findByRoleAndStatusForUpdate(UserRole.MANAGER, UserStatus.ACTIVE);
+        List<User> activeManagers = userRepository.findByRoleInAndStatusForUpdate(ADMIN_ROLES, UserStatus.ACTIVE);
         User actor = userRepository
                 .findByEmailIgnoreCase(actorEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -118,31 +164,60 @@ public class UserService {
         if (Objects.equals(actor.getId(), target.getId())) {
             throw new BusinessException(ErrorCode.SELF_DELETE_NOT_ALLOWED);
         }
+        if (actor.getRole() == UserRole.MANAGER
+                && (target.getRole() == UserRole.ADMIN || target.getRole() == UserRole.MANAGER)) {
+            throw new BusinessException(
+                    ErrorCode.FORBIDDEN, "Quản lý không được phép xóa tài khoản Quản trị viên hoặc Quản lý");
+        }
         if (isActiveManager(target) && activeManagers.size() <= 1) {
             throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
         }
 
         userRepository.delete(target);
+        refreshTokenService.revokeUserTokens(target.getId());
         // log.info("User with id {} deleted", id);
         eventPublisher.publishEvent(new UserChangeEvent());
     }
 
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword) {
+        resetPassword(id, newPassword, null);
+    }
+
+    @Transactional
+    public void resetPassword(@NonNull Long id, @NonNull String newPassword, String actorEmail) {
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "đặt lại mật khẩu cho");
 
         if (!StringUtils.hasText(newPassword)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "New password cannot be empty");
         }
 
         u.setPassword(passwordEncoder.encode(newPassword));
-        u.setPasswordChangedAt(AppTime.now());
+        u.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        u.setMustChangePassword(true);
         userRepository.save(u);
+        refreshTokenService.revokeUserTokens(u.getId());
+        accountLockoutService.unlock(u.getEmail());
         // log.info("Password reset for user: {}", u.getEmail());
     }
 
+    private void validateManagerHierarchyRestrictions(String actorEmail, UserRole targetRole, String action) {
+        if (!StringUtils.hasText(actorEmail) || targetRole == null) {
+            return;
+        }
+        User actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
+        if (actor != null && actor.getRole() == UserRole.MANAGER) {
+            if (targetRole == UserRole.ADMIN || targetRole == UserRole.MANAGER) {
+                throw new BusinessException(
+                        ErrorCode.FORBIDDEN,
+                        "Quản lý không được phép " + action + " tài khoản Quản trị viên hoặc Quản lý");
+            }
+        }
+    }
+
     private boolean mayRemoveActiveManager(UpdateUserRequest req) {
-        return (req.role() != null && req.role() != UserRole.MANAGER)
+        return (req.role() != null && !ADMIN_ROLES.contains(req.role()))
                 || (req.status() != null && req.status() != UserStatus.ACTIVE);
     }
 
@@ -151,6 +226,6 @@ public class UserService {
     }
 
     private boolean isActiveManager(UserRole role, UserStatus status) {
-        return role == UserRole.MANAGER && status == UserStatus.ACTIVE;
+        return role != null && ADMIN_ROLES.contains(role) && status == UserStatus.ACTIVE;
     }
 }

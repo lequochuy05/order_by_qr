@@ -2,6 +2,7 @@ package com.qros.modules.payment.service;
 
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.service.OrderSettlementService;
+import com.qros.modules.payment.dto.internal.CashSettlementResult;
 import com.qros.modules.payment.dto.internal.OnlinePaymentPreparation;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
@@ -129,18 +130,22 @@ public class PaymentPersistenceService {
     }
 
     @Transactional
-    public PaymentTransaction settleCash(@NonNull PaymentCreateRequest request, Long userId) {
+    public CashSettlementResult settleCash(@NonNull PaymentCreateRequest request, Long userId) {
         Long orderId = Objects.requireNonNull(request.orderId());
         String idempotencyKey = cashIdempotencyKey(orderId, request.idempotencyKey());
 
         PaymentTransaction existing =
                 transactionRepository.findFirstByIdempotencyKey(idempotencyKey).orElse(null);
         if (existing != null) {
-            return validateReusable(existing, orderId, PaymentMethod.CASH);
+            return new CashSettlementResult(validateReusable(existing, orderId, PaymentMethod.CASH), List.of());
         }
 
-        Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode());
+        boolean confirmUnfinished = Boolean.TRUE.equals(request.confirmUnfinishedItems());
+        Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode(), confirmUnfinished);
         User currentUser = resolveUser(userId);
+
+        String providerPayload = buildCashProviderPayload(request);
+
         PaymentTransaction transaction = PaymentTransaction.builder()
                 .order(order)
                 .amount(currentFinalAmount(order))
@@ -149,13 +154,13 @@ public class PaymentPersistenceService {
                 .createdBy(currentUser)
                 .businessDate(order.getBusinessDate() != null ? order.getBusinessDate() : AppTime.today())
                 .idempotencyKey(idempotencyKey)
-                .providerPayload("{\"provider\":\"CASH\",\"event\":\"MANUAL_PAYMENT\",\"reference\":\"\"}")
+                .providerPayload(providerPayload)
                 .build();
 
         transaction = transactionRepository.saveAndFlush(transaction);
-        paymentCompletionService.completeSuccessfulTransaction(transaction);
-        cancelPendingOnlineTransactions(order.getId());
-        return transaction;
+        paymentCompletionService.completeSuccessfulCashTransaction(transaction, order);
+        List<PaymentTransaction> cancelledOnlineTransactions = cancelPendingOnlineTransactions(order.getId());
+        return new CashSettlementResult(transaction, cancelledOnlineTransactions);
     }
 
     @Transactional(readOnly = true)
@@ -318,7 +323,7 @@ public class PaymentPersistenceService {
                 orderSettlementService.loadForPayment(transaction.getOrder().getId()));
     }
 
-    private void cancelPendingOnlineTransactions(Long orderId) {
+    private List<PaymentTransaction> cancelPendingOnlineTransactions(Long orderId) {
         List<PaymentTransaction> transactions = transactionRepository.findPendingOnlineTransactionsByOrderId(orderId);
         for (PaymentTransaction transaction : transactions) {
             transaction.setStatus(PaymentTransactionStatus.CANCELLED);
@@ -328,6 +333,7 @@ public class PaymentPersistenceService {
         if (!transactions.isEmpty()) {
             transactionRepository.saveAll(transactions);
         }
+        return transactions;
     }
 
     private User resolveUser(Long userId) {
@@ -336,6 +342,19 @@ public class PaymentPersistenceService {
 
     private BigDecimal currentFinalAmount(Order order) {
         return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
+    }
+
+    private String buildCashProviderPayload(PaymentCreateRequest request) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"provider\":\"CASH\",\"event\":\"MANUAL_PAYMENT\",\"reference\":\"\"");
+        if (request.cashReceived() != null) {
+            sb.append(",\"cashReceived\":").append(request.cashReceived().toPlainString());
+        }
+        if (request.changeAmount() != null) {
+            sb.append(",\"changeAmount\":").append(request.changeAmount().toPlainString());
+        }
+        sb.append('}');
+        return sb.toString();
     }
 
     private String cashIdempotencyKey(Long orderId, String requestedKey) {

@@ -1,6 +1,7 @@
 package com.qros.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -8,6 +9,8 @@ import static org.mockito.Mockito.when;
 
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
@@ -18,11 +21,18 @@ import com.qros.modules.order.service.OrderTableSyncService;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.event.DomainEvents.OrderSettledEvent;
+import com.qros.shared.exception.BusinessException;
+import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,6 +74,9 @@ class OrderSettlementServiceTest {
     @Mock
     TableSessionService tableSessionService;
 
+    @Mock
+    SystemSettingsService systemSettingsService;
+
     private OrderSettlementService settlementService;
 
     @BeforeEach
@@ -77,7 +90,8 @@ class OrderSettlementServiceTest {
                 eventPublisher,
                 orderPricingService,
                 voucherCheckoutService,
-                tableSessionService);
+                tableSessionService,
+                systemSettingsService);
     }
 
     @Test
@@ -132,5 +146,76 @@ class OrderSettlementServiceTest {
         assertThat(result).isSameAs(order);
         verify(eventPublisher, never()).publishEvent(any());
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void prepareForPaymentThrowsWhenUnfinishedItemsAndSettingDisabled() {
+        OrderItem item =
+                OrderItem.builder().id(1L).status(OrderItemStatus.COOKING).build();
+        Order order = Order.builder()
+                .id(20L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .finalAmount(BigDecimal.valueOf(100_000))
+                .orderItems(new LinkedHashSet<>(Set.of(item)))
+                .build();
+
+        when(orderRepository.findPaymentByIdForUpdate(20L)).thenReturn(Optional.of(order));
+        SystemSettings settings = SystemSettings.builder()
+                .allowSettlementWithUnfinishedItems(false)
+                .build();
+        when(systemSettingsService.getSettingsEntity()).thenReturn(settings);
+
+        assertThatThrownBy(() -> settlementService.prepareForPayment(20L, null, false))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS);
+    }
+
+    @Test
+    void prepareForPaymentThrowsWhenUnfinishedItemsSettingEnabledButUnconfirmed() {
+        OrderItem item =
+                OrderItem.builder().id(1L).status(OrderItemStatus.PENDING).build();
+        Order order = Order.builder()
+                .id(21L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .finalAmount(BigDecimal.valueOf(100_000))
+                .orderItems(new LinkedHashSet<>(Set.of(item)))
+                .build();
+
+        when(orderRepository.findPaymentByIdForUpdate(21L)).thenReturn(Optional.of(order));
+        SystemSettings settings = SystemSettings.builder()
+                .allowSettlementWithUnfinishedItems(true)
+                .build();
+        when(systemSettingsService.getSettingsEntity()).thenReturn(settings);
+
+        assertThatThrownBy(() -> settlementService.prepareForPayment(21L, null, false))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS);
+    }
+
+    @Test
+    void prepareForPaymentSucceedsWhenUnfinishedItemsSettingEnabledAndConfirmed() {
+        OrderItem item =
+                OrderItem.builder().id(1L).status(OrderItemStatus.PENDING).build();
+        Order order = Order.builder()
+                .id(22L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .finalAmount(BigDecimal.valueOf(100_000))
+                .orderItems(new LinkedHashSet<>(Set.of(item)))
+                .build();
+
+        when(orderRepository.findPaymentByIdForUpdate(22L)).thenReturn(Optional.of(order));
+        SystemSettings settings = SystemSettings.builder()
+                .allowSettlementWithUnfinishedItems(true)
+                .build();
+        when(systemSettingsService.getSettingsEntity()).thenReturn(settings);
+
+        Order result = settlementService.prepareForPayment(22L, null, true);
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isEqualTo(22L);
     }
 }

@@ -17,13 +17,15 @@ const TableCard = ({
 }) => {
   const finalAmount = getOrderFinalAmount(order);
   const hasOrder = order && finalAmount > 0;
-  const isManager = userRole === 'MANAGER'; // Kiểm tra quyền
+  const isManager = userRole === 'ADMIN' || userRole === 'MANAGER'; // Cho phép cả Admin và Manager sửa/xóa bàn
   const tableTitle = table.displayName || `Bàn ${table.tableNumber}`;
   const memberNumbers = table.memberTableNumbers || [];
   const totalCapacity = table.totalCapacity || table.capacity;
 
   const status = getTableStatusMeta(table.status);
-  const isWaitingPayment = table.status === TABLE_STATUSES.WAITING_FOR_PAYMENT;
+  const isWaitingPayment =
+    table.status === TABLE_STATUSES.WAITING_FOR_PAYMENT ||
+    order?.status === 'AWAITING_PAYMENT';
 
   // Tính toán thời gian đã ngồi, tự động cập nhật mỗi 30s
   const calcTime = (createdAt) => {
@@ -75,7 +77,7 @@ const TableCard = ({
               onClick={onMerge}
               aria-label={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
               title={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
-              className="rounded-lg border border-slate-100 bg-white p-1.5 text-orange-500 shadow-sm transition hover:bg-orange-50 active:bg-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-orange-300 dark:hover:bg-orange-500/10 dark:active:bg-orange-500/20"
+              className="rounded-lg border border-slate-100 bg-white p-1.5 text-[#C17C4A] shadow-sm transition hover:bg-[#F7F0E7] active:bg-[#EAE0D5] dark:border-slate-700 dark:bg-slate-900 dark:text-[#D8986A] dark:hover:bg-[#C17C4A]/10 dark:active:bg-[#C17C4A]/20"
             >
               <Link2 size={14} />
             </button>
@@ -94,7 +96,7 @@ const TableCard = ({
                   type="button"
                   onClick={onDelete}
                   aria-label="Xóa bàn"
-                  className="rounded-lg border border-slate-100 bg-white p-1.5 text-red-500 shadow-sm transition hover:bg-red-50 active:bg-red-100 dark:border-slate-700 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-500/10 dark:active:bg-red-500/20"
+                  className="rounded-lg border border-slate-100 bg-white p-1.5 text-rose-500 shadow-sm transition hover:bg-rose-50 active:bg-rose-100 dark:border-slate-700 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:active:bg-rose-500/20"
                   title="Xóa bàn"
                 >
                   <Trash2 size={14} />
@@ -105,7 +107,7 @@ const TableCard = ({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#6B5D55] dark:text-[#BDB0A4]">
         <div className="flex items-center gap-1">
           <Users size={14} />
           <span>
@@ -114,20 +116,20 @@ const TableCard = ({
           </span>
         </div>
         {table.merged && (
-          <div className="flex items-center gap-1 rounded bg-orange-50 px-1.5 font-medium text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+          <div className="flex items-center gap-1 rounded bg-[#F7F0E7] px-1.5 font-bold text-[#C17C4A] border border-[#C17C4A]/30 dark:bg-[#2A221E] dark:text-[#D8986A]">
             <Link2 size={14} /> <span>{memberNumbers.join(' + ')}</span>
           </div>
         )}
         {timeElapsed && (
-          <div className="flex items-center gap-1 rounded bg-amber-50 px-1.5 font-medium text-amber-600 dark:bg-amber-500/10 dark:text-amber-300">
+          <div className="flex items-center gap-1 rounded bg-amber-50 px-1.5 font-semibold text-amber-700 border border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-300">
             <Clock size={14} /> <span>{timeElapsed}</span>
           </div>
         )}
       </div>
 
       <div className="mb-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Tạm tính:</p>
-        <p className="text-2xl font-black text-orange-600 dark:text-orange-300">
+        <p className="text-xs font-bold uppercase tracking-wider text-[#9C8E85] dark:text-[#82756B]">Tạm tính:</p>
+        <p className="text-2xl font-black text-[#56372B] dark:text-[#D8986A]">
           {hasOrder ? fmtVND(finalAmount) : fmtVND(0)}
         </p>
       </div>
@@ -135,20 +137,20 @@ const TableCard = ({
       <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <button
           onClick={onDetail}
-          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2 text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-xl border border-[#E8DCD1] bg-white px-2 py-2 text-xs font-bold text-[#56372B] transition hover:bg-[#F7F0E7] dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#F7F0E7] dark:hover:bg-[#2A221E]"
         >
           <FileText className="shrink-0" size={16} /> <span className="truncate">Chi tiết</span>
         </button>
         <button
           onClick={onAddItems}
-          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-lg bg-orange-100 px-2 py-2 text-orange-600 transition hover:bg-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20"
+          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-xl bg-[#F7F0E7] px-2 py-2 text-xs font-bold text-[#56372B] transition hover:bg-[#EAE0D5] dark:bg-[#2A221E] dark:text-[#D8986A] dark:hover:bg-[#352C26]"
         >
           <PlusCircle className="shrink-0" size={16} /> <span className="truncate">Thêm món</span>
         </button>
         {hasOrder && (
           <button
             onClick={onPay}
-            className="btn-pay flex items-center justify-center gap-1 rounded-lg bg-green-500 px-2 py-2 text-white shadow-md hover:bg-green-600 min-[360px]:col-span-2"
+            className="btn-pay flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-2 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-98 min-[360px]:col-span-2"
           >
             <CreditCard size={16} /> Thanh toán
           </button>

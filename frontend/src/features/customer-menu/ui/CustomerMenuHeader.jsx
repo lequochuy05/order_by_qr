@@ -17,7 +17,7 @@ const CustomerMenuHeader = ({
   loadingWeather,
 }) => (
   <div
-    className="rounded-b-3xl bg-orange-500 px-5 pb-4 pt-3 text-white shadow-lg"
+    className="rounded-b-3xl bg-[#56372B] px-5 pb-5 pt-3 text-[#F7F0E7] shadow-xl border-b border-[#432A21]"
     style={{ paddingTop: 'calc(0.75rem + var(--safe-area-inset-top))' }}
   >
     <div className="flex items-center justify-between">
@@ -26,12 +26,12 @@ const CustomerMenuHeader = ({
           <img
             src={restaurantSettings.logoUrl}
             alt={restaurantSettings.restaurantName}
-            className="h-9 w-9 shrink-0 rounded-xl border border-white/30 bg-white/20 object-cover"
+            className="h-10 w-10 shrink-0 rounded-2xl border border-white/20 bg-white/10 object-cover shadow-sm"
           />
         )}
 
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-extrabold uppercase tracking-tight">
+          <h1 className="truncate text-lg font-black uppercase tracking-tight text-white">
             {restaurantSettings.restaurantName || 'QROS'}
           </h1>
         </div>
@@ -41,14 +41,16 @@ const CustomerMenuHeader = ({
         <button
           type="button"
           onClick={onToggleDarkMode}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/30 bg-white/20 text-white shadow-sm transition-all duration-300 hover:bg-white/30"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-sm transition-all duration-300 hover:bg-white/20"
           aria-label="Chuyển chế độ sáng tối"
         >
           {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
         </button>
         <div
-          className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold transition-all duration-500 ${
-            wsConnected ? 'border-green-400 bg-green-500/20' : 'border-red-400 bg-red-500/20'
+          className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider transition-all duration-500 ${
+            wsConnected
+              ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
+              : 'border-rose-400/50 bg-rose-500/20 text-rose-200'
           }`}
           style={{ fontSize: '10px' }}
         >
@@ -59,8 +61,8 @@ const CustomerMenuHeader = ({
     </div>
 
     {/* Greeting + table number row */}
-    <div className="mt-2 flex items-center gap-2 text-sm text-orange-100">
-      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
+    <div className="mt-3 flex items-center gap-2 text-sm text-[#F7F0E7]/90">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[#C17C4A] px-3 py-0.5 text-xs font-black text-white shadow-sm">
         Bàn {tableNumber || '?'}
       </span>
       {loadingWeather ? (
@@ -73,7 +75,7 @@ const CustomerMenuHeader = ({
         </span>
       ) : (
         <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
-          Hôm nay ăn gì ngon?
+          Hôm nay bạn muốn thưởng thức món gì?
         </span>
       )}
     </div>

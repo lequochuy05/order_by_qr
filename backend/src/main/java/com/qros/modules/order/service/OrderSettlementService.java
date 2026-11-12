@@ -9,6 +9,7 @@ import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
@@ -39,18 +40,24 @@ public class OrderSettlementService {
     private final OrderPricingService orderPricingService;
     private final VoucherCheckoutService voucherCheckoutService;
     private final TableSessionService tableSessionService;
+    private final SystemSettingsService systemSettingsService;
 
     @Transactional
     public Order loadForPayment(@NonNull Long orderId) {
         return orderRepository
-                .findByIdForUpdate(orderId)
+                .findPaymentByIdForUpdate(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
     }
 
     @Transactional
     public Order prepareForPayment(@NonNull Long orderId, String voucherCode) {
+        return prepareForPayment(orderId, voucherCode, false);
+    }
+
+    @Transactional
+    public Order prepareForPayment(@NonNull Long orderId, String voucherCode, boolean confirmUnfinishedItems) {
         Order order = loadForPayment(orderId);
-        validatePayable(order);
+        validatePayable(order, confirmUnfinishedItems);
 
         if (voucherCode != null && !voucherCode.isBlank()) {
             VoucherPaymentResult voucherResult =
@@ -62,7 +69,7 @@ public class OrderSettlementService {
 
             order = orderRepository.save(order);
             orderCacheInvalidationService.evictAfterOrderMutation(order);
-            validatePayable(order);
+            validatePayable(order, confirmUnfinishedItems);
         }
 
         return order;
@@ -101,10 +108,11 @@ public class OrderSettlementService {
 
         orderAuditService.recordOrderStatus(savedOrder, fromStatus, savedOrder.getStatus(), paidBy, auditReason);
 
-        orderTableSyncService.recalcTableStatus(savedOrder);
         if (savedOrder.getTableSession() != null) {
             tableSessionService.closeSession(
                     savedOrder.getTableSession().getId(), TableSessionStatus.CLOSED, "Order settled");
+        } else {
+            orderTableSyncService.recalcTableStatus(savedOrder);
         }
         orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
         eventPublisher.publishEvent(new OrderSettledEvent(savedOrder.getId(), savedOrder.getBusinessDate()));
@@ -115,7 +123,7 @@ public class OrderSettlementService {
         return savedOrder;
     }
 
-    private void validatePayable(Order order) {
+    private void validatePayable(Order order, boolean confirmUnfinishedItems) {
         if (order.getPaymentStatus() == PaymentStatus.PAID || order.getStatus() == OrderStatus.COMPLETED) {
             throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "This order is already settled");
         }
@@ -128,6 +136,25 @@ public class OrderSettlementService {
 
         if (currentFinalAmount(order).compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Order has no payable amount");
+        }
+
+        boolean hasUnfinishedItems =
+                order.getOrderItems().stream().anyMatch(item -> item.isPending() || item.isCooking());
+
+        if (hasUnfinishedItems) {
+            boolean allowed = Boolean.TRUE.equals(
+                    systemSettingsService.getSettingsEntity().getAllowSettlementWithUnfinishedItems());
+            if (!allowed) {
+                throw new BusinessException(
+                        ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
+                        "Cannot settle order: kitchen still has items being prepared");
+            }
+            if (!confirmUnfinishedItems) {
+                throw new BusinessException(
+                        ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
+                        "Order has items still being prepared. Set confirmUnfinishedItems=true to proceed");
+            }
+            log.warn("Order #{} settled with unfinished kitchen items (confirmUnfinishedItems=true)", order.getId());
         }
     }
 

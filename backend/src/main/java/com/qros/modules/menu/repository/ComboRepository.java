@@ -22,8 +22,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
           AND (CAST(:active AS boolean) IS NULL OR c.active = :active)
         ORDER BY c.displayOrder ASC, c.name ASC
     """)
-    Page<Combo> searchManagementSummaries(
-            @Param("keyword") String keyword, @Param("active") Boolean active, Pageable pageable);
+    Page<Combo> searchSummaries(@Param("keyword") String keyword, @Param("active") Boolean active, Pageable pageable);
 
     @Query(
             """

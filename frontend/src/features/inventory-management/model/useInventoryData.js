@@ -5,7 +5,11 @@ import { INVENTORY_PAGE_SIZE } from '../lib/inventoryConstants.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { playNotificationSound } from '@shared/lib/notificationSound.js';
-import { useInventoryPageQuery, useInventorySummaryQuery, useStockMovementsQuery } from '../api/inventoryQueries.js';
+import {
+  useInventoryPageQuery,
+  useInventorySummaryQuery,
+  useStockMovementsQuery,
+} from '@entities/inventory';
 
 const useInventoryData = ({ onInventoryUpdated } = {}) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,11 +29,11 @@ const useInventoryData = ({ onInventoryUpdated } = {}) => {
   const { data: summary } = useInventorySummaryQuery();
 
   const { data: movementsData, isFetching: movementsLoading } = useStockMovementsQuery(
-    {}, 
-    { enabled: activeTab === 'history' }
+    {},
+    { enabled: activeTab === 'history' },
   );
 
-    useEffect(() => {
+  useEffect(() => {
     // eslint-disable-next-line
     setCurrentPage(0);
   }, [debouncedSearchTerm, stockFilter]);

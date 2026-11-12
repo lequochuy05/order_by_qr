@@ -39,7 +39,8 @@ public class InventoryItemMapper {
                 item.availableQuantity(),
                 item.getLowStockThreshold(),
                 item.isLowStock(),
-                item.getActive());
+                item.getActive(),
+                item.getVersion());
     }
 
     public List<InventoryItemResponse> toResponses(List<InventoryItem> items) {

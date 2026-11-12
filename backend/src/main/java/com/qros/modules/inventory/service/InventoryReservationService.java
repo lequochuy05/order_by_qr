@@ -183,6 +183,8 @@ public class InventoryReservationService {
                 eventPublisher.publishEvent(new InventoryChangeEvent("inventory_reserved", orderItem.getId()));
             }
         }
+
+        eventPublisher.publishEvent(new InventoryChangeEvent("inventory_reserved", "batch"));
     }
 
     private InventoryReservationResult reserveForOrderItem(
@@ -288,9 +290,12 @@ public class InventoryReservationService {
             return;
         }
 
+        Map<Long, InventoryItem> lockedItemsById = lockReservationInventoryItems(reservations);
+        var releasedAt = AppTime.now();
+
         for (OrderItemInventoryReservation reservation : reservations) {
             InventoryItem item =
-                    getInventoryItemForUpdate(reservation.getInventoryItem().getId());
+                    lockedItemsById.get(reservation.getInventoryItem().getId());
 
             BigDecimal newReservedQuantity = normalizeQuantity(item.getReservedQuantity())
                     .subtract(normalizeQuantity(reservation.getReservedQuantity()));
@@ -302,12 +307,11 @@ public class InventoryReservationService {
             item.setReservedQuantity(newReservedQuantity);
 
             reservation.setStatus(InventoryReservationStatus.RELEASED);
-            reservation.setReleasedAt(AppTime.now());
-
-            inventoryItemRepository.save(item);
-            reservationRepository.save(reservation);
+            reservation.setReleasedAt(releasedAt);
         }
 
+        inventoryItemRepository.saveAll(lockedItemsById.values());
+        reservationRepository.saveAll(reservations);
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_released", orderItemId));
     }
 
@@ -322,9 +326,12 @@ public class InventoryReservationService {
             return;
         }
 
+        Map<Long, InventoryItem> lockedItemsById = lockReservationInventoryItems(reservations);
+        var consumedAt = AppTime.now();
+
         for (OrderItemInventoryReservation reservation : reservations) {
             InventoryItem item =
-                    getInventoryItemForUpdate(reservation.getInventoryItem().getId());
+                    lockedItemsById.get(reservation.getInventoryItem().getId());
 
             BigDecimal consumedQuantity = normalizeQuantity(reservation.getReservedQuantity());
 
@@ -346,10 +353,7 @@ public class InventoryReservationService {
             item.setReservedQuantity(newReservedQuantity);
 
             reservation.setStatus(InventoryReservationStatus.CONSUMED);
-            reservation.setConsumedAt(AppTime.now());
-
-            inventoryItemRepository.save(item);
-            reservationRepository.save(reservation);
+            reservation.setConsumedAt(consumedAt);
 
             stockMovementService.recordMovement(
                     item,
@@ -361,6 +365,8 @@ public class InventoryReservationService {
                     "Consume inventory for order item #" + orderItemId);
         }
 
+        inventoryItemRepository.saveAll(lockedItemsById.values());
+        reservationRepository.saveAll(reservations);
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_consumed", orderItemId));
     }
 
@@ -475,10 +481,17 @@ public class InventoryReservationService {
         }
     }
 
-    private InventoryItem getInventoryItemForUpdate(Long inventoryItemId) {
-        return inventoryItemRepository
-                .findByIdForUpdate(inventoryItemId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND));
+    private Map<Long, InventoryItem> lockReservationInventoryItems(List<OrderItemInventoryReservation> reservations) {
+        List<Long> sortedInventoryItemIds = reservations.stream()
+                .map(OrderItemInventoryReservation::getInventoryItem)
+                .filter(Objects::nonNull)
+                .map(InventoryItem::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        return getInventoryItemsForUpdate(sortedInventoryItemIds);
     }
 
     private Map<Long, InventoryItem> getInventoryItemsForUpdate(List<Long> sortedInventoryItemIds) {

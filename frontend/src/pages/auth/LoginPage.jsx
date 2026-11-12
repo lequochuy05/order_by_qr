@@ -4,8 +4,17 @@ import { useAuth } from '@features/auth';
 import { authService } from '@shared/api/authService.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { showSuccessToast } from '@shared/lib/toast.js';
-import { Lock, Mail, Loader2, AlertCircle, ShieldCheck, ArrowLeft, RefreshCw, KeyRound } from 'lucide-react';
-import { FaGoogle, FaFacebook, FaTwitter } from 'react-icons/fa';
+import {
+  Lock,
+  Mail,
+  Loader2,
+  AlertCircle,
+  ShieldCheck,
+  ArrowLeft,
+  RefreshCw,
+  KeyRound,
+  UtensilsCrossed,
+} from 'lucide-react';
 
 const LoginPage = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -129,30 +138,44 @@ const LoginPage = () => {
   };
 
   return (
-    // Background
-    <div className="min-h-screen bg-gradient-to-br from-[#74ebd5] to-[#ACB6E5] flex items-center justify-center p-4">
-      {/* Container chính */}
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 md:p-12 animate-in fade-in zoom-in duration-300">
+    <div
+      className="relative flex min-h-screen items-center justify-center bg-brand-surface bg-[#F7F0E7] p-4 transition-colors dark:bg-[#14100E]"
+      style={{ backgroundColor: 'var(--brand-surface, #F7F0E7)' }}
+    >
+      {/* Decorative Warm Ambient Glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#C17C4A]/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[#56372B]/10 blur-3xl dark:bg-[#C17C4A]/5" />
+      </div>
+
+      {/* Main Card */}
+      <div
+        className="relative w-full max-w-md rounded-3xl border border-brand-border border-[#E8DCD1] bg-white p-8 shadow-xl transition-all animate-in fade-in zoom-in duration-300 dark:border-[#352C26] dark:bg-[#1F1A17] md:p-10"
+        style={{ borderColor: 'var(--border-color, #E8DCD1)' }}
+      >
         {/* ================= GIAO DIỆN XÁC THỰC 2FA (ADMIN) ================= */}
         {twoFactorData ? (
           <div>
             <button
               type="button"
               onClick={handleBackToLogin}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors mb-4"
+              className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 transition-colors hover:text-[#56372B] dark:text-slate-400 dark:hover:text-[#D8986A]"
             >
               <ArrowLeft size={16} /> Quay lại đăng nhập
             </button>
 
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 mb-3 shadow-inner">
+            <div className="mb-6 text-center">
+              <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 shadow-inner dark:bg-amber-500/15 dark:text-amber-400">
                 <ShieldCheck size={32} />
               </div>
-              <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Xác Thực 2 Bước (2FA)</h1>
-              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-                Tài khoản Quản trị viên yêu cầu xác thực bảo mật. Hệ thống đã gửi mã OTP 6 chữ số tới:
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                Xác Thực 2 Bước (2FA)
+              </h1>
+              <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                Tài khoản Quản trị viên yêu cầu xác thực bảo mật. Hệ thống đã gửi mã OTP 6 chữ số
+                tới:
                 <br />
-                <span className="font-semibold text-gray-800 text-sm mt-0.5 inline-block">
+                <span className="mt-1 inline-block font-bold text-slate-800 dark:text-slate-200">
                   {twoFactorData.email || 'email quản trị'}
                 </span>
               </p>
@@ -160,7 +183,7 @@ const LoginPage = () => {
 
             {/* Hiển thị lỗi */}
             {error && (
-              <div className="mb-5 p-3.5 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs flex items-center gap-2.5 rounded-r-xl">
+              <div className="mb-5 flex items-center gap-2.5 rounded-xl border-l-4 border-rose-500 bg-rose-50 p-3.5 text-xs text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
                 <AlertCircle size={18} className="shrink-0" />
                 <span>{error}</span>
               </div>
@@ -168,11 +191,14 @@ const LoginPage = () => {
 
             <form onSubmit={handleVerify2fa} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider block text-center">
+                <label className="block text-center text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   Nhập mã OTP (6 chữ số)
                 </label>
                 <div className="relative">
-                  <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <KeyRound
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={20}
+                  />
                   <input
                     type="text"
                     inputMode="numeric"
@@ -186,23 +212,25 @@ const LoginPage = () => {
                       setOtp(val);
                       if (error) setError('');
                     }}
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-orange-500 focus:bg-white focus:ring-4 focus:ring-orange-100 outline-none transition-all text-center text-2xl font-mono font-bold tracking-[0.35em]"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 pl-12 pr-4 text-center font-mono text-2xl font-bold tracking-[0.35em] text-slate-900 outline-none transition-all placeholder:text-slate-300 focus:border-[#C17C4A] focus:bg-white focus:ring-4 focus:ring-[#C17C4A]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     placeholder="••••••"
                   />
                 </div>
               </div>
 
               {/* Countdown / Resend OTP */}
-              <div className="flex items-center justify-between text-xs text-gray-500 px-1">
+              <div className="flex items-center justify-between px-1 text-xs text-slate-500 dark:text-slate-400">
                 <span>Hết hạn trong 5 phút</span>
                 {resendCooldown > 0 ? (
-                  <span className="font-medium text-gray-400">Gửi lại mã ({resendCooldown}s)</span>
+                  <span className="font-medium text-slate-400 dark:text-slate-500">
+                    Gửi lại mã ({resendCooldown}s)
+                  </span>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOtp}
                     disabled={isResending}
-                    className="font-bold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1 hover:underline"
+                    className="inline-flex items-center gap-1 font-bold text-[#C17C4A] hover:underline"
                   >
                     {isResending ? (
                       <Loader2 size={13} className="animate-spin" />
@@ -218,39 +246,59 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || otp.trim().length !== 6}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-3.5 rounded-xl font-bold text-base shadow-lg shadow-orange-200 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary bg-[#56372B] py-3.5 text-base font-bold text-white shadow-md transition-all hover:bg-[#432A21] active:scale-[0.98] disabled:opacity-50 dark:bg-brand-secondary dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
+                style={{ backgroundColor: '#56372B', color: '#FFFFFF' }}
               >
-                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'XÁC NHẬN ĐĂNG NHẬP'}
+                {isSubmitting ? (
+                  <Loader2 className="animate-spin text-white" size={20} />
+                ) : (
+                  <span className="text-white font-bold">XÁC NHẬN ĐĂNG NHẬP</span>
+                )}
               </button>
             </form>
           </div>
         ) : (
           /* ================= GIAO DIỆN ĐĂNG NHẬP CHÍNH ================= */
           <div>
-            {/* Tiêu đề */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-[#e74c3c] tracking-tight">Đăng Nhập</h1>
-              <p className="mt-1 text-xs text-gray-400">Hệ thống gọi món QR & Quản lý nhà hàng</p>
+            {/* Logo & Header */}
+            <div className="mb-8 text-center">
+              <div
+                className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-primary bg-[#56372B] text-[#F7F0E7] shadow-md dark:bg-brand-secondary dark:bg-[#C17C4A]"
+                style={{ backgroundColor: '#56372B', color: '#F7F0E7' }}
+              >
+                <UtensilsCrossed size={28} />
+              </div>
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+                Đăng Nhập
+              </h1>
+              <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                QROS - Hệ thống gọi món bằng mã QR
+              </p>
             </div>
 
             {/* Hiển thị lỗi */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm flex items-center gap-3 rounded-r-xl">
-                <AlertCircle size={20} className="shrink-0" />
-                {error}
+              <div className="mb-6 flex items-center gap-3 rounded-xl border-l-4 border-rose-500 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Input */}
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-600 ml-1">Email</label>
+              <div className="space-y-1.5">
+                <label className="ml-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  Email
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Mail
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
                   <input
                     type="email"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
-                    placeholder="abc@xyz.com"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#C17C4A] focus:bg-white focus:ring-4 focus:ring-[#C17C4A]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    placeholder="wuchuy.dev@gmail.com"
                     value={credentials.email}
                     onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                   />
@@ -258,24 +306,30 @@ const LoginPage = () => {
               </div>
 
               {/* Password Input */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-sm font-semibold text-gray-600 ml-1">Mật khẩu</label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Mật khẩu
+                  </label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs font-semibold text-[#C17C4A] transition-colors hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
                   <input
                     type="password"
-                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:border-[#e74c3c] focus:bg-white focus:ring-4 focus:ring-red-100 outline-none transition-all"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#C17C4A] focus:bg-white focus:ring-4 focus:ring-[#C17C4A]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     placeholder="••••••••"
                     value={credentials.password}
                     onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                   />
-                </div>
-                <div className="flex justify-end">
-                  <Link to="/forgot-password" className="text-xs text-emerald-600 hover:underline">
-                    Quên mật khẩu?
-                  </Link>
                 </div>
               </div>
 
@@ -283,43 +337,31 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-[#3498db] hover:bg-[#2980b9] text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-200 hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-3 mt-4"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary bg-[#56372B] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#432A21] active:scale-[0.98] disabled:opacity-50 dark:bg-brand-secondary dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
+                style={{ backgroundColor: '#56372B', color: '#FFFFFF' }}
               >
-                {isSubmitting ? <Loader2 className="animate-spin" /> : 'ĐĂNG NHẬP NGAY'}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="animate-spin text-white" size={18} />
+                    <span className="text-white font-bold">Đang xác thực...</span>
+                  </>
+                ) : (
+                  <span className="text-white font-bold tracking-wide">ĐĂNG NHẬP</span>
+                )}
               </button>
             </form>
 
-            {/* Social Login */}
-            <div className="mt-8">
-              <div className="relative flex py-3 items-center">
-                <div className="flex-grow border-t border-gray-200"></div>
-                <span className="flex-shrink mx-4 text-gray-400 text-sm italic">
-                  Hoặc đăng nhập bằng
-                </span>
-                <div className="flex-grow border-t border-gray-200"></div>
-              </div>
-
-              <div className="flex justify-center gap-6 mt-4">
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#DB4437]">
-                  <FaGoogle size={24} />
-                </button>
-
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#4267B2]">
-                  <FaFacebook size={24} />
-                </button>
-
-                <button className="p-3 bg-gray-50 rounded-xl hover:scale-110 transition-transform text-[#1DA1F2]">
-                  <FaTwitter size={24} />
-                </button>
-              </div>
+            <div
+              className="mt-8 border-t border-brand-border border-[#E8DCD1] pt-4 text-center dark:border-[#352C26]"
+              style={{ borderColor: 'var(--border-color, #E8DCD1)' }}
+            >
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-[#56372B] dark:text-slate-400 dark:hover:text-[#D8986A]"
+              >
+                <ArrowLeft size={14} /> Về trang quét mã QR
+              </Link>
             </div>
-
-            <p className="text-center mt-8 text-sm text-gray-500">
-              Chưa có tài khoản?{' '}
-              <a href="#" className="text-emerald-600 font-bold hover:underline">
-                Đăng ký ngay
-              </a>
-            </p>
           </div>
         )}
       </div>

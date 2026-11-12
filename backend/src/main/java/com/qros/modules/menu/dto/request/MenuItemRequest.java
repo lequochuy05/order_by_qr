@@ -7,7 +7,7 @@ import java.util.List;
 
 public record MenuItemRequest(
         @NotBlank(message = "Item name cannot be empty")
-                @Size(max = 100, message = "Item name cannot exceed 100 characters")
+                @Size(max = 50, message = "Item name cannot exceed 50 characters")
                 String name,
         @Size(max = 500, message = "Description cannot exceed 500 characters") String description,
         @Size(max = 500, message = "Image URL cannot exceed 500 characters") String img,
@@ -16,6 +16,6 @@ public record MenuItemRequest(
         @NotNull(message = "Category ID cannot be empty") Long categoryId,
         Boolean active,
         Boolean available,
-        Integer displayOrder,
+        @Min(value = 0, message = "Display order cannot be negative") Integer displayOrder,
         @Valid List<ItemOptionRequest> itemOptions,
         Long version) {}

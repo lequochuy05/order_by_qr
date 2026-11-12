@@ -12,6 +12,11 @@ const SharedModal = ({
 }) => {
   const dialogRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -30,7 +35,7 @@ const SharedModal = ({
 
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
 
@@ -58,7 +63,7 @@ const SharedModal = ({
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -89,7 +94,7 @@ const SharedModal = ({
     <div
       className={`fixed inset-0 z-[60] flex animate-in fade-in duration-200 ${styles.backdrop} ${backdropClassName}`}
       onMouseDown={() => {
-        if (closeOnBackdrop) onClose?.();
+        if (closeOnBackdrop) onCloseRef.current?.();
       }}
     >
       <div

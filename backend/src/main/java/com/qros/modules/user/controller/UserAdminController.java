@@ -10,7 +10,6 @@ import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -23,13 +22,19 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping(ApiRoutes.USERS)
-@RequiredArgsConstructor
-@PreAuthorize("hasRole('MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class UserAdminController {
 
     private final UserService userService;
     private final UserQueryService userQueryService;
     private final UserAvatarService userAvatarService;
+
+    public UserAdminController(
+            UserService userService, UserQueryService userQueryService, UserAvatarService userAvatarService) {
+        this.userService = userService;
+        this.userQueryService = userQueryService;
+        this.userAvatarService = userAvatarService;
+    }
 
     @GetMapping
     public ApiResponse<Page<UserResponse>> list(
@@ -45,20 +50,25 @@ public class UserAdminController {
     }
 
     @PostMapping
-    public ApiResponse<UserResponse> create(@Valid @NonNull @RequestBody CreateUserRequest req) {
-        return ApiResponse.success("Staff account created successfully", userService.create(req));
+    public ApiResponse<UserResponse> create(@Valid @NonNull @RequestBody CreateUserRequest req, Principal principal) {
+        String actor = principal != null ? principal.getName() : null;
+        return ApiResponse.success("Staff account created successfully", userService.create(req, actor));
     }
 
     @PutMapping("/{id}")
     public ApiResponse<UserResponse> update(
-            @PathVariable @NonNull Long id, @Valid @NonNull @RequestBody UpdateUserRequest req) {
-        return ApiResponse.success("Profile updated successfully", userService.update(id, req));
+            @PathVariable @NonNull Long id, @Valid @NonNull @RequestBody UpdateUserRequest req, Principal principal) {
+        String actor = principal != null ? principal.getName() : null;
+        return ApiResponse.success("Profile updated successfully", userService.update(id, req, actor));
     }
 
     @PatchMapping("/{id}/reset-password")
     public ApiResponse<Void> resetPassword(
-            @PathVariable @NonNull Long id, @Valid @NonNull @RequestBody StaffResetPasswordRequest req) {
-        userService.resetPassword(id, req.newPassword());
+            @PathVariable @NonNull Long id,
+            @Valid @NonNull @RequestBody StaffResetPasswordRequest req,
+            Principal principal) {
+        String actor = principal != null ? principal.getName() : null;
+        userService.resetPassword(id, req.newPassword(), actor);
         return ApiResponse.success("Password reset successfully", null);
     }
 

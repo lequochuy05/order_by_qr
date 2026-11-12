@@ -50,7 +50,7 @@ const normalizePage = (data, page = 0, size = 24) => {
 
 const { requestFn: getMenuList, clearCache: clearMenuListCache } = createKeyedCachedRequest(
   (categoryId) =>
-    api.get('/menu-items/management-summary', {
+    api.get('/menu-items', {
       params: {
         size: 1000,
         sort: 'displayOrder,asc',
@@ -66,7 +66,7 @@ const { requestFn: getMenuPage, clearCache: clearMenuPageCache } = createKeyedCa
     const page = Number(params.page || 0);
     const size = Number(params.size || 24);
     return api
-      .get('/menu-items/management-summary', {
+      .get('/menu-items', {
         params: {
           page,
           size,
@@ -112,9 +112,7 @@ export const menuItemService = {
     clearMenuCache();
     const formData = new FormData();
     formData.append('file', file);
-    const res = await api.post(`/menu-items/${id}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post(`/menu-items/${id}/image`, formData);
     clearMenuCache();
     return res;
   },

@@ -16,14 +16,12 @@ import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class OrderItemWorkflowService {
 
     private final OrderItemRepository orderItemRepository;
@@ -38,8 +36,38 @@ public class OrderItemWorkflowService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
 
+    public OrderItemWorkflowService(
+            OrderItemRepository orderItemRepository,
+            OrderRepository orderRepository,
+            UserRepository userRepository,
+            InventoryReservationService inventoryReservationService,
+            OrderPricingService orderPricingService,
+            OrderAuditService orderAuditService,
+            OrderStatusService orderStatusService,
+            OrderTableSyncService orderTableSyncService,
+            OrderCacheInvalidationService orderCacheInvalidationService,
+            ApplicationEventPublisher eventPublisher,
+            OrderMapper orderMapper) {
+        this.orderItemRepository = orderItemRepository;
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
+        this.inventoryReservationService = inventoryReservationService;
+        this.orderPricingService = orderPricingService;
+        this.orderAuditService = orderAuditService;
+        this.orderStatusService = orderStatusService;
+        this.orderTableSyncService = orderTableSyncService;
+        this.orderCacheInvalidationService = orderCacheInvalidationService;
+        this.eventPublisher = eventPublisher;
+        this.orderMapper = orderMapper;
+    }
+
     @Transactional
     public void cancelOrderItem(@NonNull Long itemId) {
+        cancelOrderItem(itemId, null, null);
+    }
+
+    @Transactional
+    public void cancelOrderItem(@NonNull Long itemId, String actorEmail, String reason) {
         OrderItem item = orderItemRepository
                 .findDetailByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_ITEM_NOT_FOUND));
@@ -60,9 +88,11 @@ public class OrderItemWorkflowService {
         item.markStatus(OrderItemStatus.CANCELLED);
         orderItemRepository.saveAndFlush(item);
 
-        orderAuditService.recordItemStatus(item, fromStatus, OrderItemStatus.CANCELLED, null, "item-cancelled");
+        User changedBy = resolveUserByEmail(actorEmail);
+        String auditReason = org.springframework.util.StringUtils.hasText(reason) ? reason.trim() : "item-cancelled";
+        orderAuditService.recordItemStatus(item, fromStatus, OrderItemStatus.CANCELLED, changedBy, auditReason);
 
-        Order saved = reconcileOrderAfterItemMutation(order, null);
+        Order saved = reconcileOrderAfterItemMutation(order, null, true);
 
         orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
@@ -106,7 +136,8 @@ public class OrderItemWorkflowService {
 
         orderAuditService.recordItemStatus(item, fromStatus, newStatus, changedBy, "kitchen-status-update");
 
-        Order saved = reconcileOrderAfterItemMutation(order, changedBy);
+        boolean totalsDirty = newStatus == OrderItemStatus.CANCELLED || fromStatus == OrderItemStatus.CANCELLED;
+        Order saved = reconcileOrderAfterItemMutation(order, changedBy, totalsDirty);
 
         orderCacheInvalidationService.evictAfterOrderMutation(saved);
         eventPublisher.publishEvent(new OrderChangeEvent());
@@ -156,12 +187,14 @@ public class OrderItemWorkflowService {
         return orderMapper.toResponse(saved);
     }
 
-    private Order reconcileOrderAfterItemMutation(Order order, User changedBy) {
+    private Order reconcileOrderAfterItemMutation(Order order, User changedBy, boolean totalsDirty) {
         Order lockedOrder = orderRepository
-                .findByIdForUpdate(order.getId())
+                .findWorkflowByIdForUpdate(order.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
-        orderPricingService.recalculateOrderTotals(lockedOrder);
+        if (totalsDirty) {
+            orderPricingService.recalculateOrderTotals(lockedOrder);
+        }
 
         boolean hasBillableItems = lockedOrder.getOrderItems().stream().anyMatch(OrderItem::isBillable);
 
@@ -201,6 +234,14 @@ public class OrderItemWorkflowService {
         return userRepository.findById(userId).orElse(null);
     }
 
+    private User resolveUserByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+
+        return userRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+    }
+
     private void validateItemStatusTransition(OrderItemStatus from, OrderItemStatus to) {
         if (from == to) {
             return;
@@ -211,7 +252,7 @@ public class OrderItemWorkflowService {
                     case PENDING -> to == OrderItemStatus.COOKING
                             || to == OrderItemStatus.FINISHED
                             || to == OrderItemStatus.CANCELLED;
-                    case COOKING -> to == OrderItemStatus.FINISHED;
+                    case COOKING -> to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
                     case FINISHED -> false;
                     case CANCELLED -> false;
                 };

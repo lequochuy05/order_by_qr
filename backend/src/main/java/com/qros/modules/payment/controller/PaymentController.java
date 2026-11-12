@@ -10,19 +10,22 @@ import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(ApiRoutes.PAYMENTS)
-@RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('MANAGER','STAFF')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CASHIER')")
 public class PaymentController {
 
     private final PaymentService paymentService;
     private final CurrentUserService currentUserService;
+
+    public PaymentController(PaymentService paymentService, CurrentUserService currentUserService) {
+        this.paymentService = paymentService;
+        this.currentUserService = currentUserService;
+    }
 
     @PostMapping
     public ApiResponse<PaymentCreateResponse> createPayment(

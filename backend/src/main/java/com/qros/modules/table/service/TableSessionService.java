@@ -281,6 +281,24 @@ public class TableSessionService {
     }
 
     @Transactional
+    public void requestPayment(@NonNull String tableCode, @NonNull String sessionToken) {
+        TableSession session = requireOpenSession(sessionToken);
+        validateSessionBelongsToTable(session, tableCode);
+
+        List<DiningTable> memberTables = lockActiveMemberTables(session.getId());
+        List<DiningTable> changed = memberTables.stream()
+                .filter(table -> table.getStatus() == TableStatus.OCCUPIED)
+                .peek(table -> table.setStatus(TableStatus.WAITING_FOR_PAYMENT))
+                .toList();
+
+        if (!changed.isEmpty()) {
+            tableRepository.saveAll(changed);
+            evictTableSessionCachesForTables(changed);
+            eventPublisher.publishEvent(new TableChangeEvent());
+        }
+    }
+
+    @Transactional
     public void closeSession(Long sessionId, TableSessionStatus targetStatus, String reason) {
         if (sessionId == null) {
             return;

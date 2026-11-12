@@ -53,9 +53,10 @@ const TableManager = () => {
 
   const { user } = useAuth();
   const userRole = user?.role || 'STAFF';
+  const canManageTables = userRole === 'ADMIN' || userRole === 'MANAGER';
 
   const checkPermission = () => {
-    if (userRole !== 'MANAGER') {
+    if (!canManageTables) {
       showError('Bạn không có quyền thực hiện chức năng này!');
       return false;
     }
@@ -261,7 +262,7 @@ const TableManager = () => {
           }
         }}
         addButtonText="Thêm bàn"
-        hideAddButton={userRole !== 'MANAGER'}
+        hideAddButton={!canManageTables}
       />
       <div className="mt-6">
         {loading ? (

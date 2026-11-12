@@ -10,8 +10,21 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort.Direction;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(ApiRoutes.COMBOS)
@@ -24,21 +37,17 @@ public class ComboController {
     public ApiResponse<Page<ComboResponse>> search(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Boolean active,
-            Pageable pageable) {
-        return ApiResponse.success(comboService.searchManagementSummary(q, active, pageable));
+            @PageableDefault(
+                            size = 24,
+                            sort = {"displayOrder", "name"},
+                            direction = Direction.ASC)
+                    Pageable pageable) {
+        return ApiResponse.success(comboService.searchSummaries(q, active, pageable));
     }
 
     @GetMapping("/active")
     public ApiResponse<List<ComboResponse>> getAllActive() {
         return ApiResponse.success(comboService.getAllActive());
-    }
-
-    @GetMapping("/management-summary")
-    public ApiResponse<Page<ComboResponse>> getManagementSummary(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Boolean active,
-            Pageable pageable) {
-        return ApiResponse.success(comboService.searchManagementSummary(q, active, pageable));
     }
 
     @GetMapping("/{id}")
@@ -47,8 +56,10 @@ public class ComboController {
     }
 
     @PostMapping
-    public ApiResponse<ComboResponse> create(@Valid @RequestBody @NonNull ComboRequest req) {
-        return ApiResponse.success("Combo created successfully", comboService.create(req));
+    public ResponseEntity<ApiResponse<ComboResponse>> create(@Valid @RequestBody @NonNull ComboRequest req) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(
+                        HttpStatus.CREATED.value(), "Combo created successfully", comboService.create(req)));
     }
 
     @PutMapping("/{id}")
@@ -58,13 +69,16 @@ public class ComboController {
     }
 
     @PatchMapping("/{id}/toggle-active")
-    public ApiResponse<ComboResponse> toggleActive(@PathVariable @NonNull Long id) {
-        return ApiResponse.success("Combo active status toggled successfully", comboService.toggleActive(id));
+    public ApiResponse<ComboResponse> toggleActive(
+            @PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+        return ApiResponse.success("Combo active status toggled successfully", comboService.toggleActive(id, version));
     }
 
     @PatchMapping("/{id}/toggle-available")
-    public ApiResponse<ComboResponse> toggleAvailable(@PathVariable @NonNull Long id) {
-        return ApiResponse.success("Combo availability toggled successfully", comboService.toggleAvailable(id));
+    public ApiResponse<ComboResponse> toggleAvailable(
+            @PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+        return ApiResponse.success(
+                "Combo availability toggled successfully", comboService.toggleAvailable(id, version));
     }
 
     @DeleteMapping("/{id}")

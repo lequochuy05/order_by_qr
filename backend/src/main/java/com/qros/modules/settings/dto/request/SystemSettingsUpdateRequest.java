@@ -70,6 +70,7 @@ public record SystemSettingsUpdateRequest(
         @NotNull(message = "New order notification setting is required") Boolean newOrderNotificationEnabled,
         @NotNull(message = "Payment notification setting is required") Boolean paymentNotificationEnabled,
         @NotNull(message = "Kitchen overdue notification setting is required") Boolean kitchenOverdueNotificationEnabled,
+        @NotNull(message = "Allow settlement with unfinished items setting is required") Boolean allowSettlementWithUnfinishedItems,
         Long version) {
 
     @AssertTrue(message = "Opening and closing time cannot be the same")

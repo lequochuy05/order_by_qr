@@ -5,7 +5,12 @@ const createIdempotencyKey = () =>
   crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export const paymentService = {
-  createPayment: async (orderId, paymentMethod, voucherCode = null) => {
+  createPayment: async (
+    orderId,
+    paymentMethod,
+    voucherCode = null,
+    { cashReceived = null, changeAmount = null, confirmUnfinishedItems = false } = {},
+  ) => {
     const idempotencyKey = createIdempotencyKey();
     return createPaymentWithRetry({
       post: (url, payload) => api.post(url, payload),
@@ -13,6 +18,9 @@ export const paymentService = {
       paymentMethod,
       voucherCode,
       idempotencyKey,
+      cashReceived,
+      changeAmount,
+      confirmUnfinishedItems,
     });
   },
   cancelPaymentLink: async (transactionId, reason = 'Customer changed payment method') => {

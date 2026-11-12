@@ -9,6 +9,7 @@ import PaymentMethodTabs from './payment/PaymentMethodTabs.jsx';
 import PaymentSummary from './payment/PaymentSummary.jsx';
 import PayosQrPanel from './payment/PayosQrPanel.jsx';
 import VoucherBox from './payment/VoucherBox.jsx';
+import CashTenderedPanel from './payment/CashTenderedPanel.jsx';
 
 const PaymentModalContent = (props) => {
   const { isOpen, onClose, table, order } = props;
@@ -61,16 +62,23 @@ const PaymentModalContent = (props) => {
             onCancel={payment.handleCancelPayos}
           />
         ) : (
-          <VoucherBox
-            voucherCode={payment.voucherCode}
-            onInputChange={payment.handleInputChange}
-            onApply={payment.handleApplyVoucher}
-            loading={payment.loading}
-            error={payment.error}
-            voucherValid={payment.previewData?.voucherValid}
-            voucherRequiresApply={payment.voucherRequiresApply}
-            discountAmount={payment.amounts.discountAmount}
-          />
+          <>
+            <VoucherBox
+              voucherCode={payment.voucherCode}
+              onInputChange={payment.handleInputChange}
+              onApply={payment.handleApplyVoucher}
+              loading={payment.loading}
+              error={payment.error}
+              voucherValid={payment.previewData?.voucherValid}
+              voucherRequiresApply={payment.voucherRequiresApply}
+              discountAmount={payment.amounts.discountAmount}
+            />
+            <CashTenderedPanel
+              finalAmount={payment.amounts.finalAmount}
+              cashReceived={payment.cashReceived}
+              onChangeCashReceived={payment.setCashReceived}
+            />
+          </>
         )}
 
         <PaymentSummary {...payment.amounts} />
@@ -79,8 +87,14 @@ const PaymentModalContent = (props) => {
       <PaymentActions
         paymentMethod={payment.paymentMethod}
         loading={payment.loading}
-        cashDisabled={payment.voucherRequiresApply}
-        cashDisabledReason="Vui lòng áp dụng hoặc xóa mã voucher trước khi thanh toán."
+        cashDisabled={payment.voucherRequiresApply || payment.isInsufficient}
+        cashDisabledReason={
+          payment.isInsufficient
+            ? 'Tiền khách đưa chưa đủ để thanh toán.'
+            : payment.voucherRequiresApply
+              ? 'Vui lòng áp dụng hoặc xóa mã voucher trước khi thanh toán.'
+              : ''
+        }
         onCashPay={payment.handleConfirmCashPay}
         onClose={onClose}
       />

@@ -11,9 +11,9 @@ import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,10 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping(ApiRoutes.INVENTORY_ITEMS)
-@RequiredArgsConstructor
 public class InventoryItemController {
 
     private final InventoryItemService inventoryItemService;
+
+    public InventoryItemController(InventoryItemService inventoryItemService) {
+        this.inventoryItemService = inventoryItemService;
+    }
 
     @GetMapping
     public ApiResponse<Page<InventoryItemResponse>> list(
@@ -63,11 +66,13 @@ public class InventoryItemController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<InventoryItemResponse> create(@Valid @RequestBody InventoryItemRequest request) {
         return ApiResponse.success("Inventory item created successfully", inventoryItemService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<InventoryItemResponse> update(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody InventoryItemRequest request) {
@@ -75,6 +80,7 @@ public class InventoryItemController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<Void> delete(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
         inventoryItemService.delete(id);
@@ -83,6 +89,7 @@ public class InventoryItemController {
     }
 
     @PostMapping("/{id}/stock-in")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<InventoryItemResponse> stockIn(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody StockInRequest request) {
@@ -90,6 +97,7 @@ public class InventoryItemController {
     }
 
     @PostMapping("/{id}/adjust")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<InventoryItemResponse> adjustStock(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody StockAdjustmentRequest request) {

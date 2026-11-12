@@ -1,7 +1,10 @@
 package com.qros.modules.order.infrastructure;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.service.TableSessionResolver;
 import com.qros.shared.cache.CacheNames;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -23,6 +26,7 @@ public class OrderCacheInvalidationService {
 
     private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
+    private final TableSessionResolver tableSessionResolver;
 
     /**
      * Evicts all caches affected by an order mutation (creation, update, status
@@ -33,8 +37,8 @@ public class OrderCacheInvalidationService {
     public void evictAfterOrderMutation(Order order) {
         if (order == null) return;
         Long orderId = order.getId();
-        String tableCode = order.getTable() == null ? null : order.getTable().getTableCode();
-        eventPublisher.publishEvent(new OrderCacheInvalidationRequest(orderId, tableCode));
+        List<String> tableCodes = tableCodes(order);
+        eventPublisher.publishEvent(new OrderCacheInvalidationRequest(orderId, tableCodes));
     }
 
     @Async
@@ -42,8 +46,7 @@ public class OrderCacheInvalidationService {
     public void onOrderCacheInvalidation(OrderCacheInvalidationRequest request) {
         evict(CacheNames.ORDER_ID_CACHE, request.orderId());
 
-        if (request.tableCode() != null) {
-            String tableCode = request.tableCode();
+        for (String tableCode : request.tableCodes()) {
             evict(CacheNames.TABLES, "code_" + tableCode);
             evict(CacheNames.TABLES, "public_code_" + tableCode);
         }
@@ -54,7 +57,24 @@ public class OrderCacheInvalidationService {
         clear(CacheNames.STATS_DASHBOARD);
     }
 
-    public record OrderCacheInvalidationRequest(Long orderId, String tableCode) {}
+    public record OrderCacheInvalidationRequest(Long orderId, List<String> tableCodes) {}
+
+    private List<String> tableCodes(Order order) {
+        if (order.getTableSession() != null && order.getTableSession().getId() != null) {
+            List<String> codes = tableSessionResolver
+                    .getActiveMemberTables(order.getTableSession().getId())
+                    .stream()
+                    .map(DiningTable::getTableCode)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            if (!codes.isEmpty()) {
+                return codes;
+            }
+        }
+
+        String tableCode = order.getTable() == null ? null : order.getTable().getTableCode();
+        return tableCode == null ? List.of() : List.of(tableCode);
+    }
 
     private void evict(String cacheName, Object key) {
         if (key == null) {

@@ -74,6 +74,7 @@ class SystemSettingsUpdateRequestTest {
                 true,
                 true,
                 true,
+                true,
                 0L);
     }
 }

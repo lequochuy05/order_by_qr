@@ -308,12 +308,27 @@ const usePayosPayment = ({
     }
   }, [paymentDraft, payosData]);
 
-  const { handleConfirmCashPay } = useCashPayment({
+  const effectiveFinalAmount =
+    preview.previewData?.finalAmount ??
+    payosData?.finalAmount ??
+    payosData?.amount ??
+    preview.amounts.finalAmount ??
+    getOrderFinalAmount(order);
+
+  const {
+    cashReceived,
+    setCashReceived,
+    changeAmount,
+    isInsufficient,
+    hasUnfinishedItems,
+    handleConfirmCashPay,
+  } = useCashPayment({
     cashPaymentEnabled,
     order,
     preview,
     table,
     finishPayment,
+    finalAmount: effectiveFinalAmount,
   });
 
   const selectCash = useCallback(() => {
@@ -334,6 +349,11 @@ const usePayosPayment = ({
     payosError,
     cashPaymentEnabled,
     onlinePaymentEnabled,
+    cashReceived,
+    setCashReceived,
+    changeAmount,
+    isInsufficient,
+    hasUnfinishedItems,
     setPaymentMethod,
     selectCash,
     handleCreatePayosQR,

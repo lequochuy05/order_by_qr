@@ -21,9 +21,15 @@ import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
+import com.qros.modules.order.dto.request.StaffCreateOrderRequest;
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderBatch;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.service.OrderCreationService;
@@ -41,6 +47,7 @@ import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.List;
@@ -204,6 +211,35 @@ class OrderCreationServiceTest {
     }
 
     @Test
+    void createCustomerOrderRejectsMultipleLegacyTableScopedActiveOrders() {
+        DiningTable table = DiningTable.builder()
+                .id(7L)
+                .tableNumber("A1")
+                .tableCode("T1")
+                .status(TableStatus.OCCUPIED)
+                .capacity(4)
+                .build();
+        TableSession session = TableSession.builder().id(77L).table(table).build();
+
+        when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(orderRepository.findActiveOrderLocksByTableIdForUpdate(any(), any()))
+                .thenReturn(List.of(activeOrderLock(100L, null), activeOrderLock(101L, null)));
+
+        assertThatThrownBy(() -> orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
+                        "T1",
+                        "SESSION",
+                        "req-legacy-duplicates",
+                        null,
+                        List.of(new OrderItemRequest(1L, 1, null, List.of())))))
+                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
+                        .isEqualTo(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS));
+
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     void createCustomerOrderRejectsInvalidComboQuantityBeforeLoadingSession() {
         CustomerCreateOrderRequest request = new CustomerCreateOrderRequest(
                 "T1", "SESSION", "req-invalid-combo", List.of(new OrderComboRequest(1L, 0, null)), null);
@@ -215,6 +251,159 @@ class OrderCreationServiceTest {
                 });
 
         verify(tableSessionService, never()).requireOpenSessionForOrdering(any(), any());
+    }
+
+    @Test
+    void createStaffOrderAppliesVoucherWhenProvided() {
+        DiningTable table = DiningTable.builder()
+                .id(7L)
+                .tableNumber("A1")
+                .tableCode("T1")
+                .status(TableStatus.AVAILABLE)
+                .capacity(4)
+                .build();
+        TableSession session = TableSession.builder().id(77L).table(table).build();
+        MenuItem coffee = menuItem(1L, "Coffee", "10000", optionValue(11L, "Large", "2000"));
+
+        when(tableSessionService.getOrCreateStaffSession(7L)).thenReturn(session);
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(orderRepository.findActiveOrderLocksByTableIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(menuItemRepository.findAllByIdIn(Set.of(1L))).thenReturn(List.of(coffee));
+        when(orderPricingService.calculateLineTotal(any(BigDecimal.class), anyInt()))
+                .thenReturn(new BigDecimal("10000"));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order order = invocation.getArgument(0);
+            order.setId(101L);
+            return order;
+        });
+
+        StaffCreateOrderRequest request = new StaffCreateOrderRequest(
+                7L,
+                null,
+                List.of(new OrderItemRequest(1L, 1, null, List.of())),
+                "VOUCHER10",
+                OrderType.DINE_IN,
+                "staff-req-1");
+
+        orderCreationService.createStaffOrder(request);
+
+        verify(orderPricingService).applyVoucher(any(Order.class), org.mockito.ArgumentMatchers.eq("VOUCHER10"));
+    }
+
+    @Test
+    void createCustomerOrderWithAdditionalItemsAssignsToNewBatchWithoutOrphanedBatches() {
+        DiningTable table = DiningTable.builder()
+                .id(7L)
+                .tableNumber("A1")
+                .tableCode("T1")
+                .status(TableStatus.OCCUPIED)
+                .capacity(4)
+                .build();
+        TableSession session = TableSession.builder().id(77L).table(table).build();
+        MenuItem coffee = menuItem(1L, "Coffee", "10000", optionValue(11L, "Large", "2000"));
+
+        OrderBatch batch1 = OrderBatch.builder()
+                .id(10L)
+                .submittedAt(AppTime.now().minusMinutes(10))
+                .build();
+        OrderItem pendingItemFromBatch1 = OrderItem.builder()
+                .id(50L)
+                .batch(batch1)
+                .menuItem(coffee)
+                .quantity(1)
+                .status(OrderItemStatus.PENDING)
+                .lineTotal(new BigDecimal("10000"))
+                .build();
+
+        Order existingOrder = Order.builder()
+                .id(100L)
+                .table(table)
+                .tableSession(session)
+                .status(OrderStatus.PENDING)
+                .build();
+        existingOrder.addBatch(batch1);
+        existingOrder.addItem(pendingItemFromBatch1);
+
+        when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of(activeOrderLock(100L, 77L)));
+        when(orderRepository.findDetailById(100L)).thenReturn(Optional.of(existingOrder));
+        when(paymentTransactionRepository.existsByOrderIdAndStatusIn(org.mockito.ArgumentMatchers.eq(100L), any()))
+                .thenReturn(false);
+        when(menuItemRepository.findAllByIdIn(Set.of(1L))).thenReturn(List.of(coffee));
+        when(orderPricingService.calculateLineTotal(any(BigDecimal.class), anyInt()))
+                .thenAnswer(invocation -> invocation
+                        .<BigDecimal>getArgument(0)
+                        .multiply(BigDecimal.valueOf(invocation.<Integer>getArgument(1))));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CustomerCreateOrderRequest request = new CustomerCreateOrderRequest(
+                "T1", "SESSION", "req-add-1", null, List.of(new OrderItemRequest(1L, 2, null, List.of())));
+
+        orderCreationService.createCustomerOrder(request);
+
+        assertThat(pendingItemFromBatch1.getQuantity()).isEqualTo(1);
+        assertThat(existingOrder.getOrderItems()).hasSize(2);
+
+        OrderItem newItem = existingOrder.getOrderItems().stream()
+                .filter(item -> item != pendingItemFromBatch1)
+                .findFirst()
+                .orElseThrow();
+        assertThat(newItem.getQuantity()).isEqualTo(2);
+        assertThat(newItem.getBatch()).isNotNull();
+        assertThat(newItem.getBatch()).isNotEqualTo(batch1);
+
+        assertThat(existingOrder.getOrderBatches()).hasSize(2);
+        for (OrderBatch b : existingOrder.getOrderBatches()) {
+            boolean hasItems = existingOrder.getOrderItems().stream().anyMatch(i -> i.getBatch() == b);
+            assertThat(hasItems).isTrue();
+        }
+    }
+
+    @Test
+    void createCustomerOrderMergesDuplicatesInSameRequestIntoSingleItemWithinSameBatch() {
+        DiningTable table = DiningTable.builder()
+                .id(7L)
+                .tableNumber("A1")
+                .tableCode("T1")
+                .status(TableStatus.AVAILABLE)
+                .capacity(4)
+                .build();
+        TableSession session = TableSession.builder().id(77L).table(table).build();
+        MenuItem coffee = menuItem(1L, "Coffee", "10000", optionValue(11L, "Large", "2000"));
+
+        when(tableSessionService.requireOpenSessionForOrdering("T1", "SESSION")).thenReturn(session);
+        when(orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(orderRepository.findActiveOrderLocksByTableIdForUpdate(any(), any()))
+                .thenReturn(List.of());
+        when(menuItemRepository.findAllByIdIn(Set.of(1L))).thenReturn(List.of(coffee));
+        when(orderPricingService.calculateLineTotal(any(BigDecimal.class), anyInt()))
+                .thenAnswer(invocation -> invocation
+                        .<BigDecimal>getArgument(0)
+                        .multiply(BigDecimal.valueOf(invocation.<Integer>getArgument(1))));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CustomerCreateOrderRequest request = new CustomerCreateOrderRequest(
+                "T1",
+                "SESSION",
+                "req-same-batch-merge",
+                null,
+                List.of(new OrderItemRequest(1L, 1, null, List.of()), new OrderItemRequest(1L, 2, null, List.of())));
+
+        orderCreationService.createCustomerOrder(request);
+
+        verify(orderRepository).save(argThat(order -> {
+            assertThat(order.getOrderBatches()).hasSize(1);
+            assertThat(order.getOrderItems()).hasSize(1);
+            OrderItem mergedItem = order.getOrderItems().iterator().next();
+            assertThat(mergedItem.getQuantity()).isEqualTo(3);
+            assertThat(mergedItem.getBatch())
+                    .isEqualTo(order.getOrderBatches().iterator().next());
+            return true;
+        }));
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {

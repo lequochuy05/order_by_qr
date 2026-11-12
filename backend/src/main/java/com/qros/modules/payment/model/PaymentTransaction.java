@@ -80,6 +80,10 @@ public class PaymentTransaction extends BaseEntity {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean voucherUsageClaimed = false;
+
     @Column(length = 255)
     private String failureReason;
 }

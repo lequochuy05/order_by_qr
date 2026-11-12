@@ -28,6 +28,7 @@ public final class SecurityRoutes {
         ApiRoutes.PUBLIC + "/orders",
         ApiRoutes.PUBLIC + "/orders/preview",
         ApiRoutes.PUBLIC + "/tables/*/start-session",
+        ApiRoutes.PUBLIC + "/tables/*/request-payment",
         ApiRoutes.PUBLIC + "/sessions/heartbeat",
         ApiRoutes.PUBLIC + "/ai/chat",
         ApiRoutes.WEBHOOKS + "/**"
@@ -68,6 +69,7 @@ public final class SecurityRoutes {
         ApiRoutes.ORDERS + "/table-board",
         ApiRoutes.ORDERS + "/table/*/current",
         ApiRoutes.ORDERS + "/table/*/preview",
+        ApiRoutes.TABLES,
         ApiRoutes.TABLES + "/**",
         ApiRoutes.ORDERS + "/active",
         ApiRoutes.INVENTORY + "/**"
@@ -82,6 +84,7 @@ public final class SecurityRoutes {
         ApiRoutes.MENU_ITEMS + "/**",
         ApiRoutes.COMBOS + "/**",
         ApiRoutes.INVENTORY + "/**",
+        ApiRoutes.TABLES,
         ApiRoutes.TABLES + "/**",
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
@@ -123,8 +126,12 @@ public final class SecurityRoutes {
     };
 
     public static final String[] KITCHEN_PATCH = {
-        ApiRoutes.KITCHEN + "/items/*/status", ApiRoutes.KITCHEN + "/items/*/prepared"
+        ApiRoutes.KITCHEN + "/items/*/status",
+        ApiRoutes.KITCHEN + "/items/*/prepared",
+        ApiRoutes.KITCHEN + "/items/batch-status"
     };
+
+    public static final String[] KITCHEN_DELETE = {ApiRoutes.KITCHEN + "/items/*"};
 
     public static final String[] INVENTORY_OPERATION_POST = {
         ApiRoutes.INVENTORY + "/*/stock-in", ApiRoutes.INVENTORY + "/*/adjust"

@@ -3,6 +3,7 @@ package com.qros.modules.menu.service;
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.menu.dto.publicmenu.PublicMenuItem;
 import com.qros.modules.menu.dto.request.MenuItemRequest;
+import com.qros.modules.menu.dto.response.MenuItemImageResponse;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.mapper.MenuItemMapper;
 import com.qros.modules.menu.mapper.PublicMenuMapper;
@@ -18,12 +19,12 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
@@ -53,10 +54,10 @@ public class MenuItemService {
     private final MenuItemOptionService menuItemOptionService;
     private final ImageFileValidator imageFileValidator;
 
-    public Page<MenuItemResponse> searchManagementSummary(String keyword, Long categoryId, @NonNull Pageable pageable) {
+    public Page<MenuItemResponse> searchSummaries(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         return menuItemRepository
-                .searchManagementSummaries(normalizedKeyword, categoryId, pageable)
+                .searchSummaries(normalizedKeyword, categoryId, pageable)
                 .map(menuItemMapper::toSummaryResponse);
     }
 
@@ -120,7 +121,7 @@ public class MenuItemService {
                     .add(menuItemOptionService.buildItemOption(optionReq, item)));
         }
 
-        MenuItem saved = menuItemRepository.save(item);
+        MenuItem saved = saveMenuItem(item);
         eventPublisher.publishEvent(new MenuChangeEvent("created", saved.getId()));
 
         return menuItemMapper.toResponse(saved);
@@ -166,7 +167,7 @@ public class MenuItemService {
 
         menuItemOptionService.syncOptions(item, req.itemOptions());
 
-        MenuItem saved = menuItemRepository.save(item);
+        MenuItem saved = saveMenuItem(item);
         eventPublisher.publishEvent(new MenuChangeEvent("updated", saved.getId()));
 
         return menuItemMapper.toResponse(saved);
@@ -194,7 +195,7 @@ public class MenuItemService {
     }
 
     @Transactional
-    public Map<String, String> uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
+    public MenuItemImageResponse uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
         MenuItem item = getEntityById(id);
@@ -214,7 +215,7 @@ public class MenuItemService {
 
             eventPublisher.publishEvent(new MenuChangeEvent("image_updated", id));
 
-            return Map.of("img", newUrl);
+            return new MenuItemImageResponse(newUrl);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
@@ -227,6 +228,14 @@ public class MenuItemService {
         return menuItemRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
     }
 
+    private MenuItem saveMenuItem(MenuItem item) {
+        try {
+            return menuItemRepository.saveAndFlush(item);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS, "Item name already exists", exception);
+        }
+    }
+
     private String normalizeBlank(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
@@ -236,7 +245,12 @@ public class MenuItemService {
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion != null && !Objects.equals(currentVersion, expectedVersion)) {
+        if (expectedVersion == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Menu item version is required. Please refresh and try again.");
+        }
+
+        if (!Objects.equals(currentVersion, expectedVersion)) {
             throw new BusinessException(
                     ErrorCode.CONCURRENT_MODIFICATION,
                     "This menu item was changed by another request. Please refresh and try again.");

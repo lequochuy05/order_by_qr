@@ -58,7 +58,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
             AND (CAST(:categoryId AS long) IS NULL OR m.category.id = :categoryId)
           ORDER BY m.displayOrder ASC, m.name ASC
       """)
-    Page<MenuItem> searchManagementSummaries(
+    Page<MenuItem> searchSummaries(
             @Param("keyword") String keyword, @Param("categoryId") Long categoryId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})

@@ -48,6 +48,21 @@ public class KitchenService {
     }
 
     @Transactional
+    public void updateBatchItemStatus(@NonNull List<Long> itemIds, @NonNull OrderItemStatus status, Long userId) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return;
+        }
+        for (Long itemId : itemIds) {
+            orderService.updateItemStatus(itemId, status, userId);
+        }
+    }
+
+    @Transactional
+    public void cancelOrderItem(@NonNull Long itemId, String actorEmail, String reason) {
+        orderService.cancelOrderItem(itemId, actorEmail, reason);
+    }
+
+    @Transactional
     public void markItemPrepared(@NonNull Long itemId, Long userId) {
         orderService.markItemPrepared(itemId, userId);
     }

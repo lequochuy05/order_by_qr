@@ -2,10 +2,13 @@ import api from '@shared/api/httpClient.js';
 
 const PREVIEW_CACHE_MS = 1_500;
 const ORDER_QUERY_CACHE_MS = 5_000;
+const CURRENT_ORDER_CACHE_MS = 1_500;
 const MAX_CACHE_SIZE = 50;
 
 let tableBoardRequest = null;
 let kitchenOrdersRequest = null;
+const currentOrderRequests = new Map();
+const currentOrderCache = new Map();
 const orderHistoryRequests = new Map();
 const orderHistoryCache = new Map();
 const orderAnalyticsRequests = new Map();
@@ -29,6 +32,8 @@ const stableStringify = (value) => {
 };
 
 const clearOrderQueryCache = () => {
+  currentOrderRequests.clear();
+  currentOrderCache.clear();
   orderHistoryRequests.clear();
   orderHistoryCache.clear();
   orderAnalyticsRequests.clear();
@@ -76,9 +81,28 @@ export const orderService = {
     return orderAnalyticsRequests.get(key);
   },
 
-  getCurrentOrder: async (tableId) => {
-    try { const res = await api.get(`/orders/table/${tableId}/current`); return res; }
-    catch { return null; }
+  getCurrentOrder: async (tableId, { force = false } = {}) => {
+    if (!tableId) return null;
+    const key = String(tableId);
+    const cached = currentOrderCache.get(key);
+    if (!force && cached && cached.expiresAt > Date.now()) return cached.data;
+    if (!currentOrderRequests.has(key)) {
+      currentOrderRequests.set(
+        key,
+        api.get(`/orders/table/${tableId}/current`)
+          .then((res) => {
+            setCacheWithLimit(currentOrderCache, key, {
+              data: res,
+              expiresAt: Date.now() + CURRENT_ORDER_CACHE_MS,
+            });
+            setTimeout(() => currentOrderCache.delete(key), CURRENT_ORDER_CACHE_MS);
+            return res;
+          })
+          .catch(() => null)
+          .finally(() => { currentOrderRequests.delete(key); }),
+      );
+    }
+    return currentOrderRequests.get(key);
   },
   getOrderById: async (id) => {
     const res = await api.get(`/orders/${id}`);
@@ -93,7 +117,17 @@ export const orderService = {
 
   addItemsToOrder: async (data) => { clearOrderQueryCache(); const res = await api.post('/orders', data); clearOrderQueryCache(); return res; },
   updateOrderItem: async (itemId, data) => { clearOrderQueryCache(); const res = await api.patch(`/orders/items/${itemId}`, data); clearOrderQueryCache(); return res; },
-  deleteOrderItem: async (itemId) => { clearOrderQueryCache(); await api.delete(`/orders/items/${itemId}`); clearOrderQueryCache(); },
+  deleteOrderItem: async (itemId, reason = null) => {
+    clearOrderQueryCache();
+    await api.delete(`/orders/items/${itemId}`, reason ? { params: { reason } } : undefined);
+    clearOrderQueryCache();
+  },
+  cancelOrder: async (orderId, reason = null) => {
+    clearOrderQueryCache();
+    const res = await api.patch(`/orders/${orderId}/cancel`, reason ? { reason } : undefined);
+    clearOrderQueryCache();
+    return res;
+  },
   markItemPrepared: async (itemId, userId = null) => { clearOrderQueryCache(); await api.patch(`/kitchen/items/${itemId}/prepared`, userId ? { userId } : undefined); clearOrderQueryCache(); },
 
   previewOrder: async (data) => {
@@ -120,6 +154,8 @@ export const orderService = {
     return kitchenOrdersRequest;
   },
   updateItemStatus: async (itemId, status, userId = null) => { clearOrderQueryCache(); const res = await api.patch(`/kitchen/items/${itemId}/status`, userId ? { status, userId } : { status }); clearOrderQueryCache(); return res; },
+  batchUpdateItemStatus: async (itemIds, status, userId = null) => { clearOrderQueryCache(); const res = await api.patch('/kitchen/items/batch-status', userId ? { itemIds, status, userId } : { itemIds, status }); clearOrderQueryCache(); return res; },
+  cancelKitchenItem: async (itemId, reason = null) => { clearOrderQueryCache(); const res = await api.delete(`/kitchen/items/${itemId}`, reason ? { params: { reason } } : undefined); clearOrderQueryCache(); return res; },
   getActiveOrders: async () => { const res = await api.get('/orders/active'); return res; },
 
   getTableBoard: async () => {

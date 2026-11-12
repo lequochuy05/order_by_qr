@@ -72,6 +72,7 @@ public enum ErrorCode {
     ORDER_ALREADY_PAID(HttpStatus.BAD_REQUEST, "Order is already paid"),
     ORDER_PAYMENT_INVALID(HttpStatus.BAD_REQUEST, "Order payment is invalid"),
     ORDER_PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Order payment is in progress"),
+    ORDER_HAS_UNFINISHED_ITEMS(HttpStatus.CONFLICT, "Order has items still being prepared in the kitchen"),
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Request already submitted with this idempotency key"),
     IDEMPOTENCY_PROCESSING(HttpStatus.CONFLICT, "This request is still being processed"),
     ORDER_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Order request already submitted"),

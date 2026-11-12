@@ -210,6 +210,11 @@ public class SystemSettingsService {
                 "kitchenOverdueNotificationEnabled",
                 settings.getKitchenOverdueNotificationEnabled(),
                 request.kitchenOverdueNotificationEnabled());
+        addIfChanged(
+                changedFields,
+                "allowSettlementWithUnfinishedItems",
+                settings.getAllowSettlementWithUnfinishedItems(),
+                request.allowSettlementWithUnfinishedItems());
         return List.copyOf(changedFields);
     }
 

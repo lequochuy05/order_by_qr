@@ -5,8 +5,11 @@ import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { useReconcileOrderMutation } from '../api/orderMutations.js';
-import { useOrderAnalyticsQuery, useOrdersHistoryQuery } from '../api/orderQueries.js';
+import {
+  useOrderAnalyticsQuery,
+  useOrdersHistoryQuery,
+  useReconcileOrderMutation,
+} from '@entities/order';
 import useOrderHistoryFilters from './useOrderHistoryFilters.js';
 
 const useOrderHistory = () => {

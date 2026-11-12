@@ -3,8 +3,12 @@ import { Loader2, Ticket } from 'lucide-react';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
-import { useVoucherPageQuery } from '../api/voucherQueries.js';
-import { useCreateVoucherMutation, useUpdateVoucherMutation, useDeleteVoucherMutation } from '../api/voucherMutations.js';
+import {
+  useCreateVoucherMutation,
+  useDeleteVoucherMutation,
+  useUpdateVoucherMutation,
+  useVoucherPageQuery,
+} from '@entities/voucher';
 import { VOUCHER_STATUSES } from '@entities/voucher/lib/voucherStatus.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -39,15 +43,15 @@ const voucherStatusFilterOptions = Object.entries(VOUCHER_STATUS).map(([id, meta
 }));
 
 const VoucherManager = () => {
-      const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-      const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState({});
   const isMountedRef = useRef(true);
-    const pageSize = 24;
+  const pageSize = 24;
 
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
@@ -55,7 +59,7 @@ const VoucherManager = () => {
     page: currentPage,
     size: pageSize,
     ...(debouncedSearchTerm.trim() ? { q: debouncedSearchTerm.trim() } : {}),
-    ...(statusFilter !== 'ALL' ? { status: statusFilter } : {})
+    ...(statusFilter !== 'ALL' ? { status: statusFilter } : {}),
   };
   const { data: voucherData, isFetching: loading } = useVoucherPageQuery(queryParams);
   const vouchers = voucherData?.content || [];
@@ -64,7 +68,6 @@ const VoucherManager = () => {
   const { mutateAsync: createVoucher } = useCreateVoucherMutation();
   const { mutateAsync: updateVoucher } = useUpdateVoucherMutation();
   const { mutateAsync: deleteVoucher } = useDeleteVoucherMutation();
-  
 
   const getStatusInfo = (v) => {
     const now = new Date();
@@ -90,14 +93,11 @@ const VoucherManager = () => {
     };
   }, []);
 
-  
-
   useWebSocket(
     '/topic/vouchers',
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         playNotificationSound();
-        
       }
     },
     { scope: 'admin' },
@@ -137,7 +137,6 @@ const VoucherManager = () => {
       }
       setFormErrors({});
       setIsModalOpen(false);
-      
     } catch (err) {
       const errorMsg = err.message || '';
       if (err?.code === 'VOUCHER_CODE_EXISTS' || errorMsg.includes('Voucher code already exists')) {
@@ -156,7 +155,6 @@ const VoucherManager = () => {
     try {
       await deleteVoucher(id);
       showSuccessToast('Đã xóa voucher thành công');
-      
     } catch (err) {
       showErrorToast(err);
     }
@@ -190,14 +188,14 @@ const VoucherManager = () => {
           {vouchers.map((v) => {
             const status = getStatusInfo(v);
             return (
-	              <div
-	                key={v.id}
-	                className="flex h-full flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-	              >
-	                <div className="flex justify-between items-start mb-4">
-	                  <div className="rounded-2xl bg-orange-50 p-3 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
-	                    <Ticket size={24} />
-	                  </div>
+              <div
+                key={v.id}
+                className="flex h-full flex-col rounded-3xl border border-[#E8DCD1] bg-white p-6 shadow-sm transition-all hover:border-[#C17C4A] hover:shadow-md dark:border-[#352C26] dark:bg-[#1F1A17]"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="rounded-2xl bg-[#F7F0E7] p-3 text-[#C17C4A] dark:bg-[#2A221E] dark:text-[#D8986A]">
+                    <Ticket size={24} />
+                  </div>
                   <span
                     className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${status.color}`}
                   >
@@ -205,29 +203,31 @@ const VoucherManager = () => {
                   </span>
                 </div>
 
-	                <h3 className="mb-1 text-xl font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-	                  {v.code}
-	                </h3>
-	                <div className="mb-4 text-2xl font-black text-orange-600 dark:text-orange-300">
-	                  {v.discountPercent ? `${v.discountPercent}%` : fmtVND(v.discountAmount)}
-	                </div>
-	                {/* ... Thông tin chi tiết ... */}
-	                <div className="mb-6 space-y-2 text-xs text-slate-500 dark:text-slate-400">
-	                  <div className="flex justify-between">
-	                    <span>Đã dùng:</span>{' '}
-	                    <span className="font-bold text-slate-700 dark:text-slate-200">{v.usedCount}</span>
-	                  </div>
-	                  <div className="flex justify-between">
-	                    <span>Giới hạn:</span>{' '}
-	                    <span className="font-bold text-slate-700 dark:text-slate-200">
-	                      {v.usageLimit === 0 ? '∞' : v.usageLimit}
-	                    </span>
-	                  </div>
-	                  <div className="flex justify-between">
-	                    <span>Hạn dùng:</span>{' '}
-	                    <span className="font-bold text-slate-700 dark:text-slate-200">
-	                      {fmtDate(v.validTo) || 'Vô hạn'}
-	                    </span>
+                <h3 className="mb-1 text-xl font-black uppercase tracking-wider text-[#2D1D16] dark:text-[#F7F0E7]">
+                  {v.code}
+                </h3>
+                <div className="mb-4 text-2xl font-black text-[#56372B] dark:text-[#D8986A]">
+                  {v.discountPercent ? `${v.discountPercent}%` : fmtVND(v.discountAmount)}
+                </div>
+                {/* ... Thông tin chi tiết ... */}
+                <div className="mb-6 space-y-2 text-xs text-[#6B5D55] dark:text-[#BDB0A4]">
+                  <div className="flex justify-between">
+                    <span>Đã dùng:</span>{' '}
+                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                      {v.usedCount}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Giới hạn:</span>{' '}
+                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                      {v.usageLimit === 0 ? '∞' : v.usageLimit}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Hạn dùng:</span>{' '}
+                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                      {fmtDate(v.validTo) || 'Vô hạn'}
+                    </span>
                   </div>
                 </div>
 
@@ -246,7 +246,7 @@ const VoucherManager = () => {
       )}
 
       {!loading && vouchers.length === 0 && (
-	        <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="rounded-3xl border border-dashed border-[#E8DCD1] bg-white py-20 text-center italic text-[#9C8E85] transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#82756B]">
           <Ticket size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy voucher nào.
         </div>

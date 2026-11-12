@@ -44,7 +44,8 @@ public class SystemSettingsMapper {
                 settings.getAutoPrintBill(),
                 settings.getNewOrderNotificationEnabled(),
                 settings.getPaymentNotificationEnabled(),
-                settings.getKitchenOverdueNotificationEnabled());
+                settings.getKitchenOverdueNotificationEnabled(),
+                settings.getAllowSettlementWithUnfinishedItems());
     }
 
     public PublicSettingsResponse toPublicResponse(SystemSettings settings) {
@@ -73,7 +74,8 @@ public class SystemSettingsMapper {
                 settings.getAutoPrintBill(),
                 settings.getNewOrderNotificationEnabled(),
                 settings.getPaymentNotificationEnabled(),
-                settings.getKitchenOverdueNotificationEnabled());
+                settings.getKitchenOverdueNotificationEnabled(),
+                settings.getAllowSettlementWithUnfinishedItems());
     }
 
     public void updateEntity(SystemSettings settings, SystemSettingsUpdateRequest request) {
@@ -108,6 +110,7 @@ public class SystemSettingsMapper {
         settings.setNewOrderNotificationEnabled(request.newOrderNotificationEnabled());
         settings.setPaymentNotificationEnabled(request.paymentNotificationEnabled());
         settings.setKitchenOverdueNotificationEnabled(request.kitchenOverdueNotificationEnabled());
+        settings.setAllowSettlementWithUnfinishedItems(request.allowSettlementWithUnfinishedItems());
     }
 
     private String normalizeRequiredText(String value) {

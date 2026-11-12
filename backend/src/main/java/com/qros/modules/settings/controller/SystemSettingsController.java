@@ -7,7 +7,6 @@ import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.security.Principal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,19 +14,22 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping(ApiRoutes.SETTINGS)
-@RequiredArgsConstructor
 public class SystemSettingsController {
 
     private final SystemSettingsService settingsService;
 
+    public SystemSettingsController(SystemSettingsService settingsService) {
+        this.settingsService = settingsService;
+    }
+
     @GetMapping
-    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CASHIER','STAFF','CHEF')")
     public ApiResponse<SystemSettingsResponse> getSettings() {
         return ApiResponse.success(settingsService.getSettings());
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<SystemSettingsResponse> updateSettings(
             @Valid @RequestBody SystemSettingsUpdateRequest request, @NonNull Principal principal) {
         return ApiResponse.success(
@@ -35,7 +37,7 @@ public class SystemSettingsController {
     }
 
     @PostMapping("/logo")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<SystemSettingsResponse> uploadLogo(
             @RequestParam("file") @NonNull MultipartFile file, @NonNull Principal principal) {
         return ApiResponse.success(

@@ -117,6 +117,7 @@ class SystemSettingsServiceTest {
                 .newOrderNotificationEnabled(true)
                 .paymentNotificationEnabled(true)
                 .kitchenOverdueNotificationEnabled(true)
+                .allowSettlementWithUnfinishedItems(true)
                 .build();
     }
 
@@ -151,6 +152,7 @@ class SystemSettingsServiceTest {
                 "HÓA ĐƠN THANH TOÁN",
                 "CẢM ƠN QUÝ KHÁCH",
                 "80",
+                true,
                 true,
                 true,
                 true,

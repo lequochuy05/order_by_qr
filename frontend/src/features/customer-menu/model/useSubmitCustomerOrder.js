@@ -1,9 +1,62 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { useSubmitOrderMutation } from '@entities/order/api/orderMutations.js';
+import { useSubmitOrderMutation } from '@entities/order';
 import { queryClient } from '@shared/api/queryClient.js';
 
-const createClientRequestId = () => crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const PENDING_ORDER_REQUEST_KEY = 'qros:pending-order-request';
+
+const createClientRequestId = () =>
+  crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildOrderPayload = (tableCode, sessionToken, cart) => ({
+  tableCode,
+  sessionToken,
+  items: Object.entries(cart.items)
+    .map(([id, item]) => ({
+      menuItemId: item.actualId || parseInt(id),
+      quantity: item.qty,
+      notes: item.note,
+      selectedOptionValueIds: item.selectedOptionValueIds || [],
+    }))
+    .sort((left, right) => left.menuItemId - right.menuItemId),
+  combos: Object.entries(cart.combos)
+    .map(([id, combo]) => ({
+      comboId: parseInt(id),
+      quantity: combo.qty,
+      notes: combo.note,
+    }))
+    .sort((left, right) => left.comboId - right.comboId),
+});
+
+const requestFingerprint = (payload) => JSON.stringify(payload);
+
+const loadPendingRequestId = (fingerprint) => {
+  try {
+    const pending = JSON.parse(globalThis.sessionStorage?.getItem(PENDING_ORDER_REQUEST_KEY) || 'null');
+    return pending?.fingerprint === fingerprint ? pending.clientRequestId : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistPendingRequest = (fingerprint, clientRequestId) => {
+  try {
+    globalThis.sessionStorage?.setItem(
+      PENDING_ORDER_REQUEST_KEY,
+      JSON.stringify({ fingerprint, clientRequestId }),
+    );
+  } catch {
+    // The in-memory ref still preserves retry identity for this page lifetime.
+  }
+};
+
+const clearPendingRequest = () => {
+  try {
+    globalThis.sessionStorage?.removeItem(PENDING_ORDER_REQUEST_KEY);
+  } catch {
+    // Storage may be unavailable in a restricted browser context.
+  }
+};
 
 const useSubmitCustomerOrder = ({
   tableCode,
@@ -23,6 +76,7 @@ const useSubmitCustomerOrder = ({
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const pendingRequestRef = useRef(null);
   const submitOrderMutation = useSubmitOrderMutation();
 
   const handleSubmitOrder = useCallback(async () => {
@@ -53,24 +107,18 @@ const useSubmitCustomerOrder = ({
     setIsSubmitting(true);
     try {
       const activeSessionToken = await ensureSessionToken();
-      const orderData = {
-        tableCode,
-        sessionToken: activeSessionToken,
-        clientRequestId: createClientRequestId(),
-        items: Object.entries(cart.items).map(([id, item]) => ({
-          menuItemId: item.actualId || parseInt(id),
-          quantity: item.qty,
-          notes: item.note,
-          selectedOptionValueIds: item.selectedOptionValueIds || [],
-        })),
-        combos: Object.entries(cart.combos).map(([id, combo]) => ({
-          comboId: parseInt(id),
-          quantity: combo.qty,
-          notes: combo.note,
-        })),
-      };
+      const payload = buildOrderPayload(tableCode, activeSessionToken, cart);
+      const fingerprint = requestFingerprint(payload);
+      const clientRequestId =
+        pendingRequestRef.current?.fingerprint === fingerprint
+          ? pendingRequestRef.current.clientRequestId
+          : loadPendingRequestId(fingerprint) || createClientRequestId();
+      pendingRequestRef.current = { fingerprint, clientRequestId };
+      persistPendingRequest(fingerprint, clientRequestId);
 
-      const createdOrder = await submitOrderMutation.mutateAsync(orderData);
+      const createdOrder = await submitOrderMutation.mutateAsync({ ...payload, clientRequestId });
+      pendingRequestRef.current = null;
+      clearPendingRequest();
       queryClient.setQueryData(
         ['tableSession', tableCode, activeSessionToken],
         (previousSessionData) => ({

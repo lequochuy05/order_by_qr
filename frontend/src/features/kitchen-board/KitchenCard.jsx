@@ -8,12 +8,30 @@ import {
   RotateCcw,
   StickyNote,
   Tag,
+  Trash2,
 } from 'lucide-react';
 import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 
-const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
+const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing }) => {
   const priority = getPriority(item);
+  const { confirm } = useConfirmModal();
+
+  const handleCancel = async () => {
+    if (!onCancelItem || isProcessing) return;
+    const isTakeaway = item.orderType === 'TAKEAWAY';
+    const destinationLabel = isTakeaway ? 'đơn Mang về' : `Bàn ${item.tableName}`;
+    const confirmed = await confirm(
+      'Hủy món ăn',
+      `Bạn có chắc chắn muốn hủy món "${item.itemName}" của ${destinationLabel}?\nKho nguyên liệu sẽ được tự động hoàn trả.`,
+    );
+    if (confirmed) {
+      await onCancelItem(item.id, 'Bếp hủy món');
+    }
+  };
+
+  const isTakeaway = item.orderType === 'TAKEAWAY';
 
   return (
     <article
@@ -24,12 +42,36 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-black text-white dark:bg-slate-700">
-              Bàn {item.tableName}
-            </span>
+            {isTakeaway ? (
+              <span className="rounded-lg bg-purple-600 px-2.5 py-1 text-xs font-black text-white dark:bg-purple-700">
+                Mang về
+              </span>
+            ) : (
+              <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-black text-white dark:bg-slate-700">
+                Bàn {item.tableName}
+              </span>
+            )}
             <span className="text-xs font-semibold text-slate-400">Đơn #{item.orderId}</span>
+            {item.batchNumber > 1 && (
+              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                Đợt {item.batchNumber} (Gọi thêm)
+              </span>
+            )}
           </div>
-          <WaitBadge item={item} priority={priority} />
+          <div className="flex items-center gap-1.5">
+            <WaitBadge item={item} priority={priority} />
+            {onCancelItem && (status === ORDER_ITEM_STATUSES.PENDING || status === ORDER_ITEM_STATUSES.COOKING) && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isProcessing}
+                className="rounded-lg p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-950/30"
+                title="Hủy món ăn"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mt-4">
@@ -43,7 +85,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, isProcessing }) => {
                 {item.itemName}
               </h3>
             </div>
-            <span className="min-w-12 rounded-xl bg-orange-50 px-2.5 py-1.5 text-center text-lg font-black text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+            <span className="min-w-12 rounded-xl bg-[#F7F0E7] border border-[#E8DCD1] px-2.5 py-1.5 text-center text-lg font-black text-[#56372B] dark:bg-[#2A221E] dark:border-[#352C26] dark:text-[#D8986A]">
               x{item.quantity}
             </span>
           </div>

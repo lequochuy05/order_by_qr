@@ -22,6 +22,7 @@ const clearUserCache = () => {
 };
 
 export const userService = {
+  clearCache: clearUserCache,
   getPage: async (params = {}, { force = false } = {}) => {
     const page = Number(params.page || 0);
     const size = Number(params.size || 24);

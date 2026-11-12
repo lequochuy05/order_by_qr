@@ -106,6 +106,7 @@ const clearAllInventoryCache = () => {
 };
 
 export const inventoryService = {
+  clearCache: clearAllInventoryCache,
   getItems: ({ force = false, ...params } = {}) => getItemsCached(params, { force }),
   getItemPage: ({ force = false, ...params } = {}) => getItemPageCached(params, { force }),
   getSummary: ({ force = false } = {}) => getSummaryCached({ force }),

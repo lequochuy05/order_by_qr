@@ -104,7 +104,7 @@ public class OrderCreationService {
         DiningTable table = Optional.ofNullable(session.getTable())
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID, "Secure Table Code invalid"));
 
-        return createOrder(table, session, request.items(), request.combos(), BatchSource.QR);
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.QR, null);
     }
 
     @Transactional
@@ -118,7 +118,7 @@ public class OrderCreationService {
         TableSession session = tableSessionService.getOrCreateStaffSession(request.tableId());
         DiningTable table = session.getTable();
 
-        return createOrder(table, session, request.items(), request.combos(), BatchSource.STAFF);
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.STAFF, request.voucherCode());
     }
 
     private OrderResponse createTakeawayOrder(@NonNull StaffCreateOrderRequest request) {
@@ -137,16 +137,21 @@ public class OrderCreationService {
                 .submittedAt(AppTime.now())
                 .source(BatchSource.STAFF)
                 .build();
-        order.addBatch(batch);
 
         Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
 
         buildOrderItems(request.items(), order, batch, quantitiesToReserve);
         buildOrderCombos(request.combos(), order, batch, quantitiesToReserve);
 
+        attachBatchIfNotEmpty(order, batch);
+        cleanupEmptyBatches(order);
+
         inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
+        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
+            orderPricingService.applyVoucher(order, request.voucherCode());
+        }
 
         if (Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
             order.setStatus(OrderStatus.SERVING);
@@ -169,7 +174,8 @@ public class OrderCreationService {
             TableSession session,
             List<OrderItemRequest> items,
             List<OrderComboRequest> combos,
-            BatchSource source) {
+            BatchSource source,
+            String voucherCode) {
         Order order = getOrCreateActiveOrder(table, session);
         ensureNoPaymentInProgress(order);
         orderValidator.validateTableAcceptsOrders(table);
@@ -177,16 +183,20 @@ public class OrderCreationService {
         OrderBatch batch =
                 OrderBatch.builder().submittedAt(AppTime.now()).source(source).build();
 
-        order.addBatch(batch);
-
         Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
 
         buildOrderItems(items, order, batch, quantitiesToReserve);
         buildOrderCombos(combos, order, batch, quantitiesToReserve);
 
+        attachBatchIfNotEmpty(order, batch);
+        cleanupEmptyBatches(order);
+
         inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            orderPricingService.applyVoucher(order, voucherCode);
+        }
         applyAutoConfirmation(order, source);
 
         Order saved = orderRepository.save(order);
@@ -220,10 +230,7 @@ public class OrderCreationService {
 
             if (!activeSessionOrders.isEmpty()) {
                 if (activeSessionOrders.size() > 1) {
-                    log.warn(
-                            "Table session {} has {} active orders. Using the latest one.",
-                            session.getId(),
-                            activeSessionOrders.size());
+                    throw new BusinessException(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS);
                 }
 
                 return loadActiveOrderDetail(activeSessionOrders.get(0).getId());
@@ -235,7 +242,7 @@ public class OrderCreationService {
 
         if (!activeOrders.isEmpty()) {
             if (activeOrders.size() > 1) {
-                log.warn("Table {} has {} active orders. Using the latest one.", table.getId(), activeOrders.size());
+                throw new BusinessException(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS);
             }
 
             ActiveOrderLockProjection activeOrderLock = activeOrders.get(0);
@@ -330,6 +337,7 @@ public class OrderCreationService {
             BigDecimal unitPrice = menuItem.getPrice().add(extraPrice);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
+                    .filter(item -> Objects.equals(item.getBatch(), batch))
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getMenuItem() != null)
                     .filter(item -> Objects.equals(item.getMenuItem().getId(), menuItem.getId()))
@@ -415,6 +423,7 @@ public class OrderCreationService {
             orderValidator.validateComboOrderable(combo);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
+                    .filter(item -> Objects.equals(item.getBatch(), batch))
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getCombo() != null)
                     .filter(item -> Objects.equals(item.getCombo().getId(), combo.getId()))
@@ -442,6 +451,25 @@ public class OrderCreationService {
             order.addItem(orderItem);
             quantitiesToReserve.put(orderItem, comboRequest.quantity());
         }
+    }
+
+    private void attachBatchIfNotEmpty(Order order, OrderBatch batch) {
+        boolean hasItemsInBatch =
+                order.getOrderItems().stream().anyMatch(item -> Objects.equals(item.getBatch(), batch));
+        if (hasItemsInBatch) {
+            order.addBatch(batch);
+        }
+    }
+
+    private void cleanupEmptyBatches(Order order) {
+        if (order.getOrderBatches() == null || order.getOrderBatches().isEmpty()) {
+            return;
+        }
+        Set<OrderBatch> batchesWithItems = order.getOrderItems().stream()
+                .map(OrderItem::getBatch)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        order.getOrderBatches().removeIf(b -> !batchesWithItems.contains(b));
     }
 
     private void mergeExistingItem(

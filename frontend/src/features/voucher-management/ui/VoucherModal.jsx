@@ -236,8 +236,8 @@ const VoucherModal = ({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-orange-100 bg-orange-50/60 p-5 dark:border-orange-500/20 dark:bg-orange-950/20">
-          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
+        <div className="rounded-3xl border border-[#E8DCD1] bg-[#F7F0E7]/60 p-5 dark:border-[#352C26] dark:bg-[#150E0B]">
+          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-[#56372B] dark:text-[#D8986A]">
             Hình thức giảm giá
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

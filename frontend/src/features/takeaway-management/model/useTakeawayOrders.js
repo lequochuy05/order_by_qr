@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { takeawayService } from '../api/takeawayService.js';
+import { takeawayService } from '@entities/order';
 
 export const useTakeawayOrders = (options = {}) =>
   useQuery({

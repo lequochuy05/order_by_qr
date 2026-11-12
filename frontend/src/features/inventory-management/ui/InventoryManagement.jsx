@@ -1,4 +1,5 @@
 import { Loader2, Plus } from 'lucide-react';
+import { useAuth } from '@features/auth';
 
 import { STOCK_FILTER_OPTIONS } from '../lib/inventoryConstants.js';
 import useInventoryManagement from '../model/useInventoryManagement.js';
@@ -19,6 +20,8 @@ const LoadingState = () => (
 );
 
 const InventoryManagement = () => {
+  const { user } = useAuth();
+  const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const inventory = useInventoryManagement();
 
   return (
@@ -27,9 +30,9 @@ const InventoryManagement = () => {
         searchPlaceholder="Tìm nguyên liệu..."
         searchTerm={inventory.searchTerm}
         setSearchTerm={inventory.setSearchTerm}
-        onAddClick={inventory.openCreate}
-        addButtonText="Thêm nguyên liệu"
-        addButtonIcon={Plus}
+        onAddClick={isManager ? inventory.openCreate : undefined}
+        addButtonText={isManager ? "Thêm nguyên liệu" : undefined}
+        addButtonIcon={isManager ? Plus : undefined}
         showFilter
         filterAllLabel="Tất cả tồn kho"
         filterValue={inventory.stockFilter}
@@ -59,6 +62,7 @@ const InventoryManagement = () => {
           onEdit={inventory.openEdit}
           onStockIn={inventory.openStockIn}
           onAdjust={inventory.openStockAdjust}
+          isManager={isManager}
         />
       ) : inventory.movementsLoading ? (
         <LoadingState />

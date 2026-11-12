@@ -52,6 +52,16 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     @Query(
             """
+            SELECT COUNT(t) > 0
+            FROM PaymentTransaction t
+            WHERE t.order.tableSession.id = :sessionId
+              AND t.status IN :statuses
+            """)
+    boolean existsByOrderTableSessionIdAndStatusIn(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<PaymentTransactionStatus> statuses);
+
+    @Query(
+            """
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId

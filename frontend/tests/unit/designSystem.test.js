@@ -11,14 +11,14 @@ import {
 test('form labels share the compact uppercase typography contract', () => {
   assert.match(FORM_LABEL_CLASS, /uppercase/);
   assert.match(FORM_LABEL_CLASS, /tracking-\[0\.2em\]/);
-  assert.match(FORM_LABEL_CLASS, /text-gray-400/);
+  assert.match(FORM_LABEL_CLASS, /text-slate-400/);
 });
 
 test('form controls share shape, spacing, and disabled states', () => {
   assert.match(FORM_CONTROL_CLASS, /rounded-2xl/);
   assert.match(FORM_CONTROL_CLASS, /border-2/);
   assert.match(FORM_CONTROL_CLASS, /disabled:cursor-not-allowed/);
-  assert.match(FORM_CONTROL_CLASS, /disabled:bg-gray-100/);
+  assert.match(FORM_CONTROL_CLASS, /disabled:bg-slate-100/);
 });
 
 test('normal form controls use the orange focus treatment', () => {

@@ -21,16 +21,16 @@ const CurrentOrderBanner = ({ order, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-xl border border-orange-100 bg-white p-2.5 text-left shadow-sm transition-all active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900"
+      className="w-full rounded-2xl border border-[#E8DCD1] bg-white p-3 text-left shadow-sm transition-all active:scale-[0.99] dark:border-[#352C26] dark:bg-[#1F1A17]"
     >
       <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
-          <ReceiptText size={17} />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F7F0E7] text-[#C17C4A] dark:bg-[#2A221E] dark:text-[#D8986A]">
+          <ReceiptText size={18} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-[13px] font-black text-gray-900 dark:text-white">
+            <p className="truncate text-[13px] font-black text-[#2D1D16] dark:text-[#F7F0E7]">
               Đơn #{order.id}
             </p>
             <span
@@ -39,7 +39,7 @@ const CurrentOrderBanner = ({ order, onClick }) => {
               {status.label}
             </span>
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-[#6B5D55] dark:text-[#BDB0A4]">
             <Clock3 size={11} />
             <span className="truncate">{status.helper}</span>
             <span className="shrink-0">•</span>
@@ -48,10 +48,10 @@ const CurrentOrderBanner = ({ order, onClick }) => {
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-[13px] font-black text-orange-600 dark:text-orange-300">
+          <p className="text-[13px] font-black text-[#56372B] dark:text-[#D8986A]">
             {fmtVND(getOrderFinalAmount(order))}
           </p>
-          <ChevronRight className="ml-auto mt-0.5 text-gray-300 dark:text-slate-600" size={15} />
+          <ChevronRight className="ml-auto mt-0.5 text-[#9C8E85] dark:text-[#82756B]" size={15} />
         </div>
       </div>
     </button>

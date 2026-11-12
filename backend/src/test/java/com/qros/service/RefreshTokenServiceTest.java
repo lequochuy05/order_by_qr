@@ -149,8 +149,8 @@ class RefreshTokenServiceTest {
         }
 
         @Override
-        public boolean consumeAtomically(String key) {
-            return activeTokens.remove(key) != null;
+        public boolean consumeAtomically(String key, String expectedValue) {
+            return activeTokens.remove(key, expectedValue);
         }
 
         @Override

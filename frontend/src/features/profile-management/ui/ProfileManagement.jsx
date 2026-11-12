@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 import { useAuth } from '@features/auth';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import { useProfileQuery } from '../api/profileQueries.js';
-import { useUpdateProfileMutation, useUploadProfileAvatarMutation, useChangePasswordMutation } from '../api/profileMutations.js';
+import {
+  useChangePasswordMutation,
+  useProfileQuery,
+  useUpdateProfileMutation,
+  useUploadProfileAvatarMutation,
+} from '@entities/user';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import ProfileAvatarCard from './ProfileAvatarCard.jsx';
@@ -28,9 +33,11 @@ const initialPassword = {
 const passwordRules = [
   { label: '8+ ký tự', test: (value) => value.length >= 8 },
   { label: 'Chữ hoa', test: (value) => /[A-Z]/.test(value) },
-  { label: 'Chữ thường', test: (value) => /[a-z]/.test(value) },
   { label: 'Số', test: (value) => /\d/.test(value) },
+  { label: 'Ký tự đặc biệt', test: (value) => /[!@#$%^&*(),.?":{}|<>]/.test(value) },
 ];
+
+const hasValidPasswordPolicy = (value) => passwordRules.every((rule) => rule.test(value));
 
 const strengthMeta = [
   { label: 'Yếu', barClass: 'bg-red-500', textClass: 'text-red-600' },
@@ -41,8 +48,12 @@ const strengthMeta = [
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isForceChange = searchParams.get('forceChangePassword') === 'true' || Boolean(user?.mustChangePassword);
+  const passwordSectionRef = useRef(null);
   const { showError } = useStatusModal();
   const fileInputRef = useRef(null);
+  const avatarObjectUrlRef = useRef(null);
 
   const [profile, setProfile] = useState(initialProfile);
   const { data: profileData, isLoading: loading } = useProfileQuery();
@@ -50,7 +61,7 @@ const ProfilePage = () => {
   const { mutateAsync: uploadAvatarMut } = useUploadProfileAvatarMutation();
   const { mutateAsync: changePasswordMut } = useChangePasswordMutation();
   const [avatarPreview, setAvatarPreview] = useState('');
-    const [savingProfile, setSavingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPassword);
   const [savingPassword, setSavingPassword] = useState(false);
@@ -58,12 +69,15 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
 
   const isMountedRef = useRef(true);
-    const initialProfileRef = useRef(null);
+  const initialProfileRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+      }
     };
   }, []);
 
@@ -85,9 +99,16 @@ const ProfilePage = () => {
         phone: nextProfile.phone,
         role: nextProfile.role,
         avatarUrl: nextProfile.avatarUrl,
+        mustChangePassword: Boolean(profileData.mustChangePassword),
       });
     }
   }, [profileData, updateUser]);
+
+  useEffect(() => {
+    if (isForceChange && passwordSectionRef.current) {
+      passwordSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isForceChange]);
 
   const strength = useMemo(() => {
     const passed = passwordRules.filter((rule) => rule.test(passwordForm.newPassword)).length;
@@ -153,7 +174,12 @@ const ProfilePage = () => {
       return;
     }
 
-    setAvatarPreview(URL.createObjectURL(file));
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+    }
+    const objectUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = objectUrl;
+    setAvatarPreview(objectUrl);
     setUploadingAvatar(true);
     try {
       const updated = await uploadAvatarMut(file);
@@ -165,6 +191,10 @@ const ProfilePage = () => {
       setAvatarPreview(profile.avatarUrl || '');
       showErrorToast(err);
     } finally {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
       setUploadingAvatar(false);
       event.target.value = '';
     }
@@ -175,8 +205,8 @@ const ProfilePage = () => {
     if (!passwordForm.currentPassword) {
       nextErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
     }
-    if (passwordForm.newPassword.length < 8) {
-      nextErrors.newPassword = 'Mật khẩu mới phải có ít nhất 8 ký tự';
+    if (!hasValidPasswordPolicy(passwordForm.newPassword)) {
+      nextErrors.newPassword = 'Mật khẩu cần 8 ký tự, chữ hoa, số và ký tự đặc biệt';
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       nextErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp';
@@ -200,7 +230,8 @@ const ProfilePage = () => {
         newPassword: passwordForm.newPassword,
       });
       setPasswordForm(initialPassword);
-      showSuccessToast('Mật khẩu đã được thay đổi.');
+      updateUser({ mustChangePassword: false });
+      showSuccessToast('Mật khẩu đã được thay đổi thành công.');
     } catch (err) {
       showErrorToast(err);
     } finally {
@@ -218,6 +249,20 @@ const ProfilePage = () => {
 
   return (
     <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 dark:bg-slate-950 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
+      {isForceChange && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="font-bold text-sm sm:text-base text-amber-900 dark:text-amber-100">
+              Yêu cầu đổi mật khẩu bảo mật
+            </h3>
+            <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300">
+              Tài khoản của bạn vừa được cấp mới hoặc đặt lại mật khẩu. Vui lòng đổi sang mật khẩu mới trước khi tiếp tục thao tác trên hệ thống.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <ProfileAvatarCard
           profile={profile}
@@ -238,17 +283,19 @@ const ProfilePage = () => {
         />
       </div>
 
-      <ProfilePasswordForm
-        passwordForm={passwordForm}
-        setPasswordForm={setPasswordForm}
-        errors={errors}
-        savingPassword={savingPassword}
-        showPasswords={showPasswords}
-        setShowPasswords={setShowPasswords}
-        strength={strength}
-        passwordRules={passwordRules}
-        onSubmit={handlePasswordSubmit}
-      />
+      <div ref={passwordSectionRef} id="password-form-section">
+        <ProfilePasswordForm
+          passwordForm={passwordForm}
+          setPasswordForm={setPasswordForm}
+          errors={errors}
+          savingPassword={savingPassword}
+          showPasswords={showPasswords}
+          setShowPasswords={setShowPasswords}
+          strength={strength}
+          passwordRules={passwordRules}
+          onSubmit={handlePasswordSubmit}
+        />
+      </div>
     </div>
   );
 };
