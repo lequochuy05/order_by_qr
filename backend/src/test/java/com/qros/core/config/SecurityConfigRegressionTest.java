@@ -30,7 +30,7 @@ class SecurityConfigRegressionTest {
     }
 
     @Test
-    void securityConfigurationIsUrlBasedUntilMethodGuardsAreIntroduced() throws Exception {
+    void methodSecurityIsEnabledForSensitiveOperations() throws Exception {
         Path securityConfigPath = Files.walk(Path.of("src/main/java"))
                 .filter(path -> path.getFileName().toString().equals("SecurityConfig.java"))
                 .findFirst()
@@ -38,7 +38,57 @@ class SecurityConfigRegressionTest {
 
         String source = Files.readString(securityConfigPath);
 
-        assertThat(source).doesNotContain("@EnableMethodSecurity");
+        assertThat(source).contains("@EnableMethodSecurity");
+    }
+
+    @Test
+    void sensitiveControllersHaveMethodLevelGuards() throws Exception {
+        Path mainSource = Path.of("src/main/java");
+        String paymentController = readController(mainSource, "PaymentController.java");
+        String settingsController = readController(mainSource, "SystemSettingsController.java");
+        String userAdminController = readController(mainSource, "UserAdminController.java");
+        String voucherController = readController(mainSource, "VoucherController.java");
+        String aiStaffController = readController(mainSource, "AiStaffController.java");
+        String analyticsController = readController(mainSource, "AnalyticsController.java");
+        String forecastController = readController(mainSource, "ForecastController.java");
+
+        assertThat(paymentController)
+                .containsAnyOf(
+                        "@PreAuthorize(\"hasAnyRole('MANAGER','STAFF')\")",
+                        "@PreAuthorize(\"hasAnyRole('MANAGER', 'CASHIER', 'STAFF')\")",
+                        "@PreAuthorize(\"hasAnyRole('MANAGER', 'CASHIER')\")",
+                        "@PreAuthorize(\"hasAnyRole('ADMIN', 'MANAGER', 'CASHIER')\")");
+        assertThat(settingsController)
+                .containsAnyOf("@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasRole('ADMIN')\")");
+        assertThat(userAdminController)
+                .containsAnyOf(
+                        "@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasAnyRole('ADMIN', 'MANAGER')\")");
+        assertThat(voucherController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
+        assertThat(aiStaffController).contains("@PreAuthorize(\"hasAnyRole('MANAGER','STAFF','CHEF')\")");
+        assertThat(analyticsController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
+        assertThat(forecastController)
+                .containsAnyOf("@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasRole('ADMIN')\")");
+    }
+
+    @Test
+    void managerGetAndAnalyticsGetAreRestrictedToManagerRole() throws Exception {
+        Path securityConfigPath = Files.walk(Path.of("src/main/java"))
+                .filter(path -> path.getFileName().toString().equals("SecurityConfig.java"))
+                .findFirst()
+                .orElseThrow();
+
+        String source = Files.readString(securityConfigPath);
+
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, MANAGER_GET)\n                        .hasRole(\"MANAGER\")");
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, CASHIER_ORDER_HISTORY_GET)\n                        .hasAnyRole(\"MANAGER\", \"CASHIER\")");
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, ANALYTICS_GET)\n                        .hasRole(\"MANAGER\")");
+        assertThat(source).contains("RoleHierarchy");
     }
 
     @Test
@@ -55,25 +105,25 @@ class SecurityConfigRegressionTest {
 
         assertThat(managerPutBlock).contains("ApiRoutes.USERS + \"/**\"");
         assertThat(managerPutBlock).contains("ApiRoutes.TABLES + \"/**\"");
-        assertThat(managerPutBlock).contains("ApiRoutes.SETTINGS");
+        assertThat(source).contains("ApiRoutes.SETTINGS");
     }
 
     @Test
-    void settingsAreManagerOnlyAndHaveNoDeleteRoute() throws Exception {
+    void settingsAreReadableByStaffAndHaveNoDeleteRoute() throws Exception {
         Path securityRoutesPath = Files.walk(Path.of("src/main/java"))
                 .filter(path -> path.getFileName().toString().equals("SecurityRoutes.java"))
                 .findFirst()
                 .orElseThrow();
 
         String source = Files.readString(securityRoutesPath);
-        String managerGetBlock = source.substring(
-                source.indexOf("public static final String[] MANAGER_GET"),
-                source.indexOf("public static final String[] STAFF_READ_GET"));
+        String staffReadGetBlock = source.substring(
+                source.indexOf("public static final String[] STAFF_READ_GET"),
+                source.indexOf("public static final String[] OPERATION_GET"));
         String managerDeleteBlock = source.substring(
                 source.indexOf("public static final String[] MANAGER_DELETE"),
                 source.indexOf("public static final String[] KITCHEN_PATCH"));
 
-        assertThat(managerGetBlock).contains("ApiRoutes.SETTINGS");
+        assertThat(staffReadGetBlock).contains("ApiRoutes.SETTINGS");
         assertThat(managerDeleteBlock).doesNotContain("ApiRoutes.SETTINGS");
     }
 
@@ -88,5 +138,27 @@ class SecurityConfigRegressionTest {
 
         assertThat(source.indexOf("STAFF_OPERATION_PATCH")).isLessThan(source.indexOf("MANAGER_PATCH"));
         assertThat(source.indexOf("STAFF_OPERATION_DELETE")).isLessThan(source.indexOf("MANAGER_DELETE"));
+    }
+
+    @Test
+    void staffOperationDeleteAllowsChefRole() throws Exception {
+        Path securityConfigPath = Files.walk(Path.of("src/main/java"))
+                .filter(path -> path.getFileName().toString().equals("SecurityConfig.java"))
+                .findFirst()
+                .orElseThrow();
+
+        String source = Files.readString(securityConfigPath);
+
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)\n                        .hasAnyRole(\"MANAGER\", \"STAFF\", \"CHEF\")");
+    }
+
+    private String readController(Path mainSource, String filename) throws Exception {
+        Path controllerPath = Files.walk(mainSource)
+                .filter(path -> path.getFileName().toString().equals(filename))
+                .findFirst()
+                .orElseThrow();
+        return Files.readString(controllerPath);
     }
 }

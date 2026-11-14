@@ -37,11 +37,11 @@ const RecipeModal = ({
           value={selectedMenuItemId}
           onChange={onSelectMenuItem}
           options={menuItems.map((item) => ({ value: item.id, label: item.name }))}
-          selectClassName="font-black text-gray-800"
+          selectClassName="font-bold"
         />
 
         {loading ? (
-          <div className="flex justify-center rounded-3xl border border-dashed py-12 text-orange-500">
+          <div className="flex justify-center rounded-3xl border border-dashed border-slate-200/80 py-12 text-indigo-600 dark:border-slate-800/80 dark:text-indigo-400">
             <Loader2 size={28} className="animate-spin" />
           </div>
         ) : (
@@ -53,7 +53,7 @@ const RecipeModal = ({
               return (
                 <div
                   key={`${row.inventoryItemId}-${index}`}
-                  className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-[1fr_180px_44px] md:items-end"
+                  className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-3.5 transition-colors dark:border-slate-800/80 dark:bg-slate-900/50 md:grid-cols-[1fr_180px_44px] md:items-end"
                 >
                   <label className="block">
                     <FormLabel className="!mb-1 !tracking-[0.16em]">Nguyên liệu</FormLabel>
@@ -64,7 +64,7 @@ const RecipeModal = ({
                         next[index] = { ...row, inventoryItemId: e.target.value };
                         setRecipeItems(next);
                       }}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-full rounded-xl border border-slate-200/80 bg-white px-4 py-3 text-sm font-bold text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                     >
                       {inventoryItems.map((item) => (
                         <option key={item.id} value={item.id}>
@@ -92,7 +92,7 @@ const RecipeModal = ({
                     onClick={() =>
                       setRecipeItems(recipeItems.filter((_, rowIndex) => rowIndex !== index))
                     }
-                    className="flex h-[46px] items-center justify-center rounded-xl bg-red-50 text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                    className="flex h-[46px] items-center justify-center rounded-xl border border-rose-200/60 bg-rose-50 text-rose-600 transition-all hover:bg-rose-600 hover:text-white active:scale-95 dark:border-rose-800/40 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white"
                   >
                     <X size={18} />
                   </button>
@@ -103,7 +103,7 @@ const RecipeModal = ({
         )}
 
         {!loading && recipeItems.length === 0 && (
-          <div className="rounded-3xl border border-dashed py-12 text-center italic text-gray-400">
+          <div className="rounded-3xl border border-dashed border-slate-200/80 py-12 text-center italic text-slate-400 dark:border-slate-800/80 dark:text-slate-500">
             Chưa có nguyên liệu trong định mức món này.
           </div>
         )}
@@ -112,7 +112,7 @@ const RecipeModal = ({
           type="button"
           onClick={onAddRow}
           disabled={loading || isSubmitting}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-50 px-4 py-2.5 text-sm font-black text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200/60 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-700 transition-all hover:bg-indigo-600 hover:text-white active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white"
         >
           <Plus size={16} /> Thêm nguyên liệu
         </button>

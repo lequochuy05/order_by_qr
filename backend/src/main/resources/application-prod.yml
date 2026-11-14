@@ -1,20 +1,17 @@
 app:
   security:
     enable-default-admin: false
-    trust-proxy-headers: ${APP_TRUST_PROXY_HEADERS:false}
+    trust-proxy-headers: ${APP_TRUST_PROXY_HEADERS:true}
     bcrypt-strength: 12
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS}
-  cache:
-    prefix: ${APP_CACHE_PREFIX:qros:v3:}
-  email:
-    from-name: ${APP_EMAIL_FROM_NAME:QROS}
-    brand-name: ${APP_EMAIL_BRAND_NAME:QROS}
-    copyright: ${APP_EMAIL_COPYRIGHT:2026 QROS}
 
 spring:
   jpa:
     show-sql: false
+
+  cache:
+    type: redis
 
   data:
     redis:
@@ -29,7 +26,7 @@ auth:
 security:
   jwt:
     refresh-cookie-secure: true
-    refresh-cookie-same-site: ${JWT_REFRESH_COOKIE_SAME_SITE:Lax}
+    refresh-cookie-same-site: None
 
 gemini:
   enabled: ${GEMINI_ENABLED:true}

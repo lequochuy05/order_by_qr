@@ -11,6 +11,9 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
+import com.qros.shared.time.AppTime;
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -28,11 +31,14 @@ public class RefreshTokenService {
 
     /**
      * Creates a new refresh token for the authenticated user.
+     * Overwrites any existing refresh token for this user — the old token
+     * is immediately invalidated.
      *
      * @param authUser The authenticated user
      * @return The generated refresh token
      */
     public String createRefreshToken(AuthenticatedUser authUser) {
+        String key = "auth:refresh:user:" + authUser.userId();
         String jti = UUID.randomUUID().toString();
 
         String refreshToken = jwtService.generateRefreshToken(
@@ -42,7 +48,8 @@ public class RefreshTokenService {
                         "role", authUser.role().name(),
                         "jti", jti));
 
-        refreshTokenStore.create(refreshTokenCacheKey(authUser.userId(), jti), jwtProperties.getRefreshExpirationMs());
+        // SET ghi đè — lưu jti để verify khi refresh
+        refreshTokenStore.create(key, jti, jwtProperties.getRefreshExpirationMs());
 
         return refreshToken;
     }
@@ -62,9 +69,10 @@ public class RefreshTokenService {
         Long userId = Long.valueOf(jwtService.extractClaim(refreshToken, "uid").toString());
         String jti = Objects.toString(jwtService.extractJti(refreshToken), "");
 
-        String cacheKey = refreshTokenCacheKey(userId, jti);
+        String key = "auth:refresh:user:" + userId;
 
-        if (jti.isBlank() || !refreshTokenStore.consumeAtomically(cacheKey)) {
+        // Atomically compare and consume the stored jti so a refresh token can only be rotated once.
+        if (jti.isBlank() || !refreshTokenStore.consumeAtomically(key, jti)) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
 
@@ -74,6 +82,9 @@ public class RefreshTokenService {
 
         if (user.getStatus() != UserStatus.ACTIVE || !user.isEnabled()) {
             throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
+        }
+        if (wasIssuedBeforePasswordChange(refreshToken, user)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
 
         String newAccessToken = jwtService.generateAccessToken(
@@ -89,7 +100,7 @@ public class RefreshTokenService {
     }
 
     /**
-     * Revokes a refresh token, preventing it from being used for future access token
+     * Revokes the refresh token, preventing it from being used for future access token
      * refreshes.
      * @param refreshToken The refresh token to revoke
      */
@@ -99,21 +110,35 @@ public class RefreshTokenService {
         }
 
         Object uid = jwtService.extractClaim(refreshToken, "uid");
-        String jti = jwtService.extractJti(refreshToken);
 
-        if (uid != null && jti != null) {
-            refreshTokenStore.revoke(refreshTokenCacheKey(Long.valueOf(uid.toString()), jti));
+        if (uid != null) {
+            refreshTokenStore.revoke("auth:refresh:user:" + uid);
         }
     }
 
     /**
-     * Constructs the cache key for storing refresh token validity.
+     * Revokes all active refresh tokens for the specified user ID.
+     * Used when an administrator deactivates, changes role, or deletes the user.
      *
-     * @param userId The user ID associated with the refresh token
-     * @param jti    The unique identifier (jti) of the refresh token
-     * @return The constructed cache key
+     * @param userId The ID of the user whose refresh tokens should be invalidated
      */
-    private String refreshTokenCacheKey(Long userId, String jti) {
-        return "auth:refresh:" + userId + ":" + jti;
+    public void revokeUserTokens(Long userId) {
+        if (userId != null) {
+            refreshTokenStore.revoke("auth:refresh:user:" + userId);
+        }
+    }
+
+    private boolean wasIssuedBeforePasswordChange(String refreshToken, User user) {
+        LocalDateTime passwordChangedAt = user.getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return false;
+        }
+        Date issuedAt = jwtService.extractIssuedAt(refreshToken);
+        if (issuedAt == null) {
+            return true;
+        }
+        long issuedAtSec = issuedAt.getTime() / 1000;
+        long passwordChangedAtSec = passwordChangedAt.atZone(AppTime.ZONE).toEpochSecond();
+        return issuedAtSec < passwordChangedAtSec;
     }
 }

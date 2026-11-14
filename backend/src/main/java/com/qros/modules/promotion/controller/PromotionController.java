@@ -10,6 +10,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,37 +29,44 @@ public class PromotionController {
     private final PromotionService promotionService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<Page<PromotionResponse>> search(@RequestParam(required = false) String q, Pageable pageable) {
         return ApiResponse.success(promotionService.searchForManagement(q, pageable));
     }
 
     @GetMapping("/management-summary")
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<Page<PromotionResponse>> managementSummary(
             @RequestParam(required = false) String q, Pageable pageable) {
         return ApiResponse.success(promotionService.searchForManagement(q, pageable));
     }
 
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<List<PromotionResponse>> active() {
         return ApiResponse.success(promotionService.findActivePromotionResponses());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<PromotionResponse> get(@PathVariable Long id) {
         return ApiResponse.success(promotionService.findById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<PromotionResponse> create(@Valid @RequestBody PromotionRequest request) {
         return ApiResponse.success("Promotion created successfully", promotionService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<PromotionResponse> update(@PathVariable Long id, @Valid @RequestBody PromotionRequest request) {
         return ApiResponse.success("Promotion updated successfully", promotionService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         promotionService.delete(id);
         return ApiResponse.success("Promotion deleted successfully", null);

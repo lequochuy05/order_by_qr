@@ -23,10 +23,8 @@ class IdempotencyServiceTest {
     @Test
     void storesSuccessfulResponseAndRunsActionOnce() {
         IdempotencyRequestRepository repository = mock(IdempotencyRequestRepository.class);
-        IdempotencyRequest request = processingRequest("hash");
         when(repository.claim(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(1);
-        when(repository.findByNamespaceAndRequestKey(anyString(), anyString())).thenReturn(Optional.of(request));
 
         IdempotencyService service = new IdempotencyService(repository, new ObjectMapper(), new SimpleMeterRegistry());
         service.initializeMetrics();
@@ -40,9 +38,14 @@ class IdempotencyServiceTest {
 
         assertThat(response.value()).isEqualTo("created");
         assertThat(executions).hasValue(1);
-        assertThat(request.getStatus()).isEqualTo(IdempotencyRequestStatus.SUCCEEDED);
-        assertThat(request.getResponseJson()).contains("created");
-        verify(repository).save(request);
+        verify(repository, never()).findByNamespaceAndRequestKey(anyString(), anyString());
+        verify(repository)
+                .complete(
+                        anyString(),
+                        anyString(),
+                        org.mockito.ArgumentMatchers.eq(IdempotencyRequestStatus.SUCCEEDED),
+                        org.mockito.ArgumentMatchers.contains("created"),
+                        any());
     }
 
     @Test

@@ -1,0 +1,241 @@
+import React from 'react';
+import {
+  AlertTriangle,
+  Check,
+  Clock3,
+  Flame,
+  Loader2,
+  RotateCcw,
+  StickyNote,
+  Tag,
+  Trash2,
+} from 'lucide-react';
+import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { fmtTime } from '@shared/lib/formatters.js';
+
+const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing }) => {
+  const priority = getPriority(item);
+  const { confirm } = useConfirmModal();
+
+  const handleCancel = async () => {
+    if (!onCancelItem || isProcessing) return;
+    const isTakeaway = item.orderType === 'TAKEAWAY';
+    const destinationLabel = isTakeaway ? 'đơn Mang về' : `Bàn ${item.tableName}`;
+    const confirmed = await confirm(
+      'Hủy món ăn',
+      `Bạn có chắc chắn muốn hủy món "${item.itemName}" của ${destinationLabel}?\nKho nguyên liệu sẽ được tự động hoàn trả.`,
+    );
+    if (confirmed) {
+      await onCancelItem(item.id, 'Bếp hủy món');
+    }
+  };
+
+  const isTakeaway = item.orderType === 'TAKEAWAY';
+
+  return (
+    <article
+      className={`overflow-hidden rounded-2xl border bg-white/95 backdrop-blur-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-[#0F172A]/95 ${priority.card}`}
+    >
+      <div className={`h-1 ${priority.bar}`} />
+
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {isTakeaway ? (
+              <span className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-2.5 py-1 text-xs font-black text-white shadow-sm">
+                Mang về
+              </span>
+            ) : (
+              <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-black text-white dark:bg-slate-700">
+                Bàn {item.tableName}
+              </span>
+            )}
+            <span className="text-xs font-semibold text-slate-400">
+              Đơn <span className="font-mono font-bold text-slate-600 dark:text-slate-300">#{item.orderId}</span>
+            </span>
+            {item.batchNumber > 1 && (
+              <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                Đợt {item.batchNumber} (Gọi thêm)
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <WaitBadge item={item} priority={priority} />
+            {onCancelItem && (status === ORDER_ITEM_STATUSES.PENDING || status === ORDER_ITEM_STATUSES.COOKING) && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isProcessing}
+                className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/30"
+                title="Hủy món ăn"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <Tag size={13} />
+                {item.category}
+              </p>
+              <h3 className="text-lg font-black leading-snug text-slate-800 dark:text-slate-100">
+                {item.itemName}
+              </h3>
+            </div>
+            <span className="min-w-12 rounded-2xl bg-indigo-50 border border-indigo-200/60 px-3 py-1.5 text-center text-lg font-black font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-400 shadow-sm">
+              x{item.quantity}
+            </span>
+          </div>
+        </div>
+
+        {item.options?.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {item.options.map((option) => (
+              <span
+                key={`${option.optionName}-${option.optionValueName}-${option.valueId || ''}`}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              >
+                {option.optionName}: {option.optionValueName}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {item.hasNotes && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            <div className="flex items-start gap-2">
+              <StickyNote size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-wider opacity-70">
+                  Ghi chú bếp
+                </p>
+                <p className="mt-0.5 font-semibold">{item.notes}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800">
+          <span>Nhận lúc {fmtTime(item.createdAt)}</span>
+          {status === ORDER_ITEM_STATUSES.COOKING && <span>Đang nấu {item.stageMinutes} phút</span>}
+          {status === ORDER_ITEM_STATUSES.FINISHED && <span>Xong lúc {fmtTime(item.statusUpdatedAt)}</span>}
+        </div>
+
+        <div className="mt-3">
+          {status === ORDER_ITEM_STATUSES.PENDING && (
+            <ActionButton
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.COOKING)}
+              disabled={isProcessing}
+              loading={isProcessing}
+              icon={Flame}
+              label="Bắt đầu nấu"
+              loadingLabel="Đang chuyển món..."
+              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/25"
+            />
+          )}
+          {status === ORDER_ITEM_STATUSES.COOKING && (
+            <ActionButton
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.FINISHED)}
+              disabled={isProcessing}
+              loading={isProcessing}
+              icon={Check}
+              label="Hoàn thành món"
+              loadingLabel="Đang hoàn thành..."
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/25"
+            />
+          )}
+          {status === ORDER_ITEM_STATUSES.FINISHED && (
+            <button
+              type="button"
+              onClick={() => onUpdateStatus(item.id, ORDER_ITEM_STATUSES.COOKING)}
+              disabled={isProcessing}
+              className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            >
+              {isProcessing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RotateCcw size={14} />
+              )}
+              {isProcessing ? 'Đang hoàn tác...' : 'Hoàn tác về đang nấu'}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+};
+
+const WaitBadge = ({ item, priority }) => {
+  if (item.status === ORDER_ITEM_STATUSES.FINISHED) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <Check size={13} />
+        Đã xong
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-black ${priority.badge}`}
+    >
+      {item.isOverdue ? <AlertTriangle size={13} /> : <Clock3 size={13} />}
+      {item.waitMinutes} phút
+    </span>
+  );
+};
+
+const ActionButton = ({ onClick, disabled, loading, icon, label, loadingLabel, className }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-black text-white shadow-sm transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
+  >
+    {loading ? (
+      <Loader2 size={17} className="animate-spin" />
+    ) : (
+      React.createElement(icon, { size: 17 })
+    )}
+    {loading ? loadingLabel : label}
+  </button>
+);
+
+const getPriority = (item) => {
+  if (item.status === ORDER_ITEM_STATUSES.FINISHED) {
+    return {
+      card: 'border-emerald-100 dark:border-emerald-500/20',
+      bar: 'bg-emerald-500',
+      badge: '',
+    };
+  }
+
+  if (item.waitMinutes >= 20) {
+    return {
+      card: 'border-rose-300 ring-1 ring-rose-100 dark:border-rose-500/40 dark:ring-rose-500/10',
+      bar: 'bg-rose-500',
+      badge: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300',
+    };
+  }
+
+  if (item.waitMinutes >= 12) {
+    return {
+      card: 'border-amber-200 dark:border-amber-500/30',
+      bar: 'bg-amber-400',
+      badge: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-300',
+    };
+  }
+
+  return {
+    card: 'border-slate-200 dark:border-slate-800',
+    bar: 'bg-slate-200 dark:bg-slate-700',
+    badge: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300',
+  };
+};
+
+export default KitchenCard;

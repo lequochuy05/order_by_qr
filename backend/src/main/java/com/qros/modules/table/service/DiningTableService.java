@@ -12,12 +12,14 @@ import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
+import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -40,6 +42,7 @@ public class DiningTableService {
     private final ApplicationEventPublisher eventPublisher;
     private final TransactionSideEffectService sideEffects;
     private final TableSessionRepository sessionRepository;
+    private final TableSessionTableRepository membershipRepository;
     private final TableActiveOrderChecker activeOrderChecker;
 
     @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
@@ -145,6 +148,7 @@ public class DiningTableService {
             allEntries = true)
     public DiningTableResponse updateStatus(@NonNull Long id, @NonNull UpdateTableStatusRequest req) {
         DiningTable table = getEntityByIdForUpdate(id);
+        assertVersionMatches(table.getVersion(), req.version());
         validateStatusTransition(table, req.status());
 
         table.setStatus(req.status());
@@ -201,6 +205,18 @@ public class DiningTableService {
         eventPublisher.publishEvent(new TableChangeEvent());
     }
 
+    private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
+        if (expectedVersion == null) {
+            return;
+        }
+
+        if (!Objects.equals(currentVersion, expectedVersion)) {
+            throw new BusinessException(
+                    ErrorCode.CONCURRENT_MODIFICATION,
+                    "This table was changed by another request. Please refresh and try again.");
+        }
+    }
+
     private void validateStatusTransition(DiningTable table, TableStatus newStatus) {
         if (table.getStatus() == newStatus) {
             return;
@@ -227,7 +243,8 @@ public class DiningTableService {
     }
 
     private TableUsage inspectUsage(Long tableId) {
-        boolean hasOpenSession = sessionRepository.existsByTableIdAndStatus(tableId, TableSessionStatus.OPEN);
+        boolean hasOpenSession = sessionRepository.existsByTableIdAndStatus(tableId, TableSessionStatus.OPEN)
+                || membershipRepository.existsActiveOpenMembershipByTableId(tableId, TableSessionStatus.OPEN);
         boolean hasActiveOrders = activeOrderChecker.hasActiveOrders(tableId);
         return new TableUsage(hasOpenSession, hasActiveOrders);
     }

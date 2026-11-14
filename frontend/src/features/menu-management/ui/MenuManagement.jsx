@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
@@ -7,10 +7,8 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { useMenuPageQuery } from '../api/menuQueries.js';
-import { useCategoriesPageQuery } from '@features/category-management/api/categoryQueries.js';
-
-import { menuItemService } from '@features/menu-management/api/menuService.js';
+import { useCategoriesPageQuery } from '@entities/category';
+import { menuItemService, useMenuPageQuery } from '@entities/menu-item';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
@@ -28,6 +26,7 @@ const emptyMenuForm = {
   active: true,
   available: true,
   displayOrder: 0,
+  version: null,
 };
 
 const normalizeItemOptions = (itemOptions = []) =>
@@ -54,6 +53,7 @@ const toMenuFormData = (item) => ({
   active: item.active ?? true,
   available: item.available ?? true,
   displayOrder: item.displayOrder ?? 0,
+  version: item.version ?? null,
 });
 
 const MenuManager = () => {
@@ -69,6 +69,8 @@ const MenuManager = () => {
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const objectPreviewUrlRef = useRef(null);
   const pageSize = 24;
 
   const { confirm } = useConfirmModal();
@@ -95,12 +97,33 @@ const MenuManager = () => {
 
   const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
 
+  const clearObjectPreview = () => {
+    if (objectPreviewUrlRef.current) {
+      URL.revokeObjectURL(objectPreviewUrlRef.current);
+      objectPreviewUrlRef.current = null;
+    }
+  };
+
+  const closeModal = () => {
+    clearObjectPreview();
+    setIsModalOpen(false);
+  };
+
   // WebSocket
   // WebSocket update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
 
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm, filterCate]);
+
+  useEffect(
+    () => () => {
+      if (objectPreviewUrlRef.current) {
+        URL.revokeObjectURL(objectPreviewUrlRef.current);
+      }
+    },
+    [],
+  );
 
   // SUBMIT
   const handleSubmit = async (e) => {
@@ -118,22 +141,30 @@ const MenuManager = () => {
         active: formData.active ?? true,
         available: formData.available ?? true,
         displayOrder: Number(formData.displayOrder) || 0,
+        version: formData.version ?? null,
       };
 
       let res;
       if (formData.id) {
         res = await menuItemService.update(formData.id, payload);
-        showSuccessToast(`Đã cập nhật món ăn`);
       } else {
         res = await menuItemService.create(payload);
-        showSuccessToast(`Đã thêm món ăn`);
       }
 
       if (selectedFile) {
-        await menuItemService.uploadImage(res.id || formData.id, selectedFile);
+        try {
+          await menuItemService.uploadImage(res.id || formData.id, selectedFile);
+        } catch (uploadError) {
+          closeModal();
+          invalidateMenu();
+          console.error('Error uploading menu item image:', uploadError);
+          showErrorToast('Đã lưu món ăn, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
+          return;
+        }
       }
 
-      setIsModalOpen(false);
+      showSuccessToast(formData.id ? 'Đã cập nhật món ăn' : 'Đã thêm món ăn');
+      closeModal();
       invalidateMenu();
     } catch (err) {
       console.error('Error saving menu item:', err);
@@ -165,6 +196,31 @@ const MenuManager = () => {
     }
   };
 
+  const handleAiGenerate = async () => {
+    if (!formData.name || isAiGenerating) return;
+    setIsAiGenerating(true);
+    try {
+      const categoryName =
+        categories.find((c) => Number(c.id) === Number(formData.categoryId))?.name || '';
+      const res = await menuItemService.generateDescription(
+        formData.name,
+        categoryName,
+        String(formData.price || ''),
+        [],
+      );
+      if (res?.shortDescription) {
+        setFormData((prev) => ({ ...prev, description: res.shortDescription }));
+      }
+      if (res?.tasteTags?.length) {
+        showSuccessToast('AI đã gợi ý mô tả và tag: ' + res.tasteTags.join(', '));
+      }
+    } catch (err) {
+      showErrorToast(err);
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
   const handleEditItem = async (item) => {
     setDetailLoadingId(item.id);
     try {
@@ -175,6 +231,7 @@ const MenuManager = () => {
       setInitialFormData(data);
       setErrors({});
       setSelectedFile(null);
+      clearObjectPreview();
       setPreview(detail.img || '');
       setIsModalOpen(true);
     } catch (err) {
@@ -199,6 +256,7 @@ const MenuManager = () => {
           setFormData(emptyForm);
           setInitialFormData(null);
           setErrors({});
+          clearObjectPreview();
           setPreview('');
           setSelectedFile(null);
           setIsModalOpen(true);
@@ -208,7 +266,7 @@ const MenuManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -225,7 +283,7 @@ const MenuManager = () => {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
+        <div className="rounded-3xl border border-dashed border-[#1E293B]/40 bg-white/90 py-20 text-center italic text-slate-400 backdrop-blur-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:text-slate-500">
           <UtensilsCrossed size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy món ăn phù hợp hoặc chưa có dữ liệu.
         </div>
@@ -242,7 +300,7 @@ const MenuManager = () => {
 
       <MenuModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeModal}
         onSubmit={handleSubmit}
         categories={categories}
         formData={formData}
@@ -253,11 +311,16 @@ const MenuManager = () => {
         selectedFile={selectedFile}
         errors={errors}
         setErrors={setErrors}
+        isAiGenerating={isAiGenerating}
+        onAiGenerate={handleAiGenerate}
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) {
+            clearObjectPreview();
+            const objectUrl = URL.createObjectURL(f);
+            objectPreviewUrlRef.current = objectUrl;
             setSelectedFile(f);
-            setPreview(URL.createObjectURL(f));
+            setPreview(objectUrl);
           }
         }}
       />

@@ -16,7 +16,6 @@ spring:
       idle-timeout: 300000
       max-lifetime: 1800000
       keepalive-time: 30000
-      connection-init-sql: "SET TIME ZONE 'Asia/Ho_Chi_Minh'"
 
   jpa:
     open-in-view: false
@@ -32,8 +31,9 @@ spring:
         order_updates: true
 
   flyway:
-    baseline-on-migrate: true
-    baseline-version: 1
+    # Existing databases must be explicitly baselined during deployment.
+    # Automatic baselining can silently skip historical migrations on a drifted schema.
+    baseline-on-migrate: false
 
   jackson:
     date-format: "yyyy-MM-dd HH:mm:ss"
@@ -50,16 +50,13 @@ spring:
       max-request-size: 5MB
 
   cache:
-    type: redis
-    redis:
-      cache-null-values: false
-      time-to-live: 1h
+    type: ${SPRING_CACHE_TYPE:caffeine}
 
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       repositories:
         enabled: false
 
@@ -71,14 +68,19 @@ spring:
     properties:
       mail:
         smtp:
-          auth: ${MAIL_SMTP_AUTH:false}
+          auth: true
           starttls:
-            enable: ${MAIL_STARTTLS:false}
+            enable: true
 
 auth:
+  lockout:
+    max-failed-attempts: 5
+    duration: 15m
   password-reset:
     phone-enabled: false
     dev-log-otp: false
+    sms:
+      otp-message-template: "${SMS_OTP_MESSAGE_TEMPLATE:Your QROS password reset OTP is %s. It expires in 5 minutes.}"
   rate-limit:
     login-ip:
       max-requests: 10
@@ -124,10 +126,9 @@ server:
 security:
   jwt:
     secret: ${JWT_SECRET}
-    expiration-ms: ${JWT_EXPIRATION_MS}
-    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS}
-    refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME}
-    refresh-cookie-same-site: ${JWT_REFRESH_COOKIE_SAME_SITE:Lax}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+    refresh-cookie-name: refreshToken
 
 rate-limit:
   rules:
@@ -161,6 +162,11 @@ rate-limit:
       method: GET
       max-requests: 30
       window: 1m
+    - scope: public:webhooks
+      path: /api/v1/webhooks/**
+      method: POST
+      max-requests: 60
+      window: 1m
 
 cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME}
@@ -171,15 +177,12 @@ app:
   base-url: ${APP_BASE_URL}
   frontend:
     base-url: ${APP_FRONTEND_BASE_URL}
-  security:
-    default-admin-email: ${APP_DEFAULT_ADMIN_EMAIL:admin@gmail.com}
-    default-admin-password: ${APP_DEFAULT_ADMIN_PASSWORD:admin123}
   cache:
-    prefix: ${APP_CACHE_PREFIX:qros:v3:}
+    prefix:  "qros:v3:"
   email:
-    from-name: ${APP_EMAIL_FROM_NAME:QROS}
-    brand-name: ${APP_EMAIL_BRAND_NAME:QROS}
-    copyright: ${APP_EMAIL_COPYRIGHT:2026 QROS}
+    from-name: QROS
+    brand-name: QROS
+    copyright: 2026 QROS
 
 payos:
   client-id: ${PAYOS_CLIENT_ID}
@@ -203,26 +206,47 @@ management:
         enabled: true
 
 analytics:
-  summary-reconcile-cron: "${ANALYTICS_SUMMARY_RECONCILE_CRON:0 */15 * * * *}"
-  summary-reconcile-zone: ${ANALYTICS_SUMMARY_RECONCILE_ZONE:Asia/Ho_Chi_Minh}
-  summary-reconcile-days: ${ANALYTICS_SUMMARY_RECONCILE_DAYS:2}
+  summary-reconcile-cron: "0 */15 * * * *"
+  summary-reconcile-zone: Asia/Ho_Chi_Minh
+  summary-reconcile-days: 2
 
 table-session:
-  no-order-expire: ${TABLE_SESSION_NO_ORDER_EXPIRE:30m}
-  token-idle-timeout: ${TABLE_SESSION_TOKEN_IDLE_TIMEOUT:2h}
-  token-max-lifetime: ${TABLE_SESSION_TOKEN_MAX_LIFETIME:12h}
-  heartbeat-write-interval: ${TABLE_SESSION_HEARTBEAT_WRITE_INTERVAL:30s}
-  max-active-tokens-per-session: ${TABLE_SESSION_MAX_ACTIVE_TOKENS:8}
-  cleanup-fixed-delay-ms: ${TABLE_SESSION_CLEANUP_FIXED_DELAY_MS:300000}
+  no-order-expire: 30m
+  token-idle-timeout: 2h
+  token-max-lifetime: 12h
+  heartbeat-write-interval: 30s
+  max-active-tokens-per-session: 8
+  cleanup-fixed-delay-ms: 300000
 
 gemini:
   api-key: ${GEMINI_API_KEY}
   api-url: ${GEMINI_API_URL}
-  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:5}
-  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:15}
-  temperature: ${GEMINI_TEMPERATURE:0.7}
-  top-p: ${GEMINI_TOP_P:0.9}
-  max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:500}
+  connect-timeout-seconds: 5
+  read-timeout-seconds: 15
+  temperature: 0.7
+  top-p: 0.9
+  max-output-tokens: 500
+
+ai:
+  quota:
+    public-ip:
+      max-requests: 10
+      window: 1m
+    public-ip-daily:
+      max-requests: 100
+      window: 1d
+    staff-user:
+      max-requests: 20
+      window: 1m
+    staff-user-daily:
+      max-requests: 300
+      window: 1d
+    menu-user:
+      max-requests: 10
+      window: 1m
+    menu-user-daily:
+      max-requests: 100
+      window: 1d
 
 logging:
   level:

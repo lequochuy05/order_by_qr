@@ -1,0 +1,9 @@
+{
+  "name": "QROS Design System Sync",
+  "id": "qros-design-system-sync",
+  "api": "1.0.0",
+  "main": "code.js",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "editorType": ["figma"]
+}

@@ -25,9 +25,10 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.payment.model.PaymentTransaction;
+import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
 import com.qros.modules.payment.repository.PaymentTransactionRepository;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.repository.DiningTableRepository;
@@ -61,6 +62,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OrderCreationService {
 
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
+            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
+    private static final List<String> ACTIVE_ORDER_STATUS_NAMES =
+            ACTIVE_ORDER_STATUSES.stream().map(Enum::name).toList();
+
     private final OrderRepository orderRepository;
     private final MenuItemRepository menuItemRepository;
     private final DiningTableRepository tableRepository;
@@ -77,6 +83,7 @@ public class OrderCreationService {
     private final OrderValidator orderValidator;
     private final TableSessionService tableSessionService;
     private final PaymentTransactionRepository paymentTransactionRepository;
+    private final SystemSettingsService settingsService;
 
     private Counter ordersCreatedCounter;
 
@@ -97,18 +104,69 @@ public class OrderCreationService {
         DiningTable table = Optional.ofNullable(session.getTable())
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID, "Secure Table Code invalid"));
 
-        return createOrder(table, session, request.items(), request.combos(), BatchSource.QR);
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.QR, null);
     }
 
     @Transactional
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
 
-        DiningTable table = tableRepository
-                .findByIdForUpdate(request.tableId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table ID invalid"));
+        if (request.orderType() == OrderType.TAKEAWAY) {
+            return createTakeawayOrder(request);
+        }
 
-        return createOrder(table, null, request.items(), request.combos(), BatchSource.STAFF);
+        TableSession session = tableSessionService.getOrCreateStaffSession(request.tableId());
+        DiningTable table = session.getTable();
+
+        return createOrder(table, session, request.items(), request.combos(), BatchSource.STAFF, request.voucherCode());
+    }
+
+    private OrderResponse createTakeawayOrder(@NonNull StaffCreateOrderRequest request) {
+        Order order = Order.builder()
+                .status(OrderStatus.PENDING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .orderType(OrderType.TAKEAWAY)
+                .subtotalAmount(BigDecimal.ZERO)
+                .finalAmount(BigDecimal.ZERO)
+                .discountAmount(BigDecimal.ZERO)
+                .paidAmount(BigDecimal.ZERO)
+                .businessDate(AppTime.today())
+                .build();
+
+        OrderBatch batch = OrderBatch.builder()
+                .submittedAt(AppTime.now())
+                .source(BatchSource.STAFF)
+                .build();
+
+        Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
+
+        buildOrderItems(request.items(), order, batch, quantitiesToReserve);
+        buildOrderCombos(request.combos(), order, batch, quantitiesToReserve);
+
+        attachBatchIfNotEmpty(order, batch);
+        cleanupEmptyBatches(order);
+
+        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
+
+        orderPricingService.recalculateOrderTotals(order);
+        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
+            orderPricingService.applyVoucher(order, request.voucherCode());
+        }
+
+        if (Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
+            order.setStatus(OrderStatus.SERVING);
+        }
+
+        Order saved = orderRepository.save(order);
+
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
+
+        ordersCreatedCounter.increment();
+
+        eventPublisher.publishEvent(new OrderChangeEvent());
+        log.info("Takeaway order processed: ID #{}", saved.getId());
+
+        return orderMapper.toResponse(saved);
     }
 
     private OrderResponse createOrder(
@@ -116,7 +174,8 @@ public class OrderCreationService {
             TableSession session,
             List<OrderItemRequest> items,
             List<OrderComboRequest> combos,
-            BatchSource source) {
+            BatchSource source,
+            String voucherCode) {
         Order order = getOrCreateActiveOrder(table, session);
         ensureNoPaymentInProgress(order);
         orderValidator.validateTableAcceptsOrders(table);
@@ -124,20 +183,23 @@ public class OrderCreationService {
         OrderBatch batch =
                 OrderBatch.builder().submittedAt(AppTime.now()).source(source).build();
 
-        order.addBatch(batch);
-
         Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
 
         buildOrderItems(items, order, batch, quantitiesToReserve);
         buildOrderCombos(combos, order, batch, quantitiesToReserve);
 
+        attachBatchIfNotEmpty(order, batch);
+        cleanupEmptyBatches(order);
+
         inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            orderPricingService.applyVoucher(order, voucherCode);
+        }
+        applyAutoConfirmation(order, source);
 
         Order saved = orderRepository.save(order);
-
-        expirePendingOnlineTransactions(saved.getId());
 
         orderStatusService.tryAutoPromoteOrder(saved);
         orderTableSyncService.recalcTableStatus(saved);
@@ -152,33 +214,40 @@ public class OrderCreationService {
         return orderMapper.toResponse(saved);
     }
 
+    private void applyAutoConfirmation(Order order, BatchSource source) {
+        if (source == BatchSource.QR
+                && order.getStatus() == OrderStatus.PENDING
+                && Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
+            order.setStatus(OrderStatus.SERVING);
+        }
+    }
+
     private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {
         if (session != null) {
-            List<Order> activeSessionOrders = orderRepository.findActiveByTableSessionIdForUpdate(
-                    session.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+            List<ActiveOrderLockProjection> activeSessionOrders =
+                    orderRepository.findActiveOrderLocksByTableSessionIdForUpdate(
+                            session.getId(), ACTIVE_ORDER_STATUS_NAMES);
 
             if (!activeSessionOrders.isEmpty()) {
                 if (activeSessionOrders.size() > 1) {
-                    log.warn(
-                            "Table session {} has {} active orders. Using the latest one.",
-                            session.getId(),
-                            activeSessionOrders.size());
+                    throw new BusinessException(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS);
                 }
 
-                return activeSessionOrders.get(0);
+                return loadActiveOrderDetail(activeSessionOrders.get(0).getId());
             }
         }
 
-        List<Order> activeOrders = orderRepository.findActiveByTableIdForUpdate(
-                table.getId(), List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT));
+        List<ActiveOrderLockProjection> activeOrders =
+                orderRepository.findActiveOrderLocksByTableIdForUpdate(table.getId(), ACTIVE_ORDER_STATUS_NAMES);
 
         if (!activeOrders.isEmpty()) {
             if (activeOrders.size() > 1) {
-                log.warn("Table {} has {} active orders. Using the latest one.", table.getId(), activeOrders.size());
+                throw new BusinessException(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS);
             }
 
-            Order activeOrder = activeOrders.get(0);
-            if (session != null && activeOrder.getTableSession() == null) {
+            ActiveOrderLockProjection activeOrderLock = activeOrders.get(0);
+            Order activeOrder = loadActiveOrderDetail(activeOrderLock.getId());
+            if (session != null && activeOrderLock.getTableSessionId() == null) {
                 activeOrder.setTableSession(session);
             }
 
@@ -199,35 +268,24 @@ public class OrderCreationService {
                 .build();
     }
 
+    private Order loadActiveOrderDetail(Long orderId) {
+        return orderRepository
+                .findDetailById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+    }
+
     private void ensureNoPaymentInProgress(Order order) {
         if (order == null || order.getId() == null) {
             return;
         }
 
-        boolean hasPendingPayment = paymentTransactionRepository
-                .findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
-                        order.getId(),
-                        com.qros.shared.enums.PaymentMethod.PAYOS,
-                        List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING))
-                .isPresent();
+        boolean hasPendingPayment = paymentTransactionRepository.existsByOrderIdAndStatusIn(
+                order.getId(), List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
 
         if (hasPendingPayment) {
             throw new BusinessException(
                     ErrorCode.ORDER_PAYMENT_IN_PROGRESS,
                     "The table is currently being paid. Please contact a staff member.");
-        }
-    }
-
-    private void expirePendingOnlineTransactions(Long orderId) {
-        if (orderId == null) {
-            return;
-        }
-
-        for (PaymentTransaction transaction :
-                paymentTransactionRepository.findPendingOnlineTransactionsByOrderId(orderId)) {
-            transaction.setStatus(PaymentTransactionStatus.EXPIRED);
-            transaction.setFailureReason("Expired because the order changed after payment link creation");
-            transaction.setUpdatedAt(AppTime.now());
         }
     }
 
@@ -279,6 +337,7 @@ public class OrderCreationService {
             BigDecimal unitPrice = menuItem.getPrice().add(extraPrice);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
+                    .filter(item -> Objects.equals(item.getBatch(), batch))
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getMenuItem() != null)
                     .filter(item -> Objects.equals(item.getMenuItem().getId(), menuItem.getId()))
@@ -364,6 +423,7 @@ public class OrderCreationService {
             orderValidator.validateComboOrderable(combo);
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
+                    .filter(item -> Objects.equals(item.getBatch(), batch))
                     .filter(OrderItem::canBeMerged)
                     .filter(item -> item.getCombo() != null)
                     .filter(item -> Objects.equals(item.getCombo().getId(), combo.getId()))
@@ -391,6 +451,25 @@ public class OrderCreationService {
             order.addItem(orderItem);
             quantitiesToReserve.put(orderItem, comboRequest.quantity());
         }
+    }
+
+    private void attachBatchIfNotEmpty(Order order, OrderBatch batch) {
+        boolean hasItemsInBatch =
+                order.getOrderItems().stream().anyMatch(item -> Objects.equals(item.getBatch(), batch));
+        if (hasItemsInBatch) {
+            order.addBatch(batch);
+        }
+    }
+
+    private void cleanupEmptyBatches(Order order) {
+        if (order.getOrderBatches() == null || order.getOrderBatches().isEmpty()) {
+            return;
+        }
+        Set<OrderBatch> batchesWithItems = order.getOrderItems().stream()
+                .map(OrderItem::getBatch)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        order.getOrderBatches().removeIf(b -> !batchesWithItems.contains(b));
     }
 
     private void mergeExistingItem(

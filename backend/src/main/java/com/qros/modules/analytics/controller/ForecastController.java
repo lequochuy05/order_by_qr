@@ -6,17 +6,21 @@ import com.qros.modules.analytics.service.AnalyticsService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(ApiRoutes.FORECAST)
-@RequiredArgsConstructor
+@PreAuthorize("hasRole('ADMIN')")
 public class ForecastController {
 
     private final AnalyticsService analyticsService;
+
+    public ForecastController(AnalyticsService analyticsService) {
+        this.analyticsService = analyticsService;
+    }
 
     @GetMapping("/revenue")
     public ApiResponse<List<RevenueForecastResponse>> revenueForecast() {

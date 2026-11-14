@@ -1,12 +1,16 @@
 package com.qros.modules.auth.controller;
 
+import com.qros.core.config.security.CookieRequestOriginValidator;
 import com.qros.modules.auth.dto.internal.LoginResult;
 import com.qros.modules.auth.dto.internal.RefreshResult;
 import com.qros.modules.auth.dto.request.EmailPasswordResetRequest;
 import com.qros.modules.auth.dto.request.LoginRequest;
 import com.qros.modules.auth.dto.request.PhonePasswordResetRequest;
+import com.qros.modules.auth.dto.request.Resend2faRequest;
+import com.qros.modules.auth.dto.request.Verify2faRequest;
 import com.qros.modules.auth.dto.response.LoginResponse;
 import com.qros.modules.auth.dto.response.TokenResponse;
+import com.qros.modules.auth.service.Admin2faService;
 import com.qros.modules.auth.service.AuthRateLimitService;
 import com.qros.modules.auth.service.AuthService;
 import com.qros.modules.auth.service.PasswordResetService;
@@ -17,13 +21,14 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.rate_limit.ClientAddressResolver;
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.security.JwtProperties;
+import com.qros.shared.security.TokenBlacklistService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.util.Arrays;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.lang.NonNull;
@@ -31,7 +36,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(ApiRoutes.AUTH)
-@RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
@@ -40,6 +44,52 @@ public class AuthController {
     private final PasswordResetService passwordResetService;
     private final JwtProperties jwtProperties;
     private final ClientAddressResolver clientAddressResolver;
+    private final CookieRequestOriginValidator cookieRequestOriginValidator;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final Admin2faService admin2faService;
+
+    public AuthController(
+            AuthService authService,
+            AuthRateLimitService authRateLimitService,
+            RefreshTokenService refreshTokenService,
+            PasswordResetService passwordResetService,
+            JwtProperties jwtProperties,
+            ClientAddressResolver clientAddressResolver,
+            CookieRequestOriginValidator cookieRequestOriginValidator,
+            TokenBlacklistService tokenBlacklistService) {
+        this(
+                authService,
+                authRateLimitService,
+                refreshTokenService,
+                passwordResetService,
+                jwtProperties,
+                clientAddressResolver,
+                cookieRequestOriginValidator,
+                tokenBlacklistService,
+                null);
+    }
+
+    @Autowired
+    public AuthController(
+            AuthService authService,
+            AuthRateLimitService authRateLimitService,
+            RefreshTokenService refreshTokenService,
+            PasswordResetService passwordResetService,
+            JwtProperties jwtProperties,
+            ClientAddressResolver clientAddressResolver,
+            CookieRequestOriginValidator cookieRequestOriginValidator,
+            TokenBlacklistService tokenBlacklistService,
+            Admin2faService admin2faService) {
+        this.authService = authService;
+        this.authRateLimitService = authRateLimitService;
+        this.refreshTokenService = refreshTokenService;
+        this.passwordResetService = passwordResetService;
+        this.jwtProperties = jwtProperties;
+        this.clientAddressResolver = clientAddressResolver;
+        this.cookieRequestOriginValidator = cookieRequestOriginValidator;
+        this.tokenBlacklistService = tokenBlacklistService;
+        this.admin2faService = admin2faService;
+    }
 
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(
@@ -48,6 +98,10 @@ public class AuthController {
         authRateLimitService.checkLogin(clientAddress, req.email());
         LoginResult result = authService.login(req);
 
+        if (result.response().requires2fa()) {
+            return ApiResponse.success("Please enter the 2FA OTP sent to your email", result.response());
+        }
+
         String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
 
         setRefreshCookie(response, refreshToken, Duration.ofMillis(jwtProperties.getRefreshExpirationMs()));
@@ -55,8 +109,41 @@ public class AuthController {
         return ApiResponse.success("Login successful", result.response());
     }
 
+    @PostMapping("/verify-2fa")
+    public ApiResponse<LoginResponse> verify2fa(
+            @Valid @RequestBody Verify2faRequest req, HttpServletRequest request, HttpServletResponse response) {
+        if (admin2faService == null) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED);
+        }
+        String clientAddress = clientAddressResolver.resolve(request);
+        String ticketEmail = admin2faService.getTicketEmail(req.preAuthToken());
+        authRateLimitService.checkLogin(clientAddress, ticketEmail != null ? ticketEmail : req.preAuthToken());
+
+        String email = admin2faService.verify2fa(req.preAuthToken(), req.otp());
+        LoginResult result = authService.complete2faLogin(email);
+
+        String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
+        setRefreshCookie(response, refreshToken, Duration.ofMillis(jwtProperties.getRefreshExpirationMs()));
+
+        return ApiResponse.success("2FA verification successful", result.response());
+    }
+
+    @PostMapping("/resend-2fa")
+    public ApiResponse<Void> resend2fa(@Valid @RequestBody Resend2faRequest req, HttpServletRequest request) {
+        if (admin2faService == null) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED);
+        }
+        String clientAddress = clientAddressResolver.resolve(request);
+        String ticketEmail = admin2faService.getTicketEmail(req.preAuthToken());
+        authRateLimitService.checkLogin(clientAddress, ticketEmail != null ? ticketEmail : req.preAuthToken());
+
+        admin2faService.resend2fa(req.preAuthToken());
+        return ApiResponse.success("New verification code has been sent to your email", null);
+    }
+
     @PostMapping("/refresh")
     public ApiResponse<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        cookieRequestOriginValidator.requireAllowedOrigin(request);
         String clientAddress = clientAddressResolver.resolve(request);
         authRateLimitService.checkRefresh(clientAddress);
         String oldRefreshToken = extractRefreshToken(request);
@@ -70,6 +157,13 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        cookieRequestOriginValidator.requireAllowedOrigin(request);
+        final String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            tokenBlacklistService.blacklistToken(token);
+        }
+
         if (request.getCookies() != null) {
             Arrays.stream(request.getCookies())
                     .filter(cookie -> jwtProperties.getRefreshCookieName().equals(cookie.getName()))
@@ -89,8 +183,8 @@ public class AuthController {
         authRateLimitService.checkForgotPassword(clientAddress, email);
         try {
             passwordResetService.createPasswordResetToken(email);
-        } catch (Exception ignored) {
-            // Keep the response generic to avoid revealing whether an account exists.
+        } catch (BusinessException e) {
+            if (e.getErrorCode() != ErrorCode.EMAIL_NOT_FOUND) throw e;
         }
         return ApiResponse.success(
                 "If your email exists in our system, you will receive password reset instructions.", null);

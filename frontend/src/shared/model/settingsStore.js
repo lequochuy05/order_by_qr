@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { settingsService } from '@shared/api/settingsService.js';
 
 const defaultSettings = {
-  restaurantName: 'Sắc Màu Quán',
+  restaurantName: 'QROS',
   restaurantAddress: '',
   restaurantPhone: '',
   restaurantEmail: '',
@@ -16,6 +16,22 @@ const defaultSettings = {
   serviceChargePercent: 0,
   orderingEnabled: true,
   maintenanceMode: false,
+  cashPaymentEnabled: true,
+  onlinePaymentEnabled: true,
+  paymentQrExpiresInMinutes: 20,
+  autoConfirmOrders: false,
+  kitchenOverdueThresholdMinutes: 20,
+  showUnavailableItems: false,
+  showRecommendations: true,
+  showCombos: true,
+  billTitle: 'HÓA ĐƠN THANH TOÁN',
+  billFooterMessage: 'CẢM ƠN QUÝ KHÁCH & HẸN GẶP LẠI!',
+  billPaperSize: '80',
+  showWifiOnBill: true,
+  autoPrintBill: true,
+  newOrderNotificationEnabled: true,
+  paymentNotificationEnabled: true,
+  kitchenOverdueNotificationEnabled: true,
 };
 
 const normalizeSettings = (data = {}) => ({
@@ -37,7 +53,7 @@ const useSettingsStore = create((set, get) => ({
   fetchSettings: async (force = false) => {
     if (get().loaded && !force) return get().settings;
     try {
-      const data = await settingsService.get();
+      const data = await settingsService.getPublic({ force });
       const merged = normalizeSettings(data);
       set({ settings: merged, loaded: true });
       return merged;
@@ -48,6 +64,7 @@ const useSettingsStore = create((set, get) => ({
   },
 
   invalidateAndRefetch: async () => {
+    settingsService.clearCache();
     set({ loaded: false });
     await get().fetchSettings(true);
   },

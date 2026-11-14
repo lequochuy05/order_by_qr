@@ -27,6 +27,12 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderByIdForUpdate(@Param("id") @NonNull Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"order", "order.table"})
+    @Query("SELECT t FROM PaymentTransaction t WHERE t.gatewayOrderCode = :gatewayOrderCode")
+    Optional<PaymentTransaction> findWithOrderByGatewayOrderCodeForUpdate(
+            @Param("gatewayOrderCode") @NonNull Long gatewayOrderCode);
+
     Optional<PaymentTransaction> findFirstByIdempotencyKey(String idempotencyKey);
 
     Optional<PaymentTransaction> findByExternalReference(String externalReference);
@@ -41,6 +47,18 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             Long orderId, PaymentMethod paymentMethod, Collection<PaymentTransactionStatus> statuses);
 
     boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
+
+    boolean existsByOrderIdAndStatusIn(Long orderId, Collection<PaymentTransactionStatus> statuses);
+
+    @Query(
+            """
+            SELECT COUNT(t) > 0
+            FROM PaymentTransaction t
+            WHERE t.order.tableSession.id = :sessionId
+              AND t.status IN :statuses
+            """)
+    boolean existsByOrderTableSessionIdAndStatusIn(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<PaymentTransactionStatus> statuses);
 
     @Query(
             """

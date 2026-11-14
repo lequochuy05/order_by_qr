@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { menuService } from '@features/customer-ordering';
+import api from '@shared/api/httpClient.js';
 import { getAiCopy, isWelcomeMessage } from '../lib/aiCopy.js';
 
 const useAiChat = (language) => {
@@ -59,7 +59,7 @@ const useAiChat = (language) => {
       setInput('');
       setIsLoading(true);
       try {
-        const response = await menuService.sendAiChat(trimmed, buildHistory());
+        const response = await api.post('/public/ai/chat', { message: trimmed, history: buildHistory() });
         setMessages((current) => [
           ...current,
           { role: 'assistant', content: response?.reply || copy.fallbackReply },

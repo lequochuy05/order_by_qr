@@ -112,6 +112,22 @@ public class JwtService {
         return parse(token).getBody().get("typ", String.class);
     }
 
+    public Date extractIssuedAt(String token) {
+        try {
+            return parse(token).getBody().getIssuedAt();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public Date extractExpiration(String token) {
+        try {
+            return parse(token).getBody().getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     public String extractJti(String token) {
         return parse(token).getBody().getId();
     }

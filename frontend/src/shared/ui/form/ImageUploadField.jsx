@@ -16,18 +16,18 @@ const ImageUploadField = ({
     return (
       <div className={`flex justify-center ${className}`}>
         <div className="group relative">
-          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg">
+          <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-lg dark:border-slate-800 dark:bg-slate-950">
             {preview ? (
               <img src={preview} alt="Preview" className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-gray-400">
+              <div className="flex h-full w-full items-center justify-center text-slate-400 dark:text-slate-500">
                 <User size={48} />
               </div>
             )}
           </div>
           <label
             htmlFor={inputId}
-            className="absolute bottom-0 right-0 cursor-pointer rounded-full bg-orange-500 p-2 text-white shadow-md transition-transform hover:scale-110 hover:bg-orange-600"
+            className="absolute bottom-0 right-0 cursor-pointer rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 p-2 text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-110"
             aria-label={changeLabel}
           >
             <Upload size={18} />
@@ -44,8 +44,8 @@ const ImageUploadField = ({
       <div
         className={`group relative flex h-40 flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed p-2 text-center transition-all duration-300 ${
           preview
-            ? 'border-orange-200 bg-orange-50/20'
-            : 'border-gray-100 bg-gray-50/50 hover:border-orange-200'
+            ? 'border-indigo-200 bg-indigo-50/20 dark:border-indigo-500/30 dark:bg-indigo-500/10'
+            : 'border-slate-200/80 bg-slate-50/50 hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-indigo-500/40'
         }`}
       >
         {preview ? (
@@ -55,7 +55,7 @@ const ImageUploadField = ({
             alt="Preview"
           />
         ) : (
-          <div className="space-y-2 py-4 text-gray-300">
+          <div className="space-y-2 py-4 text-slate-300 dark:text-slate-600">
             <ImageIcon className="mx-auto" size={36} />
             <p className="text-[9px] font-black uppercase tracking-tighter">{helperText}</p>
           </div>
@@ -65,7 +65,7 @@ const ImageUploadField = ({
           htmlFor={inputId}
           className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/40 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100"
         >
-          <span className="rounded-full bg-white px-5 py-2 text-[10px] font-black text-gray-800 shadow-xl transition-all hover:scale-105 active:scale-95">
+          <span className="rounded-full bg-white px-5 py-2 text-[10px] font-black text-slate-800 shadow-xl transition-all hover:scale-105 active:scale-95 dark:bg-slate-900 dark:text-slate-100">
             {preview ? changeLabel : 'Tải ảnh lên'}
           </span>
         </label>

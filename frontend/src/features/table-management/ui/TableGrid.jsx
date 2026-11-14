@@ -26,6 +26,7 @@ const TableGrid = ({ tables, orders = [], onAction, userRole }) => {
             onDetail={() => onAction({ type: 'DETAIL', table, order: tableOrder })}
             onAddItems={() => onAction({ type: 'ADD_ITEM', table })}
             onPay={() => onAction({ type: 'PAY', table, order: tableOrder })}
+            onMerge={() => onAction({ type: 'MERGE', table })}
             onEdit={() => onAction({ type: 'EDIT', table })}
             onDelete={() => onAction({ type: 'DELETE', table })}
             userRole={userRole}

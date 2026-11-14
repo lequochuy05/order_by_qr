@@ -38,11 +38,11 @@ class TimeZoneConfigTest {
     }
 
     @Test
-    void applicationYamlConfiguresSerializationJdbcAndDatabaseSessionTimeZones() throws Exception {
+    void applicationYamlConfiguresSerializationAndJdbcTimeZonesWithoutConnectionInitSql() throws Exception {
         String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
 
         assertThat(yaml).contains("time-zone: Asia/Ho_Chi_Minh");
         assertThat(yaml).contains("time_zone: Asia/Ho_Chi_Minh");
-        assertThat(yaml).contains("connection-init-sql: \"SET TIME ZONE 'Asia/Ho_Chi_Minh'\"");
+        assertThat(yaml).doesNotContain("connection-init-sql");
     }
 }

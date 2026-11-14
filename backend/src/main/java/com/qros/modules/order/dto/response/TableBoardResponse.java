@@ -17,6 +17,14 @@ public record TableBoardResponse(List<TableItem> tables, List<ActiveOrder> activ
             String sessionStatus,
             LocalDateTime sessionOpenedAt,
             LocalDateTime sessionLastActivityAt,
+            Long sessionId,
+            Long primaryTableId,
+            boolean merged,
+            List<Long> memberTableIds,
+            List<String> memberTableNumbers,
+            String displayName,
+            Integer guestCount,
+            Integer totalCapacity,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
 
@@ -26,5 +34,10 @@ public record TableBoardResponse(List<TableItem> tables, List<ActiveOrder> activ
             BigDecimal finalAmount,
             Long tableId,
             String tableNumber,
+            Long sessionId,
+            Long primaryTableId,
+            List<Long> memberTableIds,
+            List<String> memberTableNumbers,
+            String displayName,
             LocalDateTime createdAt) {}
 }

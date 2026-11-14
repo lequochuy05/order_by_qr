@@ -1,10 +1,6 @@
 package com.qros.shared.response;
 
 import java.time.Instant;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 /**
  * ApiResponse - Standardized API response structure for the entire system.
@@ -12,16 +8,11 @@ import lombok.NoArgsConstructor;
  *
  * @param <T> Type of the data payload
  */
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ApiResponse<T> {
 
     /**
      * Timestamp of when the response was generated.
      */
-    @Builder.Default
     private Instant timestamp = Instant.now();
 
     /**
@@ -43,6 +34,56 @@ public class ApiResponse<T> {
      * Data payload of the response.
      */
     private T data;
+
+    public ApiResponse() {}
+
+    public ApiResponse(Instant timestamp, boolean success, int status, String message, T data) {
+        this.timestamp = timestamp != null ? timestamp : Instant.now();
+        this.success = success;
+        this.status = status;
+        this.message = message;
+        this.data = data;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public boolean isSuccess() {
+        return success;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public T getData() {
+        return data;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public void setData(T data) {
+        this.data = data;
+    }
 
     /**
      * Creates a successful response with data and a default success message.
@@ -70,6 +111,15 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(true)
                 .status(200)
+                .message(message)
+                .data(data)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> success(int status, String message, T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .status(status)
                 .message(message)
                 .data(data)
                 .build();
@@ -128,5 +178,52 @@ public class ApiResponse<T> {
                 .status(500)
                 .message(message)
                 .build();
+    }
+
+    public static <T> ApiResponseBuilder<T> builder() {
+        return new ApiResponseBuilder<>();
+    }
+
+    public static class ApiResponseBuilder<T> {
+        private Instant timestamp = Instant.now();
+        private boolean success;
+        private int status;
+        private String message;
+        private T data;
+
+        public ApiResponseBuilder<T> timestamp(Instant timestamp) {
+            this.timestamp = timestamp;
+            return this;
+        }
+
+        public ApiResponseBuilder<T> success(boolean success) {
+            this.success = success;
+            return this;
+        }
+
+        public ApiResponseBuilder<T> status(int status) {
+            this.status = status;
+            return this;
+        }
+
+        public ApiResponseBuilder<T> message(String message) {
+            this.message = message;
+            return this;
+        }
+
+        public ApiResponseBuilder<T> data(T data) {
+            this.data = data;
+            return this;
+        }
+
+        public ApiResponse<T> build() {
+            ApiResponse<T> resp = new ApiResponse<>();
+            resp.timestamp = this.timestamp;
+            resp.success = this.success;
+            resp.status = this.status;
+            resp.message = this.message;
+            resp.data = this.data;
+            return resp;
+        }
     }
 }

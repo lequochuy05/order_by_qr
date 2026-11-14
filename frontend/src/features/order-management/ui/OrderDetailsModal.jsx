@@ -1,10 +1,13 @@
+import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
   getOrderSubtotalAmount,
 } from '@entities/order/lib/orderMoney.js';
-import { X, Receipt, Clock, Utensils, Printer, RotateCw } from 'lucide-react';
+import { X, Receipt, Clock, Utensils, Printer, RotateCw, UserCheck, CreditCard } from 'lucide-react';
+import SharedModal from '@shared/ui/SharedModal.jsx';
 
 export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
   if (!isOpen || !order) return null;
@@ -13,150 +16,160 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
   const finalAmount = getOrderFinalAmount(order);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end animate-in fade-in duration-200">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity" />
-
-      {/* Drawer Panel */}
-      <div className="relative w-full max-w-md h-full bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 sm:rounded-l-2xl">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center sm:rounded-tl-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-              <Receipt size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 tracking-tight">Chi tiết đơn hàng</h2>
-              <p className="text-gray-500 text-sm mt-0.5">
-                Mã đơn:{' '}
-                <span className="text-orange-600 font-mono font-medium">
-                  #{order.id?.toString().substring(0, 8).toUpperCase() || order.id}
-                </span>
-              </p>
-            </div>
+    <SharedModal
+      isOpen={isOpen}
+      onClose={onClose}
+      placement="right"
+      backdropClassName="bg-slate-900/60 backdrop-blur-sm"
+      ariaLabel="Chi tiết đơn hàng"
+      className="max-w-md !p-0"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-200/80 p-6 transition-colors dark:border-slate-800/80">
+        <div className="flex items-center gap-3.5">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25">
+            <Receipt size={20} />
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
-          {/* Order Info Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-              <span className="block text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1">
-                <Clock size={12} /> THỜI GIAN
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+              Chi tiết đơn hàng
+            </h2>
+            <p className="mt-0.5 text-xs font-semibold text-slate-400 dark:text-slate-500">
+              Mã đơn:{' '}
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                #{order.id?.toString().substring(0, 8).toUpperCase() || order.id}
               </span>
-              <span className="text-gray-800 font-medium text-sm">
-                {fmtDateTime(order.createdAt)}
-              </span>
-            </div>
-            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-              <span className="block text-xs text-gray-500 font-medium mb-1.5 flex items-center gap-1">
-                <Utensils size={12} /> BÀN
-              </span>
-              <span className="text-gray-800 font-medium text-sm">{order.table?.tableNumber}</span>
-            </div>
-            {order.paidByName && (
-              <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100 col-span-2">
-                <span className="block text-xs text-orange-600 font-medium mb-1.5 flex items-center gap-1">
-                  THU NGÂN
-                </span>
-                <span className="text-orange-900 font-bold text-sm uppercase">
-                  {order.paidByName}
-                </span>
-              </div>
-            )}
-            {order.paymentMethod && (
-              <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 col-span-2">
-                <span className="block text-xs text-indigo-600 font-medium mb-1.5 flex items-center gap-1">
-                  HÌNH THỨC THANH TOÁN
-                </span>
-                <span className="text-indigo-900 font-bold text-sm uppercase">
-                  {order.paymentMethod === 'PAYOS' ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Line Items */}
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="bg-gray-50 px-5 py-3 border-b border-gray-100">
-              <h3 className="text-sm font-semibold text-gray-700">Danh sách món</h3>
-            </div>
-            <div className="p-5 space-y-4">
-              {order.orderItems?.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start group">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-800 font-medium">
-                        {item.itemNameSnapshot ||
-                          item.menuItem?.name ||
-                          item.combo?.name ||
-                          'Món không tên'}
-                      </span>
-                      <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md font-medium">
-                        x{item.quantity}
-                      </span>
-                    </div>
-                    {item.notes && (
-                      <p className="text-xs text-orange-600 mt-1.5 flex gap-1.5 items-start bg-orange-50 inline-block px-2 py-1 rounded-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1 flex-shrink-0"></span>
-                        {item.notes}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-gray-700 font-medium whitespace-nowrap pl-4">
-                    {fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Financials */}
-          <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-3">
-            <div className="flex justify-between text-gray-600 text-sm">
-              <span>Tổng tiền món</span>
-              <span className="font-medium text-gray-800">{fmtVND(subtotalAmount)}</span>
-            </div>
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-emerald-600 text-sm">
-                <span>Khuyến mãi</span>
-                <span className="font-medium">-{fmtVND(discountAmount)}</span>
-              </div>
-            )}
-            <div className="pt-4 mt-2 border-t border-gray-200 flex justify-between items-center">
-              <span className="text-gray-800 font-bold">THANH TOÁN</span>
-              <span className="text-xl font-bold text-orange-600">{fmtVND(finalAmount)}</span>
-            </div>
+            </p>
           </div>
         </div>
+        <button
+          onClick={onClose}
+          className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
-        {/* Footer Actions */}
-        <div className="p-6 border-t border-gray-100 bg-gray-50 sm:rounded-bl-2xl flex gap-3">
-          <button
-            onClick={() => onReconcile(order.id)}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded-xl transition-all border border-gray-200 shadow-sm"
-          >
-            <RotateCw size={18} />
-            <span>Tra soát</span>
-          </button>
-          {order.status === 'COMPLETED' && (
-            <button
-              onClick={() => onPrint(order)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-xl transition-all shadow-md shadow-orange-500/20"
-            >
-              <Printer size={18} />
-              <span>In biên lai</span>
-            </button>
+      {/* Content */}
+      <div className="flex-1 space-y-5 overflow-y-auto p-6 custom-scrollbar">
+        {/* Order Info Summary */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <Clock size={12} /> Thời gian
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {fmtDateTime(order.createdAt)}
+            </span>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <Utensils size={12} /> Bàn
+            </span>
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              {order.table?.tableNumber || 'Mang đi'}
+            </span>
+          </div>
+          {order.paidByName && (
+            <div className="col-span-2 rounded-2xl border border-indigo-200/60 bg-indigo-50/60 p-3.5 dark:border-indigo-800/40 dark:bg-indigo-950/40">
+              <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                <UserCheck size={12} /> Thu ngân
+              </span>
+              <span className="text-xs font-bold uppercase text-indigo-900 dark:text-indigo-200">
+                {order.paidByName}
+              </span>
+            </div>
+          )}
+          {order.paymentMethod && (
+            <div className="col-span-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
+              <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <CreditCard size={12} /> Hình thức thanh toán
+              </span>
+              <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
+                {order.paymentMethod === PAYMENT_METHODS.PAYOS ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
+              </span>
+            </div>
           )}
         </div>
+
+        {/* Line Items */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
+          <div className="border-b border-slate-200/80 bg-slate-50/60 px-5 py-3 dark:border-slate-800/80 dark:bg-slate-900/80">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              Danh sách món
+            </h3>
+          </div>
+          <div className="p-5 space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/60">
+            {order.orderItems?.map((item, idx) => (
+              <div key={idx} className={`flex justify-between items-start ${idx > 0 ? 'pt-3' : ''}`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {item.itemNameSnapshot ||
+                        item.menuItem?.name ||
+                        item.combo?.name ||
+                        'Món không tên'}
+                    </span>
+                    <span className="rounded-lg bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 text-[10px] font-bold font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-300">
+                      x{item.quantity}
+                    </span>
+                  </div>
+                  {item.notes && (
+                    <p className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      {item.notes}
+                    </p>
+                  )}
+                </div>
+                <span className="whitespace-nowrap pl-4 font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
+                  {fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Financials */}
+        <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5 dark:border-slate-800/80 dark:bg-slate-900/60">
+          <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Tổng tiền món</span>
+            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+              {fmtVND(subtotalAmount)}
+            </span>
+          </div>
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-emerald-600 text-xs">
+              <span>Khuyến mãi</span>
+              <span className="font-mono font-bold">-{fmtVND(discountAmount)}</span>
+            </div>
+          )}
+          <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-3 dark:border-slate-800">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">THANH TOÁN</span>
+            <span className="text-2xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
+              {fmtVND(finalAmount)}
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* Footer Actions */}
+      <div className="flex gap-3 border-t border-slate-200/80 bg-slate-50/60 p-5 dark:border-slate-800/80 dark:bg-slate-900/60">
+        <button
+          onClick={() => onReconcile(order.id)}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <RotateCw size={16} />
+          <span>Tra soát</span>
+        </button>
+        {order.status === ORDER_STATUSES.COMPLETED && (
+          <button
+            onClick={() => onPrint(order)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95"
+          >
+            <Printer size={16} />
+            <span>In biên lai</span>
+          </button>
+        )}
+      </div>
+    </SharedModal>
   );
 }

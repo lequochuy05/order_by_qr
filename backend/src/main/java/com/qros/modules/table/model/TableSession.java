@@ -5,6 +5,8 @@ import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.shared.entity.BaseEntity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLDelete;
@@ -53,6 +55,14 @@ public class TableSession extends BaseEntity {
     @Column(length = 20, nullable = false)
     @Builder.Default
     private TableSessionSource createdSource = TableSessionSource.CUSTOMER;
+
+    private Integer guestCount;
+
+    private Long createdByUserId;
+
+    @Builder.Default
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<TableSessionTable> tableMemberships = new LinkedHashSet<>();
 
     public boolean isOpen() {
         return status == TableSessionStatus.OPEN;

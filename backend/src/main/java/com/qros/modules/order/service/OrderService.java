@@ -63,7 +63,18 @@ public class OrderService {
                 () -> orderCreationService.createCustomerOrder(request));
     }
 
+    @Transactional
     public OrderResponse createStaffOrder(@NonNull StaffCreateOrderRequest request) {
+        if (request.clientRequestId() != null && !request.clientRequestId().isBlank()) {
+            String requestKey = "staff:" + (request.tableId() != null ? request.tableId() : "takeaway") + ":"
+                    + request.clientRequestId().trim();
+            return idempotencyService.execute(
+                    "staff-order",
+                    requestKey,
+                    request,
+                    OrderResponse.class,
+                    () -> orderCreationService.createStaffOrder(request));
+        }
         return orderCreationService.createStaffOrder(request);
     }
 
@@ -96,6 +107,10 @@ public class OrderService {
 
     public List<OrderResponse> getActiveOrders() {
         return orderQueryService.getActiveOrders();
+    }
+
+    public List<OrderResponse> getActiveTakeawayOrders() {
+        return orderQueryService.getActiveTakeawayOrders();
     }
 
     public TableBoardResponse getTableBoard() {
@@ -159,6 +174,10 @@ public class OrderService {
         return orderStatusService.cancelOrder(id);
     }
 
+    public OrderResponse cancelOrder(@NonNull Long id, String actorEmail, String reason) {
+        return orderStatusService.cancelOrder(id, actorEmail, reason);
+    }
+
     public void deleteOrder(@NonNull Long id) {
         orderStatusService.deleteOrder(id);
     }
@@ -169,6 +188,10 @@ public class OrderService {
 
     public void cancelOrderItem(@NonNull Long itemId) {
         orderItemWorkflowService.cancelOrderItem(itemId);
+    }
+
+    public void cancelOrderItem(@NonNull Long itemId, String actorEmail, String reason) {
+        orderItemWorkflowService.cancelOrderItem(itemId, actorEmail, reason);
     }
 
     public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status, Long userId) {

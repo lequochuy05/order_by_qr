@@ -80,6 +80,18 @@ public class GlobalExceptionHandler {
                 Map.of());
     }
 
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleIllegalState(IllegalStateException ex) {
+        if ("Refresh token store is unavailable".equals(ex.getMessage())) {
+            log.error("Required auth dependency is unavailable: {}", ex.getMessage());
+            return buildErrorResponse(
+                    ErrorCode.DEPENDENCY_UNAVAILABLE,
+                    "Authentication service is temporarily unavailable. Please try again later.",
+                    Map.of());
+        }
+        return handleGlobalException(ex);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<ErrorResponse>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());

@@ -1,59 +1,60 @@
 import React from 'react';
-import { Pencil, Trash2, Power, PowerOff, Package, Loader2 } from 'lucide-react';
+import { Power, PowerOff, Package } from 'lucide-react';
 import { fmtVND, fmtStatus } from '@shared/lib/formatters.js';
+import { EditDeleteActions } from '@shared/ui';
 
 const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => (
-  <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-xl transition-all flex flex-col h-full relative overflow-hidden">
-    {/* Trang trí góc thẻ */}
-    <div className="absolute -top-6 -right-6 w-20 h-20 bg-orange-50 rounded-full group-hover:bg-orange-100 transition-colors" />
-
-    <div className="flex items-center justify-between mb-5 relative z-10">
+  <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500 hover:shadow-xl dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:hover:border-indigo-500/40">
+    <div className="flex items-center justify-between mb-5">
       <div
-        className={`p-3 rounded-2xl ${combo.active ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400'}`}
+        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg ${
+          combo.active
+            ? 'bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-indigo-500/25'
+            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 shadow-none'
+        }`}
       >
-        <Package size={24} />
+        <Package size={22} />
       </div>
       <span
-        className={`text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${fmtStatus('active', combo.active).color}`}
+        className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${fmtStatus('active', combo.active).color}`}
       >
         {fmtStatus('active', combo.active).label}
       </span>
     </div>
 
-    <div className="flex-grow relative z-10">
-      <h3 className="font-bold text-gray-900 text-xl mb-2 group-hover:text-orange-600 transition-colors">
+    <div className="flex-grow">
+      <h3 className="mb-2 text-xl font-black text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
         {combo.name}
       </h3>
       {combo.description && (
-        <p className="mb-3 line-clamp-2 text-sm font-medium leading-snug text-gray-400">
+        <p className="mb-4 line-clamp-2 text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400">
           {combo.description}
         </p>
       )}
-      <div className="text font-black text-orange-600 mb-4 tracking-tight">
+      <div className="mb-5 text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
         {fmtVND(combo.price)}
       </div>
     </div>
 
-    <div className="flex gap-3 mt-auto relative z-10">
+    <div className="mt-auto space-y-3">
       <button
-        onClick={() => onEdit(combo.id)}
-        disabled={isEditing}
-        className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100 font-bold disabled:opacity-60 disabled:cursor-wait"
-      >
-        {isEditing ? <Loader2 size={18} className="animate-spin" /> : <Pencil size={18} />}
-      </button>
-      <button
+        type="button"
         onClick={() => onToggle(combo.id)}
-        className={`flex-1 py-3 rounded-xl transition-all flex justify-center border font-bold ${combo.active ? 'bg-red-50 text-red-600 border-red-100 hover:bg-red-600 hover:text-white' : 'bg-green-50 text-green-600 border-green-100 hover:bg-green-600 hover:text-white'}`}
+        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-all active:scale-95 ${
+          combo.active
+            ? 'border-rose-200/60 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white'
+            : 'border-emerald-200/60 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white'
+        }`}
       >
-        {combo.active ? <PowerOff size={18} /> : <Power size={18} />}
+        {combo.active ? <PowerOff size={15} /> : <Power size={15} />}
+        {combo.active ? 'Tạm ngưng' : 'Kích hoạt'}
       </button>
-      <button
-        onClick={() => onDelete(combo.id)}
-        className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all border border-gray-100"
-      >
-        <Trash2 size={18} />
-      </button>
+      <EditDeleteActions
+        onEdit={() => onEdit(combo.id)}
+        onDelete={() => onDelete(combo.id)}
+        editing={isEditing}
+        className="pt-3"
+      />
     </div>
   </div>
 );

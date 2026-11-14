@@ -2,11 +2,82 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --font-display: 'Be Vietnam Pro', sans-serif;
+  --font-body: 'Be Vietnam Pro', sans-serif;
+
+  /* Modern Evondev Brand Tokens */
+  --color-brand-primary: #6366F1;
+  --color-brand-primary-hover: #4F46E5;
+  --color-brand-primary-light: #EEF2FF;
+  --color-brand-secondary: #8B5CF6;
+  --color-brand-secondary-hover: #7C3AED;
+  --color-brand-secondary-light: #F5F3FF;
+  --color-brand-surface: #F8FAFC;
+  --color-brand-surface-card: #FFFFFF;
+  --color-brand-surface-card-hover: #F1F5F9;
+  --color-brand-border: #E2E8F0;
+
+  /* Compatibility & Accent Tokens */
+  --color-bg-warm: #F8FAFC;
+  --color-surface-warm: #FFFFFF;
+
+  --animate-cart-bump: cart-bump 0.3s ease-out;
+  --animate-fade-in-up: fade-in-up 0.4s ease-out;
+  --animate-pop-in: pop-in 0.25s ease-out;
+  --animate-stagger-fade: fade-in-up 0.35s ease-out both;
+}
+
+@keyframes cart-bump {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 :root {
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
+
+  /* Modern Evondev Semantic Theme Tokens - Light */
+  --bg-app: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F1F5F9;
+  --border-color: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --brand-primary: #6366F1;
+  --brand-primary-hover: #4F46E5;
+  --brand-secondary: #8B5CF6;
+  --brand-secondary-hover: #7C3AED;
+  --brand-surface: #F8FAFC;
+}
+
+.dark {
+  /* Modern Evondev Semantic Theme Tokens - Dark */
+  --bg-app: #0B0F17;
+  --bg-card: #131B2E;
+  --bg-card-hover: #1E293B;
+  --border-color: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --brand-primary: #818CF8;
+  --brand-primary-hover: #A5B4FC;
+  --brand-secondary: #A78BFA;
+  --brand-secondary-hover: #C4B5FD;
+  --brand-surface: #0B0F17;
 }
 
 @utility safe-top {
@@ -23,6 +94,30 @@
 
 @utility safe-left {
   padding-left: var(--safe-area-inset-left);
+}
+
+@utility bg-brand-primary {
+  background-color: var(--brand-primary);
+}
+
+@utility text-brand-primary {
+  color: var(--brand-primary);
+}
+
+@utility bg-brand-secondary {
+  background-color: var(--brand-secondary);
+}
+
+@utility text-brand-secondary {
+  color: var(--brand-secondary);
+}
+
+@utility bg-brand-surface {
+  background-color: var(--brand-surface);
+}
+
+@utility border-brand-border {
+  border-color: var(--border-color);
 }
 
 @keyframes skeleton-shimmer {
@@ -45,6 +140,56 @@
   animation: skeleton-shimmer 1.4s infinite;
 }
 
+/* AdminHeader Diagonal Rain Animation */
+@keyframes admin-header-rain {
+  0% {
+    transform: translate3d(-30px, -60px, 0) rotate(-24deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--rain-opacity, 0.6);
+  }
+  85% {
+    opacity: var(--rain-opacity, 0.6);
+  }
+  100% {
+    transform: translate3d(45px, 105px, 0) rotate(-24deg);
+    opacity: 0;
+  }
+}
+
+.admin-rain-drop {
+  position: absolute;
+  top: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(99, 102, 241, 0.4) 50%,
+    rgba(79, 70, 229, 0.8) 100%
+  );
+  box-shadow: 0 0 4px rgba(99, 102, 241, 0.35);
+  animation: admin-header-rain linear infinite;
+  will-change: transform, opacity;
+}
+
+:is(.dark .admin-rain-drop) {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(56, 189, 248, 0.45) 50%,
+    rgba(129, 140, 248, 0.85) 100%
+  );
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-rain-drop {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
 html,
 body,
 #root {
@@ -53,6 +198,7 @@ body,
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+  font-family: var(--font-body);
 }
 
 .admin-content,
@@ -72,4 +218,60 @@ body,
 .admin-content canvas,
 .admin-content svg {
   max-width: 100%;
+}
+
+/* ===== Modern Evondev Scrollbar ===== */
+
+/* Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(215 20% 80%);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 20% 65%);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(215 20% 80%) transparent;
+}
+
+/* Utility to hide scrollbars */
+.scrollbar-hide::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Smooth scroll */
+.overflow-x-auto,
+.overflow-y-auto,
+.overflow-auto {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(215 20% 25%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 20% 40%);
+}
+
+.dark * {
+  scrollbar-color: hsl(215 20% 25%) transparent;
 }

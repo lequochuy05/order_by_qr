@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.interceptor.CacheErrorHandler;
@@ -25,8 +26,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 /**
  * RedisConfig - Configuration for Redis caching and template.
  * Enables caching and sets up RedisTemplate with JSON serialization.
+ * Activated by spring.cache.type=redis. Dev uses Caffeine by default.
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
 @Slf4j
 public class RedisConfig implements CachingConfigurer {
 
@@ -36,13 +39,10 @@ public class RedisConfig implements CachingConfigurer {
             @Override
             public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
                 log.warn(
-                        "Redis Cache GET failed for cache={}, key={}: {}. Evicting the broken entry.",
+                        "Redis Cache GET failed for cache={}, key={}: {}. Falling back to source data.",
                         cache != null ? cache.getName() : "unknown",
                         key,
                         exception.getMessage());
-                if (cache != null && key != null) {
-                    cache.evictIfPresent(key);
-                }
             }
 
             @Override

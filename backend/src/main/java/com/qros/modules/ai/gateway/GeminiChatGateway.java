@@ -47,20 +47,25 @@ public class GeminiChatGateway implements AiChatGateway {
 
     @Override
     public String chat(AiChatRequest request, String menuContext) {
+        return chat(request, promptBuilder.buildSystemPrompt(menuContext), menuContext);
+    }
+
+    @Override
+    public String chat(AiChatRequest request, String systemPrompt, String menuContext) {
         if (!properties.enabled()) {
             return "Tính năng trợ lý AI hiện chưa được bật.";
         }
 
         try {
-            String url = properties.apiUrl() + "?key=" + properties.apiKey();
-
-            Map<String, Object> payload = buildPayload(request, menuContext);
+            Map<String, Object> payload = buildPayload(request, systemPrompt);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("x-goog-api-key", properties.apiKey());
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            ResponseEntity<String> response =
+                    restTemplate.exchange(properties.apiUrl(), HttpMethod.POST, entity, String.class);
 
             return extractText(response.getBody());
         } catch (Exception exception) {
@@ -69,9 +74,8 @@ public class GeminiChatGateway implements AiChatGateway {
         }
     }
 
-    private Map<String, Object> buildPayload(AiChatRequest request, String menuContext) {
-        Map<String, Object> systemInstruction =
-                Map.of("parts", List.of(Map.of("text", promptBuilder.buildSystemPrompt(menuContext))));
+    private Map<String, Object> buildPayload(AiChatRequest request, String systemPrompt) {
+        Map<String, Object> systemInstruction = Map.of("parts", List.of(Map.of("text", systemPrompt)));
 
         List<Map<String, Object>> contents = new ArrayList<>();
 

@@ -39,25 +39,25 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        if (userRepo.count() == 0) {
-            String email = appProperties.getSecurity().getDefaultAdminEmail();
-            String password = appProperties.getSecurity().getDefaultAdminPassword();
+        seedUserIfNotExists("admin@gmail.com", "admin123", "Administrator", UserRole.ADMIN);
+        seedUserIfNotExists("manager@gmail.com", "manager123", "Restaurant Manager", UserRole.MANAGER);
+        seedUserIfNotExists("chef@gmail.com", "chef123", "Head Chef", UserRole.CHEF);
+        seedUserIfNotExists("staff@gmail.com", "staff123", "Service Staff", UserRole.STAFF);
+        seedUserIfNotExists("cashier@gmail.com", "cashier123", "Cashier", UserRole.CASHIER);
+    }
 
-            if (email == null || password == null) {
-                log.warn("Default admin email or password not configured — skipping admin creation");
-                return;
-            }
-
+    private void seedUserIfNotExists(String email, String rawPassword, String fullName, UserRole role) {
+        if (userRepo.findByEmailIgnoreCase(email).isEmpty()) {
             User u = User.builder()
                     .email(email)
-                    .fullName("Admin")
-                    .password(pwEncoder.encode(password))
-                    .role(UserRole.MANAGER)
+                    .fullName(fullName)
+                    .password(pwEncoder.encode(rawPassword))
+                    .role(role)
                     .status(UserStatus.ACTIVE)
+                    .mustChangePassword(false)
                     .build();
             userRepo.save(Objects.requireNonNull(u));
-
-            log.warn("Created default admin account: {}", email);
+            log.warn("Seeded dev test account: {} ({})", email, role);
         }
     }
 }

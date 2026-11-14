@@ -1,13 +1,14 @@
-import { ItemOptionsModal } from '@features/customer-ordering';
-import useAddItemsCart from '@features/table-management/model/useAddItemsCart.js';
+import { ItemOptionsModal } from '@shared/ui';
+import useAddItemsCart from '../model/useAddItemsCart.js';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import AddItemCartPane from './add-item/AddItemCartPane.jsx';
 import AddItemCatalogPane from './add-item/AddItemCatalogPane.jsx';
 
 const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
   const addItems = useAddItemsCart({ isOpen, table, onSubmit });
+  const tableLabel = table?.displayName || table?.tableNumber;
 
-  if (!isOpen || !table) return null;
+  if (!isOpen) return null;
 
   return (
     <>
@@ -15,10 +16,10 @@ const AddItemModal = ({ isOpen, onClose, table, onSubmit, isSubmitting }) => {
         isOpen={isOpen}
         onClose={onClose}
         className="max-w-5xl !h-[94vh] !flex-col !overflow-hidden !rounded-2xl !p-0 md:!h-[90vh] md:!flex-row"
-        ariaLabel={`Thêm món cho bàn ${table.tableNumber}`}
+        ariaLabel={tableLabel ? `Thêm món cho ${tableLabel}` : 'Thêm món mang về'}
       >
         <AddItemCatalogPane
-          tableNumber={table.tableNumber}
+          tableNumber={tableLabel}
           activeTab={addItems.activeTab}
           onTabChange={addItems.setActiveTab}
           categories={addItems.categories}

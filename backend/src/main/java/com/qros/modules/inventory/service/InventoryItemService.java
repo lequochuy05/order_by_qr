@@ -17,6 +17,7 @@ import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -127,6 +128,7 @@ public class InventoryItemService {
             })
     public InventoryItemResponse update(@NonNull Long id, @NonNull InventoryItemRequest request) {
         InventoryItem item = getEntityById(id);
+        assertVersionMatches(item.getVersion(), request.version());
 
         String normalizedName = normalizeName(request.name());
         String normalizedUnit = normalizeUnit(request.unit());
@@ -276,5 +278,17 @@ public class InventoryItemService {
         }
 
         return value.setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
+    }
+
+    private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
+        if (expectedVersion == null) {
+            return;
+        }
+
+        if (!Objects.equals(currentVersion, expectedVersion)) {
+            throw new BusinessException(
+                    ErrorCode.CONCURRENT_MODIFICATION,
+                    "This inventory item was changed by another request. Please refresh and try again.");
+        }
     }
 }

@@ -14,4 +14,5 @@ public record DiningTableResponse(
         Integer capacity,
         String qrCodeUrl,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt) {}
+        LocalDateTime updatedAt,
+        Long version) {}

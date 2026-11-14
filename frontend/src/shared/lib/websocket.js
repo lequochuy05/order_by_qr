@@ -59,10 +59,7 @@ class WebSocketService {
       },
       onStompError: (frame) => {
         if (this.client !== client) return;
-        console.error(
-          `${this.name} WebSocket broker error:`,
-          frame.headers?.message || frame.body,
-        );
+        console.error(`${this.name} WebSocket broker error:`, frame.headers?.message || frame.body);
       },
     });
     this.client = client;
@@ -146,7 +143,13 @@ class WebSocketService {
     if (clearQueued) {
       this.onConnectCallbacks = [];
     }
-    [...this.subscriptions].forEach((subscription) => subscription.unsubscribe());
+    [...this.subscriptions].forEach((subscription) => {
+      try {
+        subscription.unsubscribe();
+      } catch {
+        // Ignored during disconnection cleanup
+      }
+    });
     this.subscriptions.clear();
     this.connected = false;
     if (clearListeners) {

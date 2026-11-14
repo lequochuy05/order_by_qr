@@ -34,14 +34,15 @@ public class PayosGateway implements PaymentGateway {
     @Override
     public PaymentGatewayCreateResult createPaymentLink(PaymentTransaction transaction) {
         try {
-            String returnUrl = appProperties.getFrontend().getBaseUrl() + "/admin/table-manager";
+            String returnUrl = appProperties.getFrontend().getBaseUrl() + "/admin/tables";
+            Long orderCode = gatewayOrderCode(transaction);
             long expiredAt = transaction
                     .getExpiresAt()
                     .atZone(java.time.ZoneId.systemDefault())
                     .toEpochSecond();
 
             CreatePaymentLinkRequest request = CreatePaymentLinkRequest.builder()
-                    .orderCode(transaction.getId())
+                    .orderCode(orderCode)
                     .amount(transaction.getAmount().longValue())
                     .description("Payment for Order #" + transaction.getOrder().getId())
                     .returnUrl(returnUrl)
@@ -64,7 +65,7 @@ public class PayosGateway implements PaymentGateway {
     @Override
     public void cancelPayment(PaymentTransaction transaction, String reason) {
         try {
-            payOS.paymentRequests().cancel(transaction.getId(), reason);
+            payOS.paymentRequests().cancel(gatewayOrderCode(transaction), reason);
         } catch (Exception e) {
             throw new BusinessException(
                     ErrorCode.PAYMENT_CANCELLATION_FAILED, "PayOS Cancellation error: " + e.getMessage(), e);
@@ -74,37 +75,38 @@ public class PayosGateway implements PaymentGateway {
     @Override
     public PaymentGatewayStatusResult getPaymentStatus(PaymentTransaction transaction) {
         try {
-            PaymentLink data = payOS.paymentRequests().get(transaction.getId());
+            PaymentLink data = payOS.paymentRequests().get(gatewayOrderCode(transaction));
             String remoteStatus = data.getStatus().toString();
+            String externalReference = data.getId();
 
             if ("PAID".equalsIgnoreCase(remoteStatus)) {
                 return new PaymentGatewayStatusResult(
                         PaymentTransactionStatus.PAID,
-                        transaction.getExternalReference(),
-                        providerPayload("PAYOS", "SYNC_PAID", transaction.getExternalReference()),
+                        externalReference,
+                        providerPayload("PAYOS", "SYNC_PAID", externalReference),
                         null);
             }
 
             if ("CANCELLED".equalsIgnoreCase(remoteStatus)) {
                 return new PaymentGatewayStatusResult(
                         PaymentTransactionStatus.CANCELLED,
-                        transaction.getExternalReference(),
-                        providerPayload("PAYOS", "SYNC_CANCELLED", transaction.getExternalReference()),
+                        externalReference,
+                        providerPayload("PAYOS", "SYNC_CANCELLED", externalReference),
                         "CANCELLED");
             }
 
             if ("EXPIRED".equalsIgnoreCase(remoteStatus)) {
                 return new PaymentGatewayStatusResult(
                         PaymentTransactionStatus.EXPIRED,
-                        transaction.getExternalReference(),
-                        providerPayload("PAYOS", "SYNC_EXPIRED", transaction.getExternalReference()),
+                        externalReference,
+                        providerPayload("PAYOS", "SYNC_EXPIRED", externalReference),
                         "EXPIRED");
             }
 
             return new PaymentGatewayStatusResult(
                     PaymentTransactionStatus.PENDING,
-                    transaction.getExternalReference(),
-                    providerPayload("PAYOS", "SYNC_PENDING", transaction.getExternalReference()),
+                    externalReference,
+                    providerPayload("PAYOS", "SYNC_PENDING", externalReference),
                     null);
         } catch (Exception e) {
             throw new BusinessException(
@@ -137,5 +139,9 @@ public class PayosGateway implements PaymentGateway {
         String safeReference = reference != null ? reference.replace("\"", "") : "";
         return "{\"provider\":\"" + provider + "\",\"event\":\"" + event + "\",\"reference\":\"" + safeReference
                 + "\"}";
+    }
+
+    private Long gatewayOrderCode(PaymentTransaction transaction) {
+        return transaction.getGatewayOrderCode() != null ? transaction.getGatewayOrderCode() : transaction.getId();
     }
 }

@@ -14,13 +14,13 @@ const CheckboxCard = ({
   className = '',
 }) => (
   <label
-    className={`flex min-h-[52px] w-full cursor-pointer items-center gap-3 rounded-2xl border-2 border-transparent bg-gray-50 px-5 transition-all hover:bg-gray-100 ${
+    className={`flex min-h-[52px] w-full cursor-pointer items-center gap-3 rounded-2xl border-2 border-transparent bg-slate-50 px-5 transition-all hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-800 ${
       disabled ? 'cursor-not-allowed opacity-60' : ''
     } ${className}`}
   >
     <input
       type="checkbox"
-      className={`h-5 w-5 cursor-pointer rounded-md border-gray-200 ${
+      className={`h-5 w-5 cursor-pointer rounded-md border-slate-200 dark:border-slate-700 ${
         TONE_CLASSES[tone] || TONE_CLASSES.orange
       }`}
       checked={Boolean(checked)}
@@ -28,11 +28,13 @@ const CheckboxCard = ({
       disabled={disabled}
     />
     <span className="min-w-0">
-      <span className="block text-xs font-black uppercase tracking-tight text-gray-600">
+      <span className="block text-xs font-black uppercase tracking-tight text-slate-600 dark:text-slate-200">
         {label}
       </span>
       {description && (
-        <span className="mt-0.5 block text-[11px] font-medium text-gray-400">{description}</span>
+        <span className="mt-0.5 block text-[11px] font-medium text-slate-400 dark:text-slate-500">
+          {description}
+        </span>
       )}
     </span>
   </label>

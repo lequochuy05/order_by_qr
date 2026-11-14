@@ -60,6 +60,9 @@ public class PaymentTransaction extends BaseEntity {
     @Column(unique = true, length = 100)
     private String externalReference;
 
+    @Column(unique = true)
+    private Long gatewayOrderCode;
+
     @Column(unique = true, length = 100)
     private String idempotencyKey;
 
@@ -76,6 +79,10 @@ public class PaymentTransaction extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
     private User createdBy;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean voucherUsageClaimed = false;
 
     @Column(length = 255)
     private String failureReason;

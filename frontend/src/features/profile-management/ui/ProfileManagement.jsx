@@ -1,25 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  Camera,
-  CheckCircle2,
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  Mail,
-  Phone,
-  Save,
-  ShieldCheck,
-  Upload,
-  User,
-} from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
-import { useAuth } from '@features/auth/model/AuthContext.jsx';
+import { useAuth } from '@features/auth';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import { profileService } from '@features/profile-management/api/profileService.js';
-import { fmtRole } from '@shared/lib/formatters.js';
+import {
+  useChangePasswordMutation,
+  useProfileQuery,
+  useUpdateProfileMutation,
+  useUploadProfileAvatarMutation,
+} from '@entities/user';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
+
+import ProfileAvatarCard from './ProfileAvatarCard.jsx';
+import ProfileInfoForm from './ProfileInfoForm.jsx';
+import ProfilePasswordForm from './ProfilePasswordForm.jsx';
 
 const initialProfile = {
   fullName: '',
@@ -36,27 +31,36 @@ const initialPassword = {
 };
 
 const passwordRules = [
-  { label: '6+ ký tự', test: (value) => value.length >= 6 },
+  { label: '8+ ký tự', test: (value) => value.length >= 8 },
   { label: 'Chữ hoa', test: (value) => /[A-Z]/.test(value) },
-  { label: 'Chữ thường', test: (value) => /[a-z]/.test(value) },
   { label: 'Số', test: (value) => /\d/.test(value) },
+  { label: 'Ký tự đặc biệt', test: (value) => /[!@#$%^&*(),.?":{}|<>]/.test(value) },
 ];
 
+const hasValidPasswordPolicy = (value) => passwordRules.every((rule) => rule.test(value));
+
 const strengthMeta = [
-  { label: 'Yếu', barClass: 'bg-red-500', textClass: 'text-red-600' },
-  { label: 'Trung bình', barClass: 'bg-orange-500', textClass: 'text-orange-600' },
-  { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600' },
+  { label: 'Yếu', barClass: 'bg-rose-500', textClass: 'text-rose-600' },
+  { label: 'Trung bình', barClass: 'bg-amber-500', textClass: 'text-amber-600' },
+  { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600 dark:text-emerald-400' },
   { label: 'Mạnh', barClass: 'bg-emerald-600', textClass: 'text-emerald-700' },
 ];
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isForceChange = searchParams.get('forceChangePassword') === 'true' || Boolean(user?.mustChangePassword);
+  const passwordSectionRef = useRef(null);
   const { showError } = useStatusModal();
   const fileInputRef = useRef(null);
+  const avatarObjectUrlRef = useRef(null);
 
   const [profile, setProfile] = useState(initialProfile);
+  const { data: profileData, isLoading: loading } = useProfileQuery();
+  const { mutateAsync: updateProfileMut } = useUpdateProfileMutation();
+  const { mutateAsync: uploadAvatarMut } = useUploadProfileAvatarMutation();
+  const { mutateAsync: changePasswordMut } = useChangePasswordMutation();
   const [avatarPreview, setAvatarPreview] = useState('');
-  const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPassword);
@@ -65,30 +69,29 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
 
   const isMountedRef = useRef(true);
-  const fetchSeqRef = useRef(0);
+  const initialProfileRef = useRef(null);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+      }
     };
   }, []);
 
-  const loadProfile = useCallback(async () => {
-    const fetchSeq = ++fetchSeqRef.current;
-    setLoading(true);
-    try {
-      const data = await profileService.getMe();
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-
+  useEffect(() => {
+    if (profileData) {
       const nextProfile = {
-        fullName: data.fullName || '',
-        email: data.email || '',
-        phone: data.phone || '',
-        role: data.role || '',
-        avatarUrl: data.avatarUrl || '',
+        fullName: profileData.fullName || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        role: profileData.role || '',
+        avatarUrl: profileData.avatarUrl || '',
       };
       setProfile(nextProfile);
+      initialProfileRef.current = nextProfile;
       setAvatarPreview(nextProfile.avatarUrl);
       updateUser({
         fullName: nextProfile.fullName,
@@ -96,20 +99,16 @@ const ProfilePage = () => {
         phone: nextProfile.phone,
         role: nextProfile.role,
         avatarUrl: nextProfile.avatarUrl,
+        mustChangePassword: Boolean(profileData.mustChangePassword),
       });
-    } catch (err) {
-      if (!isMountedRef.current || fetchSeq !== fetchSeqRef.current) return;
-      showError(err, 'Không thể tải hồ sơ');
-    } finally {
-      if (isMountedRef.current && fetchSeq === fetchSeqRef.current) {
-        setLoading(false);
-      }
     }
-  }, [showError, updateUser]);
+  }, [profileData, updateUser]);
 
   useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+    if (isForceChange && passwordSectionRef.current) {
+      passwordSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isForceChange]);
 
   const strength = useMemo(() => {
     const passed = passwordRules.filter((rule) => rule.test(passwordForm.newPassword)).length;
@@ -136,13 +135,17 @@ const ProfilePage = () => {
     return Object.keys(nextErrors).length === 0;
   };
 
+  const profileChanged =
+    profile.fullName !== initialProfileRef.current?.fullName ||
+    profile.phone !== initialProfileRef.current?.phone;
+
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
     if (!validateProfile() || savingProfile) return;
 
     setSavingProfile(true);
     try {
-      const updated = await profileService.updateMe({
+      const updated = await updateProfileMut({
         fullName: profile.fullName.trim(),
         phone: profile.phone.trim() || null,
       });
@@ -171,10 +174,15 @@ const ProfilePage = () => {
       return;
     }
 
-    setAvatarPreview(URL.createObjectURL(file));
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+    }
+    const objectUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = objectUrl;
+    setAvatarPreview(objectUrl);
     setUploadingAvatar(true);
     try {
-      const updated = await profileService.uploadAvatar(file);
+      const updated = await uploadAvatarMut(file);
       setProfile((prev) => ({ ...prev, avatarUrl: updated.avatarUrl || '' }));
       setAvatarPreview(updated.avatarUrl || '');
       updateUser({ avatarUrl: updated.avatarUrl || '' });
@@ -183,6 +191,10 @@ const ProfilePage = () => {
       setAvatarPreview(profile.avatarUrl || '');
       showErrorToast(err);
     } finally {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
       setUploadingAvatar(false);
       event.target.value = '';
     }
@@ -193,8 +205,8 @@ const ProfilePage = () => {
     if (!passwordForm.currentPassword) {
       nextErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
     }
-    if (passwordForm.newPassword.length < 6) {
-      nextErrors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+    if (!hasValidPasswordPolicy(passwordForm.newPassword)) {
+      nextErrors.newPassword = 'Mật khẩu cần 8 ký tự, chữ hoa, số và ký tự đặc biệt';
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       nextErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp';
@@ -213,12 +225,13 @@ const ProfilePage = () => {
 
     setSavingPassword(true);
     try {
-      await profileService.changePassword({
+      await changePasswordMut({
         currentPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
       });
       setPasswordForm(initialPassword);
-      showSuccessToast('Mật khẩu đã được thay đổi.');
+      updateUser({ mustChangePassword: false });
+      showSuccessToast('Mật khẩu đã được thay đổi thành công.');
     } catch (err) {
       showErrorToast(err);
     } finally {
@@ -228,311 +241,65 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center text-orange-500 dark:text-orange-400">
+      <div className="flex min-h-[420px] items-center justify-center text-indigo-600 dark:text-indigo-400">
         <Loader2 className="animate-spin" size={36} />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
-      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col items-center text-center">
-            <div className="relative">
-              <div className="h-36 w-36 overflow-hidden rounded-full border-4 border-orange-100 bg-orange-50 dark:border-orange-500/30 dark:bg-slate-950">
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <User className="text-orange-500" size={56} />
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
-                className="absolute bottom-1 right-1 flex h-11 w-11 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-                title="Đổi ảnh đại diện"
-              >
-                {uploadingAvatar ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  <Camera size={18} />
-                )}
-              </button>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-
-            <h2 className="mt-5 text-xl font-black text-slate-900 dark:text-slate-100">
-              {profile.fullName || user?.fullName}
-            </h2>
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-orange-100 bg-orange-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-orange-600 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-              <ShieldCheck size={14} />
-              {fmtRole(profile.role || user?.role)}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploadingAvatar}
-              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
-            >
-              <Upload size={16} />
-              Chọn ảnh mới
-            </button>
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-0 sm:p-3 lg:p-6 animate-in fade-in duration-500">
+      {isForceChange && (
+        <div className="flex items-start gap-3.5 rounded-3xl border border-amber-200/80 bg-amber-50/90 p-5 text-amber-900 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+            <AlertTriangle size={20} />
           </div>
-        </section>
-
-        <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mb-6 flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
-              <User size={20} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                Thông tin cá nhân
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Cập nhật thông tin hiển thị trong hệ thống quản trị.
-              </p>
-            </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-amber-900 dark:text-amber-100">
+              Yêu cầu đổi mật khẩu bảo mật
+            </h3>
+            <p className="text-sm font-medium text-amber-800/90 dark:text-amber-300/90">
+              Tài khoản của bạn vừa được cấp mới hoặc đặt lại mật khẩu. Vui lòng đổi sang mật khẩu mới trước khi tiếp tục thao tác trên hệ thống.
+            </p>
           </div>
+        </div>
+      )}
 
-          <form onSubmit={handleProfileSubmit} className="grid gap-5 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                Họ và tên
-              </span>
-              <div className="relative">
-                <User
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  value={profile.fullName}
-                  onChange={(event) =>
-                    setProfile((prev) => ({ ...prev, fullName: event.target.value }))
-                  }
-                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
-                    errors.fullName
-                      ? 'border-red-300 focus:border-red-400'
-                      : 'border-slate-200 focus:border-orange-400'
-                  } dark:border-slate-700`}
-                />
-              </div>
-              {errors.fullName && <FieldError message={errors.fullName} />}
-            </label>
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <ProfileAvatarCard
+          profile={profile}
+          user={user}
+          avatarPreview={avatarPreview}
+          uploadingAvatar={uploadingAvatar}
+          fileInputRef={fileInputRef}
+          onAvatarChange={handleAvatarChange}
+        />
 
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                Số điện thoại
-              </span>
-              <div className="relative">
-                <Phone
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  value={profile.phone}
-                  onChange={(event) =>
-                    setProfile((prev) => ({ ...prev, phone: event.target.value }))
-                  }
-                  placeholder="VD: 0912345678"
-                  className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
-                    errors.phone
-                      ? 'border-red-300 focus:border-red-400'
-                      : 'border-slate-200 focus:border-orange-400'
-                  } dark:border-slate-700`}
-                />
-              </div>
-              {errors.phone && <FieldError message={errors.phone} />}
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                Email đăng nhập
-              </span>
-              <div className="relative">
-                <Mail
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  value={profile.email}
-                  disabled
-                  className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-500 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
-                />
-              </div>
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Vai trò</span>
-              <div className="relative">
-                <ShieldCheck
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  value={fmtRole(profile.role)}
-                  disabled
-                  className="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 py-3 pl-10 pr-3 text-sm text-slate-500 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
-                />
-              </div>
-            </label>
-
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={savingProfile}
-                className="inline-flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {savingProfile ? (
-                  <Loader2 className="animate-spin" size={17} />
-                ) : (
-                  <Save size={17} />
-                )}
-                Lưu thay đổi
-              </button>
-            </div>
-          </form>
-        </section>
+        <ProfileInfoForm
+          profile={profile}
+          setProfile={setProfile}
+          errors={errors}
+          savingProfile={savingProfile}
+          profileChanged={profileChanged}
+          onSubmit={handleProfileSubmit}
+        />
       </div>
 
-      <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition-colors sm:p-6 dark:border-slate-800 dark:bg-slate-900">
-        <div className="mb-6 flex min-w-0 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
-              <Lock size={20} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                Đổi mật khẩu
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Yêu cầu mật khẩu hiện tại để bảo vệ tài khoản.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowPasswords((prev) => !prev)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            title={showPasswords ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          >
-            {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
-
-        <form onSubmit={handlePasswordSubmit} className="grid gap-5 lg:grid-cols-3">
-          <PasswordField
-            label="Mật khẩu hiện tại"
-            value={passwordForm.currentPassword}
-            visible={showPasswords}
-            error={errors.currentPassword}
-            onChange={(value) => setPasswordForm((prev) => ({ ...prev, currentPassword: value }))}
-          />
-          <PasswordField
-            label="Mật khẩu mới"
-            value={passwordForm.newPassword}
-            visible={showPasswords}
-            error={errors.newPassword}
-            onChange={(value) => setPasswordForm((prev) => ({ ...prev, newPassword: value }))}
-          />
-          <PasswordField
-            label="Xác nhận mật khẩu"
-            value={passwordForm.confirmPassword}
-            visible={showPasswords}
-            error={errors.confirmPassword}
-            onChange={(value) => setPasswordForm((prev) => ({ ...prev, confirmPassword: value }))}
-          />
-
-          <div className="lg:col-span-3">
-            <div className="mb-5 grid gap-3 md:grid-cols-[260px_1fr]">
-              <div>
-                <div className="mb-2 flex items-center justify-between text-xs font-bold">
-                  <span className="text-slate-500 dark:text-slate-400">Độ mạnh mật khẩu</span>
-                  <span className={strength.meta.textClass}>
-                    {passwordForm.newPassword ? strength.meta.label : 'Chưa nhập'}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className={`h-full rounded-full transition-all ${strength.meta.barClass}`}
-                    style={{
-                      width: `${Math.max(strength.passed, passwordForm.newPassword ? 1 : 0) * 25}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {passwordRules.map((rule) => {
-                  const passed = rule.test(passwordForm.newPassword);
-                  return (
-                    <span
-                      key={rule.label}
-                      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-                        passed
-                          ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400'
-                      }`}
-                    >
-                      <CheckCircle2 size={13} />
-                      {rule.label}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={savingPassword}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
-            >
-              {savingPassword ? <Loader2 className="animate-spin" size={17} /> : <Lock size={17} />}
-              Cập nhật mật khẩu
-            </button>
-          </div>
-        </form>
-      </section>
+      <div ref={passwordSectionRef} id="password-form-section">
+        <ProfilePasswordForm
+          passwordForm={passwordForm}
+          setPasswordForm={setPasswordForm}
+          errors={errors}
+          savingPassword={savingPassword}
+          showPasswords={showPasswords}
+          setShowPasswords={setShowPasswords}
+          strength={strength}
+          passwordRules={passwordRules}
+          onSubmit={handlePasswordSubmit}
+        />
+      </div>
     </div>
   );
 };
-
-const FieldError = ({ message }) => (
-  <p className="flex items-center gap-1 text-xs font-medium text-red-500">
-    <AlertCircle size={13} />
-    {message}
-  </p>
-);
-
-const PasswordField = ({ label, value, visible, error, onChange }) => (
-  <label className="min-w-0 space-y-2">
-    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{label}</span>
-    <div className="relative">
-      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-      <input
-        type={visible ? 'text' : 'password'}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-lg border bg-white py-3 pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:ring-2 focus:ring-orange-100 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 ${
-          error ? 'border-red-300 focus:border-red-400' : 'border-slate-200 focus:border-orange-400'
-        } dark:border-slate-700`}
-      />
-    </div>
-    {error && <FieldError message={error} />}
-  </label>
-);
 
 export default ProfilePage;

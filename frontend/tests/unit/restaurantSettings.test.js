@@ -6,7 +6,7 @@ import {
   getTimeContext,
   normalizeRestaurantSettings,
   translateRecommendationReason,
-} from '../../src/widgets/customer-menu/lib/restaurantSettings.js';
+} from '../../src/features/customer-menu/lib/restaurantSettings.js';
 
 test('restaurant settings provide safe defaults', () => {
   assert.deepEqual(normalizeRestaurantSettings(), {
@@ -16,6 +16,9 @@ test('restaurant settings provide safe defaults', () => {
     orderingEnabled: true,
     maintenanceMode: false,
     enableAiAssistant: true,
+    showRecommendations: true,
+    showCombos: true,
+    showUnavailableItems: false,
   });
 });
 

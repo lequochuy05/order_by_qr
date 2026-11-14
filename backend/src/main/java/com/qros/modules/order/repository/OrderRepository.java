@@ -3,7 +3,10 @@ package com.qros.modules.order.repository;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
+import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.repository.projection.ActiveOrderSummary;
+import com.qros.modules.table.model.TableSession;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -15,7 +18,7 @@ import org.springframework.data.repository.query.Param;
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
     /**
      * Lock active orders of a table when creating/adding order items.
-     * Service should take the newest one and handle duplicates if any.
+     * Service must reject duplicates before appending to an active order.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(
@@ -59,7 +62,107 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findActiveByTableSessionIdForUpdate(
             @Param("sessionId") Long sessionId, @Param("statuses") List<OrderStatus> statuses);
 
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_id = :tableId
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdForUpdate(
+            @Param("tableId") Long tableId, @Param("statuses") Collection<String> statuses);
+
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_session_id = :sessionId
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableSessionIdForUpdate(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<String> statuses);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE Order o
+            SET o.tableSession = :session
+            WHERE o.id = :orderId
+              AND o.tableSession IS NULL
+            """)
+    int attachTableSessionIfMissing(@Param("orderId") Long orderId, @Param("session") TableSession session);
+
     boolean existsByTableIdAndStatusIn(Long tableId, Collection<OrderStatus> statuses);
+
+    boolean existsByTableSessionIdAndStatusIn(Long tableSessionId, Collection<OrderStatus> statuses);
+
+    @Query(
+            """
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE o.table.id IN :tableIds
+              AND o.status IN :statuses
+            """)
+    long countActiveByTableIds(
+            @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<OrderStatus> statuses);
+
+    @Query(
+            """
+            SELECT COUNT(o)
+            FROM Order o
+            JOIN o.orderItems item
+            WHERE o.tableSession.id = :sessionId
+              AND o.status IN :statuses
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            """)
+    long countBillableItemsByTableSessionId(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<OrderStatus> statuses);
+
+    @Query(
+            value =
+                    """
+                        SELECT o.id AS id,
+                               o.table_session_id AS "tableSessionId"
+                        FROM orders o
+                        WHERE o.table_id IN (:tableIds)
+                          AND o.status IN (:statuses)
+                          AND o.is_deleted = false
+                        ORDER BY o.created_at DESC
+                        FOR UPDATE
+                        """,
+            nativeQuery = true)
+    List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdsForUpdate(
+            @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<String> statuses);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE Order o
+            SET o.status = com.qros.modules.order.model.enums.OrderStatus.CANCELLED,
+                o.paymentStatus = com.qros.modules.order.model.enums.PaymentStatus.CANCELLED
+            WHERE o.tableSession.id = :sessionId
+              AND o.status IN :statuses
+              AND NOT EXISTS (
+                    SELECT item.id
+                    FROM OrderItem item
+                    WHERE item.order = o
+                      AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+              )
+            """)
+    int cancelEmptyActiveOrdersByTableSessionId(
+            @Param("sessionId") Long sessionId, @Param("statuses") Collection<OrderStatus> statuses);
 
     /**
      * Lock one order for payment/cancel/update flow.
@@ -81,6 +184,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             })
     @Query("SELECT o FROM Order o WHERE o.id = :id")
     Optional<Order> findByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"table", "tableSession", "paidBy", "orderItems"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findPaymentByIdForUpdate(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"table", "tableSession", "orderItems"})
+    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    Optional<Order> findWorkflowByIdForUpdate(@Param("id") Long id);
 
     /**
      * Find latest active/current order of a table by table code.
@@ -142,6 +255,18 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             })
     List<Order> findByStatusIn(List<OrderStatus> statuses);
 
+    @Query(
+            """
+            SELECT o FROM Order o
+            LEFT JOIN FETCH o.table
+            LEFT JOIN FETCH o.orderItems
+            WHERE o.orderType = :orderType
+              AND o.status IN :statuses
+            ORDER BY o.createdAt DESC
+            """)
+    List<Order> findActiveOrdersByType(
+            @Param("orderType") OrderType orderType, @Param("statuses") List<OrderStatus> statuses);
+
     /**
      * Fetch full detail for order detail screen.
      */
@@ -192,6 +317,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                                o.final_amount AS finalAmount,
                                o.table_id AS tableId,
                                t.table_number AS tableNumber,
+                               o.table_session_id AS sessionId,
                                o.created_at AS createdAt
                         FROM orders o
                         JOIN tables t ON t.id = o.table_id AND t.is_deleted = false

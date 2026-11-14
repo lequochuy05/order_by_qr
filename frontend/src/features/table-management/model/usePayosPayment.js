@@ -1,18 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { orderService } from '@features/order-management';
-import { paymentService } from '@features/payment';
-import { calculatePayosTimeLeft } from '@features/payment/lib/paymentExpiry.js';
+import { orderService } from '@entities/order/api/orderService.js';
+import { paymentService } from '@entities/payment/api/paymentService.js';
+import { VOUCHER_STATUSES } from '@entities/voucher/lib/voucherStatus.js';
+import { calculatePayosTimeLeft } from '@entities/payment/lib/paymentExpiry.js';
+import { PAYMENT_METHODS, PAYMENT_TRANSACTION_STATUSES } from '@entities/payment/lib/paymentStatus.js';
+import { ORDER_PAYMENT_STATUSES } from '@entities/order/lib/orderStatus.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
   getOrderSubtotalAmount,
 } from '@entities/order/lib/orderMoney.js';
 import { printInvoice } from '@entities/order/lib/invoiceGenerator.js';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
+import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
+import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { showErrorToast } from '@shared/lib/toast.js';
+import useSettingsStore from '@shared/model/settingsStore.js';
+import usePayosTimer from './usePayosTimer.js';
+import useCashPayment from './useCashPayment.js';
+
+const PAYOS_PRINT_DELAY_MS = 300;
+const PAYOS_FIRST_SYNC_DELAY_MS = 2500;
+const PAYOS_SYNC_INTERVAL_MS = 8000;
+
+const sameId = (left, right) =>
+  left != null && right != null && String(left) === String(right);
+
+const getPaymentEventOrderId = (message) =>
+  message?.orderId ?? message?.id ?? message?.data?.orderId;
+
+const getPaymentEventTransactionId = (message) =>
+  message?.transactionId ?? message?.data?.transactionId;
 
 const usePayosPayment = ({
   isOpen,
@@ -24,7 +44,11 @@ const usePayosPayment = ({
   preview,
   paymentDraft,
 }) => {
-  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const settings = useSettingsStore((state) => state.settings);
+  const cashPaymentEnabled = settings.cashPaymentEnabled !== false;
+  const onlinePaymentEnabled = settings.onlinePaymentEnabled !== false;
+  const defaultPaymentMethod = cashPaymentEnabled ? PAYMENT_METHODS.CASH : PAYMENT_METHODS.PAYOS;
+  const [paymentMethod, setPaymentMethod] = useState(defaultPaymentMethod);
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosData, setPayosData] = useState(null);
   const [payosStatus, setPayosStatus] = useState('idle');
@@ -33,34 +57,48 @@ const usePayosPayment = ({
   const finishingRef = useRef(false);
   const paymentSuccessHandledRef = useRef(false);
   const payosSyncingRef = useRef(false);
-  const { confirm } = useConfirmModal();
 
   useEffect(() => {
     if (!isOpen) return undefined;
     const timeout = window.setTimeout(() => {
-      setPaymentMethod('CASH');
-      setPayosStatus('idle');
-      setPayosData(null);
+      const draft = paymentDraft.readPaymentDraft();
+      const savedPayosData = onlinePaymentEnabled ? draft?.payosData : null;
+
       setPayosError('');
-      setTimeLeft(0);
       finishingRef.current = false;
       paymentSuccessHandledRef.current = false;
+
+      if (savedPayosData?.transactionId && savedPayosData?.qrCode) {
+        const restoredTimeLeft = calculatePayosTimeLeft(savedPayosData.expiresAt);
+        setPaymentMethod(PAYMENT_METHODS.PAYOS);
+        setPayosData(savedPayosData);
+        setPayosStatus(restoredTimeLeft > 0 ? 'waiting' : 'expired');
+        setTimeLeft(restoredTimeLeft);
+        return;
+      }
+
+      setPaymentMethod(defaultPaymentMethod);
+      setPayosStatus('idle');
+      setPayosData(null);
+      setTimeLeft(0);
     }, 0);
     return () => window.clearTimeout(timeout);
-  }, [isOpen, order?.id]);
+  }, [defaultPaymentMethod, isOpen, onlinePaymentEnabled, order?.id, paymentDraft]);
 
   useEffect(() => {
-    if (payosStatus !== 'waiting' || !payosData?.expiresAt) return undefined;
+    if (paymentMethod === PAYMENT_METHODS.CASH && !cashPaymentEnabled && onlinePaymentEnabled) {
+      setPaymentMethod(PAYMENT_METHODS.PAYOS);
+    } else if (paymentMethod === PAYMENT_METHODS.PAYOS && !onlinePaymentEnabled && cashPaymentEnabled) {
+      setPaymentMethod(PAYMENT_METHODS.CASH);
+    }
+  }, [cashPaymentEnabled, onlinePaymentEnabled, paymentMethod]);
 
-    const updateTimeLeft = () => {
-      const remaining = calculatePayosTimeLeft(payosData.expiresAt);
-      setTimeLeft(remaining);
-      if (remaining <= 0) setPayosStatus('expired');
-    };
-    updateTimeLeft();
-    const interval = window.setInterval(updateTimeLeft, 1000);
-    return () => window.clearInterval(interval);
-  }, [payosData?.expiresAt, payosStatus]);
+  usePayosTimer({
+    payosStatus,
+    expiresAt: payosData?.expiresAt,
+    setTimeLeft,
+    setPayosStatus,
+  });
 
   const buildInvoiceOrder = useCallback(
     (latestOrder, method) => {
@@ -85,7 +123,7 @@ const usePayosPayment = ({
           getOrderFinalAmount(order),
         voucherCode: latestOrder?.voucherCode ?? payosData?.voucherCode ?? order?.voucherCode,
         paymentMethod: method || latestOrder?.paymentMethod || paymentMethod,
-        paymentStatus: latestOrder?.paymentStatus ?? 'PAID',
+        paymentStatus: latestOrder?.paymentStatus ?? ORDER_PAYMENT_STATUSES.PAID,
         paymentTime: latestOrder?.paymentTime ?? new Date().toISOString(),
         paidByName: latestOrder?.paidByName ?? currentUser?.fullName,
       };
@@ -94,24 +132,28 @@ const usePayosPayment = ({
   );
 
   const finishPayment = useCallback(
-    async (methodOverride = paymentMethod) => {
+    async (methodOverride = paymentMethod, latestOrder = null, { skipReconcile = false } = {}) => {
       if (finishingRef.current) return;
       finishingRef.current = true;
 
-      let latestOrder = null;
-      try {
-        if (order?.id) latestOrder = await orderService.reconcileOrder(order.id);
-      } catch (error) {
-        console.warn('Could not load latest paid order before printing invoice:', error);
+      let invoiceSourceOrder = latestOrder;
+      if (!invoiceSourceOrder && !skipReconcile) {
+        try {
+          if (order?.id) invoiceSourceOrder = await orderService.reconcileOrder(order.id);
+        } catch (error) {
+          console.warn('Could not load latest paid order before printing invoice:', error);
+        }
       }
 
-      const invoiceOrder = buildInvoiceOrder(latestOrder, methodOverride);
-      printInvoice({
-        order: invoiceOrder,
-        table,
-        paidBy: invoiceOrder.paidByName || currentUser?.fullName || 'Admin',
-        paidAt: invoiceOrder.paymentTime || new Date(),
-      });
+      const invoiceOrder = buildInvoiceOrder(invoiceSourceOrder, methodOverride);
+      if (settings.autoPrintBill !== false) {
+        printInvoice({
+          order: invoiceOrder,
+          table,
+          paidBy: invoiceOrder.paidByName || currentUser?.fullName || 'Admin',
+          paidAt: invoiceOrder.paymentTime || new Date(),
+        });
+      }
       paymentDraft.clearPaymentDraft();
       onPaymentSuccess();
       onClose();
@@ -124,17 +166,28 @@ const usePayosPayment = ({
       order?.id,
       paymentDraft,
       paymentMethod,
+      settings.autoPrintBill,
       table,
     ],
   );
 
-  const handlePaymentSuccess = useCallback(() => {
+  const handlePaymentSuccess = useCallback((latestOrder = null) => {
     if (paymentSuccessHandledRef.current) return;
     paymentSuccessHandledRef.current = true;
     setPayosStatus('success');
-    setPaymentMethod('PAYOS');
-    window.setTimeout(() => finishPayment('PAYOS'), 1500);
-  }, [finishPayment]);
+    setPaymentMethod(PAYMENT_METHODS.PAYOS);
+    if (settings.paymentNotificationEnabled !== false) {
+      playNotificationSound();
+      showBrowserNotification('Thanh toán thành công', {
+        body: `Đơn bàn ${table?.tableNumber || ''} đã được PayOS xác nhận.`,
+        tag: `payment-${order?.id}`,
+      });
+    }
+    window.setTimeout(
+      () => finishPayment(PAYMENT_METHODS.PAYOS, latestOrder, { skipReconcile: true }),
+      PAYOS_PRINT_DELAY_MS,
+    );
+  }, [finishPayment, order?.id, settings.paymentNotificationEnabled, table?.tableNumber]);
 
   useEffect(() => {
     if (payosStatus !== 'waiting' || !payosData?.transactionId || !order?.id) return undefined;
@@ -144,12 +197,15 @@ const usePayosPayment = ({
       if (payosSyncingRef.current || finishingRef.current) return;
       payosSyncingRef.current = true;
       try {
-        const latestOrder = await orderService.reconcileOrder(order.id);
-        if (
-          !stopped &&
-          (latestOrder?.paymentStatus === 'PAID' || latestOrder?.status === 'COMPLETED')
-        ) {
+        const latestTransaction = await paymentService.syncPaymentStatus(payosData.transactionId);
+        if (!stopped && latestTransaction?.status === PAYMENT_TRANSACTION_STATUSES.PAID) {
           handlePaymentSuccess();
+        } else if (!stopped && latestTransaction?.status === PAYMENT_TRANSACTION_STATUSES.EXPIRED) {
+          setPayosStatus('expired');
+        } else if (!stopped && latestTransaction?.status === PAYMENT_TRANSACTION_STATUSES.CANCELLED) {
+          setPayosStatus('idle');
+          setPayosData(null);
+          paymentDraft.clearPayosDraft();
         }
       } catch (error) {
         console.warn('Could not sync PayOS payment status:', error);
@@ -158,23 +214,23 @@ const usePayosPayment = ({
       }
     };
 
-    const firstSync = window.setTimeout(syncPaymentStatus, 1500);
-    const interval = window.setInterval(syncPaymentStatus, 3000);
+    const firstSync = window.setTimeout(syncPaymentStatus, PAYOS_FIRST_SYNC_DELAY_MS);
+    const interval = window.setInterval(syncPaymentStatus, PAYOS_SYNC_INTERVAL_MS);
     return () => {
       stopped = true;
       window.clearTimeout(firstSync);
       window.clearInterval(interval);
     };
-  }, [handlePaymentSuccess, order?.id, payosData?.transactionId, payosStatus]);
+  }, [handlePaymentSuccess, order?.id, paymentDraft, payosData?.transactionId, payosStatus]);
 
   useWebSocket(
     '/topic/tables',
     (message) => {
-      const eventOrderId = message?.orderId ?? message?.id;
-      const eventTransactionId = message?.transactionId ?? message?.data;
+      const eventOrderId = getPaymentEventOrderId(message);
+      const eventTransactionId = getPaymentEventTransactionId(message);
       if (
         message?.event === 'PAYMENT_SUCCESS' &&
-        (eventOrderId === order?.id || eventTransactionId === payosData?.transactionId)
+        (sameId(eventOrderId, order?.id) || sameId(eventTransactionId, payosData?.transactionId))
       ) {
         handlePaymentSuccess();
       }
@@ -183,18 +239,25 @@ const usePayosPayment = ({
   );
 
   const handleCreatePayosQR = useCallback(async () => {
+    if (!onlinePaymentEnabled) return;
+    if (preview.voucherRequiresApply) {
+      setPayosError('Vui lòng áp dụng hoặc xóa mã voucher trước khi tạo QR.');
+      setPayosStatus('error');
+      return;
+    }
     setPayosLoading(true);
     setPayosError('');
     try {
       const data = await paymentService.createPayment(
         order.id,
-        'PAYOS',
-        preview.voucherCode || null,
+        PAYMENT_METHODS.PAYOS,
+        preview.payableVoucherCode,
       );
       setPayosData(data);
       setPayosStatus('waiting');
-      setPaymentMethod('PAYOS');
+      setPaymentMethod(PAYMENT_METHODS.PAYOS);
       setTimeLeft(calculatePayosTimeLeft(data.expiresAt));
+      paymentDraft.savePayosDraft(data);
 
       const nextPreview = {
         ...preview.previewData,
@@ -212,11 +275,14 @@ const usePayosPayment = ({
           preview.previewData?.finalAmount ??
           getOrderFinalAmount(order),
         voucherValid: Boolean(data.voucherCode || preview.previewData?.voucherValid),
-        voucherMessage: data.voucherCode ? 'ACTIVE' : preview.previewData?.voucherMessage,
+        voucherMessage: data.voucherCode
+          ? VOUCHER_STATUSES.ACTIVE
+          : preview.previewData?.voucherMessage,
       };
       preview.setPreviewData(nextPreview);
       if (data.voucherCode) {
         preview.setVoucher(data.voucherCode);
+        preview.setAppliedVoucherCode(data.voucherCode);
         paymentDraft.savePaymentDraft(data.voucherCode, nextPreview);
       }
     } catch (error) {
@@ -225,7 +291,7 @@ const usePayosPayment = ({
     } finally {
       setPayosLoading(false);
     }
-  }, [order, paymentDraft, preview]);
+  }, [onlinePaymentEnabled, order, paymentDraft, preview]);
 
   const handleCancelPayos = useCallback(async () => {
     if (!payosData) return;
@@ -236,32 +302,43 @@ const usePayosPayment = ({
       );
       setPayosStatus('idle');
       setPayosData(null);
+      paymentDraft.clearPayosDraft();
     } catch (error) {
       showErrorToast(error);
     }
-  }, [payosData]);
+  }, [paymentDraft, payosData]);
 
-  const handleConfirmCashPay = useCallback(async () => {
-    const confirmed = await confirm(
-      'Xác nhận thanh toán',
-      `Xác nhận thanh toán TIỀN MẶT cho bàn ${table.tableNumber}?`,
-    );
-    if (!confirmed) return;
+  const effectiveFinalAmount =
+    preview.previewData?.finalAmount ??
+    payosData?.finalAmount ??
+    payosData?.amount ??
+    preview.amounts.finalAmount ??
+    getOrderFinalAmount(order);
 
-    try {
-      const voucherCode = preview.voucherCode.trim() || null;
-      await paymentService.createPayment(order.id, 'CASH', voucherCode);
-      await finishPayment('CASH');
-    } catch (error) {
-      showErrorToast(error);
-    }
-  }, [confirm, finishPayment, order?.id, preview.voucherCode, table?.tableNumber]);
+  const {
+    cashReceived,
+    setCashReceived,
+    changeAmount,
+    isInsufficient,
+    hasUnfinishedItems,
+    handleConfirmCashPay,
+  } = useCashPayment({
+    cashPaymentEnabled,
+    order,
+    preview,
+    table,
+    finishPayment,
+    finalAmount: effectiveFinalAmount,
+  });
 
   const selectCash = useCallback(() => {
-    setPaymentMethod('CASH');
+    if (!cashPaymentEnabled) return;
+    if (payosStatus === 'waiting') return;
+    setPaymentMethod(PAYMENT_METHODS.CASH);
     setPayosStatus('idle');
     setPayosData(null);
-  }, []);
+    paymentDraft.clearPayosDraft();
+  }, [cashPaymentEnabled, paymentDraft, payosStatus]);
 
   return {
     paymentMethod,
@@ -270,6 +347,13 @@ const usePayosPayment = ({
     payosStatus,
     timeLeft,
     payosError,
+    cashPaymentEnabled,
+    onlinePaymentEnabled,
+    cashReceived,
+    setCashReceived,
+    changeAmount,
+    isInsufficient,
+    hasUnfinishedItems,
     setPaymentMethod,
     selectCash,
     handleCreatePayosQR,

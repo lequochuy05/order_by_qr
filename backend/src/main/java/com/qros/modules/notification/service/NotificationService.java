@@ -78,6 +78,11 @@ public interface NotificationService {
     void notifyInventoryChange(String type, Object id);
 
     /**
+     * Notifies public catalog clients that inventory availability changed.
+     */
+    void notifyMenuAvailabilityChange();
+
+    /**
      * Notifies clients that restaurant/system settings changed and includes the
      * public settings snapshot for immediate UI refresh.
      *

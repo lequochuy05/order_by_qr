@@ -227,7 +227,7 @@ const VoucherModal = ({
             <button
               type="button"
               onClick={generateCode}
-              className="mt-[26px] rounded-2xl bg-gray-100 p-4 text-gray-600 transition-colors hover:bg-gray-200"
+              className="mt-[26px] rounded-2xl border border-indigo-200/60 bg-indigo-50 p-4 text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white"
               title="Tạo mã ngẫu nhiên"
               aria-label="Tạo mã voucher ngẫu nhiên"
             >
@@ -236,8 +236,8 @@ const VoucherModal = ({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-orange-100 bg-orange-50/60 p-5">
-          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-orange-600">
+        <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800/80 dark:bg-slate-800/40">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Hình thức giảm giá
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -318,7 +318,7 @@ const VoucherModal = ({
       <ModalActions
         onClose={onClose}
         formId="voucherForm"
-        submitLabel={initialData ? 'Cập nhật' : 'Tạo Voucher'}
+        submitLabel={initialData ? 'Lưu thay đổi' : 'Tạo Voucher'}
         isSubmitting={isSubmitting}
         disabled={!isChanged}
       />

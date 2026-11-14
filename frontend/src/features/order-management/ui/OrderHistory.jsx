@@ -1,4 +1,4 @@
-import useOrderHistory from '@features/order-management/model/useOrderHistory.js';
+import useOrderHistory from '../model/useOrderHistory.js';
 import { ErrorBoundary } from '@shared/ui';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import OrderDetailsModal from './OrderDetailsModal.jsx';

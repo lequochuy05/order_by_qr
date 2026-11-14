@@ -4,13 +4,19 @@ const SharedModal = ({
   isOpen,
   onClose,
   children,
-  className = 'max-w-lg',
+  className = '',
   backdropClassName = 'bg-black/60 backdrop-blur-sm',
   closeOnBackdrop = false,
   ariaLabel = 'Hộp thoại',
+  placement = 'center',
 }) => {
   const dialogRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -24,9 +30,12 @@ const SharedModal = ({
     (firstFocusable || dialog)?.focus();
 
     const handleKeyDown = (event) => {
+      const activeInsideDialog = dialog?.contains(document.activeElement);
+      if (!activeInsideDialog) return;
+
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
 
@@ -54,15 +63,38 @@ const SharedModal = ({
       document.removeEventListener('keydown', handleKeyDown);
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const placementStyles = {
+    center: {
+      backdrop: 'items-center justify-center p-2 sm:p-4',
+      panel:
+        'max-h-[94dvh] w-[calc(100vw-1rem)] rounded-[1.5rem] p-4 animate-in zoom-in duration-300 sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:rounded-[2rem] sm:p-6',
+      defaultWidth: 'max-w-lg',
+    },
+    right: {
+      backdrop: 'items-stretch justify-end p-0',
+      panel:
+        'h-full w-full rounded-none border-l border-slate-200 p-0 animate-in slide-in-from-right duration-300 dark:border-slate-800 sm:rounded-l-2xl',
+      defaultWidth: 'max-w-md',
+    },
+    bottom: {
+      backdrop: 'items-end justify-center p-0 sm:p-4',
+      panel:
+        'max-h-[88dvh] w-full rounded-t-[2rem] p-0 animate-in slide-in-from-bottom duration-300 sm:rounded-[2rem]',
+      defaultWidth: 'max-w-md',
+    },
+  };
+  const styles = placementStyles[placement] || placementStyles.center;
+  const resolvedMaxWidth = className.includes('max-w-') ? '' : styles.defaultWidth;
+
   return (
     <div
-      className={`fixed inset-0 z-[60] flex items-center justify-center p-2 animate-in fade-in duration-200 sm:p-4 ${backdropClassName}`}
+      className={`fixed inset-0 z-[60] flex animate-in fade-in duration-200 ${styles.backdrop} ${backdropClassName}`}
       onMouseDown={() => {
-        if (closeOnBackdrop) onClose?.();
+        if (closeOnBackdrop) onCloseRef.current?.();
       }}
     >
       <div
@@ -71,7 +103,7 @@ const SharedModal = ({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`flex max-h-[94dvh] w-[calc(100vw-1rem)] min-w-0 flex-col rounded-[1.5rem] bg-white p-4 shadow-2xl animate-in zoom-in duration-300 sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:rounded-[2rem] sm:p-6 ${className}`}
+        className={`flex min-w-0 flex-col rounded-3xl border border-[#1E293B] bg-white/95 text-slate-900 shadow-2xl backdrop-blur-md transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/95 dark:text-slate-100 ${resolvedMaxWidth} ${styles.panel} ${className}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         {children}

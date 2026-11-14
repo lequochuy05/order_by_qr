@@ -6,7 +6,6 @@ import com.qros.modules.table.dto.internal.TableQrMedia;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -14,7 +13,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TableQrService {
 
     private static final int QR_WIDTH = 300;
@@ -25,6 +23,18 @@ public class TableQrService {
     private final QRCodeService qrCodeService;
     private final StorageService storageService;
     private final AppProperties appProperties;
+    private final TableQrSecurityService tableQrSecurityService;
+
+    public TableQrService(
+            QRCodeService qrCodeService,
+            StorageService storageService,
+            AppProperties appProperties,
+            TableQrSecurityService tableQrSecurityService) {
+        this.qrCodeService = qrCodeService;
+        this.storageService = storageService;
+        this.appProperties = appProperties;
+        this.tableQrSecurityService = tableQrSecurityService;
+    }
 
     public TableQrMedia generate(@NonNull String tableCode) {
         try {
@@ -54,9 +64,11 @@ public class TableQrService {
     }
 
     private String buildOrderingUrl(String tableCode) {
+        String signature = tableQrSecurityService.generateSignature(tableCode);
         return UriComponentsBuilder.fromHttpUrl(appProperties.getFrontend().getBaseUrl())
                 .path("/menu")
                 .queryParam("tableCode", tableCode)
+                .queryParam("sig", signature)
                 .toUriString();
     }
 }

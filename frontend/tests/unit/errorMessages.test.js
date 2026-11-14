@@ -121,3 +121,25 @@ test('translates payment in progress errors', () => {
     'Bàn đang trong quá trình thanh toán. Vui lòng liên hệ nhân viên.',
   );
 });
+
+test('translates account locked error code and exact message', () => {
+  assert.equal(
+    translateErrorMessage('Account is temporarily locked due to too many failed login attempts'),
+    'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'ACCOUNT_LOCKED' }, { includeDetails: false }),
+    'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
+  );
+  assert.equal(
+    buildErrorMessage(
+      {
+        code: 'ACCOUNT_LOCKED',
+        message:
+          'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.',
+      },
+      { includeDetails: false },
+    ),
+    'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.',
+  );
+});

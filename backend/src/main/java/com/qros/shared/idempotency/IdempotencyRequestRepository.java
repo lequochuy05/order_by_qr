@@ -11,6 +11,12 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
 
     Optional<IdempotencyRequest> findByNamespaceAndRequestKey(String namespace, String requestKey);
 
+    default int claim(
+            String namespace, String requestKey, String requestHash, LocalDateTime createdAt, LocalDateTime expiresAt) {
+        return claimWithStatus(
+                namespace, requestKey, requestHash, IdempotencyRequestStatus.PROCESSING.name(), createdAt, expiresAt);
+    }
+
     @Modifying
     @Query(
             value =
@@ -27,19 +33,37 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
                         :namespace,
                         :requestKey,
                         :requestHash,
-                        'PROCESSING',
+                        :status,
                         :createdAt,
                         :expiresAt
                     )
                     ON CONFLICT (namespace, request_key) DO NOTHING
                     """,
             nativeQuery = true)
-    int claim(
+    int claimWithStatus(
             @Param("namespace") String namespace,
             @Param("requestKey") String requestKey,
             @Param("requestHash") String requestHash,
+            @Param("status") String status,
             @Param("createdAt") LocalDateTime createdAt,
             @Param("expiresAt") LocalDateTime expiresAt);
+
+    @Modifying
+    @Query(
+            """
+            UPDATE IdempotencyRequest request
+            SET request.status = :status,
+                request.responseJson = :responseJson,
+                request.completedAt = :completedAt
+            WHERE request.namespace = :namespace
+              AND request.requestKey = :requestKey
+            """)
+    int complete(
+            @Param("namespace") String namespace,
+            @Param("requestKey") String requestKey,
+            @Param("status") IdempotencyRequestStatus status,
+            @Param("responseJson") String responseJson,
+            @Param("completedAt") LocalDateTime completedAt);
 
     @Modifying
     @Query("DELETE FROM IdempotencyRequest request WHERE request.expiresAt < :cutoff")

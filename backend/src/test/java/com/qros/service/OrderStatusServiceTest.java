@@ -118,7 +118,7 @@ class OrderStatusServiceTest {
 
         orderStatusService.cancelOrder(11L);
 
-        verify(tableSessionService).closeSession(eq(88L), eq(TableSessionStatus.CANCELLED), eq("Order cancelled"));
+        verify(tableSessionService).closeSession(eq(88L), eq(TableSessionStatus.CANCELLED), eq("order-cancelled"));
     }
 
     @Test

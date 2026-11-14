@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
@@ -6,12 +6,9 @@ import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 // Import React Query
+import { categoryService, useCategoriesPageQuery } from '@entities/category';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { useCategoriesPageQuery } from '../api/categoryQueries.js';
-
-// Import Service (for create/update/delete — used inside handleSubmit/handleDelete)
-import { categoryService } from '@features/category-management/api/categoryService.js';
 
 // Import Component
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
@@ -21,6 +18,7 @@ import CategoryModal from './CategoryModal';
 
 const emptyCategoryForm = {
   id: null,
+  version: null,
   name: '',
   img: '',
   description: '',
@@ -30,12 +28,19 @@ const emptyCategoryForm = {
 
 const toCategoryFormData = (category = {}) => ({
   id: category.id || null,
+  version: category.version ?? null,
   name: category.name || '',
   img: category.img || '',
   description: category.description || '',
   active: category.active ?? true,
   displayOrder: category.displayOrder ?? 0,
 });
+
+const toImageFormData = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return formData;
+};
 
 const CategoryManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +55,7 @@ const CategoryManager = () => {
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const objectPreviewUrlRef = useRef(null);
   const pageSize = 24;
 
   const { confirm } = useConfirmModal();
@@ -71,9 +77,25 @@ const CategoryManager = () => {
 
   // Realtime Update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
 
+  const clearObjectPreview = () => {
+    if (objectPreviewUrlRef.current) {
+      URL.revokeObjectURL(objectPreviewUrlRef.current);
+      objectPreviewUrlRef.current = null;
+    }
+  };
+
   useEffect(() => {
     setCurrentPage(0);
   }, [debouncedSearchTerm]);
+
+  useEffect(
+    () => () => {
+      if (objectPreviewUrlRef.current) {
+        URL.revokeObjectURL(objectPreviewUrlRef.current);
+      }
+    },
+    [],
+  );
 
   // === Validate ===
   const validateForm = () => {
@@ -86,8 +108,8 @@ const CategoryManager = () => {
       newErrors.name = 'Tên danh mục không được bắt đầu bằng số';
     }
 
-    if ((formData.description || '').length > 255) {
-      newErrors.description = 'Mô tả không được vượt quá 255 ký tự';
+    if ((formData.description || '').length > 500) {
+      newErrors.description = 'Mô tả không được vượt quá 500 ký tự';
     }
 
     if (Number(formData.displayOrder) < 0) {
@@ -117,17 +139,24 @@ const CategoryManager = () => {
       let result;
       if (editId) {
         result = await categoryService.update(editId, payload);
-        showSuccessToast('Cập nhật danh mục thành công!');
       } else {
         result = await categoryService.create(payload);
-        showSuccessToast('Thêm mới danh mục thành công!');
-      }
-      if (selectedFile) {
-        await categoryService.uploadImage(result?.id || editId, selectedFile);
       }
 
-      setIsModalOpen(false);
+      if (selectedFile) {
+        try {
+          await categoryService.uploadImage(result?.id || editId, toImageFormData(selectedFile));
+        } catch {
+          closeModal();
+          invalidateCategories();
+          showErrorToast('Đã lưu danh mục, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
+          return;
+        }
+      }
+
+      closeModal();
       invalidateCategories();
+      showSuccessToast(editId ? 'Cập nhật danh mục thành công!' : 'Thêm mới danh mục thành công!');
     } catch (err) {
       const errorMsg = err.message || '';
       if (
@@ -162,6 +191,7 @@ const CategoryManager = () => {
 
   // Modal
   const openModal = (cat = null) => {
+    clearObjectPreview();
     if (cat) {
       const categoryFormData = toCategoryFormData(cat);
       setEditId(cat.id);
@@ -180,6 +210,7 @@ const CategoryManager = () => {
   };
 
   const closeModal = () => {
+    clearObjectPreview();
     setIsModalOpen(false);
     setSelectedFile(null);
   };
@@ -196,7 +227,7 @@ const CategoryManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -212,7 +243,7 @@ const CategoryManager = () => {
       )}
 
       {!loading && categories.length === 0 && (
-        <div className="text-center py-20 text-gray-400 italic bg-white rounded-3xl border border-dashed">
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
           <Layers size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy danh mục phù hợp hoặc chưa có dữ liệu.
         </div>
@@ -244,8 +275,11 @@ const CategoryManager = () => {
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) {
+            clearObjectPreview();
+            const objectUrl = URL.createObjectURL(f);
+            objectPreviewUrlRef.current = objectUrl;
             setSelectedFile(f);
-            setPreview(URL.createObjectURL(f));
+            setPreview(objectUrl);
           }
         }}
       />

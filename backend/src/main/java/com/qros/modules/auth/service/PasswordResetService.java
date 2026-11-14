@@ -1,6 +1,7 @@
 package com.qros.modules.auth.service;
 
 import com.qros.infrastructure.mail.SmtpEmailService;
+import com.qros.infrastructure.sms.SmsService;
 import com.qros.modules.auth.config.PasswordResetProperties;
 import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
@@ -11,6 +12,7 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.security.SecureRandom;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -34,11 +36,14 @@ public class PasswordResetService {
     private final UserRepository userRepo;
     private final PasswordResetTokenRepository tokenRepo;
     private final SmtpEmailService emailService;
+    private final SmsService smsService;
     private final PasswordResetProperties passwordResetProperties;
     private final Environment environment;
 
     private final PasswordEncoder passwordEncoder;
     private final TransactionSideEffectService sideEffects;
+    private final RefreshTokenService refreshTokenService;
+    private final AccountLockoutService accountLockoutService;
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -92,8 +97,12 @@ public class PasswordResetService {
         User user = resetToken.getUser();
         resetToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        user.setMustChangePassword(false);
         userRepo.save(user);
         tokenRepo.save(resetToken);
+        refreshTokenService.revokeUserTokens(user.getId());
+        accountLockoutService.unlock(user.getEmail());
     }
 
     /**
@@ -112,6 +121,10 @@ public class PasswordResetService {
 
         User user = userRepo.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PHONE_NOT_FOUND));
+        boolean logOtpInDev = shouldLogOtpInDev();
+        if (!logOtpInDev && !smsService.isAvailable()) {
+            throw new BusinessException(ErrorCode.FEATURE_DISABLED, "SMS delivery is not configured");
+        }
 
         tokenRepo.markAllActiveTokensUsedByUserId(user.getId());
 
@@ -127,12 +140,11 @@ public class PasswordResetService {
 
         tokenRepo.save(otpToken);
 
-        boolean isDevProfile = environment.acceptsProfiles(Profiles.of("dev"));
-
-        if (isDevProfile && passwordResetProperties.isDevLogOtp()) {
+        if (logOtpInDev) {
             log.warn("[DEV ONLY] Password reset OTP for phone {} is {}", maskPhone(normalizedPhone), rawOtpCode);
         } else {
-            log.info("Password reset OTP generated for phone {}", maskPhone(normalizedPhone));
+            sideEffects.afterCommit(
+                    () -> smsService.sendOtp(toSmsPhone(normalizedPhone), rawOtpCode), "send password reset OTP SMS");
         }
     }
 
@@ -166,8 +178,12 @@ public class PasswordResetService {
         User user = otpToken.getUser();
         otpToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
+        user.setMustChangePassword(false);
         userRepo.save(user);
         tokenRepo.save(otpToken);
+        refreshTokenService.revokeUserTokens(user.getId());
+        accountLockoutService.unlock(user.getEmail());
     }
 
     /**
@@ -179,6 +195,13 @@ public class PasswordResetService {
             return "0" + phone.substring(3);
         }
         return phone;
+    }
+
+    private String toSmsPhone(String normalizedPhone) {
+        if (normalizedPhone != null && normalizedPhone.startsWith("0") && normalizedPhone.length() > 1) {
+            return "+84" + normalizedPhone.substring(1);
+        }
+        return normalizedPhone;
     }
 
     /**
@@ -200,5 +223,9 @@ public class PasswordResetService {
         }
 
         return "****" + phone.substring(phone.length() - 4);
+    }
+
+    private boolean shouldLogOtpInDev() {
+        return environment.acceptsProfiles(Profiles.of("dev")) && passwordResetProperties.isDevLogOtp();
     }
 }

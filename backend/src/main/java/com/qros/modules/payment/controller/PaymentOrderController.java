@@ -7,6 +7,7 @@ import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping(ApiRoutes.ORDER_BY_ID)
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('MANAGER','STAFF')")
 public class PaymentOrderController {
 
     private final OrderService orderService;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import {
   CheckboxCard,
   ImageUploadField,
@@ -25,6 +25,8 @@ const MenuItemModal = ({
   selectedFile,
   errors = {},
   setErrors,
+  isAiGenerating = false,
+  onAiGenerate,
 }) => {
   const isChanged = React.useMemo(() => {
     if (!initialFormData) return true;
@@ -73,8 +75,10 @@ const MenuItemModal = ({
     const newErrors = {};
     if (!formData.name?.trim()) {
       newErrors.name = 'Tên món ăn không được để trống';
-    } else if (formData.name.length < 2) {
+    } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Tên món ăn phải có ít nhất 2 ký tự';
+    } else if (formData.name.trim().length > 50) {
+      newErrors.name = 'Tên món ăn không được vượt quá 50 ký tự';
     }
 
     if (!String(formData.price || '').trim()) {
@@ -85,6 +89,10 @@ const MenuItemModal = ({
 
     if (!formData.categoryId) {
       newErrors.categoryId = 'Vui lòng chọn danh mục';
+    }
+
+    if (Number(formData.displayOrder) < 0) {
+      newErrors.displayOrder = 'Thứ tự hiển thị không được âm';
     }
 
     // Validate Item Options
@@ -183,6 +191,7 @@ const MenuItemModal = ({
               label="Tên món ăn"
               required
               placeholder="Ví dụ: Trà sữa thái xanh"
+              maxLength={50}
               value={formData.name}
               onChange={(value) => {
                 setFormData({ ...formData, name: value });
@@ -199,7 +208,7 @@ const MenuItemModal = ({
                 min="0"
                 placeholder="0"
                 suffix="đ"
-                inputClassName="text-orange-600"
+                inputClassName="font-mono font-black text-indigo-600 dark:text-indigo-400"
                 value={formData.price}
                 onChange={(value) => {
                   setFormData({ ...formData, price: value });
@@ -240,8 +249,25 @@ const MenuItemModal = ({
         </div>
 
         <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-200">Mô tả món ăn</label>
+            {onAiGenerate && formData.name && (
+              <button
+                type="button"
+                onClick={onAiGenerate}
+                disabled={isAiGenerating || !formData.name}
+                className="flex items-center gap-1.5 rounded-xl border border-indigo-200/60 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold text-indigo-700 transition-all hover:bg-indigo-100 hover:text-indigo-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300"
+              >
+                {isAiGenerating ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                {isAiGenerating ? 'Đang tạo...' : 'AI tạo mô tả'}
+              </button>
+            )}
+          </div>
           <TextareaField
-            label="Mô tả món ăn"
             rows={3}
             maxLength={500}
             placeholder="Mô tả ngắn gọn về món ăn..."
@@ -255,7 +281,11 @@ const MenuItemModal = ({
               type="number"
               min="0"
               value={formData.displayOrder ?? 0}
-              onChange={(value) => setFormData({ ...formData, displayOrder: value })}
+              onChange={(value) => {
+                setFormData({ ...formData, displayOrder: value });
+                if (errors.displayOrder) setErrors({ ...errors, displayOrder: null });
+              }}
+              error={errors.displayOrder}
             />
             <div className="flex items-end">
               <CheckboxCard
@@ -278,17 +308,17 @@ const MenuItemModal = ({
         {/* Tùy chọn (Options) */}
         <div className="space-y-5">
           <div className="flex justify-between items-center px-1">
-            <h3 className="text-xs font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-2.5">
-              <span className="w-1 h-4 bg-orange-500 rounded-full" />
+            <h3 className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.2em] text-slate-800 dark:text-slate-100">
+              <span className="w-1 h-4 bg-indigo-600 rounded-full" />
               Tùy Chọn Mở Rộng
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded-lg text-[9px] font-black">
+              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[9px] font-black font-mono text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 {formData.itemOptions.length}
               </span>
             </h3>
             <button
               type="button"
               onClick={addOption}
-              className="text-[10px] font-black uppercase tracking-tight text-white bg-gray-900 px-5 py-2.5 rounded-xl hover:bg-black transition-all flex items-center gap-1.5 shadow-lg active:scale-95"
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95"
             >
               <Plus size={14} /> Thêm Nhóm
             </button>
@@ -298,25 +328,25 @@ const MenuItemModal = ({
             {formData.itemOptions.map((opt, optIdx) => (
               <div
                 key={optIdx}
-                className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100 space-y-6 relative group/option animate-in slide-in-from-bottom-2 duration-500"
+                className="group/option relative space-y-6 rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6 transition-all duration-300 animate-in slide-in-from-bottom-2 dark:border-slate-800/80 dark:bg-slate-900/60"
               >
                 <button
                   type="button"
                   onClick={() => removeOption(optIdx)}
-                  className="absolute -top-3 -right-3 p-2 bg-white text-red-500 rounded-full shadow-lg border border-red-50 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover/option:opacity-100 z-10"
+                  className="absolute -right-3 -top-3 z-10 rounded-full border border-rose-200 bg-white p-2 text-rose-500 opacity-0 shadow-lg transition-all hover:bg-rose-500 hover:text-white group-hover/option:opacity-100 dark:border-rose-500/20 dark:bg-slate-900 dark:text-rose-300"
                 >
                   <Trash2 size={16} />
                 </button>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-6">
-                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
+                    <label className="mb-1.5 ml-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                       Tên nhóm tùy chọn
                     </label>
                     <input
                       type="text"
                       placeholder="Ví dụ: Kích cỡ, Topping..."
-                      className={`w-full px-4 py-3 bg-white border-none rounded-2xl outline-none text-sm font-bold shadow-sm focus:ring-2 focus:ring-orange-500/10 ${errors[`option_${optIdx}_name`] ? 'ring-2 ring-red-500' : ''}`}
+                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_name`] ? 'ring-2 ring-red-500' : ''}`}
                       value={opt.name}
                       onChange={(e) => updateOption(optIdx, 'name', e.target.value)}
                     />
@@ -327,27 +357,29 @@ const MenuItemModal = ({
                     )}
                   </div>
                   <div className="md:col-span-3">
-                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
+                    <label className="mb-1.5 ml-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                       Bắt buộc?
                     </label>
-                    <label className="flex items-center justify-center h-[44px] bg-white rounded-2xl shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
+                    <label className="flex h-[44px] cursor-pointer items-center justify-center rounded-2xl bg-white shadow-sm transition-colors hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 rounded text-orange-500 focus:ring-orange-200 border-gray-100 cursor-pointer"
+                        className="h-4 w-4 cursor-pointer rounded border-slate-100 text-indigo-600 focus:ring-indigo-500/30 dark:border-slate-700"
                         checked={opt.required ?? false}
                         onChange={(e) => updateOption(optIdx, 'required', e.target.checked)}
                       />
-                      <span className="text-[11px] font-bold text-gray-600 ml-2">Yêu cầu chọn</span>
+                      <span className="ml-2 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                        Yêu cầu chọn
+                      </span>
                     </label>
                   </div>
                   <div className="md:col-span-3">
-                    <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block ml-1">
+                    <label className="mb-1.5 ml-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                       Chọn tối đa
                     </label>
                     <input
                       type="number"
                       placeholder="Max"
-                      className={`w-full px-4 py-3 bg-white border-none rounded-2xl outline-none text-sm font-bold shadow-sm text-center focus:ring-2 focus:ring-orange-500/10 ${errors[`option_${optIdx}_max`] ? 'ring-2 ring-red-500' : ''}`}
+                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-sm outline-none transition focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-900 dark:text-slate-100 ${errors[`option_${optIdx}_max`] ? 'ring-2 ring-red-500' : ''}`}
                       value={opt.maxSelection}
                       onChange={(e) =>
                         updateOption(optIdx, 'maxSelection', parseInt(e.target.value) || 1)
@@ -364,8 +396,8 @@ const MenuItemModal = ({
                 {/* Giá trị của tùy chọn */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center px-1">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-3 h-0.5 bg-gray-200" /> Các giá trị lựa chọn
+                    <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      <span className="h-0.5 w-3 bg-slate-200 dark:bg-slate-700" /> Các giá trị lựa chọn
                     </p>
                     {errors[`option_${optIdx}_values`] && (
                       <p className="text-red-500 text-[10px] font-bold flex items-center gap-1">
@@ -375,7 +407,7 @@ const MenuItemModal = ({
                     <button
                       type="button"
                       onClick={() => addValue(optIdx)}
-                      className="text-[10px] font-black text-orange-500 hover:text-orange-600 uppercase flex items-center gap-1 transition-colors"
+                      className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400"
                     >
                       <Plus size={14} /> Thêm giá trị
                     </button>
@@ -391,7 +423,7 @@ const MenuItemModal = ({
                           <input
                             type="text"
                             placeholder="Tên (Size L, Thêm đường...)"
-                            className={`w-full px-4 py-3 bg-white border rounded-xl outline-none text-xs font-medium shadow-sm focus:border-orange-200 ${errors[`option_${optIdx}_val_${valIdx}_name`] ? 'border-red-500' : 'border-gray-100'}`}
+                            className={`w-full rounded-xl border bg-white px-4 py-3 text-xs font-medium text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_val_${valIdx}_name`] ? 'border-red-500' : 'border-slate-200/80 dark:border-slate-800'}`}
                             value={val.name}
                             onChange={(e) => updateValue(optIdx, valIdx, 'name', e.target.value)}
                           />
@@ -407,7 +439,7 @@ const MenuItemModal = ({
                             <input
                               type="number"
                               placeholder="+0"
-                              className="w-full pl-3 pr-8 py-3 bg-white border border-gray-100 rounded-xl outline-none text-xs font-bold text-orange-600 shadow-sm focus:border-orange-200"
+                              className="w-full rounded-xl border border-slate-200/80 bg-white py-3 pl-3 pr-8 font-mono text-xs font-bold text-indigo-600 shadow-sm outline-none transition focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:text-indigo-400"
                               value={val.extraPrice}
                               onChange={(e) =>
                                 updateValue(
@@ -418,7 +450,7 @@ const MenuItemModal = ({
                                 )
                               }
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 dark:text-slate-500">
                               đ
                             </span>
                           </div>
@@ -426,14 +458,14 @@ const MenuItemModal = ({
                         <button
                           type="button"
                           onClick={() => removeValue(optIdx, valIdx)}
-                          className="col-span-1 flex items-center justify-center text-gray-300 hover:text-red-500 transition-all hover:scale-110"
+                          className="col-span-1 flex items-center justify-center text-slate-300 transition-all hover:scale-110 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-300"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                     ))}
                     {opt.optionValues.length === 0 && (
-                      <p className="text-[10px] text-gray-300 italic text-center py-4 bg-white/40 rounded-2xl border border-dashed border-gray-200">
+                      <p className="rounded-2xl border border-dashed border-slate-200 bg-white/40 py-4 text-center text-[10px] italic text-slate-300 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-500">
                         Chưa có giá trị nào. Nhấn "Thêm giá trị" để bắt đầu.
                       </p>
                     )}
@@ -442,8 +474,8 @@ const MenuItemModal = ({
               </div>
             ))}
             {formData.itemOptions.length === 0 && (
-              <div className="text-center py-12 bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-100">
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-tighter opacity-60">
+              <div className="rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/50 py-12 text-center dark:border-slate-800 dark:bg-slate-950/50">
+                <p className="text-xs font-bold uppercase tracking-tighter text-slate-400 opacity-60 dark:text-slate-500">
                   Món này chưa có tùy chọn đi kèm
                 </p>
               </div>

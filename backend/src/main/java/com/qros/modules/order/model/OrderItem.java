@@ -145,7 +145,7 @@ public class OrderItem extends BaseEntity {
     }
 
     public boolean canBeCancelled() {
-        return status == OrderItemStatus.PENDING;
+        return status == OrderItemStatus.PENDING || status == OrderItemStatus.COOKING;
     }
 
     public void markStatus(OrderItemStatus newStatus) {

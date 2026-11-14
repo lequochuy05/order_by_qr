@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { tableOrderCatalogService } from '@features/table-management/api/tableOrderCatalogService.js';
+import { tableOrderCatalogService } from '@entities/public-menu';
 import { showErrorToast } from '@shared/lib/toast.js';
 
 const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
@@ -121,8 +121,8 @@ const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
       return;
     }
 
-    onSubmit({
-      tableId: table.id,
+    const payload = {
+      ...(table?.primaryTableId || table?.id ? { tableId: table.primaryTableId || table.id } : {}),
       items: cart
         .filter((item) => item.type === 'ITEM')
         .map((item) => ({
@@ -138,8 +138,9 @@ const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
           quantity: item.qty,
           notes: item.notes,
         })),
-    });
-  }, [cart, onSubmit, table?.id]);
+    };
+    onSubmit(payload);
+  }, [cart, onSubmit, table?.id, table?.primaryTableId]);
 
   return {
     activeTab,

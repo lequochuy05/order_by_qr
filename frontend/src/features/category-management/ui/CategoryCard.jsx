@@ -1,38 +1,29 @@
 import React from 'react';
-import { Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon } from 'lucide-react';
+import { EditDeleteActions } from '@shared/ui';
 
 const CategoryCard = ({ category, onEdit, onDelete }) => (
-  <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 group hover:border-orange-500 hover:shadow-md transition-all flex flex-col h-full">
-    <div className="relative h-32 mb-3 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
+  <div className="group flex h-full flex-col rounded-3xl border border-[#1E293B] bg-white/90 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500 hover:shadow-xl dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:hover:border-indigo-500/40">
+    <div className="relative mb-3.5 h-36 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-[#1E293B]/20 dark:border-[#1E293B]/60">
       {category.img ? (
         <img
           src={category.img}
           alt={category.name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
       ) : (
-        <div className="flex items-center justify-center h-full text-gray-300">
+        <div className="flex h-full items-center justify-center text-slate-300 dark:text-slate-600">
           <ImageIcon size={32} />
         </div>
       )}
     </div>
-    <h3 className="font-bold text-gray-800 text-sm mb-3 text-center line-clamp-1 flex-grow">
+    <h3 className="mb-3 line-clamp-1 flex-grow text-center text-sm font-bold text-slate-900 dark:text-white">
       {category.name}
     </h3>
-    <div className="flex gap-2 mt-auto">
-      <button
-        onClick={() => onEdit(category)}
-        className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all flex justify-center border border-blue-100"
-      >
-        <Pencil size={14} />
-      </button>
-      <button
-        onClick={() => onDelete(category.id)}
-        className="flex-1 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all flex justify-center border border-red-100"
-      >
-        <Trash2 size={14} />
-      </button>
-    </div>
+    <EditDeleteActions
+      onEdit={() => onEdit(category)}
+      onDelete={() => onDelete(category.id)}
+    />
   </div>
 );
 

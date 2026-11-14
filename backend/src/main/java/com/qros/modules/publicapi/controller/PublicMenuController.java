@@ -9,6 +9,8 @@ import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.service.CategoryService;
 import com.qros.modules.menu.service.ComboService;
 import com.qros.modules.menu.service.MenuItemService;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.dto.response.PublicTable;
 import com.qros.modules.table.service.DiningTableService;
 import com.qros.shared.constants.ApiRoutes;
@@ -29,6 +31,7 @@ public class PublicMenuController {
     private final DiningTableService tableService;
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final PublicMenuMapper publicMenuMapper;
+    private final SystemSettingsService settingsService;
 
     @GetMapping("/categories")
     public ApiResponse<List<PublicCategoryItem>> getCategories() {
@@ -37,24 +40,30 @@ public class PublicMenuController {
 
     @GetMapping("/catalog")
     public ApiResponse<PublicCatalogResponse> getCatalog() {
+        SystemSettings settings = settingsService.getSettingsEntity();
+        boolean includeUnavailable = Boolean.TRUE.equals(settings.getShowUnavailableItems());
         return ApiResponse.success(new PublicCatalogResponse(
                 categoryService.getPublicActive(),
-                withMenuAvailability(menuItemService.getPublicMenuItems()),
-                getAvailableCombos()));
+                withMenuAvailability(menuItemService.getPublicMenuItems(includeUnavailable), includeUnavailable),
+                getConfiguredCombos(settings)));
     }
 
     @GetMapping("/menu-items")
     public ApiResponse<List<PublicMenuItem>> getMenuItems(@RequestParam(required = false) Long categoryId) {
+        boolean includeUnavailable =
+                Boolean.TRUE.equals(settingsService.getSettingsEntity().getShowUnavailableItems());
         if (categoryId != null) {
-            return ApiResponse.success(withMenuAvailability(menuItemService.getPublicItemsByCategory(categoryId)));
+            return ApiResponse.success(withMenuAvailability(
+                    menuItemService.getPublicItemsByCategory(categoryId, includeUnavailable), includeUnavailable));
         }
 
-        return ApiResponse.success(withMenuAvailability(menuItemService.getPublicMenuItems()));
+        return ApiResponse.success(
+                withMenuAvailability(menuItemService.getPublicMenuItems(includeUnavailable), includeUnavailable));
     }
 
     @GetMapping("/combos")
     public ApiResponse<List<PublicComboItem>> getCombos() {
-        return ApiResponse.success(getAvailableCombos());
+        return ApiResponse.success(getConfiguredCombos(settingsService.getSettingsEntity()));
     }
 
     @GetMapping("/tables/by-code/{tableCode}")
@@ -62,23 +71,45 @@ public class PublicMenuController {
         return ApiResponse.success(tableService.getPublicByCode(tableCode));
     }
 
-    private List<PublicComboItem> getAvailableCombos() {
-        var combos = comboService.getPublicActive();
+    private List<PublicComboItem> getConfiguredCombos(SystemSettings settings) {
+        if (!Boolean.TRUE.equals(settings.getShowCombos())) {
+            return List.of();
+        }
+
+        var combos = comboService.getPublicActive(Boolean.TRUE.equals(settings.getShowUnavailableItems()));
         var comboIds = combos.stream().map(PublicComboItem::id).toList();
         var availability = inventoryAvailabilityService.getComboAvailabilityByIds(comboIds);
 
-        return combos.stream()
-                .map(combo -> publicMenuMapper.withAvailability(combo, availability.getOrDefault(combo.id(), true)))
+        List<PublicComboItem> configuredCombos = combos.stream()
+                .map(combo -> publicMenuMapper.withAvailability(
+                        combo, Boolean.TRUE.equals(combo.available()) && availability.getOrDefault(combo.id(), true)))
+                .toList();
+
+        if (Boolean.TRUE.equals(settings.getShowUnavailableItems())) {
+            return configuredCombos;
+        }
+
+        return configuredCombos.stream()
+                .filter(combo -> Boolean.TRUE.equals(combo.available()))
                 .toList();
     }
 
-    private List<PublicMenuItem> withMenuAvailability(List<PublicMenuItem> items) {
+    private List<PublicMenuItem> withMenuAvailability(List<PublicMenuItem> items, boolean includeUnavailable) {
         var itemIds = items.stream().map(PublicMenuItem::id).toList();
 
         var availability = inventoryAvailabilityService.getMenuItemAvailability(itemIds);
 
-        return items.stream()
-                .map(item -> publicMenuMapper.withAvailability(item, availability.getOrDefault(item.id(), true)))
+        List<PublicMenuItem> configuredItems = items.stream()
+                .map(item -> publicMenuMapper.withAvailability(
+                        item, Boolean.TRUE.equals(item.available()) && availability.getOrDefault(item.id(), true)))
+                .toList();
+
+        if (includeUnavailable) {
+            return configuredItems;
+        }
+
+        return configuredItems.stream()
+                .filter(item -> Boolean.TRUE.equals(item.available()))
                 .toList();
     }
 }

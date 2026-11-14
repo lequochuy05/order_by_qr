@@ -37,19 +37,25 @@ const ComboModal = ({
 
     if (formData.name !== initialData.name) return true;
     if ((formData.description || '') !== (initialData.description || '')) return true;
-    if (formData.price !== initialData.price) return true;
+    if (Number(formData.price) !== Number(initialData.price)) return true;
     if (formData.active !== initialData.active) return true;
     if ((formData.available ?? true) !== (initialData.available ?? true)) return true;
     if (Number(formData.displayOrder || 0) !== Number(initialData.displayOrder || 0)) return true;
 
     if (formData.items.length !== initialData.items.length) return true;
 
-    const sortedFormItems = [...formData.items].sort((a, b) => a.menuItemId - b.menuItemId);
-    const sortedInitialItems = [...initialData.items].sort((a, b) => a.menuItemId - b.menuItemId);
+    const sortedFormItems = [...formData.items].sort(
+      (a, b) => Number(a.menuItemId) - Number(b.menuItemId),
+    );
+    const sortedInitialItems = [...initialData.items].sort(
+      (a, b) => Number(a.menuItemId) - Number(b.menuItemId),
+    );
 
     for (let i = 0; i < sortedFormItems.length; i++) {
-      if (sortedFormItems[i].menuItemId !== sortedInitialItems[i].menuItemId) return true;
-      if (sortedFormItems[i].quantity !== sortedInitialItems[i].quantity) return true;
+      if (Number(sortedFormItems[i].menuItemId) !== Number(sortedInitialItems[i].menuItemId))
+        return true;
+      if (Number(sortedFormItems[i].quantity) !== Number(sortedInitialItems[i].quantity))
+        return true;
     }
 
     return false;
@@ -57,8 +63,21 @@ const ComboModal = ({
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name?.trim()) newErrors.name = 'Tên combo không được để trống';
-    if (formData.price < 0) newErrors.price = 'Giá không hợp lệ';
+    const name = formData.name?.trim() || '';
+    const price = Number(formData.price);
+
+    if (!name) {
+      newErrors.name = 'Tên combo không được để trống';
+    } else if (name.length < 2) {
+      newErrors.name = 'Tên combo phải có ít nhất 2 ký tự';
+    } else if (name.length > 100) {
+      newErrors.name = 'Tên combo không được vượt quá 100 ký tự';
+    }
+
+    if (!Number.isFinite(price) || price < 0) newErrors.price = 'Giá không hợp lệ';
+    if (Number(formData.displayOrder) < 0) {
+      newErrors.displayOrder = 'Thứ tự hiển thị không được âm';
+    }
     if (formData.items.length < 2) newErrors.items = 'Vui lòng chọn ít nhất 2 món';
 
     setErrors(newErrors);
@@ -74,15 +93,15 @@ const ComboModal = ({
 
   const calculateAutoPrice = (selectedItems) => {
     const total = selectedItems.reduce((sum, item) => {
-      const menu = menuItems.find((m) => m.id === item.menuItemId);
-      return sum + (menu ? menu.price * item.quantity : 0);
+      const menu = menuItems.find((m) => Number(m.id) === Number(item.menuItemId));
+      return sum + (menu ? Number(menu.price) * Number(item.quantity || 1) : 0);
     }, 0);
     return Math.round(total * 0.9);
   };
 
   const handleToggleItem = (menuId) => {
     let newItems = [...formData.items];
-    const index = newItems.findIndex((i) => i.menuItemId === menuId);
+    const index = newItems.findIndex((i) => Number(i.menuItemId) === Number(menuId));
 
     if (index > -1) newItems.splice(index, 1);
     else newItems.push({ menuItemId: menuId, quantity: 1 });
@@ -92,8 +111,9 @@ const ComboModal = ({
   };
 
   const handleUpdateQty = (menuId, qty) => {
+    const quantity = Math.max(1, Number.parseInt(qty, 10) || 1);
     const newItems = formData.items.map((i) =>
-      i.menuItemId === menuId ? { ...i, quantity: Math.max(1, qty) } : i,
+      Number(i.menuItemId) === Number(menuId) ? { ...i, quantity } : i,
     );
     setFormData({ ...formData, items: newItems, price: calculateAutoPrice(newItems) });
   };
@@ -122,6 +142,7 @@ const ComboModal = ({
           label="Tên Combo"
           required
           placeholder="Ví dụ: Combo Gia Đình, Combo Cuối Tuần..."
+          maxLength={100}
           value={formData.name}
           onChange={(value) => {
             setFormData({ ...formData, name: value });
@@ -144,30 +165,32 @@ const ComboModal = ({
             <FormLabel required className="!mb-0">
               Thành phần Combo
             </FormLabel>
-            <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-lg">
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
               Chọn các món lẻ
             </span>
           </div>
 
           <div
-            className={`border-2 rounded-[1.5rem] divide-y overflow-hidden transition-all ${
-              errors.items ? 'border-red-500 bg-red-50/10' : 'border-gray-100 bg-gray-50/30'
+            className={`overflow-hidden rounded-[1.5rem] border-2 divide-y divide-slate-100 transition-all dark:divide-slate-800 ${
+              errors.items
+                ? 'border-rose-500 bg-rose-50/10 dark:bg-rose-500/10'
+                : 'border-slate-100 bg-slate-50/30 dark:border-slate-800 dark:bg-slate-950/40'
             }`}
           >
             <div className="max-h-60 overflow-y-auto custom-scrollbar">
               {menuItems.map((m) => {
-                const selected = formData.items.find((i) => i.menuItemId === m.id);
+                const selected = formData.items.find((i) => Number(i.menuItemId) === Number(m.id));
                 return (
                   <div
                     key={m.id}
-                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-orange-50/50' : 'hover:bg-white'}`}
+                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-indigo-50/60 dark:bg-indigo-950/30' : 'hover:bg-white dark:hover:bg-slate-900'}`}
                   >
                     <label className="flex items-center gap-3 cursor-pointer flex-1 group">
                       <div
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
                           selected
-                            ? 'bg-orange-500 border-orange-500 shadow-sm'
-                            : 'border-gray-200 bg-white group-hover:border-orange-300'
+                            ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 shadow-sm'
+                            : 'border-slate-200 bg-white group-hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-900'
                         }`}
                       >
                         {selected && (
@@ -182,22 +205,27 @@ const ComboModal = ({
                       />
                       <div>
                         <p
-                          className={`text-sm font-bold transition-colors ${selected ? 'text-gray-800' : 'text-gray-500 group-hover:text-gray-700'}`}
+                          className={`text-sm font-bold transition-colors ${selected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'}`}
                         >
                           {m.name}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-medium">{fmtVND(m.price)}</p>
+                        <p className="text-[10px] font-medium font-mono text-slate-400 dark:text-slate-500">
+                          {fmtVND(m.price)}
+                        </p>
                       </div>
                     </label>
                     {selected && (
                       <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
                         <input
                           type="number"
-                          className="w-14 px-2 py-2 bg-white border border-orange-200 rounded-xl text-center text-xs font-black text-orange-600 outline-none shadow-sm"
+                          min="1"
+                          className="w-14 rounded-xl border border-indigo-200 bg-white px-2 py-2 text-center font-mono text-xs font-black text-indigo-600 shadow-sm outline-none dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400"
                           value={selected.quantity}
-                          onChange={(e) => handleUpdateQty(m.id, parseInt(e.target.value))}
+                          onChange={(e) => handleUpdateQty(m.id, e.target.value)}
                         />
-                        <span className="text-[10px] font-bold text-gray-400">món</span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                          món
+                        </span>
                       </div>
                     )}
                   </div>
@@ -215,9 +243,12 @@ const ComboModal = ({
             type="number"
             min="0"
             suffix="VNĐ"
-            inputClassName="text-orange-600"
+            inputClassName="font-mono font-black text-indigo-600 dark:text-indigo-400"
             value={formData.price}
-            onChange={(value) => setFormData({ ...formData, price: parseInt(value) || 0 })}
+            onChange={(value) => {
+              setFormData({ ...formData, price: parseInt(value, 10) || 0 });
+              if (errors.price) setErrors({ ...errors, price: null });
+            }}
             error={errors.price}
           />
           <TextField
@@ -225,7 +256,11 @@ const ComboModal = ({
             type="number"
             min="0"
             value={formData.displayOrder ?? 0}
-            onChange={(value) => setFormData({ ...formData, displayOrder: value })}
+            onChange={(value) => {
+              setFormData({ ...formData, displayOrder: value });
+              if (errors.displayOrder) setErrors({ ...errors, displayOrder: null });
+            }}
+            error={errors.displayOrder}
           />
         </div>
 

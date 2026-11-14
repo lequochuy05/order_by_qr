@@ -1,0 +1,236 @@
+import api from '@shared/api/httpClient.js';
+import { formatBusinessDate } from '@shared/lib/businessTime.js';
+
+const ANALYTICS_CACHE_MS = 5_000;
+
+const analyticsRequests = new Map();
+const analyticsCache = new Map();
+
+const stableStringify = (value) => {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+};
+
+export const clearAnalyticsCache = () => {
+  analyticsRequests.clear();
+  analyticsCache.clear();
+};
+
+const getCachedAnalytics = async (key, requestFactory, fallback, { force = false, cacheMs = ANALYTICS_CACHE_MS } = {}) => {
+  const cached = analyticsCache.get(key);
+  if (!force && cached && cached.expiresAt > Date.now()) return cached.data;
+  if (!analyticsRequests.has(key)) {
+    analyticsRequests.set(
+      key,
+      requestFactory()
+        .then((res) => {
+          const data = res ?? fallback;
+          analyticsCache.set(key, { data, expiresAt: Date.now() + cacheMs });
+          return data;
+        })
+        .finally(() => { analyticsRequests.delete(key); }),
+    );
+  }
+  return analyticsRequests.get(key);
+};
+
+const rangeParams = (from, to) => ({
+  from: formatBusinessDate(from),
+  to: formatBusinessDate(to),
+});
+
+const pagedFallback = (page, size) => ({
+  content: [], number: page, size, totalElements: 0, totalPages: 0,
+});
+
+const toNumber = (value) => Number(value ?? 0);
+
+const translateApiLabel = (value) =>
+  ({ Staff: 'Nhân viên', Uncategorized: 'Chưa phân loại' })[value] || value;
+
+const normalizeRevenuePoint = (point = {}) => ({
+  ...point,
+  bucket: point.bucket ?? point.date,
+  orders: point.orders ?? point.orderCount ?? 0,
+  revenue: toNumber(point.revenue),
+});
+
+const normalizeUser = (user = {}) => ({
+  ...user,
+  fullName: translateApiLabel(user.fullName),
+  orders: user.orders ?? user.orderCount ?? 0,
+  revenue: toNumber(user.revenue),
+});
+
+const normalizeOrderDetail = (order = {}) => ({
+  ...order,
+  id: order.id ?? order.orderId,
+  empName: order.empName ?? order.userName,
+  finalAmount: toNumber(order.finalAmount),
+});
+
+const normalizeTopItem = (item = {}) => ({
+  ...item,
+  id: item.id ?? item.menuItemId,
+  name: item.name ?? item.itemName ?? '',
+  category: translateApiLabel(item.category ?? item.categoryName) || 'Khác',
+  img: item.img ?? item.imageUrl,
+  totalQty: item.totalQty ?? item.quantitySold ?? 0,
+  totalRevenue: toNumber(item.totalRevenue ?? item.revenue),
+});
+
+const normalizeSalesTrendPoint = (point = {}) => ({
+  ...point,
+  bucket: point.bucket ?? point.date,
+  totalQty: point.totalQty ?? point.quantitySold ?? 0,
+});
+
+const normalizeRevenueForecastPoint = (point = {}) => ({
+  ...point,
+  actual: point.actual ?? point.actualRevenue,
+  forecast: point.forecast ?? point.forecastRevenue,
+});
+
+const normalizePopularForecastItem = (item = {}) => ({
+  ...item,
+  id: item.id ?? item.menuItemId,
+  name: item.name ?? item.itemName ?? '',
+  category: translateApiLabel(item.category ?? item.categoryName) || 'Chưa phân loại',
+  estimatedQty: item.estimatedQty ?? item.estimatedQuantity ?? 0,
+});
+
+const normalizeDashboardSummary = (dashboard = {}) => {
+  const todayOrders = dashboard.todayOrders || {};
+  const tables = dashboard.tables || {};
+  const topItems = Array.isArray(dashboard.topItems) ? dashboard.topItems.map(normalizeTopItem) : [];
+  const popularItemsForecast = Array.isArray(dashboard.popularItemsForecast)
+    ? dashboard.popularItemsForecast.map(normalizePopularForecastItem)
+    : [];
+  return {
+    ...dashboard,
+    todayRevenue: toNumber(dashboard.todayRevenue),
+    averageOrderValue: toNumber(dashboard.averageOrderValue ?? dashboard.avgOrderValue),
+    todayAvgOrderValue: toNumber(dashboard.todayAvgOrderValue),
+    todayOrders: {
+      ...todayOrders,
+      total: todayOrders.total ?? todayOrders.totalOrders ?? 0,
+      completed: todayOrders.completed ?? todayOrders.completedOrders ?? 0,
+    },
+    tables: {
+      ...tables,
+      total: tables.total ?? tables.totalTables ?? 0,
+      occupied: tables.occupied ?? tables.occupiedTables ?? 0,
+    },
+    recentOrders: Array.isArray(dashboard.recentOrders)
+      ? dashboard.recentOrders.map(normalizeOrderDetail)
+      : [],
+    topDishes: Array.isArray(dashboard.topDishes) ? dashboard.topDishes.map(normalizeTopItem) : topItems,
+    topItems,
+    salesTrend: Array.isArray(dashboard.salesTrend)
+      ? dashboard.salesTrend.map(normalizeSalesTrendPoint)
+      : [],
+    revenue: Array.isArray(dashboard.revenue) ? dashboard.revenue.map(normalizeRevenuePoint) : [],
+    revenueForecast: Array.isArray(dashboard.revenueForecast)
+      ? dashboard.revenueForecast.map(normalizeRevenueForecastPoint)
+      : [],
+    popularDishesForecast: Array.isArray(dashboard.popularDishesForecast)
+      ? dashboard.popularDishesForecast.map(normalizePopularForecastItem)
+      : popularItemsForecast,
+    popularItemsForecast,
+  };
+};
+
+export const analyticsService = {
+  clearCache: clearAnalyticsCache,
+  getRevenue: async (from, to, options = {}) => {
+    const params = rangeParams(from, to);
+    const data = await getCachedAnalytics(
+      `revenue:${stableStringify(params)}`,
+      () => api.get('/analytics/revenue', { params }),
+      [],
+      options,
+    );
+    return data.map(normalizeRevenuePoint);
+  },
+  getUsers: async (from, to, options = {}) => {
+    const params = rangeParams(from, to);
+    const data = await getCachedAnalytics(
+      `users:${stableStringify(params)}`,
+      () => api.get('/analytics/users', { params }),
+      [],
+      options,
+    );
+    return data.map(normalizeUser);
+  },
+  getOrders: async (from, to, options = {}) => {
+    const page = Number.isInteger(options.page) && options.page >= 0 ? options.page : 0;
+    const size = Number.isInteger(options.size) && options.size > 0 ? options.size : 10;
+    const params = { ...rangeParams(from, to), page, size };
+    const pageData = await getCachedAnalytics(
+      `orders:${stableStringify(params)}`,
+      () => api.get('/analytics/orders', { params }),
+      pagedFallback(page, size),
+      options,
+    );
+    return {
+      ...pageData,
+      content: Array.isArray(pageData.content) ? pageData.content.map(normalizeOrderDetail) : [],
+    };
+  },
+  getTopDishes: async (from, to, options = {}) => {
+    const params = rangeParams(from, to);
+    const data = await getCachedAnalytics(
+      `top-dishes:${stableStringify(params)}`,
+      () => api.get('/analytics/top-items', { params }),
+      [],
+      options,
+    );
+    return data.map(normalizeTopItem);
+  },
+  getDishTrend: async (from, to, options = {}) => {
+    const params = rangeParams(from, to);
+    const data = await getCachedAnalytics(
+      `dish-trend:${stableStringify(params)}`,
+      () => api.get('/analytics/sales-trend', { params }),
+      [],
+      options,
+    );
+    return data.map(normalizeSalesTrendPoint);
+  },
+  getRevenueForecast: async (options = {}) => {
+    const data = await getCachedAnalytics(
+      'forecast:revenue',
+      () => api.get('/analytics/forecast/revenue'),
+      [],
+      options,
+    );
+    return data.map(normalizeRevenueForecastPoint);
+  },
+  getPopularDishesForecast: async (options = {}) => {
+    const data = await getCachedAnalytics(
+      'forecast:popular-dishes',
+      () => api.get('/analytics/forecast/popular-items'),
+      [],
+      options,
+    );
+    return data.map(normalizePopularForecastItem);
+  },
+  getDashboardSummary: async (from, to, options = {}) => {
+    const params = rangeParams(from, to);
+    const data = await getCachedAnalytics(
+      `dashboard:${stableStringify(params)}`,
+      () => api.get('/analytics/dashboard', { params, signal: options.signal }),
+      {},
+      options,
+    );
+    return normalizeDashboardSummary(data || {});
+  },
+};

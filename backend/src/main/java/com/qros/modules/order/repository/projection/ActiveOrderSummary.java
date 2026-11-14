@@ -15,5 +15,7 @@ public interface ActiveOrderSummary {
 
     String getTableNumber();
 
+    Long getSessionId();
+
     LocalDateTime getCreatedAt();
 }

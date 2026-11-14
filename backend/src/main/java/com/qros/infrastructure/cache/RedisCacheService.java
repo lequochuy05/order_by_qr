@@ -3,6 +3,7 @@ package com.qros.infrastructure.cache;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
  * RedisCache - Implementation of CacheService using RedisTemplate.
  */
 @Service
+@ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis")
 @RequiredArgsConstructor
 @Slf4j
 public class RedisCacheService implements CacheService {

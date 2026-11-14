@@ -95,10 +95,14 @@ public class VoucherService {
 
     @Transactional
     @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
-    public void incrementUsage(@NonNull Long voucherId) {
-        int updatedRows = voucherRepository.incrementUsedCountAtomically(voucherId);
+    public boolean tryIncrementUsage(@NonNull Long voucherId) {
+        return voucherRepository.incrementUsedCountAtomically(voucherId) == 1;
+    }
 
-        if (updatedRows != 1) {
+    @Transactional
+    @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
+    public void incrementUsage(@NonNull Long voucherId) {
+        if (!tryIncrementUsage(voucherId)) {
             throw new BusinessException(ErrorCode.VOUCHER_USAGE_LIMIT_REACHED);
         }
     }

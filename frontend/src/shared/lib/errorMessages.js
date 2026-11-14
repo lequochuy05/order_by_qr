@@ -25,6 +25,7 @@ const ERROR_CODE_MESSAGES = {
   EMAIL_EXISTS: 'Email đã tồn tại trong hệ thống.',
   PHONE_EXISTS: 'Số điện thoại đã tồn tại trong hệ thống.',
   ACCOUNT_INACTIVE: 'Tài khoản đã bị khóa hoặc chưa được kích hoạt.',
+  ACCOUNT_LOCKED: 'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
   INVALID_CREDENTIALS: 'Email hoặc mật khẩu không chính xác.',
   INVALID_REFRESH_TOKEN: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
   PASSWORD_INVALID: 'Mật khẩu hiện tại không chính xác.',
@@ -41,6 +42,7 @@ const ERROR_CODE_MESSAGES = {
   TABLE_CODE_INVALID: 'Mã bàn không hợp lệ.',
   TABLE_NUMBER_EXISTS: 'Số bàn đã tồn tại.',
   TABLE_QR_GENERATION_FAILED: 'Không thể tạo mã QR cho bàn.',
+  TABLE_QR_SIGNATURE_INVALID: 'Mã QR bàn không hợp lệ hoặc đã hết hạn. Vui lòng quét lại mã QR tại bàn.',
   TABLE_SESSION_NOT_FOUND: 'Không tìm thấy phiên sử dụng bàn.',
   TABLE_SESSION_INVALID: 'Phiên sử dụng bàn không hợp lệ.',
   TABLE_SESSION_EXPIRED: 'Phiên sử dụng bàn đã hết hạn.',
@@ -99,6 +101,8 @@ const EXACT_MESSAGE_TRANSLATIONS = {
   'Resource not found': 'Không tìm thấy tài nguyên yêu cầu.',
   'Requested resource not found': 'Không tìm thấy tài nguyên yêu cầu.',
   'You do not have permission to perform this action': 'Bạn không có quyền thực hiện thao tác này.',
+  'Account is temporarily locked due to too many failed login attempts':
+    'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
   'Internal server error. Please try again later.':
     'Hệ thống đang gặp sự cố. Vui lòng thử lại sau.',
   'Network Error': 'Không thể kết nối đến máy chủ!',
@@ -115,6 +119,7 @@ const EXACT_MESSAGE_TRANSLATIONS = {
   'Max selection cannot exceed option value count':
     'Số lựa chọn tối đa không được lớn hơn số giá trị hiện có.',
   'Combo must contain at least one item': 'Combo phải có ít nhất một món.',
+  'Combo must contain at least two items': 'Combo phải có ít nhất hai món.',
   'Menu item ID is required': 'Vui lòng chọn món cho combo.',
   'Combo item quantity must be at least 1': 'Số lượng món trong combo phải ít nhất là 1.',
   'Cannot delete category that still contains active menu items':
@@ -296,7 +301,7 @@ export const buildErrorMessage = (error, { includeDetails = true } = {}) => {
 
   if (data && typeof data === 'object') {
     const code = data.code || error?.code;
-    message = translateErrorMessage(data.message || error?.message || message, code);
+    message = translateErrorMessage(data.message || error?.message, code) || message;
 
     if (includeDetails) {
       Object.entries(getErrorDetails(error)).forEach(([field, detail]) => {

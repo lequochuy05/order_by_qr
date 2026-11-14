@@ -1,5 +1,6 @@
 package com.qros.modules.payment.service;
 
+import com.qros.modules.payment.dto.internal.CashSettlementResult;
 import com.qros.modules.payment.dto.internal.OnlinePaymentPreparation;
 import com.qros.modules.payment.dto.internal.PaymentGatewayCreateResult;
 import com.qros.modules.payment.dto.internal.PaymentGatewayStatusResult;
@@ -12,6 +13,8 @@ import com.qros.modules.payment.gateway.PaymentGatewayResolver;
 import com.qros.modules.payment.mapper.PaymentMapper;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -32,14 +35,27 @@ public class PaymentService {
     private final PaymentGatewayResolver gatewayResolver;
     private final PaymentMapper paymentMapper;
     private final PaymentPersistenceService persistenceService;
+    private final SystemSettingsService settingsService;
     private final MeterRegistry meterRegistry;
+    private final PaymentGatewayCancellationService gatewayCancellationService;
 
     public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId) {
+        validatePaymentMethodEnabled(request.paymentMethod());
+
         if (request.paymentMethod() == PaymentMethod.CASH) {
+            long startNanos = System.nanoTime();
             try {
-                return paymentMapper.toCreateResponse(persistenceService.settleCash(request, userId));
+                CashSettlementResult settlement = persistenceService.settleCash(request, userId);
+                if (!settlement.cancelledOnlineTransactions().isEmpty()) {
+                    gatewayCancellationService.cancelPendingOnlineGatewayLinks(
+                            settlement.cancelledOnlineTransactions(), "Order paid by cash");
+                }
+                return paymentMapper.toCreateResponse(settlement.transaction());
             } catch (DataIntegrityViolationException exception) {
-                return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
+                PaymentTransaction transaction = persistenceService.recoverIdempotency(request);
+                return paymentMapper.toCreateResponse(transaction);
+            } finally {
+                logSlowCashPayment(request.orderId(), startNanos);
             }
         }
 
@@ -50,19 +66,41 @@ public class PaymentService {
             return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
         }
 
-        if (!preparation.gatewayCallRequired()) {
+        final PaymentGateway gateway = gatewayResolver.resolve(request.paymentMethod());
+
+        // Nếu reuse transaction cũ đã có QR sẵn thì trả về luôn
+        if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() != null) {
             return paymentMapper.toCreateResponse(preparation.transaction());
         }
 
-        PaymentTransaction transaction = preparation.transaction();
-        PaymentGateway gateway = gatewayResolver.resolve(request.paymentMethod());
+        // Transaction cũ bị stuck ở CREATING (gateway đã nhận nhưng chưa complete)
+        // → cancel link PayOS cũ để tránh "đơn đã tồn tại" khi tạo lại
+        if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() == null) {
+            final PaymentTransaction stuckTx = preparation.transaction();
+            try {
+                recordGatewayCall("cancel", request.paymentMethod(), () -> {
+                    gateway.cancelPayment(stuckTx, "Retry payment link creation");
+                    return null;
+                });
+            } catch (Exception ex) {
+                log.warn("Could not cancel stuck PayOS link {} before retry: {}", stuckTx.getId(), ex.getMessage());
+            }
+            persistenceService.markOnlineCreationFailed(stuckTx.getId(), "Cancelled to retry");
+            // Tạo transaction mới
+            try {
+                preparation = persistenceService.prepareOnline(request);
+            } catch (DataIntegrityViolationException exception) {
+                return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
+            }
+        }
+
+        final PaymentTransaction finalTx = preparation.transaction();
         try {
             PaymentGatewayCreateResult result =
-                    recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(transaction));
-            return paymentMapper.toCreateResponse(
-                    persistenceService.completeOnlineCreation(transaction.getId(), result));
+                    recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(finalTx));
+            return paymentMapper.toCreateResponse(persistenceService.completeOnlineCreation(finalTx.getId(), result));
         } catch (RuntimeException exception) {
-            persistenceService.markOnlineCreationFailed(transaction.getId(), exception.getMessage());
+            persistenceService.markOnlineCreationFailed(finalTx.getId(), exception.getMessage());
             throw exception;
         }
     }
@@ -99,6 +137,19 @@ public class PaymentService {
         persistenceService.confirmWebhook(webhookResult);
     }
 
+    private void validatePaymentMethodEnabled(PaymentMethod paymentMethod) {
+        SystemSettings settings = settingsService.getSettingsEntity();
+        boolean enabled = paymentMethod == PaymentMethod.CASH
+                ? Boolean.TRUE.equals(settings.getCashPaymentEnabled())
+                : Boolean.TRUE.equals(settings.getOnlinePaymentEnabled());
+
+        if (!enabled) {
+            throw new BusinessException(
+                    ErrorCode.FEATURE_DISABLED,
+                    paymentMethod == PaymentMethod.CASH ? "Cash payment is disabled" : "Online payment is disabled");
+        }
+    }
+
     private boolean isActiveOnline(PaymentTransaction transaction) {
         return transaction.getStatus() == PaymentTransactionStatus.CREATING
                 || transaction.getStatus() == PaymentTransactionStatus.PENDING;
@@ -117,6 +168,15 @@ public class PaymentService {
                     .tag("operation", operation)
                     .tag("method", Objects.toString(method, "unknown"))
                     .register(meterRegistry));
+        }
+    }
+
+    private void logSlowCashPayment(Long orderId, long startNanos) {
+        long elapsedMs = (System.nanoTime() - startNanos) / 1_000_000L;
+        if (elapsedMs >= 1_000L) {
+            log.warn("Cash payment for order {} took {} ms", orderId, elapsedMs);
+        } else {
+            log.debug("Cash payment for order {} took {} ms", orderId, elapsedMs);
         }
     }
 }

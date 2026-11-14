@@ -8,7 +8,7 @@ import {
   SharedModal,
   TextField,
 } from '@shared/ui';
-import { TABLE_STATUS } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
 
 const TABLE_STATUS_OPTIONS = Object.entries(TABLE_STATUS).map(([value, meta]) => ({
   value,
@@ -27,9 +27,17 @@ const TableFormModal = ({
   isRegeneratingQr,
 }) => {
   const [formData, setFormData] = useState(
-    initialData || { id: null, tableNumber: '', capacity: 4, status: 'AVAILABLE', qrCodeUrl: '' },
+    initialData || {
+      id: null,
+      tableNumber: '',
+      capacity: 4,
+      status: TABLE_STATUSES.AVAILABLE,
+      initialStatus: TABLE_STATUSES.AVAILABLE,
+      qrCodeUrl: '',
+    },
   );
   const [errors, setErrors] = useState({});
+  const initialStatus = initialData?.status ?? TABLE_STATUSES.AVAILABLE;
   const [isQrPreviewOpen, setIsQrPreviewOpen] = useState(false);
   const fieldErrors = {
     tableNumber: errors.tableNumber || serverErrors.tableNumber,
@@ -59,7 +67,7 @@ const TableFormModal = ({
   const handleSave = (e) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      onSubmit({ ...formData, initialStatus });
     }
   };
 
@@ -113,7 +121,7 @@ const TableFormModal = ({
             required
             type="number"
             min="1"
-            inputClassName="text-orange-600"
+            inputClassName="text-indigo-600 dark:text-indigo-400 font-mono"
             value={formData.capacity}
             onChange={(value) => {
               setFormData({ ...formData, capacity: parseInt(value) || 0 });
@@ -135,16 +143,16 @@ const TableFormModal = ({
         {formData.qrCodeUrl && (
           <div className="relative group mt-2">
             <FormLabel>QR Code của bàn</FormLabel>
-            <div className="bg-gray-50/50 rounded-3xl p-6 border-2 border-dashed border-gray-100 flex flex-col items-center justify-center space-y-3 transition-all group-hover:border-orange-200 group-hover:bg-orange-50/20">
+            <div className="flex flex-col items-center justify-center space-y-3 rounded-3xl border-2 border-dashed border-slate-200/80 bg-slate-50/50 p-6 transition-all group-hover:border-indigo-200 group-hover:bg-indigo-50/20 dark:border-slate-800 dark:bg-slate-950/50 dark:group-hover:border-indigo-500/40 dark:group-hover:bg-indigo-500/10">
               <button
                 type="button"
                 onClick={() => setIsQrPreviewOpen(true)}
-                className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 transition-transform duration-300 ease-out hover:scale-125 hover:shadow-xl hover:z-10 cursor-zoom-in"
+                className="cursor-zoom-in rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-transform duration-300 ease-out hover:z-10 hover:scale-125 hover:shadow-xl dark:border-slate-700 dark:bg-slate-900"
               >
                 <img src={formData.qrCodeUrl} alt="QR" className="w-32 h-32 object-contain" />
               </button>
-              <div className="flex items-center gap-2 text-gray-400 text-[10px] font-black uppercase tracking-tighter bg-white px-4 py-1.5 rounded-full shadow-sm">
-                <QrCode size={14} className="text-orange-500" />
+              <div className="flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-[10px] font-black uppercase tracking-tighter text-slate-400 shadow-sm dark:bg-slate-900 dark:text-slate-500">
+                <QrCode size={14} className="text-indigo-600 dark:text-indigo-400" />
                 <span>Quét để đặt món</span>
               </div>
               {formData.id && (
@@ -152,7 +160,7 @@ const TableFormModal = ({
                   type="button"
                   onClick={handleRegenerateQr}
                   disabled={isRegeneratingQr}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-[11px] font-black uppercase tracking-[0.12em] shadow-lg shadow-orange-100 hover:bg-orange-600 disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none transition-all active:scale-95"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-700"
                 >
                   {isRegeneratingQr ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -185,7 +193,7 @@ const TableFormModal = ({
           <img
             src={formData.qrCodeUrl}
             alt="QR"
-            className="w-full max-h-[82vh] object-contain rounded-2xl bg-white p-5 shadow-2xl"
+            className="max-h-[82vh] w-full rounded-2xl bg-white p-5 object-contain shadow-2xl dark:bg-slate-900"
           />
         </SharedModal>
       )}

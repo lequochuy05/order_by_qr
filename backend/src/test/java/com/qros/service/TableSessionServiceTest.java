@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,23 +15,27 @@ import com.qros.modules.table.dto.request.TableSessionHeartbeatRequest;
 import com.qros.modules.table.dto.response.TableSessionStartResponse;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
+import com.qros.modules.table.model.TableSessionTable;
 import com.qros.modules.table.model.TableSessionToken;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
+import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.modules.table.repository.TableSessionTokenRepository;
 import com.qros.modules.table.service.TableActiveOrderChecker;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
+import com.qros.shared.transaction.TransactionSideEffectService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.CacheManager;
@@ -46,6 +51,9 @@ class TableSessionServiceTest {
     TableSessionRepository sessionRepository;
 
     @Mock
+    TableSessionTableRepository membershipRepository;
+
+    @Mock
     TableSessionTokenRepository tokenRepository;
 
     @Mock
@@ -57,6 +65,9 @@ class TableSessionServiceTest {
     @Mock
     TableActiveOrderChecker activeOrderChecker;
 
+    @Mock
+    TransactionSideEffectService sideEffects;
+
     private TableSessionService tableSessionService;
 
     @BeforeEach
@@ -64,11 +75,23 @@ class TableSessionServiceTest {
         tableSessionService = new TableSessionService(
                 tableRepository,
                 sessionRepository,
+                membershipRepository,
                 tokenRepository,
                 cacheManager,
                 eventPublisher,
                 activeOrderChecker,
-                new TableSessionProperties());
+                new TableSessionProperties(),
+                sideEffects);
+    }
+
+    private TableSessionTable membership(TableSession session, DiningTable table) {
+        return TableSessionTable.builder()
+                .id(300L)
+                .session(session)
+                .table(table)
+                .primaryTable(true)
+                .joinedAt(AppTime.now())
+                .build();
     }
 
     @Test
@@ -82,13 +105,14 @@ class TableSessionServiceTest {
                 .build();
 
         when(tableRepository.findByTableCodeForUpdate("BAN_05")).thenReturn(Optional.of(table));
-        when(sessionRepository.findByTableIdAndStatusForUpdate(5L, TableSessionStatus.OPEN))
+        when(membershipRepository.findActiveOpenMembershipByTableIdForUpdate(5L, TableSessionStatus.OPEN))
                 .thenReturn(Optional.empty());
         when(sessionRepository.save(any(TableSession.class))).thenAnswer(invocation -> {
             TableSession session = invocation.getArgument(0);
             session.setId(100L);
             return session;
         });
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(null, table)));
         when(tokenRepository.save(any(TableSessionToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TableSessionStartResponse response = tableSessionService.startPublicSession("BAN_05");
@@ -101,7 +125,7 @@ class TableSessionServiceTest {
 
         verify(tokenRepository).save(any(TableSessionToken.class));
         verify(tableRepository).save(table);
-        verify(activeOrderChecker).attachActiveOrderToSession(eq(5L), any(TableSession.class));
+        verify(activeOrderChecker).attachActiveOrdersToSession(eq(List.of(5L)), any(TableSession.class));
     }
 
     @Test
@@ -115,18 +139,19 @@ class TableSessionServiceTest {
                 .build();
 
         when(tableRepository.findByTableCodeForUpdate("BAN_05")).thenReturn(Optional.of(table));
-        when(sessionRepository.findByTableIdAndStatusForUpdate(5L, TableSessionStatus.OPEN))
+        when(membershipRepository.findActiveOpenMembershipByTableIdForUpdate(5L, TableSessionStatus.OPEN))
                 .thenReturn(Optional.empty());
         when(sessionRepository.save(any(TableSession.class))).thenAnswer(invocation -> {
             TableSession session = invocation.getArgument(0);
             session.setId(100L);
             return session;
         });
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(null, table)));
         when(tokenRepository.save(any(TableSessionToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         tableSessionService.startPublicSession("BAN_05");
 
-        verify(activeOrderChecker).attachActiveOrderToSession(eq(5L), any(TableSession.class));
+        verify(activeOrderChecker).attachActiveOrdersToSession(eq(List.of(5L)), any(TableSession.class));
     }
 
     @Test
@@ -153,6 +178,9 @@ class TableSessionServiceTest {
 
         when(tokenRepository.findFirstByTokenHashAndRevokedAtIsNull(anyString()))
                 .thenReturn(Optional.of(token));
+        when(membershipRepository.existsActiveBySessionIdAndTableCode(100L, "BAN_05"))
+                .thenReturn(true);
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(session, table)));
 
         TableSession result = tableSessionService.requireOpenSessionForRead("BAN_05", "SESSION");
 
@@ -186,6 +214,8 @@ class TableSessionServiceTest {
 
         when(tokenRepository.findFirstByTokenHashAndRevokedAtIsNull(anyString()))
                 .thenReturn(Optional.of(token));
+        when(membershipRepository.existsActiveBySessionIdAndTableCode(100L, "BAN_05"))
+                .thenReturn(true);
 
         TableSession result = tableSessionService.requireSessionForRead("BAN_05", "SESSION");
 
@@ -218,6 +248,7 @@ class TableSessionServiceTest {
 
         when(tokenRepository.findFirstByTokenHashAndRevokedAtIsNull(anyString()))
                 .thenReturn(Optional.of(token));
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(session, table)));
 
         tableSessionService.heartbeat(new TableSessionHeartbeatRequest("SESSION"));
 
@@ -272,6 +303,7 @@ class TableSessionServiceTest {
                 .build();
         when(tokenRepository.findFirstByTokenHashAndRevokedAtIsNull(anyString()))
                 .thenReturn(Optional.of(token));
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(session, table)));
 
         tableSessionService.heartbeat(new TableSessionHeartbeatRequest("SESSION"));
 
@@ -317,9 +349,10 @@ class TableSessionServiceTest {
                 .table(table)
                 .status(TableSessionStatus.OPEN)
                 .build();
-        when(sessionRepository.findTableIdById(100L)).thenReturn(Optional.of(5L));
-        when(tableRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(table));
         when(sessionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(session));
+        when(membershipRepository.findActiveTableIdsBySessionId(100L)).thenReturn(List.of(5L));
+        when(tableRepository.findAllByIdInForUpdate(List.of(5L))).thenReturn(List.of(table));
+        when(membershipRepository.findActiveBySessionIdForUpdate(100L)).thenReturn(List.of(membership(session, table)));
         when(activeOrderChecker.hasActiveOrders(5L)).thenReturn(false);
 
         tableSessionService.closeSession(100L, TableSessionStatus.CLOSED, "Order settled");
@@ -328,6 +361,12 @@ class TableSessionServiceTest {
         assertThat(table.getStatus()).isEqualTo(TableStatus.AVAILABLE);
         verify(tokenRepository).revokeActiveTokensBySessionId(eq(100L), any());
         verify(tableRepository).save(table);
+
+        InOrder lockOrder = inOrder(sessionRepository, membershipRepository, tableRepository);
+        lockOrder.verify(sessionRepository).findByIdForUpdate(100L);
+        lockOrder.verify(membershipRepository).findActiveTableIdsBySessionId(100L);
+        lockOrder.verify(tableRepository).findAllByIdInForUpdate(List.of(5L));
+        lockOrder.verify(membershipRepository).findActiveBySessionIdForUpdate(100L);
     }
 
     @Test
@@ -355,8 +394,9 @@ class TableSessionServiceTest {
                     .build());
         }
         when(tableRepository.findByTableCodeForUpdate("BAN_05")).thenReturn(Optional.of(table));
-        when(sessionRepository.findByTableIdAndStatusForUpdate(5L, TableSessionStatus.OPEN))
-                .thenReturn(Optional.of(session));
+        when(membershipRepository.findActiveOpenMembershipByTableIdForUpdate(5L, TableSessionStatus.OPEN))
+                .thenReturn(Optional.of(membership(session, table)));
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(session, table)));
         when(tokenRepository.findActiveBySessionIdForUpdate(100L)).thenReturn(activeTokens);
 
         tableSessionService.startPublicSession("BAN_05");

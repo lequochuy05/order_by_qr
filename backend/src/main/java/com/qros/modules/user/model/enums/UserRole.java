@@ -1,7 +1,9 @@
 package com.qros.modules.user.model.enums;
 
 public enum UserRole {
-    STAFF,
+    ADMIN,
     MANAGER,
+    CASHIER,
+    STAFF,
     CHEF
 }

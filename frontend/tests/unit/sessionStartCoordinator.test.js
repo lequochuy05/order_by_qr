@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   createSessionStartCoordinator,
   startTableSessionOnce,
-} from '../../src/features/customer-ordering/api/sessionStartCoordinator.js';
+} from '../../src/entities/table/api/sessionStartCoordinator.js';
 
 test('session coordinator shares an in-flight request for the same table', async () => {
   const startOnce = createSessionStartCoordinator();

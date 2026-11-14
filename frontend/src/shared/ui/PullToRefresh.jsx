@@ -144,7 +144,7 @@ const PullToRefresh = ({
     <div className={`relative min-h-0 overflow-hidden ${className}`}>
       <div
         aria-live="polite"
-        className="pointer-events-none absolute left-1/2 top-0 z-20 flex h-11 items-center gap-2 rounded-full bg-white/95 px-3 text-xs font-bold text-orange-600 shadow-md backdrop-blur dark:bg-slate-800/95 dark:text-orange-300"
+        className="pointer-events-none absolute left-1/2 top-0 z-20 flex h-11 items-center gap-2 rounded-full bg-white/95 px-3 text-xs font-bold text-indigo-600 shadow-md backdrop-blur dark:bg-slate-800/95 dark:text-indigo-400"
         style={{
           opacity: pullDistance > 4 || isRefreshing ? 1 : 0,
           transform: `translate(-50%, ${pullDistance - 48}px)`,

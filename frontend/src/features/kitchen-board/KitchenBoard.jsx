@@ -1,0 +1,123 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+
+import { useAuth } from '@features/auth';
+import { ErrorBoundary } from '@shared/ui';
+import { showBrowserNotification } from '@shared/lib/browserNotification.js';
+import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSound.js';
+import useSettingsStore from '@shared/model/settingsStore.js';
+import KitchenColumn from './KitchenColumn.jsx';
+import { aggregateBatchCookingItems, KITCHEN_COLUMNS } from './lib/kitchenItems.js';
+import useKitchenFilters from './model/useKitchenFilters.js';
+import useKitchenNotifications from './model/useKitchenNotifications.js';
+import useKitchenOrders from './model/useKitchenOrders.js';
+import AiStaffPanel from './ui/AiStaffPanel.jsx';
+import BatchCookingView from './ui/BatchCookingView.jsx';
+import KitchenFilters from './ui/KitchenFilters.jsx';
+import KitchenSummaryCards from './ui/KitchenSummaryCards.jsx';
+import KitchenToolbar from './ui/KitchenToolbar.jsx';
+
+const KitchenBoardContent = () => {
+  const { user } = useAuth();
+  const [viewMode, setViewMode] = useState('kanban');
+  const settings = useSettingsStore((state) => state.settings);
+  const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
+  const kitchen = useKitchenOrders();
+  const filters = useKitchenFilters(kitchen.orders, kitchen.now, overdueMinutes);
+  const notifications = useKitchenNotifications(
+    () => kitchen.fetchKitchenOrders({ silent: true }),
+    settings.newOrderNotificationEnabled !== false,
+  );
+  const previousOverdueCountRef = useRef(null);
+
+  const batchCount = useMemo(
+    () => aggregateBatchCookingItems(filters.filteredItems).length,
+    [filters.filteredItems],
+  );
+
+  useEffect(() => {
+    const previousCount = previousOverdueCountRef.current;
+    previousOverdueCountRef.current = filters.summary.overdue;
+
+    if (
+      previousCount !== null &&
+      filters.summary.overdue > previousCount &&
+      settings.kitchenOverdueNotificationEnabled !== false
+    ) {
+      playNotificationSound();
+      playLoudSound();
+      showBrowserNotification('Cảnh báo bếp', {
+        body: `${filters.summary.overdue} món đã chờ quá ${overdueMinutes} phút.`,
+        tag: 'kitchen-overdue',
+      });
+    }
+  }, [filters.summary.overdue, overdueMinutes, settings.kitchenOverdueNotificationEnabled]);
+
+  return (
+    <div className="w-full min-w-0 space-y-6 text-slate-900 dark:text-slate-100">
+      <section className="overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 px-5 py-6 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:text-slate-100 sm:px-7">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-end">
+          <KitchenToolbar
+            wakeLock={notifications.wakeLock}
+            soundEnabled={notifications.preferences.notificationSound}
+            onToggleSound={notifications.toggleSound}
+            refreshing={kitchen.refreshing}
+            onRefresh={() => kitchen.fetchKitchenOrders()}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            batchCount={batchCount}
+          />
+        </div>
+        <KitchenSummaryCards summary={filters.summary} overdueMinutes={overdueMinutes} />
+      </section>
+
+      {['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role) && <AiStaffPanel />}
+
+      <KitchenFilters
+        searchTerm={filters.searchTerm}
+        categoryFilter={filters.categoryFilter}
+        attentionFilter={filters.attentionFilter}
+        categories={filters.categories}
+        lastUpdatedAt={kitchen.lastUpdatedAt}
+        onSearchChange={filters.setSearchTerm}
+        onCategoryChange={filters.setCategoryFilter}
+        onAttentionChange={filters.setAttentionFilter}
+      />
+
+      {kitchen.loading ? (
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={42} />
+        </div>
+      ) : viewMode === 'batch' ? (
+        <BatchCookingView
+          items={filters.filteredItems}
+          onBatchUpdateStatus={kitchen.batchUpdateStatus}
+          onUpdateStatus={kitchen.updateStatus}
+          onCancelItem={kitchen.cancelItem}
+          processingItems={kitchen.processingItems}
+        />
+      ) : (
+        <div className="mt-5 grid gap-5 xl:grid-cols-3">
+          {KITCHEN_COLUMNS.map((column) => (
+            <KitchenColumn
+              key={column.status}
+              {...column}
+              items={filters.itemsByStatus[column.status]}
+              onUpdateStatus={kitchen.updateStatus}
+              onCancelItem={kitchen.cancelItem}
+              processingItems={kitchen.processingItems}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const KitchenBoard = () => (
+  <ErrorBoundary>
+    <KitchenBoardContent />
+  </ErrorBoundary>
+);
+
+export default KitchenBoard;

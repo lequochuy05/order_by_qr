@@ -1,0 +1,25 @@
+export const ORDER_STATUSES = Object.freeze({
+  PENDING: 'PENDING',
+  SERVING: 'SERVING',
+  AWAITING_PAYMENT: 'AWAITING_PAYMENT',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+});
+
+export const ORDER_ITEM_STATUSES = Object.freeze({
+  PENDING: 'PENDING',
+  COOKING: 'COOKING',
+  FINISHED: 'FINISHED',
+  CANCELLED: 'CANCELLED',
+});
+
+export const ORDER_PAYMENT_STATUSES = Object.freeze({
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  CANCELLED: 'CANCELLED',
+});
+
+export const ORDER_TYPES = Object.freeze({
+  DINE_IN: 'DINE_IN',
+  TAKEAWAY: 'TAKEAWAY',
+});

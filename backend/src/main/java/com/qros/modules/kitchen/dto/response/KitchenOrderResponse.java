@@ -2,6 +2,7 @@ package com.qros.modules.kitchen.dto.response;
 
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
+import com.qros.modules.order.model.enums.OrderType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +12,7 @@ public record KitchenOrderResponse(
         OrderStatus status,
         BigDecimal finalAmount,
         TableSummary table,
+        OrderType orderType,
         List<KitchenOrderItemResponse> orderItems,
         LocalDateTime createdAt) {
 
@@ -18,6 +20,8 @@ public record KitchenOrderResponse(
 
     public record KitchenOrderItemResponse(
             Long id,
+            Long batchId,
+            Integer batchNumber,
             MenuItemSummary menuItem,
             ComboSummary combo,
             BigDecimal unitPrice,

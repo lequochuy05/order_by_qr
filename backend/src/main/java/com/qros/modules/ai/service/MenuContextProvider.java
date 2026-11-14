@@ -89,11 +89,13 @@ public class MenuContextProvider {
         groupedItems.forEach((category, menuItems) -> {
             builder.append("Danh mục ").append(category).append(":\n");
 
-            menuItems.forEach(item -> builder.append("  - ")
-                    .append(item.getName())
-                    .append(" | Giá: ")
-                    .append(formatPrice(item.getPrice()))
-                    .append("\n"));
+            menuItems.forEach(item -> {
+                builder.append("  - ").append(item.getName()).append(" | Giá: ").append(formatPrice(item.getPrice()));
+                if (item.getDescription() != null && !item.getDescription().isBlank()) {
+                    builder.append(" | Mô tả: ").append(item.getDescription());
+                }
+                builder.append("\n");
+            });
         });
     }
 
