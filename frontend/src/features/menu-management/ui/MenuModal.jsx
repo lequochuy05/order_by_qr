@@ -208,7 +208,7 @@ const MenuItemModal = ({
                 min="0"
                 placeholder="0"
                 suffix="đ"
-                inputClassName="text-[#56372B] dark:text-[#D8986A]"
+                inputClassName="font-mono font-black text-indigo-600 dark:text-indigo-400"
                 value={formData.price}
                 onChange={(value) => {
                   setFormData({ ...formData, price: value });
@@ -256,7 +256,7 @@ const MenuItemModal = ({
                 type="button"
                 onClick={onAiGenerate}
                 disabled={isAiGenerating || !formData.name}
-                className="flex items-center gap-1.5 rounded-lg border border-[#C17C4A]/30 bg-[#F7F0E7] px-3 py-1.5 text-[10px] font-bold text-[#56372B] transition-all hover:bg-[#EAE0D5] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#C17C4A]/30 dark:bg-[#2A221E] dark:text-[#D8986A] dark:hover:bg-[#352C26]"
+                className="flex items-center gap-1.5 rounded-xl border border-indigo-200/60 bg-indigo-50/80 px-3 py-1.5 text-[10px] font-bold text-indigo-700 transition-all hover:bg-indigo-100 hover:text-indigo-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:border-indigo-500/30 dark:bg-indigo-950/40 dark:text-indigo-300"
               >
                 {isAiGenerating ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -309,16 +309,16 @@ const MenuItemModal = ({
         <div className="space-y-5">
           <div className="flex justify-between items-center px-1">
             <h3 className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.2em] text-slate-800 dark:text-slate-100">
-              <span className="w-1 h-4 bg-[#C17C4A] rounded-full" />
+              <span className="w-1 h-4 bg-indigo-600 rounded-full" />
               Tùy Chọn Mở Rộng
-              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[9px] font-black font-mono text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 {formData.itemOptions.length}
               </span>
             </h3>
             <button
               type="button"
               onClick={addOption}
-              className="flex items-center gap-1.5 rounded-xl bg-[#56372B] px-5 py-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-md transition-all hover:bg-[#432A21] active:scale-95 dark:bg-[#C17C4A] dark:hover:bg-[#A86638]"
+              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-[10px] font-black uppercase tracking-tight text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95"
             >
               <Plus size={14} /> Thêm Nhóm
             </button>
@@ -328,12 +328,12 @@ const MenuItemModal = ({
             {formData.itemOptions.map((opt, optIdx) => (
               <div
                 key={optIdx}
-                className="group/option relative space-y-6 rounded-3xl border border-[#E8DCD1] bg-[#F7F0E7]/40 p-6 transition-colors animate-in slide-in-from-bottom-2 duration-500 dark:border-[#352C26] dark:bg-[#150E0B]"
+                className="group/option relative space-y-6 rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6 transition-all duration-300 animate-in slide-in-from-bottom-2 dark:border-slate-800/80 dark:bg-slate-900/60"
               >
                 <button
                   type="button"
                   onClick={() => removeOption(optIdx)}
-                  className="absolute -right-3 -top-3 z-10 rounded-full border border-red-50 bg-white p-2 text-red-500 opacity-0 shadow-lg transition-all hover:bg-red-500 hover:text-white group-hover/option:opacity-100 dark:border-red-500/20 dark:bg-slate-900 dark:text-red-300"
+                  className="absolute -right-3 -top-3 z-10 rounded-full border border-rose-200 bg-white p-2 text-rose-500 opacity-0 shadow-lg transition-all hover:bg-rose-500 hover:text-white group-hover/option:opacity-100 dark:border-rose-500/20 dark:bg-slate-900 dark:text-rose-300"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -346,7 +346,7 @@ const MenuItemModal = ({
                     <input
                       type="text"
                       placeholder="Ví dụ: Kích cỡ, Topping..."
-                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-[#C17C4A]/20 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_name`] ? 'ring-2 ring-red-500' : ''}`}
+                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_name`] ? 'ring-2 ring-red-500' : ''}`}
                       value={opt.name}
                       onChange={(e) => updateOption(optIdx, 'name', e.target.value)}
                     />
@@ -363,7 +363,7 @@ const MenuItemModal = ({
                     <label className="flex h-[44px] cursor-pointer items-center justify-center rounded-2xl bg-white shadow-sm transition-colors hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 cursor-pointer rounded border-slate-100 text-[#56372B] focus:ring-[#C17C4A]/30 dark:border-slate-700"
+                        className="h-4 w-4 cursor-pointer rounded border-slate-100 text-indigo-600 focus:ring-indigo-500/30 dark:border-slate-700"
                         checked={opt.required ?? false}
                         onChange={(e) => updateOption(optIdx, 'required', e.target.checked)}
                       />
@@ -379,7 +379,7 @@ const MenuItemModal = ({
                     <input
                       type="number"
                       placeholder="Max"
-                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-sm outline-none transition focus:ring-2 focus:ring-[#C17C4A]/20 dark:bg-slate-900 dark:text-slate-100 ${errors[`option_${optIdx}_max`] ? 'ring-2 ring-red-500' : ''}`}
+                      className={`w-full rounded-2xl border-none bg-white px-4 py-3 text-center text-sm font-bold text-slate-900 shadow-sm outline-none transition focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-900 dark:text-slate-100 ${errors[`option_${optIdx}_max`] ? 'ring-2 ring-red-500' : ''}`}
                       value={opt.maxSelection}
                       onChange={(e) =>
                         updateOption(optIdx, 'maxSelection', parseInt(e.target.value) || 1)
@@ -407,7 +407,7 @@ const MenuItemModal = ({
                     <button
                       type="button"
                       onClick={() => addValue(optIdx)}
-                      className="flex items-center gap-1 text-[10px] font-black uppercase text-[#C17C4A] transition-colors hover:text-[#56372B] dark:text-[#D8986A]"
+                      className="flex items-center gap-1 text-[10px] font-black uppercase text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400"
                     >
                       <Plus size={14} /> Thêm giá trị
                     </button>
@@ -423,7 +423,7 @@ const MenuItemModal = ({
                           <input
                             type="text"
                             placeholder="Tên (Size L, Thêm đường...)"
-                            className={`w-full rounded-xl border bg-white px-4 py-3 text-xs font-medium text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#C17C4A] dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_val_${valIdx}_name`] ? 'border-red-500' : 'border-[#E8DCD1] dark:border-[#352C26]'}`}
+                            className={`w-full rounded-xl border bg-white px-4 py-3 text-xs font-medium text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-600 ${errors[`option_${optIdx}_val_${valIdx}_name`] ? 'border-red-500' : 'border-slate-200/80 dark:border-slate-800'}`}
                             value={val.name}
                             onChange={(e) => updateValue(optIdx, valIdx, 'name', e.target.value)}
                           />
@@ -439,7 +439,7 @@ const MenuItemModal = ({
                             <input
                               type="number"
                               placeholder="+0"
-                              className="w-full rounded-xl border border-[#E8DCD1] bg-white py-3 pl-3 pr-8 text-xs font-bold text-[#56372B] shadow-sm outline-none transition focus:border-[#C17C4A] dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#D8986A]"
+                              className="w-full rounded-xl border border-slate-200/80 bg-white py-3 pl-3 pr-8 font-mono text-xs font-bold text-indigo-600 shadow-sm outline-none transition focus:border-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:text-indigo-400"
                               value={val.extraPrice}
                               onChange={(e) =>
                                 updateValue(

@@ -26,6 +26,7 @@ export const WebSocketInvalidator = () => {
   const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
   const canSubscribeProtectedTopics = Boolean(user) && canSubscribeOperations;
   const canSubscribePublicCatalog = isCustomerMenuPath(location.pathname);
+  const canSubscribeCatalog = Boolean(user) || canSubscribePublicCatalog;
   const canSubscribeSettings = Boolean(user) || canSubscribePublicCatalog;
   const settings = useSettingsStore((state) => state.settings);
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
@@ -100,13 +101,13 @@ export const WebSocketInvalidator = () => {
     }
   };
 
-  useWebSocket(canSubscribePublicCatalog ? '/topic/menu' : null, handleCatalogUpdate, {
+  useWebSocket(canSubscribeCatalog ? '/topic/menu' : null, handleCatalogUpdate, {
     scope: 'public',
   });
-  useWebSocket(canSubscribePublicCatalog ? '/topic/combos' : null, handleCatalogUpdate, {
+  useWebSocket(canSubscribeCatalog ? '/topic/combos' : null, handleCatalogUpdate, {
     scope: 'public',
   });
-  useWebSocket(canSubscribePublicCatalog ? '/topic/categories' : null, handleCatalogUpdate, {
+  useWebSocket(canSubscribeCatalog ? '/topic/categories' : null, handleCatalogUpdate, {
     scope: 'public',
   });
   useWebSocket(

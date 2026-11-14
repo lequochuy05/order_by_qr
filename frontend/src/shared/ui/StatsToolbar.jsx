@@ -19,23 +19,25 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
   };
 
   return (
-    <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-2xl border border-[#E8DCD1] bg-white p-3 shadow-sm transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] sm:p-4 md:flex-row md:items-center md:justify-between">
+    <div className="mb-6 flex min-w-0 flex-col gap-4 rounded-3xl border border-[#1E293B] bg-white/90 p-4 shadow-sm backdrop-blur-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90 sm:p-5 md:flex-row md:items-center md:justify-between">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <span className="mr-2 font-bold text-slate-700 dark:text-slate-200">{title}</span>
-        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-950 min-[480px]:flex min-[480px]:items-center">
-          <Calendar size={18} className="text-slate-500 dark:text-slate-400" />
+        <span className="mr-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {title}
+        </span>
+        <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-xl border border-[#1E293B]/20 bg-slate-50/80 px-3 py-2 dark:border-[#1E293B] dark:bg-slate-950/60 min-[480px]:flex min-[480px]:items-center">
+          <Calendar size={16} className="text-slate-400 dark:text-slate-500" />
           <input
             type="date"
             aria-label="Từ ngày"
-            className="min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-100"
+            className="min-w-0 bg-transparent text-xs font-semibold text-slate-800 outline-none dark:text-slate-100"
             value={formatBusinessDate(dateRange.from)}
             onChange={(e) => handleDateChange('from', e.target.value)}
           />
-          <span className="hidden text-slate-400 dark:text-slate-500 min-[480px]:inline">-</span>
+          <span className="hidden text-slate-400 dark:text-slate-500 min-[480px]:inline font-bold">-</span>
           <input
             type="date"
             aria-label="Đến ngày"
-            className="col-start-2 min-w-0 bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-100"
+            className="col-start-2 min-w-0 bg-transparent text-xs font-semibold text-slate-800 outline-none dark:text-slate-100"
             value={formatBusinessDate(dateRange.to)}
             onChange={(e) => handleDateChange('to', e.target.value)}
           />
@@ -44,14 +46,14 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
           <button
             type="button"
             onClick={() => setPreset(7)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-xl border border-[#1E293B]/25 bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-[#1E293B] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             7 ngày
           </button>
           <button
             type="button"
             onClick={() => setPreset(30)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="rounded-xl border border-[#1E293B]/25 bg-white/90 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-[#1E293B] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             30 ngày
           </button>
@@ -59,7 +61,7 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
             <button
               type="button"
               onClick={onApply}
-              className="flex items-center gap-1.5 rounded-xl bg-[#56372B] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#432A21] dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-700 active:scale-95 dark:bg-indigo-500 dark:hover:bg-indigo-600"
             >
               <Filter size={14} />
               Áp dụng
@@ -71,9 +73,9 @@ const StatsToolbar = ({ dateRange, setDateRange, onApply, onExport, title }) => 
         <button
           type="button"
           onClick={onExport}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 sm:w-auto"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-emerald-600/20 transition-all hover:from-emerald-700 hover:to-teal-700 active:scale-95 sm:w-auto"
         >
-          <Download size={16} /> Xuất CSV
+          <Download size={14} /> Xuất CSV
         </button>
       )}
     </div>

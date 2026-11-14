@@ -27,7 +27,7 @@ const ImageUploadField = ({
           </div>
           <label
             htmlFor={inputId}
-            className="absolute bottom-0 right-0 cursor-pointer rounded-full bg-orange-500 p-2 text-white shadow-md transition-transform hover:scale-110 hover:bg-orange-600"
+            className="absolute bottom-0 right-0 cursor-pointer rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 p-2 text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-110"
             aria-label={changeLabel}
           >
             <Upload size={18} />
@@ -44,8 +44,8 @@ const ImageUploadField = ({
       <div
         className={`group relative flex h-40 flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed p-2 text-center transition-all duration-300 ${
           preview
-            ? 'border-orange-200 bg-orange-50/20 dark:border-orange-500/30 dark:bg-orange-500/10'
-            : 'border-slate-100 bg-slate-50/50 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-orange-500/40'
+            ? 'border-indigo-200 bg-indigo-50/20 dark:border-indigo-500/30 dark:bg-indigo-500/10'
+            : 'border-slate-200/80 bg-slate-50/50 hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-indigo-500/40'
         }`}
       >
         {preview ? (

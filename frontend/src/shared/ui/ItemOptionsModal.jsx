@@ -161,16 +161,16 @@ const ItemOptionsModal = ({
               <h3 className="text-base font-black text-gray-900 dark:text-white leading-tight line-clamp-2 transition-colors">
                 {item.name}
               </h3>
-              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 transition-colors">
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-colors">
                 {labels.basePrice}
               </p>
-              <p className="text-sm font-black text-orange-600 dark:text-orange-400 transition-colors">
+              <p className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 transition-colors">
                 {fmtVND(item.price)}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition-colors"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
             >
               <X size={18} />
             </button>
@@ -183,22 +183,22 @@ const ItemOptionsModal = ({
             return (
               <div
                 key={opt.id}
-                className={`space-y-3 rounded-2xl border p-3 transition-colors ${
+                className={`space-y-3 rounded-2xl border p-3.5 transition-colors ${
                   invalid
                     ? 'border-red-200 bg-red-50/70 dark:border-red-500/30 dark:bg-red-500/10'
-                    : 'border-gray-100 bg-gray-50/60 dark:border-slate-800 dark:bg-slate-950/40'
+                    : 'border-slate-100 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-950/40'
                 }`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h4 className="text-xs font-black text-gray-800 dark:text-white uppercase tracking-widest transition-colors">
+                  <h4 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest transition-colors">
                     {opt.name}
                   </h4>
                   {opt.required && (
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase transition-colors ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-colors ${
                         invalid
-                          ? 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300'
-                          : 'bg-orange-50 text-orange-500 dark:bg-orange-500/10 dark:text-orange-300'
+                          ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300'
+                          : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-300'
                       }`}
                     >
                       {labels.required}
@@ -214,15 +214,15 @@ const ItemOptionsModal = ({
                       onClick={() => handleOptionSelect(opt.id, val.id, opt.maxSelection)}
                       className={`min-h-14 rounded-2xl border px-3 py-2 text-left transition-all active:scale-[0.98] ${
                         isOptionSelected(opt.id, val.id, opt.maxSelection)
-                          ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm dark:border-orange-400 dark:bg-orange-500/10 dark:text-orange-300'
-                          : 'border-gray-100 bg-white text-gray-700 hover:border-orange-200 dark:border-slate-800 dark:bg-slate-900 dark:text-gray-200 dark:hover:border-orange-500/50'
+                          ? 'border-indigo-500 bg-indigo-50/80 text-indigo-700 shadow-sm dark:border-indigo-400 dark:bg-indigo-950/40 dark:text-indigo-300'
+                          : 'border-slate-200/80 bg-white text-slate-700 hover:border-indigo-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-500/50'
                       }`}
                     >
                       <span className="block text-xs font-black leading-tight line-clamp-2">
                         {val.name}
                       </span>
                       {val.extraPrice > 0 && (
-                        <span className="mt-1 block text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                        <span className="mt-1 block text-[11px] font-bold font-mono text-indigo-600 dark:text-indigo-400">
                           +{fmtVND(val.extraPrice)}
                         </span>
                       )}
@@ -235,20 +235,20 @@ const ItemOptionsModal = ({
         </div>
 
         <div
-          className="sticky bottom-0 z-10 border-t border-gray-100 bg-white/95 px-5 py-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/95"
+          className="sticky bottom-0 z-10 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-md transition-colors dark:border-slate-800 dark:bg-slate-900/95"
           style={{ paddingBottom: 'calc(1rem + var(--safe-area-inset-bottom))' }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               {labels.subtotal}
             </span>
-            <span className="text-xl font-black text-orange-600 dark:text-orange-400">
+            <span className="text-xl font-black font-mono text-indigo-600 dark:text-indigo-400">
               {fmtVND(calculateTotalPrice())}
             </span>
           </div>
           <button
             onClick={handleConfirm}
-            className="w-full py-3.5 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center justify-center"
+            className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center"
           >
             <span>{labels.addToCart}</span>
           </button>

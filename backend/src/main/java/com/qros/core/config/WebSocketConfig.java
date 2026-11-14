@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.Collection;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
@@ -23,8 +25,10 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -55,16 +59,28 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final UserDetailsService userDetailsService;
     private final AppProperties appProperties;
     private final TokenBlacklistService tokenBlacklistService;
+    private final RoleHierarchy roleHierarchy;
 
     public WebSocketConfig(
             JwtService jwtService,
             UserDetailsService userDetailsService,
             AppProperties appProperties,
             TokenBlacklistService tokenBlacklistService) {
+        this(jwtService, userDetailsService, appProperties, tokenBlacklistService, null);
+    }
+
+    @Autowired
+    public WebSocketConfig(
+            JwtService jwtService,
+            UserDetailsService userDetailsService,
+            AppProperties appProperties,
+            TokenBlacklistService tokenBlacklistService,
+            @Autowired(required = false) RoleHierarchy roleHierarchy) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.appProperties = appProperties;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.roleHierarchy = roleHierarchy != null ? roleHierarchy : authorities -> authorities;
     }
 
     /**
@@ -250,8 +266,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         }
 
         Set<String> allowedRoles = PROTECTED_TOPICS.get(destination);
+        Collection<? extends GrantedAuthority> reachable =
+                roleHierarchy.getReachableGrantedAuthorities(auth.getAuthorities());
         boolean allowed =
-                auth.getAuthorities().stream().anyMatch(authority -> allowedRoles.contains(authority.getAuthority()));
+                reachable.stream().anyMatch(authority -> allowedRoles.contains(authority.getAuthority()));
         if (!allowed) {
             throw new AccessDeniedException("Insufficient role for topic " + destination);
         }

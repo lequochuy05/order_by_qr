@@ -42,21 +42,43 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
 
   return (
     <header
-      className={`sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-between border-b border-[#E8DCD1] bg-white shadow-sm transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] ${
+      className={`relative sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-between border-b border-[#1E293B]/20 bg-white/90 backdrop-blur-md shadow-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90 ${
         isCompactViewport ? 'h-16 gap-2 px-3' : 'h-20 gap-4 px-6'
       }`}
     >
-      <div className={`flex min-w-0 items-center ${isCompactViewport ? 'gap-2' : 'gap-4'}`}>
+      {/* Decorative diagonal rain animation */}
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        {RAIN_STREAKS.map((streak) => (
+          <span
+            key={streak.id}
+            className="admin-rain-drop"
+            style={{
+              left: streak.left,
+              width: `${streak.width}px`,
+              height: `${streak.height}px`,
+              animationDuration: streak.duration,
+              animationDelay: streak.delay,
+              '--rain-opacity': streak.opacity,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Left: Sidebar Toggle & Page Title */}
+      <div className={`relative z-10 flex min-w-0 items-center ${isCompactViewport ? 'gap-2' : 'gap-4'}`}>
         <button
           onClick={toggleSidebar}
-          className="flex shrink-0 p-2 hover:bg-[#F7F0E7] rounded-xl text-[#56372B] transition-colors dark:text-[#D8CCC4] dark:hover:bg-[#2A221E]"
+          className="flex shrink-0 p-2.5 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors dark:text-slate-300 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
           aria-label="Chuyển đổi menu thanh bên"
         >
           <Menu size={22} />
         </button>
 
         <h1
-          className={`truncate font-extrabold tracking-tight text-[#2D1D16] dark:text-[#F7F0E7] ${
+          className={`truncate font-extrabold tracking-tight text-slate-900 dark:text-white ${
             isCompactViewport ? 'text-base' : 'text-xl'
           }`}
         >
@@ -64,78 +86,83 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
         </h1>
       </div>
 
-      {/* User Actions */}
+      {/* Right: Actions, WebSocket, Notifications & Profile */}
       <div
-        className={`flex shrink-0 items-center ${isCompactViewport ? 'gap-1' : 'gap-3 lg:gap-5'}`}
+        className={`relative z-10 flex shrink-0 items-center ${isCompactViewport ? 'gap-1.5' : 'gap-3 lg:gap-5'}`}
       >
         {/* WebSocket Status Badge */}
         {!isCompactViewport && (
           <div
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black tracking-wider transition-all ${
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition-all border ${
               wsConnected
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
-                : 'bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/50'
+                : 'bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/50'
             }`}
             title={wsConnected ? 'WebSocket connected' : 'WebSocket disconnected'}
           >
-            {wsConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {wsConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
+            {wsConnected ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Trực tuyến</span>
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                <span>Ngoại tuyến</span>
+              </>
+            )}
           </div>
         )}
 
+        {/* Notifications Icon Button */}
         {!isCompactViewport && (
           <button
-            className="relative p-2.5 text-[#6B5D55] rounded-xl transition-colors hover:bg-[#F7F0E7] dark:text-[#BDB0A4] dark:hover:bg-[#2A221E]"
+            className="relative p-2.5 text-slate-500 rounded-xl transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             title="Thông báo hệ thống"
           >
             <Bell size={19} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-[#C17C4A] rounded-full border-2 border-white dark:border-[#1F1A17]"></span>
+            <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full ring-2 ring-white dark:ring-slate-900" />
           </button>
         )}
 
+        {/* User Card & Profile */}
         <div
-          className={`flex items-center border-l border-[#E8DCD1] dark:border-[#352C26] ${
-            isCompactViewport ? 'gap-1 pl-2' : 'gap-3 pl-4'
+          className={`flex items-center border-l border-slate-200/80 dark:border-slate-800 ${
+            isCompactViewport ? 'gap-1.5 pl-2' : 'gap-3 pl-4'
           }`}
         >
           {!isCompactViewport && (
             <div className="max-w-36 text-right">
-              <p className="truncate text-sm font-bold leading-tight text-[#2D1D16] dark:text-[#F7F0E7]">
+              <p className="truncate text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
                 {user?.fullName || 'Người dùng'}
               </p>
-              <p className="text-[10px] font-extrabold text-[#C17C4A] uppercase tracking-wider">
+              <span className="inline-block text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md mt-0.5">
                 {preferences.language === 'en'
                   ? formatEnglishRole(user?.role)
                   : fmtRole(user?.role)}
-              </p>
+              </span>
             </div>
           )}
 
-          {/* Avatar */}
+          {/* User Avatar */}
           <div
-            className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[#E8DCD1] bg-[#F7F0E7] dark:border-[#352C26] dark:bg-[#2A221E] ${
+            className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 bg-slate-100 dark:border-slate-700/80 dark:bg-slate-800 shadow-sm ${
               isCompactViewport ? 'h-9 w-9' : 'h-10 w-10'
             }`}
           >
             {user?.avatarUrl ? (
               <img src={user?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <User className="text-[#C17C4A]" size={20} />
+              <User className="text-indigo-600 dark:text-indigo-400" size={20} />
             )}
           </div>
 
-          <button
-            onClick={logout}
-            className="p-2 text-[#9C8E85] hover:text-rose-600 transition-colors dark:text-[#82756B] dark:hover:text-rose-400"
-            title={preferences.language === 'en' ? 'Sign out' : 'Đăng xuất'}
-          >
-            <LogOut size={19} />
-          </button>
+          {/* Fullscreen Button */}
           {!isCompactViewport && (
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="p-2 text-[#9C8E85] transition-colors hover:text-[#56372B] dark:text-[#82756B] dark:hover:text-[#D8CCC4]"
+              className="p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 rounded-xl dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
               title={
                 preferences.language === 'en'
                   ? isFullscreen
@@ -146,9 +173,18 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
                     : 'Toàn màn hình'
               }
             >
-              {isFullscreen ? <Minimize2 size={19} /> : <Maximize2 size={19} />}
+              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </button>
           )}
+
+          {/* Logout Button */}
+          <button
+            onClick={logout}
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors dark:text-slate-500 dark:hover:text-rose-400 dark:hover:bg-rose-950/30"
+            title={preferences.language === 'en' ? 'Sign out' : 'Đăng xuất'}
+          >
+            <LogOut size={19} />
+          </button>
         </div>
       </div>
     </header>
@@ -207,5 +243,32 @@ const formatEnglishRole = (role) => {
   };
   return roles[role] || role;
 };
+
+const RAIN_STREAKS = [
+  { id: 1, left: '-2%', width: 1.5, height: 28, duration: '1.2s', delay: '-0.3s', opacity: 0.5 },
+  { id: 2, left: '3%', width: 1, height: 22, duration: '1.5s', delay: '-1.1s', opacity: 0.35 },
+  { id: 3, left: '7%', width: 2, height: 38, duration: '0.95s', delay: '-0.6s', opacity: 0.65 },
+  { id: 4, left: '12%', width: 1.5, height: 30, duration: '1.3s', delay: '-1.4s', opacity: 0.45 },
+  { id: 5, left: '16%', width: 1, height: 24, duration: '1.6s', delay: '-0.2s', opacity: 0.4 },
+  { id: 6, left: '21%', width: 2, height: 42, duration: '1.05s', delay: '-0.9s', opacity: 0.7 },
+  { id: 7, left: '26%', width: 1.5, height: 32, duration: '1.25s', delay: '-1.7s', opacity: 0.5 },
+  { id: 8, left: '30%', width: 1, height: 26, duration: '1.45s', delay: '-0.5s', opacity: 0.35 },
+  { id: 9, left: '35%', width: 2, height: 40, duration: '0.9s', delay: '-1.2s', opacity: 0.65 },
+  { id: 10, left: '40%', width: 1.5, height: 28, duration: '1.35s', delay: '-0.8s', opacity: 0.5 },
+  { id: 11, left: '45%', width: 1, height: 22, duration: '1.55s', delay: '-0.1s', opacity: 0.4 },
+  { id: 12, left: '50%', width: 2, height: 36, duration: '1.0s', delay: '-1.5s', opacity: 0.7 },
+  { id: 13, left: '54%', width: 1.5, height: 30, duration: '1.4s', delay: '-0.4s', opacity: 0.45 },
+  { id: 14, left: '59%', width: 1, height: 25, duration: '1.65s', delay: '-1.0s', opacity: 0.35 },
+  { id: 15, left: '64%', width: 2, height: 44, duration: '0.95s', delay: '-0.7s', opacity: 0.65 },
+  { id: 16, left: '68%', width: 1.5, height: 28, duration: '1.15s', delay: '-1.3s', opacity: 0.5 },
+  { id: 17, left: '73%', width: 1, height: 24, duration: '1.5s', delay: '-0.3s', opacity: 0.4 },
+  { id: 18, left: '78%', width: 2, height: 38, duration: '1.05s', delay: '-1.6s', opacity: 0.65 },
+  { id: 19, left: '82%', width: 1.5, height: 32, duration: '1.25s', delay: '-0.6s', opacity: 0.5 },
+  { id: 20, left: '87%', width: 1, height: 26, duration: '1.45s', delay: '-1.2s', opacity: 0.35 },
+  { id: 21, left: '92%', width: 2, height: 40, duration: '1.0s', delay: '-0.5s', opacity: 0.7 },
+  { id: 22, left: '96%', width: 1.5, height: 30, duration: '1.3s', delay: '-1.5s', opacity: 0.45 },
+  { id: 23, left: '100%', width: 1, height: 24, duration: '1.6s', delay: '-0.8s', opacity: 0.35 },
+  { id: 24, left: '103%', width: 2, height: 36, duration: '1.1s', delay: '-0.2s', opacity: 0.6 },
+];
 
 export default AdminHeader;

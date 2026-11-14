@@ -60,7 +60,7 @@ const TakeawayManagement = () => {
   };
 
   return (
-    <div className="min-h-screen min-w-0 bg-transparent p-0 sm:p-3 lg:p-6">
+    <div className="w-full min-w-0 space-y-6 p-0 sm:p-3 lg:p-6">
       <ManagementHeader
         title="Bán mang về"
         addButtonText="Tạo đơn mới"
@@ -71,7 +71,7 @@ const TakeawayManagement = () => {
       <div className="mt-6">
         {isLoading ? (
           <div className="flex justify-center p-20">
-            <Loader2 className="animate-spin text-[#C17C4A]" size={40} />
+            <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
           </div>
         ) : error ? (
           <div className="flex min-h-[420px] items-center justify-center p-6">
@@ -88,13 +88,13 @@ const TakeawayManagement = () => {
             </div>
           </div>
         ) : orders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[#9C8E85] dark:text-[#82756B] space-y-4">
-            <div className="w-24 h-24 bg-[#F7F0E7] dark:bg-[#2A221E] rounded-3xl flex items-center justify-center shadow-sm">
-              <ShoppingBag size={40} className="text-[#C17C4A]" />
+          <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500 space-y-4">
+            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-950/40 rounded-3xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
+              <ShoppingBag size={36} />
             </div>
             <div className="text-center">
-              <p className="text-lg font-black text-[#2D1D16] dark:text-[#F7F0E7]">Chưa có đơn mang về</p>
-              <p className="text-sm font-medium text-[#6B5D55] dark:text-[#BDB0A4] mt-1">Bấm "Tạo đơn mới" để bắt đầu phục vụ khách mang đi.</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">Chưa có đơn mang về</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Bấm "Tạo đơn mới" để bắt đầu phục vụ khách mang đi.</p>
             </div>
           </div>
         ) : (
@@ -114,15 +114,15 @@ const TakeawayManagement = () => {
               return (
                 <div
                   key={order.id}
-                  className="bg-white dark:bg-[#1F1A17] rounded-3xl border border-[#E8DCD1] dark:border-[#352C26] p-5 shadow-sm hover:shadow-md transition-all"
+                  className="rounded-3xl border border-[#1E293B] bg-white/90 p-5 shadow-sm backdrop-blur-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 dark:border-[#1E293B] dark:bg-[#0F172A]/90"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <h3 className="text-lg font-black text-[#2D1D16] dark:text-[#F7F0E7]">
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white">
                         Đơn #{order.id}
                       </h3>
-                      <div className="flex items-center gap-2 text-xs font-semibold text-[#6B5D55] dark:text-[#BDB0A4] mt-1">
-                        <Clock size={12} />
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1">
+                        <Clock size={13} />
                         <span>{timeAgo}</span>
                       </div>
                     </div>
@@ -133,14 +133,14 @@ const TakeawayManagement = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-[#6B5D55] dark:text-[#BDB0A4] mb-3">
-                    <ShoppingBag size={14} className="text-[#C17C4A]" />
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 mb-3">
+                    <ShoppingBag size={14} className="text-indigo-600 dark:text-indigo-400" />
                     <span>{itemCount} món</span>
                   </div>
 
-                  <div className="mb-4">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[#9C8E85] dark:text-[#82756B]">Tổng tiền:</p>
-                    <p className="text-2xl font-black text-[#56372B] dark:text-[#D8986A]">
+                  <div className="mb-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/60">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Tổng tiền:</p>
+                    <p className="text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-0.5">
                       {fmtVND(finalAmount)}
                     </p>
                   </div>
@@ -148,14 +148,14 @@ const TakeawayManagement = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handleDetail(order)}
-                      className="flex items-center justify-center gap-1 rounded-xl border border-[#E8DCD1] dark:border-[#352C26] bg-white dark:bg-[#1F1A17] px-3 py-2.5 text-xs font-bold text-[#56372B] dark:text-[#F7F0E7] hover:bg-[#F7F0E7] dark:hover:bg-[#2A221E] transition-colors"
+                      className="flex items-center justify-center gap-1 rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       Chi tiết
                     </button>
                     {finalAmount > 0 && (
                       <button
                         onClick={() => handlePay(order)}
-                        className="flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 transition-colors"
+                        className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
                       >
                         Thanh toán
                       </button>
@@ -182,7 +182,7 @@ const TakeawayManagement = () => {
         key={detailModal.open ? detailModal.order?.id || 'detail-closed' : 'detail-closed'}
         isOpen={detailModal.open}
         onClose={() => setDetailModal({ open: false, order: null })}
-        table={{}}
+        table={{ displayName: 'Đơn mang về' }}
         order={detailModal.order}
         onOrderUpdate={async () => {
           if (detailModal.order?.id) {
@@ -197,7 +197,7 @@ const TakeawayManagement = () => {
         key={payModal.open ? payModal.order?.id || 'pay-closed' : 'pay-closed'}
         isOpen={payModal.open}
         onClose={() => setPayModal({ open: false, order: null })}
-        table={{}}
+        table={{ displayName: 'Đơn mang về' }}
         order={payModal.order}
         currentUser={user}
         onPaymentSuccess={() => {

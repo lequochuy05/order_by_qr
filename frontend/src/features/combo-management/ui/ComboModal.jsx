@@ -165,7 +165,7 @@ const ComboModal = ({
             <FormLabel required className="!mb-0">
               Thành phần Combo
             </FormLabel>
-            <span className="rounded-lg bg-orange-50 px-2 py-0.5 text-[10px] font-bold text-orange-500 dark:bg-orange-500/10 dark:text-orange-300">
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
               Chọn các món lẻ
             </span>
           </div>
@@ -173,7 +173,7 @@ const ComboModal = ({
           <div
             className={`overflow-hidden rounded-[1.5rem] border-2 divide-y divide-slate-100 transition-all dark:divide-slate-800 ${
               errors.items
-                ? 'border-red-500 bg-red-50/10 dark:bg-red-500/10'
+                ? 'border-rose-500 bg-rose-50/10 dark:bg-rose-500/10'
                 : 'border-slate-100 bg-slate-50/30 dark:border-slate-800 dark:bg-slate-950/40'
             }`}
           >
@@ -183,14 +183,14 @@ const ComboModal = ({
                 return (
                   <div
                     key={m.id}
-                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-orange-50/50 dark:bg-orange-500/10' : 'hover:bg-white dark:hover:bg-slate-900'}`}
+                    className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-indigo-50/60 dark:bg-indigo-950/30' : 'hover:bg-white dark:hover:bg-slate-900'}`}
                   >
                     <label className="flex items-center gap-3 cursor-pointer flex-1 group">
                       <div
                         className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
                           selected
-                            ? 'bg-orange-500 border-orange-500 shadow-sm'
-                            : 'border-slate-200 bg-white group-hover:border-orange-300 dark:border-slate-700 dark:bg-slate-900'
+                            ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 shadow-sm'
+                            : 'border-slate-200 bg-white group-hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-900'
                         }`}
                       >
                         {selected && (
@@ -209,7 +209,7 @@ const ComboModal = ({
                         >
                           {m.name}
                         </p>
-                        <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                        <p className="text-[10px] font-medium font-mono text-slate-400 dark:text-slate-500">
                           {fmtVND(m.price)}
                         </p>
                       </div>
@@ -219,7 +219,7 @@ const ComboModal = ({
                         <input
                           type="number"
                           min="1"
-                          className="w-14 rounded-xl border border-orange-200 bg-white px-2 py-2 text-center text-xs font-black text-orange-600 shadow-sm outline-none dark:border-orange-500/30 dark:bg-slate-900 dark:text-orange-300"
+                          className="w-14 rounded-xl border border-indigo-200 bg-white px-2 py-2 text-center font-mono text-xs font-black text-indigo-600 shadow-sm outline-none dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400"
                           value={selected.quantity}
                           onChange={(e) => handleUpdateQty(m.id, e.target.value)}
                         />
@@ -243,7 +243,7 @@ const ComboModal = ({
             type="number"
             min="0"
             suffix="VNĐ"
-            inputClassName="text-orange-600"
+            inputClassName="font-mono font-black text-indigo-600 dark:text-indigo-400"
             value={formData.price}
             onChange={(value) => {
               setFormData({ ...formData, price: parseInt(value, 10) || 0 });

@@ -13,9 +13,9 @@ const RecommendationSection = ({
   if (recommendations.length === 0 || selectedCategory !== 'all') return null;
 
   return (
-    <div className="-mx-4 mb-4 mt-8 border-b border-t border-orange-100/50 bg-gradient-to-r from-orange-50/80 to-transparent p-4 backdrop-blur-sm transition-colors dark:border-slate-800/50 dark:from-slate-800/80 dark:to-transparent">
-      <h2 className="mb-3 flex items-center gap-2 px-4 text-sm font-bold uppercase tracking-wider text-orange-900 transition-colors dark:text-orange-300">
-        <Sparkles size={16} className="fill-orange-500 text-orange-500" /> Gợi ý cho bạn (
+    <div className="-mx-4 mb-4 mt-8 border-b border-t border-indigo-100/60 bg-gradient-to-r from-indigo-50/70 via-indigo-50/30 to-transparent p-4 backdrop-blur-sm transition-colors dark:border-indigo-900/40 dark:from-indigo-950/40 dark:to-transparent">
+      <h2 className="mb-3 flex items-center gap-2 px-4 text-xs font-bold uppercase tracking-wider text-indigo-900 transition-colors dark:text-indigo-300">
+        <Sparkles size={15} className="fill-indigo-600 text-indigo-600 dark:fill-indigo-400 dark:text-indigo-400" /> Gợi ý cho bạn (
         {timeContext})
       </h2>
       <div className="flex gap-3 overflow-x-auto px-4 pb-2 no-scrollbar">

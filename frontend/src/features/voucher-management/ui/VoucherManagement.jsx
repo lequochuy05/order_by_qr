@@ -21,7 +21,7 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 const VOUCHER_STATUS = {
   [VOUCHER_STATUSES.ACTIVE]: {
     text: 'Đang dùng',
-    color: 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-300',
+    color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300',
   },
   [VOUCHER_STATUSES.INACTIVE]: {
     text: 'Ngừng',
@@ -29,11 +29,11 @@ const VOUCHER_STATUS = {
   },
   [VOUCHER_STATUSES.EXPIRED]: {
     text: 'Hết hạn',
-    color: 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-300',
+    color: 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300',
   },
   [VOUCHER_STATUSES.EXHAUSTED]: {
     text: 'Hết lượt',
-    color: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
+    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
   },
 };
 
@@ -181,7 +181,7 @@ const VoucherManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -190,42 +190,42 @@ const VoucherManager = () => {
             return (
               <div
                 key={v.id}
-                className="flex h-full flex-col rounded-3xl border border-[#E8DCD1] bg-white p-6 shadow-sm transition-all hover:border-[#C17C4A] hover:shadow-md dark:border-[#352C26] dark:bg-[#1F1A17]"
+                className="flex h-full flex-col rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500 hover:shadow-xl dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:hover:border-indigo-500/40"
               >
                 <div className="flex justify-between items-start mb-4">
-                  <div className="rounded-2xl bg-[#F7F0E7] p-3 text-[#C17C4A] dark:bg-[#2A221E] dark:text-[#D8986A]">
-                    <Ticket size={24} />
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                    <Ticket size={22} />
                   </div>
                   <span
-                    className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${status.color}`}
+                    className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${status.color}`}
                   >
                     {status.text}
                   </span>
                 </div>
 
-                <h3 className="mb-1 text-xl font-black uppercase tracking-wider text-[#2D1D16] dark:text-[#F7F0E7]">
+                <h3 className="mb-1 text-lg font-black font-mono uppercase tracking-wider text-slate-900 dark:text-white">
                   {v.code}
                 </h3>
-                <div className="mb-4 text-2xl font-black text-[#56372B] dark:text-[#D8986A]">
+                <div className="mb-4 text-2xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
                   {v.discountPercent ? `${v.discountPercent}%` : fmtVND(v.discountAmount)}
                 </div>
                 {/* ... Thông tin chi tiết ... */}
-                <div className="mb-6 space-y-2 text-xs text-[#6B5D55] dark:text-[#BDB0A4]">
+                <div className="mb-6 space-y-2 text-xs text-slate-500 dark:text-slate-400">
                   <div className="flex justify-between">
                     <span>Đã dùng:</span>{' '}
-                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
                       {v.usedCount}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Giới hạn:</span>{' '}
-                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 font-mono">
                       {v.usageLimit === 0 ? '∞' : v.usageLimit}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Hạn dùng:</span>{' '}
-                    <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
                       {fmtDate(v.validTo) || 'Vô hạn'}
                     </span>
                   </div>
@@ -246,7 +246,7 @@ const VoucherManager = () => {
       )}
 
       {!loading && vouchers.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-[#E8DCD1] bg-white py-20 text-center italic text-[#9C8E85] transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#82756B]">
+        <div className="rounded-3xl border border-dashed border-slate-200/80 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800/80 dark:bg-slate-900/90 dark:text-slate-500">
           <Ticket size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy voucher nào.
         </div>

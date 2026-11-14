@@ -46,16 +46,16 @@ const toneStyles = {
     border: 'border-amber-100 dark:border-amber-500/20',
   },
   orange: {
-    icon: 'bg-orange-50 text-orange-600 ring-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:ring-orange-500/20',
-    code: 'text-orange-600 dark:text-orange-300',
-    eyebrow: 'text-orange-700 dark:text-orange-300',
-    border: 'border-orange-100 dark:border-orange-500/20',
+    icon: 'bg-indigo-50 text-indigo-600 ring-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:ring-indigo-500/20',
+    code: 'text-indigo-600 dark:text-indigo-300',
+    eyebrow: 'text-indigo-700 dark:text-indigo-300',
+    border: 'border-indigo-100 dark:border-indigo-500/20',
   },
   red: {
-    icon: 'bg-red-50 text-red-600 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/20',
-    code: 'text-red-600 dark:text-red-300',
-    eyebrow: 'text-red-700 dark:text-red-300',
-    border: 'border-red-100 dark:border-red-500/20',
+    icon: 'bg-rose-50 text-rose-600 ring-rose-100 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20',
+    code: 'text-rose-600 dark:text-rose-300',
+    eyebrow: 'text-rose-700 dark:text-rose-300',
+    border: 'border-rose-100 dark:border-rose-500/20',
   },
   slate: {
     icon: 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700',
@@ -66,13 +66,13 @@ const toneStyles = {
 };
 
 const actionBaseClass =
-  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto';
+  'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto';
 
 const actionVariants = {
   primary:
-    'bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600 active:scale-[0.98] dark:shadow-none',
+    'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/25 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98]',
   secondary:
-    'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800',
+    'border border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800',
 };
 
 const runClientAction = (action) => {

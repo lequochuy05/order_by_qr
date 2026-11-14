@@ -86,14 +86,14 @@ const AiStaffPanel = () => {
   );
 
   return (
-    <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm">
+    <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900/90">
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25">
             <Sparkles size={20} />
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-black text-slate-900 dark:text-white">Trợ lý bếp</h2>
+            <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white">Trợ lý bếp</h2>
             <p className="truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
               Dữ liệu bếp, bàn và order gần đây
             </p>
@@ -102,38 +102,38 @@ const AiStaffPanel = () => {
         <button
           type="button"
           onClick={resetChat}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200/80 px-3.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 active:scale-95 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
           title="Xoá phiên chat"
         >
-          <RotateCcw size={16} />
+          <RotateCcw size={15} />
           Làm mới chat
         </button>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex h-[360px] min-h-0 flex-col">
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4 custom-scrollbar">
             {messages.map((message, index) => (
               <div
                 key={`${message.role}-${index}`}
-                className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-2.5 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.role === 'assistant' && (
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-slate-700">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-sm">
                     <Bot size={14} />
                   </span>
                 )}
                 <p
-                  className={`max-w-[82%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                  className={`max-w-[82%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
                     message.role === 'user'
-                      ? 'rounded-br-md bg-orange-500 text-white'
-                      : 'rounded-bl-md border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
+                      ? 'rounded-br-md bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/20'
+                      : 'rounded-bl-md border border-slate-200/80 bg-slate-50 text-slate-800 shadow-sm dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-100'
                   }`}
                 >
                   {message.content}
                 </p>
                 {message.role === 'user' && (
-                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200 shadow-sm">
                     <UserRound size={14} />
                   </span>
                 )}
@@ -141,12 +141,12 @@ const AiStaffPanel = () => {
             ))}
 
             {isLoading && (
-              <div className="flex items-start gap-2">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-slate-700">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-sm">
                   <Bot size={14} />
                 </span>
-                <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  <Loader2 size={15} className="animate-spin" />
+                <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200/80 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300">
+                  <Loader2 size={15} className="animate-spin text-indigo-600 dark:text-indigo-400" />
                   Đang xem dữ liệu bếp...
                 </div>
               </div>
@@ -154,8 +154,8 @@ const AiStaffPanel = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-slate-100 p-3 dark:border-slate-800">
-            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-orange-500/20">
+          <div className="border-t border-slate-100 p-3.5 dark:border-slate-800">
+            <div className="flex items-end gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-2 transition-all focus-within:border-indigo-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950/80 dark:focus-within:bg-slate-950 dark:focus-within:ring-indigo-500/20">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -165,13 +165,13 @@ const AiStaffPanel = () => {
                 maxLength={500}
                 rows={2}
                 placeholder="Hỏi tình trạng bếp..."
-                className="min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400 disabled:cursor-wait dark:text-slate-100"
+                className="min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-xs font-medium text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-wait dark:text-slate-100"
               />
               <button
                 type="button"
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-700"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-800"
                 aria-label="Gửi câu hỏi cho trợ lý bếp"
               >
                 {isLoading ? <Loader2 size={17} className="animate-spin" /> : <Send size={17} />}
@@ -180,9 +180,9 @@ const AiStaffPanel = () => {
           </div>
         </div>
 
-        <aside className="border-t border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950 lg:border-l lg:border-t-0">
-          <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-700 dark:text-slate-200">
-            <MessageSquareText size={17} />
+        <aside className="border-t border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/60 lg:border-l lg:border-t-0">
+          <div className="mb-3 flex items-center gap-2 text-xs font-black tracking-wider uppercase text-slate-500 dark:text-slate-400">
+            <MessageSquareText size={15} />
             Câu hỏi nhanh
           </div>
           <div className="flex flex-col gap-2">
@@ -192,7 +192,7 @@ const AiStaffPanel = () => {
                 type="button"
                 onClick={() => sendMessage(suggestion)}
                 disabled={isLoading}
-                className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm font-bold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10 dark:hover:text-orange-200"
+                className="min-h-11 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-700 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
               >
                 {suggestion}
               </button>

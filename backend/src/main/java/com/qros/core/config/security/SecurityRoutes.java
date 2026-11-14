@@ -52,6 +52,10 @@ public final class SecurityRoutes {
 
     public static final String[] MANAGER_GET = {ApiRoutes.USERS, ApiRoutes.USERS + "/*"};
 
+    public static final String[] CASHIER_ORDER_HISTORY_GET = {
+        ApiRoutes.ANALYTICS + "/orders/history", ApiRoutes.ANALYTICS + "/orders/summary"
+    };
+
     public static final String[] ANALYTICS_GET = {ApiRoutes.ANALYTICS + "/**"};
 
     public static final String[] STAFF_READ_GET = {

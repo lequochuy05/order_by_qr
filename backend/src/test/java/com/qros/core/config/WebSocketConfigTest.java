@@ -85,6 +85,22 @@ class WebSocketConfigTest {
     }
 
     @Test
+    void adminCanSubscribeToKitchenTopicWithRoleHierarchy() {
+        org.springframework.security.access.hierarchicalroles.RoleHierarchy hierarchy =
+                org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl.fromHierarchy(
+                        "ROLE_ADMIN > ROLE_MANAGER \n ROLE_MANAGER > ROLE_CHEF");
+        WebSocketConfig hierarchicalConfig = new WebSocketConfig(
+                jwtService, userDetailsService, new AppProperties(), tokenBlacklistService, hierarchy);
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "admin", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        Message<byte[]> message = subscribeMessage("/topic/kitchen", auth);
+
+        assertThatCode(() -> hierarchicalConfig.webSocketAuthInterceptor()
+                        .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void unknownTopicIsDeniedByDefault() {
         Message<byte[]> message = subscribeMessage("/topic/internal-new-feature", null);
 

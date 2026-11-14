@@ -40,8 +40,8 @@ const passwordRules = [
 const hasValidPasswordPolicy = (value) => passwordRules.every((rule) => rule.test(value));
 
 const strengthMeta = [
-  { label: 'Yếu', barClass: 'bg-red-500', textClass: 'text-red-600' },
-  { label: 'Trung bình', barClass: 'bg-orange-500', textClass: 'text-orange-600' },
+  { label: 'Yếu', barClass: 'bg-rose-500', textClass: 'text-rose-600' },
+  { label: 'Trung bình', barClass: 'bg-amber-500', textClass: 'text-amber-600' },
   { label: 'Tốt', barClass: 'bg-emerald-500', textClass: 'text-emerald-600 dark:text-emerald-400' },
   { label: 'Mạnh', barClass: 'bg-emerald-600', textClass: 'text-emerald-700' },
 ];
@@ -241,29 +241,31 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center text-orange-500 dark:text-orange-400">
+      <div className="flex min-h-[420px] items-center justify-center text-indigo-600 dark:text-indigo-400">
         <Loader2 className="animate-spin" size={36} />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full min-w-0 max-w-7xl space-y-4 bg-slate-50 dark:bg-slate-950 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6 p-0 sm:p-3 lg:p-6 animate-in fade-in duration-500">
       {isForceChange && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-200 flex items-start gap-3">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+        <div className="flex items-start gap-3.5 rounded-3xl border border-amber-200/80 bg-amber-50/90 p-5 text-amber-900 shadow-sm dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+            <AlertTriangle size={20} />
+          </div>
           <div className="space-y-1">
-            <h3 className="font-bold text-sm sm:text-base text-amber-900 dark:text-amber-100">
+            <h3 className="text-base font-bold text-amber-900 dark:text-amber-100">
               Yêu cầu đổi mật khẩu bảo mật
             </h3>
-            <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300">
+            <p className="text-sm font-medium text-amber-800/90 dark:text-amber-300/90">
               Tài khoản của bạn vừa được cấp mới hoặc đặt lại mật khẩu. Vui lòng đổi sang mật khẩu mới trước khi tiếp tục thao tác trên hệ thống.
             </p>
           </div>
         </div>
       )}
 
-      <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <ProfileAvatarCard
           profile={profile}
           user={user}

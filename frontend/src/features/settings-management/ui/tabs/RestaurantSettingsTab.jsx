@@ -97,7 +97,7 @@ const RestaurantSettingsTab = ({
       </div>
 
       <SettingsGroup title={copy.restaurant.logoTitle}>
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950/60">
           {settings.logoUrl ? (
             <img
               src={settings.logoUrl}
@@ -112,7 +112,7 @@ const RestaurantSettingsTab = ({
           )}
         </div>
 
-        <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-orange-300 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-300">
+        <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300 bg-indigo-50/80 px-4 py-3 text-sm font-bold text-indigo-600 transition-all hover:border-indigo-400 hover:bg-indigo-100/80 active:scale-95 dark:border-indigo-500/40 dark:bg-indigo-950/30 dark:text-indigo-300">
           {uploadingLogo ? <Loader2 className="animate-spin" size={17} /> : <Upload size={17} />}
           {uploadingLogo ? copy.actions.uploading : copy.actions.uploadLogo}
           <input

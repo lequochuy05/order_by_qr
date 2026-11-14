@@ -149,8 +149,8 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
-      <div className="flex h-dvh min-h-dvh justify-center overflow-hidden bg-bg-warm transition-colors duration-500 dark:bg-slate-950">
-        <div className="safe-left safe-right relative flex h-dvh min-h-0 w-full max-w-md flex-col overflow-hidden bg-surface-warm shadow-2xl transition-colors duration-500 dark:bg-slate-900">
+      <div className="flex h-dvh min-h-dvh justify-center overflow-hidden bg-slate-100 transition-colors duration-500 dark:bg-slate-950">
+        <div className="safe-left safe-right relative flex h-dvh min-h-0 w-full max-w-md flex-col overflow-hidden bg-white shadow-2xl transition-colors duration-500 dark:bg-slate-900">
           <PullToRefresh
             className="flex-1"
             contentClassName="pb-[calc(8rem+var(--safe-area-inset-bottom))]"
@@ -173,7 +173,7 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
             />
 
             {currentOrder && (
-              <div className="sticky top-0 z-40 border-b border-[#E8DCD1] bg-[#F7F0E7]/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:border-[#352C26] dark:bg-[#14100E]/95">
+              <div className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 px-3 py-2 shadow-sm backdrop-blur-md transition-colors dark:border-slate-800/80 dark:bg-slate-900/95">
                 <CurrentOrderBanner
                   order={currentOrder}
                   onClick={() => setShowCurrentOrderSheet(true)}

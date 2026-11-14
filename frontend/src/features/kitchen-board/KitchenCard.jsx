@@ -35,7 +35,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
 
   return (
     <article
-      className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-900 ${priority.card}`}
+      className={`overflow-hidden rounded-2xl border bg-white/95 backdrop-blur-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-[#0F172A]/95 ${priority.card}`}
     >
       <div className={`h-1 ${priority.bar}`} />
 
@@ -43,7 +43,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {isTakeaway ? (
-              <span className="rounded-lg bg-purple-600 px-2.5 py-1 text-xs font-black text-white dark:bg-purple-700">
+              <span className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-2.5 py-1 text-xs font-black text-white shadow-sm">
                 Mang về
               </span>
             ) : (
@@ -51,7 +51,9 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
                 Bàn {item.tableName}
               </span>
             )}
-            <span className="text-xs font-semibold text-slate-400">Đơn #{item.orderId}</span>
+            <span className="text-xs font-semibold text-slate-400">
+              Đơn <span className="font-mono font-bold text-slate-600 dark:text-slate-300">#{item.orderId}</span>
+            </span>
             {item.batchNumber > 1 && (
               <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                 Đợt {item.batchNumber} (Gọi thêm)
@@ -65,7 +67,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
                 type="button"
                 onClick={handleCancel}
                 disabled={isProcessing}
-                className="rounded-lg p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-red-950/30"
+                className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/30"
                 title="Hủy món ăn"
               >
                 <Trash2 size={14} />
@@ -85,7 +87,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
                 {item.itemName}
               </h3>
             </div>
-            <span className="min-w-12 rounded-xl bg-[#F7F0E7] border border-[#E8DCD1] px-2.5 py-1.5 text-center text-lg font-black text-[#56372B] dark:bg-[#2A221E] dark:border-[#352C26] dark:text-[#D8986A]">
+            <span className="min-w-12 rounded-2xl bg-indigo-50 border border-indigo-200/60 px-3 py-1.5 text-center text-lg font-black font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-400 shadow-sm">
               x{item.quantity}
             </span>
           </div>
@@ -133,7 +135,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               icon={Flame}
               label="Bắt đầu nấu"
               loadingLabel="Đang chuyển món..."
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/25"
             />
           )}
           {status === ORDER_ITEM_STATUSES.COOKING && (
@@ -144,7 +146,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               icon={Check}
               label="Hoàn thành món"
               loadingLabel="Đang hoàn thành..."
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/25"
             />
           )}
           {status === ORDER_ITEM_STATUSES.FINISHED && (
@@ -215,9 +217,9 @@ const getPriority = (item) => {
 
   if (item.waitMinutes >= 20) {
     return {
-      card: 'border-red-300 ring-1 ring-red-100 dark:border-red-500/40 dark:ring-red-500/10',
-      bar: 'bg-red-500',
-      badge: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300',
+      card: 'border-rose-300 ring-1 ring-rose-100 dark:border-rose-500/40 dark:ring-rose-500/10',
+      bar: 'bg-rose-500',
+      badge: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300',
     };
   }
 

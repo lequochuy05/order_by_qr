@@ -92,6 +92,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/orders/history")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CASHIER')")
     public ApiResponse<Page<OrderResponse>> getOrderHistory(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -103,6 +104,7 @@ public class AnalyticsController {
     }
 
     @GetMapping("/orders/summary")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CASHIER')")
     public ApiResponse<Map<String, Object>> getOrderAnalytics(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

@@ -54,8 +54,8 @@ const KitchenBoardContent = () => {
   }, [filters.summary.overdue, overdueMinutes, settings.kitchenOverdueNotificationEnabled]);
 
   return (
-    <div className="min-h-screen w-full min-w-0 bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <section className="overflow-hidden rounded-3xl bg-white px-5 py-6 shadow-xl shadow-slate-200/70 dark:bg-slate-900 dark:text-slate-100 dark:shadow-none sm:px-7">
+    <div className="w-full min-w-0 space-y-6 text-slate-900 dark:text-slate-100">
+      <section className="overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 px-5 py-6 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:text-slate-100 sm:px-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-end">
           <KitchenToolbar
             wakeLock={notifications.wakeLock}
@@ -86,7 +86,7 @@ const KitchenBoardContent = () => {
 
       {kitchen.loading ? (
         <div className="flex h-64 items-center justify-center">
-          <Loader2 className="animate-spin text-orange-500" size={42} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={42} />
         </div>
       ) : viewMode === 'batch' ? (
         <BatchCookingView

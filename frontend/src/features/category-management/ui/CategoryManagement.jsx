@@ -227,7 +227,7 @@ const CategoryManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">

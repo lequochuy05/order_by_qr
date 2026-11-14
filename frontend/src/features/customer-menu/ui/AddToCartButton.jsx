@@ -5,9 +5,9 @@ const AddToCartButton = ({ onClick, disabled = false, label = 'Thêm vào giỏ'
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="inline-flex items-center gap-2 rounded-xl bg-[#56372B] hover:bg-[#432A21] dark:bg-[#C17C4A] dark:hover:bg-[#A86537] px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-800"
+    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:shadow-none"
   >
-    <ShoppingBasket size={18} />
+    <ShoppingBasket size={16} />
     <span>{label}</span>
   </button>
 );

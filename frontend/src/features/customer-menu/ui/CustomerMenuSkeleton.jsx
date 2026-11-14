@@ -6,7 +6,7 @@ const CustomerMenuSkeleton = () => (
   <div className="flex h-dvh min-h-dvh justify-center overflow-hidden bg-gray-100">
     <div className="safe-left safe-right h-dvh w-full max-w-md overflow-y-auto bg-white shadow-2xl">
       <div
-        className="rounded-b-[2.5rem] bg-orange-500 p-5 shadow-lg"
+        className="rounded-b-3xl bg-slate-900 border-b border-slate-800/80 p-5 shadow-xl"
         style={{ paddingTop: 'calc(1.25rem + var(--safe-area-inset-top))' }}
       >
         <div className="flex items-start justify-between gap-4">

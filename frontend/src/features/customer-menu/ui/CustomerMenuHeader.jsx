@@ -1,11 +1,4 @@
-import { Moon, Sun, Wifi, WifiOff, SunDim, CloudSun, MoonStar } from 'lucide-react';
-
-const GREETING_ICON = {
-  Sáng: <SunDim size={14} />,
-  Trưa: <CloudSun size={14} />,
-  Chiều: <CloudSun size={14} />,
-  Tối: <MoonStar size={14} />,
-};
+import { Moon, Sun, Wifi, WifiOff } from 'lucide-react';
 
 const CustomerMenuHeader = ({
   restaurantSettings,
@@ -17,7 +10,7 @@ const CustomerMenuHeader = ({
   loadingWeather,
 }) => (
   <div
-    className="rounded-b-3xl bg-[#56372B] px-5 pb-5 pt-3 text-[#F7F0E7] shadow-xl border-b border-[#432A21]"
+    className="rounded-b-3xl bg-slate-900 px-5 pb-5 pt-3 text-white shadow-xl border-b border-slate-800/80"
     style={{ paddingTop: 'calc(0.75rem + var(--safe-area-inset-top))' }}
   >
     <div className="flex items-center justify-between">
@@ -31,7 +24,7 @@ const CustomerMenuHeader = ({
         )}
 
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-black uppercase tracking-tight text-white">
+          <h1 className="truncate text-base font-black uppercase tracking-tight text-white">
             {restaurantSettings.restaurantName || 'QROS'}
           </h1>
         </div>
@@ -41,7 +34,7 @@ const CustomerMenuHeader = ({
         <button
           type="button"
           onClick={onToggleDarkMode}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-sm transition-all duration-300 hover:bg-white/20"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-sm transition-all duration-300 hover:bg-white/20 active:scale-95"
           aria-label="Chuyển chế độ sáng tối"
         >
           {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
@@ -49,10 +42,9 @@ const CustomerMenuHeader = ({
         <div
           className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wider transition-all duration-500 ${
             wsConnected
-              ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
-              : 'border-rose-400/50 bg-rose-500/20 text-rose-200'
+              ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+              : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
           }`}
-          style={{ fontSize: '10px' }}
         >
           {wsConnected ? <Wifi size={11} className="animate-pulse" /> : <WifiOff size={11} />}
           {wsConnected ? 'Trực tuyến' : 'Ngoại tuyến'}
@@ -61,20 +53,20 @@ const CustomerMenuHeader = ({
     </div>
 
     {/* Greeting + table number row */}
-    <div className="mt-3 flex items-center gap-2 text-sm text-[#F7F0E7]/90">
-      <span className="inline-flex items-center gap-1 rounded-full bg-[#C17C4A] px-3 py-0.5 text-xs font-black text-white shadow-sm">
+    <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-0.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25">
         Bàn {tableNumber || '?'}
       </span>
       {loadingWeather ? (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
+        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
           <span className="inline-block h-3 w-8 animate-pulse rounded-full bg-white/30" />
         </span>
       ) : weatherLine ? (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
+        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
           {weatherLine}
         </span>
       ) : (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
+        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
           Hôm nay bạn muốn thưởng thức món gì?
         </span>
       )}

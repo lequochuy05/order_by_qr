@@ -32,14 +32,14 @@ const PreferencesTab = ({ preferences, setPreferences, copy }) => (
         checked={preferences.darkMode}
         onChange={(value) => setPreferenceValue(setPreferences, 'darkMode', value)}
       />
-      <label className="grid gap-2 rounded-lg border border-slate-200 p-4 transition-colors dark:border-slate-800">
+      <label className="grid gap-2 rounded-2xl border border-slate-200/80 bg-white p-4 transition-all hover:border-indigo-200 dark:border-slate-800/80 dark:bg-slate-900/60 dark:hover:border-indigo-500/30">
         <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
           {copy.preferences.language}
         </span>
         <select
           value={preferences.language}
           onChange={(event) => setPreferenceValue(setPreferences, 'language', event.target.value)}
-          className="h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+          className="h-11 rounded-xl border border-slate-200/80 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-indigo-500/20"
         >
           <option value="vi">Tiếng Việt</option>
           <option value="en">English</option>

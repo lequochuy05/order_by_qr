@@ -17,7 +17,7 @@ const TableCard = ({
 }) => {
   const finalAmount = getOrderFinalAmount(order);
   const hasOrder = order && finalAmount > 0;
-  const isManager = userRole === 'ADMIN' || userRole === 'MANAGER'; // Cho phép cả Admin và Manager sửa/xóa bàn
+  const isManager = userRole === 'ADMIN' || userRole === 'MANAGER';
   const tableTitle = table.displayName || `Bàn ${table.tableNumber}`;
   const memberNumbers = table.memberTableNumbers || [];
   const totalCapacity = table.totalCapacity || table.capacity;
@@ -55,29 +55,52 @@ const TableCard = ({
     };
   }, [order?.createdAt]);
 
+  const statusTheme = (() => {
+    if (isWaitingPayment) {
+      return {
+        card: 'border-2 border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-amber-500/10 ring-2 ring-amber-400/40 animate-pulse',
+        badge: 'border border-amber-300/80 bg-amber-100/90 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 dark:border-amber-700',
+      };
+    }
+    switch (table.status) {
+      case TABLE_STATUSES.OCCUPIED:
+        return {
+          card: 'border border-indigo-400/70 bg-indigo-50/40 dark:bg-indigo-950/25 dark:border-indigo-500/50 shadow-sm shadow-indigo-500/10',
+          badge: 'border border-indigo-200/80 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/80',
+        };
+      case TABLE_STATUSES.INACTIVE:
+        return {
+          card: 'border border-rose-300/60 bg-rose-50/20 opacity-75 dark:bg-rose-950/20 dark:border-rose-900/40',
+          badge: 'border border-rose-200 bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800',
+        };
+      case TABLE_STATUSES.AVAILABLE:
+      default:
+        return {
+          card: 'border border-[#1E293B] bg-white/95 dark:bg-[#0F172A]/95',
+          badge: 'border border-slate-200/80 bg-slate-100 text-slate-600 dark:border-slate-700/80 dark:bg-slate-800 dark:text-slate-300',
+        };
+    }
+  })();
+
   return (
     <div
-      className={`group relative min-w-0 rounded-2xl border-2 p-4 transition-all hover:shadow-lg dark:bg-slate-900 dark:hover:shadow-slate-900/40
-      ${status.classes} 
-      ${isWaitingPayment ? 'animate-pulse bg-amber-50/50 ring-2 ring-amber-400 ring-offset-2 dark:bg-amber-500/10 dark:ring-offset-slate-950' : ''}
-      `}
-      style={isWaitingPayment ? { animationDuration: '2s' } : {}}
+      className={`group relative min-w-0 rounded-3xl p-5 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${statusTheme.card}`}
     >
-      <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
-        <h3 className="min-w-0 text-xl font-bold text-slate-800 dark:text-slate-100">
+      <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+        <h3 className="min-w-0 text-xl font-black text-slate-900 dark:text-white tracking-tight">
           {tableTitle}
         </h3>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span className="whitespace-nowrap rounded border border-white/60 bg-white/50 px-2 py-1 text-[10px] font-bold uppercase dark:border-slate-700 dark:bg-slate-900/60 sm:text-xs">
+          <span className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider sm:text-xs ${statusTheme.badge}`}>
             {status.label}
           </span>
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 mt-0.5">
             <button
               type="button"
               onClick={onMerge}
               aria-label={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
               title={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
-              className="rounded-lg border border-slate-100 bg-white p-1.5 text-[#C17C4A] shadow-sm transition hover:bg-[#F7F0E7] active:bg-[#EAE0D5] dark:border-slate-700 dark:bg-slate-900 dark:text-[#D8986A] dark:hover:bg-[#C17C4A]/10 dark:active:bg-[#C17C4A]/20"
+              className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-indigo-600 shadow-sm transition hover:bg-indigo-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
             >
               <Link2 size={14} />
             </button>
@@ -87,7 +110,7 @@ const TableCard = ({
                   type="button"
                   onClick={onEdit}
                   aria-label="Sửa bàn"
-                  className="rounded-lg border border-slate-100 bg-white p-1.5 text-blue-500 shadow-sm transition hover:bg-blue-50 active:bg-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-blue-500/10 dark:active:bg-blue-500/20"
+                  className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-slate-600 shadow-sm transition hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
                   title="Sửa bàn"
                 >
                   <Edit size={14} />
@@ -96,7 +119,7 @@ const TableCard = ({
                   type="button"
                   onClick={onDelete}
                   aria-label="Xóa bàn"
-                  className="rounded-lg border border-slate-100 bg-white p-1.5 text-rose-500 shadow-sm transition hover:bg-rose-50 active:bg-rose-100 dark:border-slate-700 dark:bg-slate-900 dark:text-rose-300 dark:hover:bg-rose-500/10 dark:active:bg-rose-500/20"
+                  className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-rose-600 shadow-sm transition hover:bg-rose-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/40"
                   title="Xóa bàn"
                 >
                   <Trash2 size={14} />
@@ -107,29 +130,29 @@ const TableCard = ({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[#6B5D55] dark:text-[#BDB0A4]">
-        <div className="flex items-center gap-1">
-          <Users size={14} />
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center gap-1 font-medium">
+          <Users size={14} className="text-slate-400" />
           <span>
             {table.guestCount ? `${table.guestCount} khách / ` : ''}
             {totalCapacity} chỗ
           </span>
         </div>
         {table.merged && (
-          <div className="flex items-center gap-1 rounded bg-[#F7F0E7] px-1.5 font-bold text-[#C17C4A] border border-[#C17C4A]/30 dark:bg-[#2A221E] dark:text-[#D8986A]">
-            <Link2 size={14} /> <span>{memberNumbers.join(' + ')}</span>
+          <div className="flex items-center gap-1 rounded-lg bg-indigo-50 px-2 py-0.5 font-bold text-indigo-700 border border-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40">
+            <Link2 size={13} /> <span>{memberNumbers.join(' + ')}</span>
           </div>
         )}
         {timeElapsed && (
-          <div className="flex items-center gap-1 rounded bg-amber-50 px-1.5 font-semibold text-amber-700 border border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-300">
-            <Clock size={14} /> <span>{timeElapsed}</span>
+          <div className="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 font-bold text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40">
+            <Clock size={13} /> <span>{timeElapsed}</span>
           </div>
         )}
       </div>
 
-      <div className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-[#9C8E85] dark:text-[#82756B]">Tạm tính:</p>
-        <p className="text-2xl font-black text-[#56372B] dark:text-[#D8986A]">
+      <div className="mb-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/60">
+        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Tạm tính</p>
+        <p className="text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-0.5">
           {hasOrder ? fmtVND(finalAmount) : fmtVND(0)}
         </p>
       </div>
@@ -137,22 +160,22 @@ const TableCard = ({
       <div className="grid min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2">
         <button
           onClick={onDetail}
-          className="btn-secondary flex min-w-0 items-center justify-center gap-1 rounded-xl border border-[#E8DCD1] bg-white px-2 py-2 text-xs font-bold text-[#56372B] transition hover:bg-[#F7F0E7] dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#F7F0E7] dark:hover:bg-[#2A221E]"
+          className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          <FileText className="shrink-0" size={16} /> <span className="truncate">Chi tiết</span>
+          <FileText className="shrink-0 text-slate-400" size={15} /> <span className="truncate">Chi tiết</span>
         </button>
         <button
           onClick={onAddItems}
-          className="btn-primary flex min-w-0 items-center justify-center gap-1 rounded-xl bg-[#F7F0E7] px-2 py-2 text-xs font-bold text-[#56372B] transition hover:bg-[#EAE0D5] dark:bg-[#2A221E] dark:text-[#D8986A] dark:hover:bg-[#352C26]"
+          className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100 active:scale-95 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-900/40"
         >
-          <PlusCircle className="shrink-0" size={16} /> <span className="truncate">Thêm món</span>
+          <PlusCircle className="shrink-0" size={15} /> <span className="truncate">Thêm món</span>
         </button>
         {hasOrder && (
           <button
             onClick={onPay}
-            className="btn-pay flex items-center justify-center gap-1 rounded-xl bg-emerald-600 px-2 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 active:scale-98 min-[360px]:col-span-2"
+            className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 min-[360px]:col-span-2 transition-all"
           >
-            <CreditCard size={16} /> Thanh toán
+            <CreditCard size={15} /> Thanh toán
           </button>
         )}
       </div>

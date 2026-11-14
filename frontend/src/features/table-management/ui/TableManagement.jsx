@@ -248,7 +248,7 @@ const TableManager = () => {
   };
 
   return (
-    <div className="min-h-screen min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         title="Quản lý bàn ăn"
         showFilter={true}
@@ -267,7 +267,7 @@ const TableManager = () => {
       <div className="mt-6">
         {loading ? (
           <div className="flex justify-center p-20">
-            <Loader2 className="animate-spin text-orange-500" size={40} />
+            <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
           </div>
         ) : (
           <TableGrid

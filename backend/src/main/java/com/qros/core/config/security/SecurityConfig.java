@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .referrerPolicy(referrer -> referrer.policy(
                                 ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                         .permissionsPolicyHeader(permissions -> permissions.policy(
-                                "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)")))
+                                "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self), unload=(self)")))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
                 }))
@@ -89,6 +89,8 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, MANAGER_GET)
                         .hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.GET, CASHIER_ORDER_HISTORY_GET)
+                        .hasAnyRole("MANAGER", "CASHIER")
                         .requestMatchers(HttpMethod.GET, ANALYTICS_GET)
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.GET, STAFF_READ_GET)

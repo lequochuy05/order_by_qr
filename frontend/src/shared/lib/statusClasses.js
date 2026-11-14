@@ -40,14 +40,14 @@ const COLOR_CLASSES = {
     border: 'border-orange-400 dark:border-orange-500/30',
   },
   brand: {
-    bg: 'bg-[#56372B]/10 dark:bg-[#EAD8C7]/15',
-    text: 'text-[#56372B] dark:text-[#EAD8C7]',
-    border: 'border-[#56372B]/30 dark:border-[#EAD8C7]/30',
+    bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    border: 'border-indigo-200/60 dark:border-indigo-800/40',
   },
   terracotta: {
-    bg: 'bg-[#C17C4A]/10 dark:bg-[#D8986A]/15',
-    text: 'text-[#C17C4A] dark:text-[#D8986A]',
-    border: 'border-[#C17C4A]/30 dark:border-[#D8986A]/30',
+    bg: 'bg-amber-50 dark:bg-amber-950/40',
+    text: 'text-amber-600 dark:text-amber-400',
+    border: 'border-amber-200/60 dark:border-amber-800/40',
   },
 };
 

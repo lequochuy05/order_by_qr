@@ -5,9 +5,9 @@ const SubmitOrderButton = ({ onClick, disabled = false, loading = false, totalLa
     type="button"
     onClick={onClick}
     disabled={disabled || loading}
-    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#56372B] hover:bg-[#432A21] dark:bg-[#C17C4A] dark:hover:bg-[#A86537] px-5 py-4 text-sm font-black uppercase tracking-wider text-white shadow-lg shadow-[#56372B]/20 dark:shadow-[#C17C4A]/25 transition-all disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:shadow-none"
+    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 px-5 py-4 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-indigo-600/25 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:shadow-none"
   >
-    <Send size={18} />
+    <Send size={16} />
     <span>{loading ? 'Đang gửi...' : `Đặt món${totalLabel ? ` - ${totalLabel}` : ''}`}</span>
   </button>
 );

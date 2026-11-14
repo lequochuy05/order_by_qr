@@ -39,7 +39,7 @@ const WifiSettingsTab = ({
       </SettingsGroup>
 
       <SettingsGroup title={copy.wifi.previewTitle}>
-        <div className="flex min-h-64 flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 p-5 transition-colors dark:border-slate-700 dark:bg-slate-950">
+        <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200/80 bg-white p-5 shadow-inner transition-colors dark:border-slate-800 dark:bg-slate-900/60">
           {wifiQrValue ? (
             <>
               <QRCodeCanvas value={wifiQrValue} size={190} includeMargin />

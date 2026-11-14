@@ -143,7 +143,11 @@ class WebSocketService {
     if (clearQueued) {
       this.onConnectCallbacks = [];
     }
-    [...this.subscriptions].forEach((subscription) => subscription.unsubscribe());
+    [...this.subscriptions].forEach((subscription) => {
+      try {
+        subscription.unsubscribe();
+      } catch {}
+    });
     this.subscriptions.clear();
     this.connected = false;
     if (clearListeners) {

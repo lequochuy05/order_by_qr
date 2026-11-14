@@ -103,7 +103,7 @@ const SharedModal = ({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`flex min-w-0 flex-col bg-white text-slate-900 shadow-2xl transition-colors dark:bg-slate-900 dark:text-slate-100 ${resolvedMaxWidth} ${styles.panel} ${className}`}
+        className={`flex min-w-0 flex-col rounded-3xl border border-[#1E293B] bg-white/95 text-slate-900 shadow-2xl backdrop-blur-md transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/95 dark:text-slate-100 ${resolvedMaxWidth} ${styles.panel} ${className}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         {children}

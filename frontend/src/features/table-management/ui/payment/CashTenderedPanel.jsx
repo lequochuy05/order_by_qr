@@ -79,10 +79,10 @@ const CashTenderedPanel = ({
           value={cashReceived}
           onChange={(e) => onChangeCashReceived(e.target.value)}
           placeholder={`Nhập số tiền (Mặc định: ${fmtVND(finalAmount)})`}
-          className={`w-full rounded-xl border bg-white px-4 py-3 text-lg font-black tracking-wide text-slate-900 shadow-sm transition-all focus:outline-none focus:ring-2 dark:bg-slate-950 dark:text-white ${
+          className={`w-full rounded-2xl border bg-white px-4 py-3 font-mono text-lg font-black tracking-wide text-slate-900 shadow-sm transition-all focus:outline-none focus:ring-2 dark:bg-slate-950 dark:text-white ${
             isInsufficient
               ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200 dark:border-rose-600 dark:focus:ring-rose-950'
-              : 'border-slate-200 focus:border-emerald-500 focus:ring-emerald-200 dark:border-slate-700 dark:focus:ring-emerald-950'
+              : 'border-slate-200/80 focus:border-emerald-500 focus:ring-emerald-200 dark:border-slate-700 dark:focus:ring-emerald-950'
           }`}
         />
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400 dark:text-slate-500">
@@ -159,7 +159,7 @@ const CashTenderedPanel = ({
             </span>
           </div>
           <span
-            className={`text-base font-black ${
+            className={`font-mono text-base font-black ${
               isInsufficient ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
             }`}
           >

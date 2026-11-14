@@ -197,7 +197,7 @@ const ComboManager = () => {
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50/50 p-0 font-sans dark:bg-slate-950/50 sm:space-y-6 sm:p-3 lg:p-6">
+    <div className="w-full min-w-0 space-y-4 p-0 font-sans sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm kiếm combo..."
         searchTerm={searchTerm}
@@ -216,7 +216,7 @@ const ComboManager = () => {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
-          <Loader2 className="animate-spin text-orange-500" size={48} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={48} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">

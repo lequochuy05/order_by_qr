@@ -19,5 +19,6 @@ export { default as PullToRefresh } from './PullToRefresh.jsx';
 export { default as SaveButton } from './SaveButton.jsx';
 export { default as SharedModal } from './SharedModal.jsx';
 export { default as StatsToolbar } from './StatsToolbar.jsx';
+export { default as SpotlightGrid } from './SpotlightGrid.jsx';
 export { default as ItemOptionsModal } from './ItemOptionsModal.jsx';
 export { default as SystemErrorPage } from './SystemErrorPage.jsx';

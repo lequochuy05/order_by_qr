@@ -17,7 +17,7 @@ const PaymentActions = ({
           type="button"
           onClick={onCashPay}
           disabled={loading || cashDisabled}
-          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-green-600 py-4 text-lg font-black text-white shadow-xl shadow-green-100 transition-all hover:bg-green-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:shadow-none dark:disabled:bg-slate-700"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-base font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:shadow-none dark:disabled:bg-slate-700"
         >
           {loading ? <Loader2 className="animate-spin" /> : <CreditCard size={24} />}
           XÁC NHẬN THANH TOÁN

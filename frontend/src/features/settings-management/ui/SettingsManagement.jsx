@@ -137,7 +137,7 @@ const SettingsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] items-center justify-center text-orange-500 dark:text-orange-400">
+      <div className="flex min-h-[420px] items-center justify-center text-indigo-600 dark:text-indigo-400">
         <Loader2 className="animate-spin" size={36} />
       </div>
     );

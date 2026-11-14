@@ -266,7 +266,7 @@ const MenuManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
@@ -283,7 +283,7 @@ const MenuManager = () => {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-slate-200 bg-white py-20 text-center italic text-slate-400 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+        <div className="rounded-3xl border border-dashed border-[#1E293B]/40 bg-white/90 py-20 text-center italic text-slate-400 backdrop-blur-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:text-slate-500">
           <UtensilsCrossed size={40} className="mx-auto mb-4 opacity-30" />
           Không tìm thấy món ăn phù hợp hoặc chưa có dữ liệu.
         </div>

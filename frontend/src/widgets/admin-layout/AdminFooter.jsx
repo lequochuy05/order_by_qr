@@ -4,12 +4,21 @@ const AdminFooter = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="flex min-h-14 w-full min-w-0 flex-col items-center justify-between border-t border-[#E8DCD1] bg-white px-4 py-3 text-xs text-[#6B5D55] transition-colors sm:px-8 md:flex-row dark:border-[#352C26] dark:bg-[#1F1A17] dark:text-[#BDB0A4]">
-      <div className="flex items-center gap-1 font-medium">
+    <footer className="flex min-h-14 w-full min-w-0 flex-col items-center justify-between border-t border-[#1E293B]/20 bg-white/80 backdrop-blur-md px-4 sm:px-8 py-3 text-xs text-slate-500 transition-colors md:flex-row dark:border-[#1E293B] dark:bg-[#0F172A]/80 dark:text-slate-400">
+      <div className="flex items-center gap-1.5 font-medium">
         <span>© {currentYear}</span>
-        <span className="font-bold text-[#2D1D16] dark:text-[#F7F0E7]">wuchuy05</span>
+        <span className="font-extrabold text-slate-800 dark:text-slate-200">QROS</span>
+        <span className="text-slate-400 dark:text-slate-600">•</span>
+        <span>Hệ thống Quản lý Nhà hàng & Gọi món QR</span>
       </div>
-      <div className="text-[11px] text-[#9C8E85] dark:text-[#82756B]">QROS</div>
+      <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
+        <span className="inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          Hệ thống ổn định
+        </span>
+        <span>•</span>
+        <span className="font-mono font-semibold">v2.1</span>
+      </div>
     </footer>
   );
 };

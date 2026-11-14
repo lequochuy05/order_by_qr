@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 
 const ModalHeader = ({ title, subtitle, onClose, disabled = false, className = '' }) => (
   <div
-    className={`flex shrink-0 items-center justify-between border-b border-[#E8DCD1] bg-white px-6 py-5 transition-colors dark:border-[#352C26] dark:bg-[#1F1A17] sm:px-8 sm:py-6 ${className}`}
+    className={`flex shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-6 py-5 transition-colors dark:border-slate-800/80 dark:bg-slate-900 sm:px-8 sm:py-6 ${className}`}
   >
     <div className="min-w-0">
       <h2 className="truncate text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">

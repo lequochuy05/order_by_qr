@@ -160,7 +160,7 @@ const StaffManager = () => {
   };
 
   return (
-    <div className="min-h-screen w-full min-w-0 space-y-4 bg-slate-50 p-0 sm:space-y-6 sm:p-3 lg:p-6 dark:bg-slate-950">
+    <div className="w-full min-w-0 space-y-4 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
         searchPlaceholder="Tìm tên, email, sđt..."
         searchTerm={searchTerm}
@@ -180,7 +180,7 @@ const StaffManager = () => {
 
       {loading ? (
         <div className="flex justify-center p-20">
-          <Loader2 className="animate-spin text-orange-500" size={40} />
+          <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
         </div>
       ) : (
         <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -15,20 +15,23 @@ const PaymentModalContent = (props) => {
   const { isOpen, onClose, table, order } = props;
   const payment = usePaymentModal(props);
 
-  if (!isOpen || !table) return null;
+  if (!isOpen || !table || !order) return null;
+
+  const orderTitle = table?.displayName || (table?.tableNumber ? `Bàn ${table.tableNumber}` : 'Đơn mang về');
+  const orderCode = order?.id ? `#${order.id.toString().slice(-6)}` : '';
 
   return (
     <SharedModal
       isOpen={isOpen}
       onClose={onClose}
       className="max-w-lg !overflow-hidden !p-0"
-      ariaLabel={table?.displayName ? `Thanh toán ${table.displayName}` : `Thanh toán hóa đơn bàn ${table.tableNumber}`}
+      ariaLabel={`Thanh toán ${orderTitle}`}
     >
       <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50 px-6 py-4 transition-colors dark:border-slate-800 dark:bg-slate-950/60">
         <div>
           <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Thanh toán hóa đơn</h3>
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            {table?.displayName || `Bàn ${table.tableNumber}`} • #{order.id.toString().slice(-6)}
+            {orderTitle} {orderCode ? `• ${orderCode}` : ''}
           </p>
         </div>
         <button

@@ -4,19 +4,19 @@ import KitchenCard from './KitchenCard';
 
 const toneClasses = {
   orange: {
-    column: 'border-orange-100 bg-orange-50/50 dark:border-orange-500/10 dark:bg-orange-500/5',
-    icon: 'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300',
-    count: 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300',
+    column: 'border-amber-200/80 bg-amber-50/40 dark:border-amber-900/40 dark:bg-amber-950/20',
+    icon: 'bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25',
+    count: 'bg-amber-100 font-mono text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
   },
   blue: {
-    column: 'border-blue-100 bg-blue-50/50 dark:border-blue-500/10 dark:bg-blue-500/5',
-    icon: 'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300',
-    count: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
+    column: 'border-indigo-200/80 bg-indigo-50/40 dark:border-indigo-900/40 dark:bg-indigo-950/20',
+    icon: 'bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-500/25',
+    count: 'bg-indigo-100 font-mono text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300',
   },
   green: {
-    column: 'border-emerald-100 bg-emerald-50/50 dark:border-emerald-500/10 dark:bg-emerald-500/5',
-    icon: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300',
-    count: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+    column: 'border-emerald-200/80 bg-emerald-50/40 dark:border-emerald-900/40 dark:bg-emerald-950/20',
+    icon: 'bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25',
+    count: 'bg-emerald-100 font-mono text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300',
   },
 };
 
@@ -36,37 +36,37 @@ const KitchenColumn = ({
 
   return (
     <section
-      className={`flex min-h-[520px] flex-col overflow-hidden rounded-2xl border ${classes.column}`}
+      className={`flex min-h-[520px] flex-col overflow-hidden rounded-3xl border ${classes.column}`}
     >
-      <header className="sticky top-0 z-10 border-b border-white/80 bg-white/90 px-4 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
+      <header className="sticky top-0 z-10 border-b border-white/80 bg-white/90 px-5 py-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <span className={`rounded-xl p-2.5 ${classes.icon}`}>
+          <div className="flex items-start gap-3.5">
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${classes.icon}`}>
               {React.createElement(icon, { size: 20 })}
             </span>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="font-black text-slate-800 dark:text-slate-100">{title}</h2>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-black ${classes.count}`}>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-black ${classes.count}`}>
                   {items.length}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+              <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{subtitle}</p>
             </div>
           </div>
 
           {overdueCount > 0 && (
-            <span className="rounded-full bg-red-100 px-2 py-1 text-[11px] font-black text-red-600 dark:bg-red-500/10 dark:text-red-300">
+            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
               {overdueCount} trễ
             </span>
           )}
         </div>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="flex-1 space-y-3 overflow-y-auto p-3.5">
         {items.length === 0 ? (
-          <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/50 px-4 text-center dark:border-slate-700 dark:bg-slate-900/40">
-            <span className={`mb-3 rounded-2xl p-3 ${classes.icon}`}>
+          <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/50 px-4 text-center dark:border-slate-800 dark:bg-slate-900/40">
+            <span className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${classes.icon}`}>
               <ChefHat size={24} />
             </span>
             <p className="text-sm font-bold text-slate-600 dark:text-slate-300">

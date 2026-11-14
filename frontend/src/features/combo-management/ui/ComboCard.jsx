@@ -4,54 +4,56 @@ import { fmtVND, fmtStatus } from '@shared/lib/formatters.js';
 import { EditDeleteActions } from '@shared/ui';
 
 const ComboCard = ({ combo, onEdit, onDelete, onToggle, isEditing = false }) => (
-  <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#E8DCD1] bg-white p-6 shadow-sm transition-all hover:border-[#C17C4A] hover:shadow-xl dark:border-[#352C26] dark:bg-[#1F1A17]">
-    {/* Trang trí góc thẻ */}
-    <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full bg-[#F7F0E7] transition-colors group-hover:bg-[#EAE0D5] dark:bg-[#2A221E] dark:group-hover:bg-[#352C26]" />
-
-    <div className="flex items-center justify-between mb-5 relative z-10">
+  <div className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-500 hover:shadow-xl dark:border-[#1E293B] dark:bg-[#0F172A]/90 dark:hover:border-indigo-500/40">
+    <div className="flex items-center justify-between mb-5">
       <div
-        className={`rounded-2xl p-3 ${combo.active ? 'bg-[#56372B] text-white dark:bg-[#C17C4A]' : 'bg-[#F7F0E7] text-[#9C8E85] dark:bg-[#2A221E] dark:text-[#82756B]'}`}
+        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shadow-lg ${
+          combo.active
+            ? 'bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-indigo-500/25'
+            : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 shadow-none'
+        }`}
       >
-        <Package size={24} />
+        <Package size={22} />
       </div>
       <span
-        className={`text-[11px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${fmtStatus('active', combo.active).color}`}
+        className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${fmtStatus('active', combo.active).color}`}
       >
         {fmtStatus('active', combo.active).label}
       </span>
     </div>
 
-    <div className="flex-grow relative z-10">
-      <h3 className="mb-2 text-xl font-bold text-[#2D1D16] transition-colors group-hover:text-[#C17C4A] dark:text-[#F7F0E7] dark:group-hover:text-[#D8986A]">
+    <div className="flex-grow">
+      <h3 className="mb-2 text-xl font-black text-slate-900 transition-colors group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
         {combo.name}
       </h3>
       {combo.description && (
-        <p className="mb-3 line-clamp-2 text-sm font-medium leading-snug text-[#9C8E85] dark:text-[#82756B]">
+        <p className="mb-4 line-clamp-2 text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400">
           {combo.description}
         </p>
       )}
-      <div className="mb-4 text-xl font-black tracking-tight text-[#56372B] dark:text-[#D8986A]">
+      <div className="mb-5 text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
         {fmtVND(combo.price)}
       </div>
     </div>
 
-    <div className="relative z-10 mt-auto">
+    <div className="mt-auto space-y-3">
       <button
+        type="button"
         onClick={() => onToggle(combo.id)}
-        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-bold transition-all ${
+        className={`flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-bold transition-all active:scale-95 ${
           combo.active
-            ? 'border-red-100 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300'
-            : 'border-green-100 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-300'
+            ? 'border-rose-200/60 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-600 dark:hover:text-white'
+            : 'border-emerald-200/60 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-600 dark:hover:text-white'
         }`}
       >
-        {combo.active ? <PowerOff size={18} /> : <Power size={18} />}
+        {combo.active ? <PowerOff size={15} /> : <Power size={15} />}
         {combo.active ? 'Tạm ngưng' : 'Kích hoạt'}
       </button>
       <EditDeleteActions
         onEdit={() => onEdit(combo.id)}
         onDelete={() => onDelete(combo.id)}
         editing={isEditing}
-        className="mt-3"
+        className="pt-3"
       />
     </div>
   </div>

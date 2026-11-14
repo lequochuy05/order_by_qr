@@ -227,7 +227,7 @@ const VoucherModal = ({
             <button
               type="button"
               onClick={generateCode}
-              className="mt-[26px] rounded-2xl bg-slate-100 p-4 text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="mt-[26px] rounded-2xl border border-indigo-200/60 bg-indigo-50 p-4 text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white"
               title="Tạo mã ngẫu nhiên"
               aria-label="Tạo mã voucher ngẫu nhiên"
             >
@@ -236,8 +236,8 @@ const VoucherModal = ({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[#E8DCD1] bg-[#F7F0E7]/60 p-5 dark:border-[#352C26] dark:bg-[#150E0B]">
-          <p className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-[#56372B] dark:text-[#D8986A]">
+        <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800/80 dark:bg-slate-800/40">
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Hình thức giảm giá
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

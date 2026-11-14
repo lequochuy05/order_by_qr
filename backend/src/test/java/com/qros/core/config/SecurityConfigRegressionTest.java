@@ -84,6 +84,9 @@ class SecurityConfigRegressionTest {
                         ".requestMatchers(HttpMethod.GET, MANAGER_GET)\n                        .hasRole(\"MANAGER\")");
         assertThat(source)
                 .contains(
+                        ".requestMatchers(HttpMethod.GET, CASHIER_ORDER_HISTORY_GET)\n                        .hasAnyRole(\"MANAGER\", \"CASHIER\")");
+        assertThat(source)
+                .contains(
                         ".requestMatchers(HttpMethod.GET, ANALYTICS_GET)\n                        .hasRole(\"MANAGER\")");
         assertThat(source).contains("RoleHierarchy");
     }

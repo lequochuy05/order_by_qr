@@ -37,18 +37,18 @@ const ShoppingCartButton = forwardRef(({ cart, onOpenCart }, ref) => {
     >
       <button
         onClick={onOpenCart}
-        className={`max-w-md mx-auto w-full bg-[#56372B]/95 backdrop-blur-lg hover:bg-[#432A21] border border-[#C17C4A]/40 text-white p-4 rounded-2xl shadow-2xl shadow-[#56372B]/40 flex items-center justify-between transition-all active:scale-95 ${bumping ? 'animate-cart-bump' : ''}`}
+        className={`max-w-md mx-auto w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white p-4 rounded-2xl shadow-xl shadow-indigo-600/30 flex items-center justify-between transition-all active:scale-95 ${bumping ? 'animate-cart-bump' : ''}`}
       >
         <div className="flex items-center gap-3">
           <div className="relative">
-            <ShoppingCart size={24} />
-            <span className="absolute -top-2 -right-2 bg-[#C17C4A] text-white text-[11px] font-black w-5.5 h-5.5 rounded-full flex items-center justify-center border-2 border-[#56372B] shadow-sm">
+            <ShoppingCart size={22} />
+            <span className="absolute -top-2 -right-2.5 bg-white text-indigo-600 text-[11px] font-black font-mono w-5 h-5 rounded-full flex items-center justify-center border-2 border-indigo-600 shadow-sm">
               {totalItems}
             </span>
           </div>
-          <span className="font-bold text-sm">Xem giỏ hàng</span>
+          <span className="font-bold text-xs uppercase tracking-wider">Xem giỏ hàng</span>
         </div>
-        <span className="font-black text-lg">{fmtVND(cartAmount)}</span>
+        <span className="font-black font-mono text-base sm:text-lg">{fmtVND(cartAmount)}</span>
       </button>
     </div>
   );

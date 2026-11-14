@@ -2,9 +2,14 @@ import MenuCard from './MenuCard.jsx';
 
 const MenuItemGrid = ({ items, getCartItemQty, onAddToCart, onFly }) => (
   <>
-    <h2 className="mb-4 mt-6 text-sm font-black uppercase tracking-tight text-gray-800 transition-colors dark:text-white">
-      Thực đơn
-    </h2>
+    <div className="mb-4 mt-6 flex items-center justify-between">
+      <h2 className="text-base font-black tracking-tight text-slate-900 transition-colors dark:text-white">
+        Danh sách món ngon
+      </h2>
+      <span className="text-xs font-bold font-mono text-slate-400 dark:text-slate-500">
+        {items.length} món
+      </span>
+    </div>
     <div className="grid grid-cols-2 gap-4">
       {items.map((item, index) => (
         <div
@@ -24,7 +29,7 @@ const MenuItemGrid = ({ items, getCartItemQty, onAddToCart, onFly }) => (
       ))}
     </div>
     {items.length === 0 && (
-      <div className="py-10 text-center text-xs italic text-gray-400">
+      <div className="py-12 text-center text-xs italic text-slate-400 dark:text-slate-500">
         Danh mục này hiện tại chưa có món.
       </div>
     )}

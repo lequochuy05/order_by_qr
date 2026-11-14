@@ -119,7 +119,7 @@ const MergeTableModal = ({
       <ModalHeader title="Gộp bàn" subtitle="Một phiên, một order chung" onClose={onClose} />
 
       <form id={FORM_ID} onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-6">
-        <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-semibold text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
+        <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50/80 p-4 text-sm font-semibold text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-300">
           <div className="flex items-center gap-2 text-base font-black">
             <UsersRound size={18} /> {displayName}
           </div>
@@ -136,8 +136,8 @@ const MergeTableModal = ({
                 key={table.id}
                 className={`cursor-pointer rounded-xl border p-3 transition ${
                   checked
-                    ? 'border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-500/40 dark:bg-orange-500/10 dark:text-orange-200'
-                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
+                    ? 'border-indigo-300 bg-indigo-50/80 text-indigo-700 dark:border-indigo-500/40 dark:bg-indigo-950/40 dark:text-indigo-300 shadow-sm'
+                    : 'border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -146,7 +146,7 @@ const MergeTableModal = ({
                     checked={checked}
                     disabled={!checked && selectedIds.length >= MAX_MERGE}
                     onChange={() => toggleTable(table.id)}
-                    className="h-4 w-4 accent-orange-500"
+                    className="h-4 w-4 accent-indigo-600"
                   />
                   <span className="font-black">Bàn {table.tableNumber}</span>
                 </div>
@@ -164,7 +164,7 @@ const MergeTableModal = ({
             <select
               value={primaryTableId}
               onChange={(event) => setPrimaryTableId(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-orange-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              className="w-full rounded-2xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950 dark:text-slate-100"
             >
               <option value="">Chọn bàn chính</option>
               {selectedTables.map((table) => (
@@ -182,7 +182,7 @@ const MergeTableModal = ({
               min="1"
               value={guestCount}
               onChange={(event) => setGuestCount(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-orange-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              className="w-full rounded-2xl border border-slate-200/80 bg-white px-3.5 py-2.5 font-mono text-sm font-bold text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950 dark:text-slate-100"
               placeholder="Ví dụ: 6"
             />
           </label>

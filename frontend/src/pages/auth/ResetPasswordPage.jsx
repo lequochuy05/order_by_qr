@@ -75,25 +75,19 @@ const ResetPasswordPage = () => {
   };
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center bg-brand-surface bg-[#F7F0E7] p-4 transition-colors dark:bg-[#14100E]"
-      style={{ backgroundColor: 'var(--brand-surface, #F7F0E7)' }}
-    >
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 p-4 transition-colors dark:bg-[#0B0F17]">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#C17C4A]/10 blur-3xl" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-[#56372B]/10 blur-3xl dark:bg-[#C17C4A]/5" />
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl dark:bg-indigo-500/10" />
+        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-500/15 blur-3xl dark:bg-violet-500/10" />
       </div>
 
-      <div
-        className="relative w-full max-w-md rounded-3xl border border-brand-border border-[#E8DCD1] bg-white p-8 shadow-xl transition-all animate-in fade-in zoom-in duration-300 dark:border-[#352C26] dark:bg-[#1F1A17] md:p-10"
-        style={{ borderColor: 'var(--border-color, #E8DCD1)' }}
-      >
+      <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-2xl transition-all animate-in fade-in zoom-in duration-300 dark:border-slate-800/80 dark:bg-slate-900/90 md:p-10">
         {!token ? (
           <div className="text-center">
-            <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 shadow-inner dark:bg-rose-500/15 dark:text-rose-400">
+            <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-rose-500 to-red-500 text-white shadow-lg shadow-rose-500/25">
               <AlertCircle size={32} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Link Không Hợp Lệ
             </h1>
             <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -102,7 +96,7 @@ const ResetPasswordPage = () => {
             <div className="mt-6">
               <Link
                 to="/forgot-password"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C17C4A] hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:underline dark:text-indigo-400"
               >
                 Yêu cầu gửi lại link mới
               </Link>
@@ -110,10 +104,10 @@ const ResetPasswordPage = () => {
           </div>
         ) : success ? (
           <div className="text-center">
-            <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-inner dark:bg-emerald-500/15 dark:text-emerald-400">
+            <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25">
               <CheckCircle size={32} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Đặt Lại Thành Công!
             </h1>
             <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -122,8 +116,7 @@ const ResetPasswordPage = () => {
             <div className="mt-6">
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary bg-[#56372B] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#432A21] dark:bg-brand-secondary dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
-                style={{ backgroundColor: '#56372B', color: '#FFFFFF' }}
+                className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-xs font-bold text-white shadow-md shadow-indigo-600/25 hover:from-indigo-500 hover:to-violet-500"
               >
                 Đăng nhập ngay
               </Link>
@@ -132,13 +125,10 @@ const ResetPasswordPage = () => {
         ) : (
           <div>
             <div className="mb-8 text-center">
-              <div
-                className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary bg-[#56372B] text-[#F7F0E7] shadow-md dark:bg-brand-secondary dark:bg-[#C17C4A]"
-                style={{ backgroundColor: '#56372B', color: '#F7F0E7' }}
-              >
+              <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25">
                 <ShieldCheck size={24} />
               </div>
-              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 Đặt Lại Mật Khẩu
               </h1>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -147,7 +137,7 @@ const ResetPasswordPage = () => {
             </div>
 
             {error && (
-              <div className="mb-6 flex items-center gap-3 rounded-xl border-l-4 border-rose-500 bg-rose-50 p-3.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
+              <div className="mb-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-3.5 text-xs font-semibold text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300">
                 <AlertCircle size={18} className="shrink-0" />
                 <span>{error}</span>
               </div>
@@ -163,7 +153,7 @@ const ResetPasswordPage = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#C17C4A] focus:bg-white focus:ring-4 focus:ring-[#C17C4A]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                     placeholder="••••••••"
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -186,7 +176,7 @@ const ResetPasswordPage = () => {
                   <input
                     type="password"
                     value={confirmPassword}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#C17C4A] focus:bg-white focus:ring-4 focus:ring-[#C17C4A]/15 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                     placeholder="••••••••"
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
@@ -196,8 +186,7 @@ const ResetPasswordPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary bg-[#56372B] py-3.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#432A21] active:scale-[0.98] disabled:opacity-50 dark:bg-brand-secondary dark:bg-[#C17C4A] dark:hover:bg-[#A86537]"
-                style={{ backgroundColor: '#56372B', color: '#FFFFFF' }}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
@@ -210,13 +199,10 @@ const ResetPasswordPage = () => {
               </button>
             </form>
 
-            <div
-              className="mt-8 border-t border-brand-border border-[#E8DCD1] pt-4 text-center dark:border-[#352C26]"
-              style={{ borderColor: 'var(--border-color, #E8DCD1)' }}
-            >
+            <div className="mt-8 border-t border-slate-200/80 pt-4 text-center dark:border-slate-800">
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-[#56372B] dark:text-slate-400 dark:hover:text-[#D8986A]"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
               >
                 <ArrowLeft size={14} /> Quay lại đăng nhập
               </Link>

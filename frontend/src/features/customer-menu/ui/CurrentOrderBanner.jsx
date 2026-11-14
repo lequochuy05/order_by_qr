@@ -21,16 +21,16 @@ const CurrentOrderBanner = ({ order, onClick }) => {
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-2xl border border-[#E8DCD1] bg-white p-3 text-left shadow-sm transition-all active:scale-[0.99] dark:border-[#352C26] dark:bg-[#1F1A17]"
+      className="w-full rounded-2xl border border-slate-200/80 bg-white p-3 text-left shadow-sm transition-all active:scale-[0.99] dark:border-slate-800/80 dark:bg-slate-900/90"
     >
       <div className="flex items-center gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F7F0E7] text-[#C17C4A] dark:bg-[#2A221E] dark:text-[#D8986A]">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
           <ReceiptText size={18} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-[13px] font-black text-[#2D1D16] dark:text-[#F7F0E7]">
+            <p className="truncate text-xs font-mono font-bold text-slate-900 dark:text-white">
               Đơn #{order.id}
             </p>
             <span
@@ -39,7 +39,7 @@ const CurrentOrderBanner = ({ order, onClick }) => {
               {status.label}
             </span>
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-[#6B5D55] dark:text-[#BDB0A4]">
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">
             <Clock3 size={11} />
             <span className="truncate">{status.helper}</span>
             <span className="shrink-0">•</span>
@@ -48,10 +48,10 @@ const CurrentOrderBanner = ({ order, onClick }) => {
         </div>
 
         <div className="shrink-0 text-right">
-          <p className="text-[13px] font-black text-[#56372B] dark:text-[#D8986A]">
+          <p className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
             {fmtVND(getOrderFinalAmount(order))}
           </p>
-          <ChevronRight className="ml-auto mt-0.5 text-[#9C8E85] dark:text-[#82756B]" size={15} />
+          <ChevronRight className="ml-auto mt-0.5 text-slate-400 dark:text-slate-500" size={15} />
         </div>
       </div>
     </button>

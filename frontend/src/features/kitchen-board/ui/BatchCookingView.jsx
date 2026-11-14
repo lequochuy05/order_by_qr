@@ -41,8 +41,8 @@ const BatchCookingView = ({
   if (groups.length === 0) {
     return (
       <div className="mt-6 flex min-h-[380px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/60 p-8 text-center dark:border-slate-800 dark:bg-slate-900/40">
-        <div className="mb-4 rounded-2xl bg-orange-100 p-4 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
-          <ChefHat size={36} />
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25">
+          <ChefHat size={32} />
         </div>
         <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">
           Không có món cần nấu lúc này
@@ -68,17 +68,17 @@ const BatchCookingView = ({
               key={group.key}
               className={`flex flex-col justify-between overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:shadow-md dark:bg-slate-900 ${
                 group.isOverdue
-                  ? 'border-red-300 ring-1 ring-red-100 dark:border-red-500/40 dark:ring-red-500/10'
+                  ? 'border-rose-300 ring-1 ring-rose-100 dark:border-rose-500/40 dark:ring-rose-500/10'
                   : 'border-slate-200 dark:border-slate-800'
               }`}
             >
               <div
                 className={`h-1.5 ${
                   group.isOverdue
-                    ? 'bg-red-500'
+                    ? 'bg-rose-500'
                     : group.pendingQuantity > 0
-                      ? 'bg-orange-500'
-                      : 'bg-blue-500'
+                      ? 'bg-amber-500'
+                      : 'bg-indigo-500'
                 }`}
               />
 
@@ -98,7 +98,7 @@ const BatchCookingView = ({
                   <span
                     className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-black ${
                       group.isOverdue
-                        ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300'
+                        ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'
                         : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                     }`}
                   >
@@ -109,16 +109,16 @@ const BatchCookingView = ({
 
                 {/* Aggregate count badges */}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-xl bg-slate-900 px-3 py-1 text-sm font-black text-white dark:bg-slate-700">
+                  <span className="rounded-xl bg-slate-900 px-3 py-1 font-mono text-sm font-black text-white dark:bg-slate-700">
                     Tổng: x{group.totalQuantity}
                   </span>
                   {group.pendingQuantity > 0 && (
-                    <span className="rounded-xl bg-orange-100 px-2.5 py-1 text-xs font-black text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                    <span className="rounded-xl bg-amber-100 px-2.5 py-1 font-mono text-xs font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
                       Chờ: x{group.pendingQuantity}
                     </span>
                   )}
                   {group.cookingQuantity > 0 && (
-                    <span className="rounded-xl bg-blue-100 px-2.5 py-1 text-xs font-black text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                    <span className="rounded-xl bg-indigo-100 px-2.5 py-1 font-mono text-xs font-black text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
                       Đang nấu: x{group.cookingQuantity}
                     </span>
                   )}
@@ -142,7 +142,7 @@ const BatchCookingView = ({
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {isTakeaway ? (
-                                <span className="rounded bg-purple-600 px-1.5 py-0.5 font-bold text-white">
+                                <span className="rounded bg-violet-600 px-1.5 py-0.5 font-bold text-white">
                                   Mang về
                                 </span>
                               ) : (
@@ -150,7 +150,7 @@ const BatchCookingView = ({
                                   Bàn {item.tableName}
                                 </span>
                               )}
-                              <span className="font-black text-orange-600 dark:text-orange-400">
+                              <span className="font-mono font-black text-indigo-600 dark:text-indigo-400">
                                 x{item.quantity}
                               </span>
                               {item.batchNumber > 1 && (
@@ -161,8 +161,8 @@ const BatchCookingView = ({
                               <span
                                 className={`rounded px-1.5 py-0.5 font-semibold ${
                                   item.status === ORDER_ITEM_STATUSES.PENDING
-                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'
-                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                                    : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300'
                                 }`}
                               >
                                 {item.status === ORDER_ITEM_STATUSES.PENDING ? 'Chờ' : 'Đang nấu'}
@@ -197,7 +197,7 @@ const BatchCookingView = ({
                                   onUpdateStatus(item.id, ORDER_ITEM_STATUSES.COOKING)
                                 }
                                 disabled={isItemProcessing}
-                                className="rounded-lg bg-blue-50 p-1.5 text-blue-600 transition hover:bg-blue-100 disabled:opacity-50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/20"
+                                className="rounded-lg bg-indigo-50 p-1.5 text-indigo-600 transition hover:bg-indigo-100 disabled:opacity-50 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
                                 title="Nấu món này"
                               >
                                 {isItemProcessing ? (
@@ -229,7 +229,7 @@ const BatchCookingView = ({
                                 type="button"
                                 onClick={() => handleCancelItem(item)}
                                 disabled={isItemProcessing}
-                                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-950/30"
+                                className="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-rose-950/30"
                                 title="Hủy món này"
                               >
                                 <Trash2 size={13} />
@@ -253,7 +253,7 @@ const BatchCookingView = ({
                         onBatchUpdateStatus(pendingIds, ORDER_ITEM_STATUSES.COOKING)
                       }
                       disabled={hasPendingProcessing}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 text-xs font-black text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {hasPendingProcessing ? (
                         <Loader2 size={15} className="animate-spin" />
@@ -270,7 +270,7 @@ const BatchCookingView = ({
                         onBatchUpdateStatus(cookingIds, ORDER_ITEM_STATUSES.FINISHED)
                       }
                       disabled={hasCookingProcessing}
-                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-2.5 text-xs font-black text-white shadow-md shadow-emerald-600/25 transition hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {hasCookingProcessing ? (
                         <Loader2 size={15} className="animate-spin" />

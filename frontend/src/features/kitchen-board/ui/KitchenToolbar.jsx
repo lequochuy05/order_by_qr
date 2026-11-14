@@ -12,14 +12,14 @@ const KitchenToolbar = ({
 }) => (
   <div className="flex flex-wrap items-center gap-2">
     {onViewModeChange && (
-      <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+      <div className="inline-flex rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-800/60">
         <button
           type="button"
           onClick={() => onViewModeChange('kanban')}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
             viewMode === 'kanban'
-              ? 'bg-[#56372B] text-white shadow-sm dark:bg-[#C17C4A]'
-              : 'text-[#6B5D55] hover:text-[#2D1D16] dark:text-[#BDB0A4] dark:hover:text-white'
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
           }`}
         >
           <LayoutGrid size={15} />
@@ -28,16 +28,16 @@ const KitchenToolbar = ({
         <button
           type="button"
           onClick={() => onViewModeChange('batch')}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
             viewMode === 'batch'
-              ? 'bg-[#56372B] text-white shadow-sm dark:bg-[#C17C4A]'
-              : 'text-[#6B5D55] hover:text-[#2D1D16] dark:text-[#BDB0A4] dark:hover:text-white'
+              ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
+              : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
           }`}
         >
           <Layers size={15} />
           Gom món nấu
           {batchCount > 0 && (
-            <span className="rounded-full bg-[#C17C4A] px-1.5 py-0.5 text-[10px] font-black text-white">
+            <span className="rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-1.5 py-0.5 text-[10px] font-black font-mono text-white shadow-sm">
               {batchCount}
             </span>
           )}
@@ -81,7 +81,7 @@ const KitchenToolbar = ({
       type="button"
       onClick={onRefresh}
       disabled={refreshing}
-      className="inline-flex items-center gap-2 rounded-xl bg-[#56372B] hover:bg-[#432A21] dark:bg-[#C17C4A] dark:hover:bg-[#A86537] px-4 py-2 text-sm font-bold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-70"
+      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
     >
       <RefreshCw size={17} className={refreshing ? 'animate-spin' : ''} />
       Làm mới

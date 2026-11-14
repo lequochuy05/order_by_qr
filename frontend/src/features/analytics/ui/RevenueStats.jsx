@@ -11,7 +11,7 @@ import {
   Tooltip as RechartsTooltip,
   Tooltip,
 } from 'recharts';
-import { Loader2, Receipt } from 'lucide-react';
+import { DollarSign, Loader2, Receipt, ShoppingBag, TrendingUp } from 'lucide-react';
 import { analyticsService } from '@entities/analytics/api/analyticsService.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
@@ -95,7 +95,6 @@ const RevenueStats = () => {
   // Format dữ liệu biểu đồ
   const chartData = useMemo(() => {
     return revenueData.map((item) => {
-      // Nếu bucket là string "YYYY-MM-DD"
       const dateKey = fmtDate(new Date(item.bucket + 'T00:00:00'));
       return {
         date: dateKey,
@@ -126,7 +125,7 @@ const RevenueStats = () => {
     (loadingRevenue || loadingOrders) && revenueData.length === 0 && orders.length === 0;
 
   return (
-    <div className="min-h-screen w-full min-w-0 bg-slate-50 p-0 sm:p-3 lg:p-6 dark:bg-slate-950">
+    <div className="w-full min-w-0 space-y-6 p-0 sm:p-3 lg:p-6">
       <StatsToolbar
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -136,61 +135,99 @@ const RevenueStats = () => {
 
       {initialLoading ? (
         <div className="p-20 text-center">
-          <Loader2 className="animate-spin inline text-orange-500" size={32} />
+          <Loader2 className="animate-spin inline text-indigo-600 dark:text-indigo-400" size={36} />
         </div>
       ) : (
         <div className="space-y-6">
           {/* 1. KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <KpiItem title="Tổng doanh thu" value={fmtVND(kpi.totalRev)} color="text-orange-600" />
-            <KpiItem title="Tổng đơn hàng" value={kpi.totalOrd} color="text-blue-600" />
-            <KpiItem title="Giá trị TB/Đơn" value={fmtVND(kpi.avg)} color="text-teal-600" />
+            <div className="flex items-center gap-4 rounded-3xl border border-[#1E293B] bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E293B] dark:bg-[#0F172A]/90">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-500/25">
+                <DollarSign size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Tổng doanh thu
+                </p>
+                <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white truncate">
+                  {fmtVND(kpi.totalRev)}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 rounded-3xl border border-[#1E293B] bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E293B] dark:bg-[#0F172A]/90">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25">
+                <ShoppingBag size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Tổng đơn hàng
+                </p>
+                <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white truncate">
+                  {kpi.totalOrd}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 rounded-3xl border border-[#1E293B] bg-white/90 p-5 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-[#1E293B] dark:bg-[#0F172A]/90">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+                <TrendingUp size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Giá trị TB / Đơn
+                </p>
+                <p className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white truncate">
+                  {fmtVND(kpi.avg)}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* 2. Biểu đồ */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Biểu đồ miền (Doanh thu) */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
-              <h3 className="font-bold text-gray-800 mb-6 dark:text-slate-100">Xu hướng doanh thu</h3>
+            <div className="min-w-0 rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90">
+              <h3 className="font-bold text-slate-900 mb-6 dark:text-white">Xu hướng doanh thu</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis
                       dataKey="date"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
                       dy={10}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
                       tickFormatter={(v) => `${v / 1000}k`}
                     />
                     <RechartsTooltip
                       formatter={(v) => [fmtVND(v), 'Doanh thu']}
                       labelFormatter={(l, p) => p[0]?.payload.fullDate}
                       contentStyle={{
-                        borderRadius: '12px',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(226, 232, 240, 0.8)',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                       }}
                     />
                     <Area
                       type="monotone"
                       dataKey="revenue"
-                      stroke="#f97316"
+                      stroke="#6366F1"
                       fill="url(#colorRev)"
                       strokeWidth={3}
-                      activeDot={{ r: 6 }}
+                      activeDot={{ r: 6, fill: '#6366F1' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -198,55 +235,57 @@ const RevenueStats = () => {
             </div>
 
             {/* Biểu đồ cột (Số lượng đơn) */}
-            <div className="min-w-0 rounded-3xl border bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900 dark:shadow-slate-900/30">
-              <h3 className="font-bold text-gray-800 mb-6 dark:text-slate-100">Số lượng đơn hàng</h3>
+            <div className="min-w-0 rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90">
+              <h3 className="font-bold text-slate-900 mb-6 dark:text-white">Số lượng đơn hàng</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis
                       dataKey="date"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
                       dy={10}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      tick={{ fill: '#94a3b8', fontSize: 12 }}
                       allowDecimals={false}
                     />
                     <Tooltip
-                      cursor={{ fill: '#f3f4f6' }}
+                      cursor={{ fill: '#f8fafc' }}
                       formatter={(v) => [v, 'Đơn hàng']}
                       labelFormatter={(l, p) => p[0]?.payload.fullDate}
                       contentStyle={{
-                        borderRadius: '12px',
-                        border: 'none',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(226, 232, 240, 0.8)',
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                       }}
                     />
-                    <Bar dataKey="orderCount" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                    <Bar dataKey="orderCount" fill="#8B5CF6" radius={[6, 6, 0, 0]} barSize={36} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* === 3. BẢNG CHI TIẾT ĐƠN HÀNG (MỚI THÊM) === */}
-          <div className="bg-white rounded-3xl shadow-sm border overflow-hidden dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30">
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between dark:border-slate-800">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2 dark:text-slate-100">
-                <Receipt size={20} className="text-gray-500 dark:text-slate-400" />
+          {/* 3. BẢNG CHI TIẾT GIAO DỊCH */}
+          <div className="bg-white/90 rounded-3xl shadow-sm border border-[#1E293B] backdrop-blur-sm overflow-hidden dark:bg-[#0F172A]/90 dark:border-[#1E293B]">
+            <div className="p-6 border-b border-slate-200/80 flex items-center justify-between dark:border-slate-800/80">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2.5 dark:text-white">
+                <Receipt size={20} className="text-indigo-600 dark:text-indigo-400" />
                 Chi tiết giao dịch
               </h3>
-              <span className="text-sm text-gray-500 dark:text-slate-400">{totalElements} đơn hàng</span>
+              <span className="text-xs font-bold font-mono text-slate-500 dark:text-slate-400">
+                {totalElements} đơn hàng
+              </span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold dark:bg-slate-950 dark:text-slate-400">
+                <thead className="bg-slate-50/80 text-slate-500 text-[11px] uppercase font-bold tracking-wider dark:bg-slate-950/80 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800/80">
                   <tr>
                     <th className="p-4">Mã đơn</th>
                     <th className="p-4">Thời gian</th>
@@ -258,14 +297,14 @@ const RevenueStats = () => {
                 <tbody className="text-sm">
                   {loadingOrders ? (
                     <tr key="loading-revenue-orders">
-                      <td colSpan="5" className="p-8 text-center text-gray-500 dark:text-slate-400">
-                        <Loader2 className="animate-spin inline mr-2 text-orange-500" size={18} />
+                      <td colSpan="5" className="p-12 text-center text-slate-500 dark:text-slate-400">
+                        <Loader2 className="animate-spin inline mr-2 text-indigo-600" size={18} />
                         Đang tải giao dịch...
                       </td>
                     </tr>
                   ) : orders.length === 0 ? (
                     <tr key="empty-revenue-row">
-                      <td colSpan="5" className="p-8 text-center text-gray-400 dark:text-slate-500">
+                      <td colSpan="5" className="p-12 text-center text-slate-400 dark:text-slate-500 italic">
                         Không có dữ liệu giao dịch trong khoảng thời gian này.
                       </td>
                     </tr>
@@ -273,19 +312,23 @@ const RevenueStats = () => {
                     orders.map((order) => (
                       <tr
                         key={order.id}
-                        className="border-b last:border-0 hover:bg-slate-50 transition-colors dark:border-slate-800 dark:hover:bg-slate-800/50"
+                        className="border-b border-slate-100 last:border-0 hover:bg-indigo-50/30 transition-colors dark:border-slate-800/60 dark:hover:bg-slate-800/40"
                       >
-                        <td className="p-4 font-medium text-blue-600">#{order.id}</td>
-                        <td className="p-4 text-gray-600 dark:text-slate-300">
+                        <td className="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          #{order.id}
+                        </td>
+                        <td className="p-4 text-xs font-medium text-slate-600 dark:text-slate-300">
                           {fmtDateTime(order.paymentTime || order.createdAt)}
                         </td>
-                        <td className="p-4 text-gray-800 font-medium dark:text-slate-100">{order.empName || '—'}</td>
+                        <td className="p-4 text-xs font-bold text-slate-800 dark:text-slate-100">
+                          {order.empName || '—'}
+                        </td>
                         <td className="p-4 text-center">
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full text-[11px] font-bold dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
                             Đã thanh toán
                           </span>
                         </td>
-                        <td className="p-4 text-right font-bold text-gray-800 dark:text-slate-100">
+                        <td className="p-4 text-right font-mono font-black text-slate-900 dark:text-white">
                           {fmtVND(getOrderFinalAmount(order))}
                         </td>
                       </tr>
@@ -294,24 +337,26 @@ const RevenueStats = () => {
                 </tbody>
               </table>
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-3 p-4 border-t border-gray-100 dark:border-slate-800">
+                <div className="flex justify-center items-center gap-3 p-4 border-t border-slate-200/80 dark:border-slate-800/80">
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage === 0}
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
-                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
+                    className="px-4 py-2 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                   >
                     Trước
                   </button>
-                  <span className="text-gray-500 font-medium px-4 dark:text-slate-400">
+                  <span className="text-slate-500 text-xs font-bold px-4 dark:text-slate-400">
                     Trang {currentPage + 1} / {totalPages}
-                    <span className="text-gray-400 ml-2 text-sm dark:text-slate-500">({totalElements} đơn)</span>
+                    <span className="text-slate-400 ml-2 font-mono text-xs dark:text-slate-500">
+                      ({totalElements} đơn)
+                    </span>
                   </span>
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage >= totalPages - 1}
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1))}
-                    className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:shadow-slate-900/30"
+                    className="px-4 py-2 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                   >
                     Sau
                   </button>
@@ -324,15 +369,5 @@ const RevenueStats = () => {
     </div>
   );
 };
-
-// Component con hiển thị thẻ KPI nhỏ (Tốt nhất nên tách ra file riêng như đã bàn, nhưng để tạm ở đây cho chạy được ngay)
-const KpiItem = ({ title, value, color }) => (
-  <div className="bg-white p-5 rounded-2xl shadow-sm border flex justify-between items-center hover:shadow-md transition-shadow dark:bg-slate-900 dark:border-slate-700 dark:shadow-slate-900/30 dark:hover:shadow-slate-900/40">
-    <div>
-      <p className="text-gray-500 text-sm font-medium dark:text-slate-400">{title}</p>
-      <h3 className={`text-2xl font-black mt-1 ${color}`}>{value}</h3>
-    </div>
-  </div>
-);
 
 export default RevenueStats;

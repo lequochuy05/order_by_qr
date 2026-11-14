@@ -11,7 +11,7 @@ const ModalActions = ({
   className = '',
 }) => (
   <div
-    className={`flex shrink-0 gap-4 rounded-b-[2rem] border-t border-[#E8DCD1] bg-slate-50/80 px-6 py-5 transition-colors dark:border-[#352C26] dark:bg-[#1A1513] sm:px-8 sm:py-6 ${className}`}
+    className={`flex shrink-0 gap-4 rounded-b-[2rem] border-t border-slate-200/80 bg-slate-50/90 px-6 py-5 transition-colors dark:border-slate-800/80 dark:bg-slate-900/90 sm:px-8 sm:py-6 ${className}`}
   >
     <button
       type="button"

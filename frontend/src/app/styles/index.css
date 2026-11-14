@@ -6,21 +6,21 @@
   --font-display: 'Be Vietnam Pro', sans-serif;
   --font-body: 'Be Vietnam Pro', sans-serif;
 
-  /* Warm Hospitality Brand Tokens */
-  --color-brand-primary: #56372B;
-  --color-brand-primary-hover: #432A21;
-  --color-brand-primary-light: #7A5343;
-  --color-brand-secondary: #C17C4A;
-  --color-brand-secondary-hover: #A86537;
-  --color-brand-secondary-light: #E09F67;
-  --color-brand-surface: #F7F0E7;
+  /* Modern Evondev Brand Tokens */
+  --color-brand-primary: #6366F1;
+  --color-brand-primary-hover: #4F46E5;
+  --color-brand-primary-light: #EEF2FF;
+  --color-brand-secondary: #8B5CF6;
+  --color-brand-secondary-hover: #7C3AED;
+  --color-brand-secondary-light: #F5F3FF;
+  --color-brand-surface: #F8FAFC;
   --color-brand-surface-card: #FFFFFF;
-  --color-brand-surface-card-hover: #FCF9F5;
-  --color-brand-border: #E8DCD1;
+  --color-brand-surface-card-hover: #F1F5F9;
+  --color-brand-border: #E2E8F0;
 
-  /* Preserved legacy tokens for customer menu compatibility */
-  --color-bg-warm: #F7F0E7;
-  --color-surface-warm: #FFFDF9;
+  /* Compatibility & Accent Tokens */
+  --color-bg-warm: #F8FAFC;
+  --color-surface-warm: #FFFFFF;
 
   --animate-cart-bump: cart-bump 0.3s ease-out;
   --animate-fade-in-up: fade-in-up 0.4s ease-out;
@@ -49,35 +49,35 @@
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-inset-left: env(safe-area-inset-left, 0px);
 
-  /* Semantic Theme Tokens - Light */
-  --bg-app: #F7F0E7;
+  /* Modern Evondev Semantic Theme Tokens - Light */
+  --bg-app: #F8FAFC;
   --bg-card: #FFFFFF;
-  --bg-card-hover: #FCF9F5;
-  --border-color: #E8DCD1;
-  --text-primary: #2D1D16;
-  --text-secondary: #6B5D55;
-  --text-muted: #9C8E85;
-  --brand-primary: #56372B;
-  --brand-primary-hover: #432A21;
-  --brand-secondary: #C17C4A;
-  --brand-secondary-hover: #A86537;
-  --brand-surface: #F7F0E7;
+  --bg-card-hover: #F1F5F9;
+  --border-color: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --brand-primary: #6366F1;
+  --brand-primary-hover: #4F46E5;
+  --brand-secondary: #8B5CF6;
+  --brand-secondary-hover: #7C3AED;
+  --brand-surface: #F8FAFC;
 }
 
 .dark {
-  /* Semantic Theme Tokens - Dark */
-  --bg-app: #14100E;
-  --bg-card: #1F1A17;
-  --bg-card-hover: #29231F;
-  --border-color: #352C26;
-  --text-primary: #F7F0E7;
-  --text-secondary: #BDB0A4;
-  --text-muted: #82756B;
-  --brand-primary: #EAD8C7;
-  --brand-primary-hover: #FFFFFF;
-  --brand-secondary: #D8986A;
-  --brand-secondary-hover: #EAB28A;
-  --brand-surface: #14100E;
+  /* Modern Evondev Semantic Theme Tokens - Dark */
+  --bg-app: #0B0F17;
+  --bg-card: #131B2E;
+  --bg-card-hover: #1E293B;
+  --border-color: #1E293B;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --brand-primary: #818CF8;
+  --brand-primary-hover: #A5B4FC;
+  --brand-secondary: #A78BFA;
+  --brand-secondary-hover: #C4B5FD;
+  --brand-surface: #0B0F17;
 }
 
 @utility safe-top {
@@ -97,27 +97,27 @@
 }
 
 @utility bg-brand-primary {
-  background-color: #56372B;
+  background-color: var(--brand-primary);
 }
 
 @utility text-brand-primary {
-  color: #56372B;
+  color: var(--brand-primary);
 }
 
 @utility bg-brand-secondary {
-  background-color: #C17C4A;
+  background-color: var(--brand-secondary);
 }
 
 @utility text-brand-secondary {
-  color: #C17C4A;
+  color: var(--brand-secondary);
 }
 
 @utility bg-brand-surface {
-  background-color: #F7F0E7;
+  background-color: var(--brand-surface);
 }
 
 @utility border-brand-border {
-  border-color: #E8DCD1;
+  border-color: var(--border-color);
 }
 
 @keyframes skeleton-shimmer {
@@ -140,6 +140,56 @@
   animation: skeleton-shimmer 1.4s infinite;
 }
 
+/* AdminHeader Diagonal Rain Animation */
+@keyframes admin-header-rain {
+  0% {
+    transform: translate3d(-30px, -60px, 0) rotate(-24deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--rain-opacity, 0.6);
+  }
+  85% {
+    opacity: var(--rain-opacity, 0.6);
+  }
+  100% {
+    transform: translate3d(45px, 105px, 0) rotate(-24deg);
+    opacity: 0;
+  }
+}
+
+.admin-rain-drop {
+  position: absolute;
+  top: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(99, 102, 241, 0.4) 50%,
+    rgba(79, 70, 229, 0.8) 100%
+  );
+  box-shadow: 0 0 4px rgba(99, 102, 241, 0.35);
+  animation: admin-header-rain linear infinite;
+  will-change: transform, opacity;
+}
+
+:is(.dark .admin-rain-drop) {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(56, 189, 248, 0.45) 50%,
+    rgba(129, 140, 248, 0.85) 100%
+  );
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-rain-drop {
+    animation: none !important;
+    display: none !important;
+  }
+}
+
 html,
 body,
 #root {
@@ -148,6 +198,7 @@ body,
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
+  font-family: var(--font-body);
 }
 
 .admin-content,
@@ -169,12 +220,12 @@ body,
   max-width: 100%;
 }
 
-/* ===== Scrollbar tinh tế cho toàn app ===== */
+/* ===== Modern Evondev Scrollbar ===== */
 
 /* Webkit (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -182,29 +233,29 @@ body,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(24 10% 80%);
+  background: hsl(215 20% 80%);
   border-radius: 999px;
   transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(24 10% 65%);
+  background: hsl(215 20% 65%);
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(24 10% 80%) transparent;
+  scrollbar-color: hsl(215 20% 80%) transparent;
 }
 
-/* Customer menu: scroll ngang mảnh hơn, ẩn khi không hover */
+/* Utility to hide scrollbars */
 .scrollbar-hide::-webkit-scrollbar,
 .no-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
 
-/* Smooth scroll cho toàn bộ overflow containers */
+/* Smooth scroll */
 .overflow-x-auto,
 .overflow-y-auto,
 .overflow-auto {
@@ -212,15 +263,15 @@ body,
   -webkit-overflow-scrolling: touch;
 }
 
-/* Trong dark mode: thumb sáng hơn */
+/* Dark mode scrollbar */
 .dark ::-webkit-scrollbar-thumb {
-  background: hsl(24 8% 30%);
+  background: hsl(215 20% 25%);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(24 8% 45%);
+  background: hsl(215 20% 40%);
 }
 
 .dark * {
-  scrollbar-color: hsl(24 8% 30%) transparent;
+  scrollbar-color: hsl(215 20% 25%) transparent;
 }

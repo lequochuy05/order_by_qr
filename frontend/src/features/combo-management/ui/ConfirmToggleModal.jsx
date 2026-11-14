@@ -21,14 +21,14 @@ const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
       <div
         className={`mx-auto w-20 h-20 rounded-3xl flex items-center justify-center mb-6 rotate-12 group-hover:rotate-0 transition-transform ${
           currentActive
-            ? 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300'
-            : 'bg-green-50 text-green-500 dark:bg-green-500/10 dark:text-green-300'
+            ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300'
+            : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300'
         }`}
       >
         <Power size={40} strokeWidth={2.5} />
       </div>
 
-      <h3 className="mb-3 text-center text-xl font-bold text-slate-900 dark:text-slate-100">
+      <h3 className="mb-3 text-center text-xl font-black text-slate-900 dark:text-slate-100">
         {currentActive ? 'Xác nhận ngưng bán?' : 'Xác nhận mở bán?'}
       </h3>
 
@@ -41,8 +41,10 @@ const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
       <div className="flex flex-col gap-3">
         <button
           onClick={onConfirm}
-          className={`w-full py-3.5 text-white rounded-2xl font-bold shadow-lg shadow-orange-100 dark:shadow-orange-900/30 transition-all active:scale-95 ${
-            currentActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'
+          className={`w-full py-3.5 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${
+            currentActive
+              ? 'bg-gradient-to-r from-rose-600 to-red-600 shadow-rose-600/25 hover:from-rose-500 hover:to-red-500'
+              : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500'
           }`}
         >
           Thay đổi
