@@ -54,23 +54,26 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST}
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       repositories:
         enabled: false
 
   mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 auth:
   lockout:
@@ -183,6 +186,7 @@ app:
     from-name: QROS
     brand-name: QROS
     copyright: 2026 QROS
+    brevo-api-key: ${BREVO_API_KEY:}
 
 payos:
   client-id: ${PAYOS_CLIENT_ID}
