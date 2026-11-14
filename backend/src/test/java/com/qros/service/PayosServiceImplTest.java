@@ -3,6 +3,7 @@ package com.qros.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -218,7 +219,7 @@ class PayosServiceImplTest {
                 .build();
 
         when(transactionRepository.findFirstByIdempotencyKey("cash-idem")).thenReturn(Optional.empty());
-        when(orderSettlementService.prepareForPayment(1L, null)).thenReturn(order);
+        when(orderSettlementService.prepareForPayment(1L, null, false)).thenReturn(order);
         when(userRepository.findById(7L)).thenReturn(Optional.of(cashier));
         when(transactionRepository.saveAndFlush(any(PaymentTransaction.class))).thenAnswer(invocation -> {
             PaymentTransaction transaction = invocation.getArgument(0);
@@ -281,6 +282,7 @@ class PayosServiceImplTest {
         assertThat(response.paymentMethod()).isEqualTo(PaymentMethod.CASH);
         assertThat(response.status()).isEqualTo(PaymentTransactionStatus.PAID);
         verify(orderSettlementService, never()).prepareForPayment(any(), any());
+        verify(orderSettlementService, never()).prepareForPayment(any(), any(), anyBoolean());
         verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));
     }
 

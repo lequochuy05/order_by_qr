@@ -63,7 +63,7 @@ public class UserService {
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse create(@NonNull CreateUserRequest req, String actorEmail) {
-        validateManagerHierarchyRestrictions(actorEmail, req.role(), "tạo");
+        validateManagerHierarchyRestrictions(actorEmail, req.role(), "create");
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -101,9 +101,9 @@ public class UserService {
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req, String actorEmail) {
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "chỉnh sửa");
+        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "update");
         if (req.role() != null) {
-            validateManagerHierarchyRestrictions(actorEmail, req.role(), "phân quyền");
+            validateManagerHierarchyRestrictions(actorEmail, req.role(), "assign role to");
         }
 
         String email = req.email().trim().toLowerCase();
@@ -167,7 +167,7 @@ public class UserService {
         if (actor.getRole() == UserRole.MANAGER
                 && (target.getRole() == UserRole.ADMIN || target.getRole() == UserRole.MANAGER)) {
             throw new BusinessException(
-                    ErrorCode.FORBIDDEN, "Quản lý không được phép xóa tài khoản Quản trị viên hoặc Quản lý");
+                    ErrorCode.FORBIDDEN, "Manager is not allowed to delete Admin or Manager accounts");
         }
         if (isActiveManager(target) && activeManagers.size() <= 1) {
             throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
@@ -187,7 +187,7 @@ public class UserService {
     @Transactional
     public void resetPassword(@NonNull Long id, @NonNull String newPassword, String actorEmail) {
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "đặt lại mật khẩu cho");
+        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "reset password for");
 
         if (!StringUtils.hasText(newPassword)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "New password cannot be empty");
@@ -210,8 +210,7 @@ public class UserService {
         if (actor != null && actor.getRole() == UserRole.MANAGER) {
             if (targetRole == UserRole.ADMIN || targetRole == UserRole.MANAGER) {
                 throw new BusinessException(
-                        ErrorCode.FORBIDDEN,
-                        "Quản lý không được phép " + action + " tài khoản Quản trị viên hoặc Quản lý");
+                        ErrorCode.FORBIDDEN, "Manager is not allowed to " + action + " Admin or Manager accounts");
             }
         }
     }
