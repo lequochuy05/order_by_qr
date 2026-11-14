@@ -135,31 +135,33 @@ Route `/` hiển thị landing page hướng dẫn khách quét mã QR tại bà
 
 Hiện `package.json` chưa có script test tự động.
 
-## Routing và role
+## Routing và phân quyền (RBAC)
 
-Routes chính lấy từ `src/app/router.jsx`:
+Routes chính được định nghĩa tại `src/app/router.jsx`:
 
-| Route                          | Role                       |
-| ------------------------------ | -------------------------- |
-| `/menu`                        | Public                     |
-| `/login`                       | Public                     |
-| `/admin/dashboard`             | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/profile`               | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/settings`              | `MANAGER`, `STAFF`, `CHEF` |
-| `/admin/categories`            | `MANAGER`                  |
-| `/admin/menu`                  | `MANAGER`                  |
-| `/admin/combo`                 | `MANAGER`                  |
-| `/admin/inventory`             | `MANAGER`                  |
-| `/admin/voucher`               | `MANAGER`                  |
-| `/admin/staffs`                | `MANAGER`                  |
-| `/admin/statistics/revenue`    | `MANAGER`                  |
-| `/admin/statistics/top-dishes` | `MANAGER`                  |
-| `/admin/statistics/staff`      | `MANAGER`                  |
-| `/admin/tables`                | `MANAGER`, `STAFF`         |
-| `/admin/history`               | `MANAGER`, `STAFF`         |
-| `/admin/kitchen`               | `MANAGER`, `CHEF`          |
+| Route                          | Vai trò được phép (Allowed Roles)          | Ghi chú |
+| ------------------------------ | ------------------------------------------ | ------- |
+| `/:tableCode/menu`             | Khách hàng (Quét mã QR bàn)                | Giao diện đặt món chính |
+| `/menu`                        | Mọi người (Public)                         | Xem thực đơn công khai |
+| `/login`                       | Mọi người (Public)                         | Đăng nhập (Hỗ trợ 2FA Admin) |
+| `/admin/profile`               | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`, `CHEF` | Hồ sơ cá nhân, đổi mật khẩu |
+| `/admin/settings`              | `ADMIN` (Toàn quyền), các vai trò khác (Tùy chọn) | Cài đặt hệ thống / cá nhân |
+| `/admin/dashboard`             | `ADMIN`, `MANAGER`                         | Tổng quan kinh doanh & KPI |
+| `/admin/categories`            | `ADMIN`, `MANAGER`                         | Quản trị danh mục |
+| `/admin/menu`                  | `ADMIN`, `MANAGER`                         | Quản trị món ăn & topping |
+| `/admin/combo`                 | `ADMIN`, `MANAGER`                         | Quản trị gói combo |
+| `/admin/inventory`             | `ADMIN`, `MANAGER`, `CHEF`                 | Quản lý kho & nguyên liệu |
+| `/admin/voucher`               | `ADMIN`, `MANAGER`                         | Quản trị mã giảm giá |
+| `/admin/staffs`                | `ADMIN`, `MANAGER`                         | Quản lý tài khoản nhân sự |
+| `/admin/statistics/revenue`    | **Chỉ `ADMIN`**                            | Phân tích doanh thu chuyên sâu |
+| `/admin/statistics/top-dishes` | `ADMIN`, `MANAGER`                         | Thống kê món bán chạy |
+| `/admin/statistics/staff`      | `ADMIN`, `MANAGER`                         | Thống kê hiệu suất nhân viên |
+| `/admin/tables`                | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`     | Sơ đồ bàn, gọi món, gộp bàn |
+| `/admin/takeaway`              | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`     | Quản lý đơn mang về |
+| `/admin/history`               | `ADMIN`, `MANAGER`, `CASHIER`              | Lịch sử & tra soát hóa đơn |
+| `/admin/kitchen`               | `ADMIN`, `MANAGER`, `CHEF`                 | KDS Bếp realtime (Kanban/Gom món) |
 
-`ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển đến `/unauthorized`.
+`ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển hướng tới trang `/unauthorized`.
 
 ## Auth và API client
 

@@ -123,12 +123,14 @@ Chạy với profile `dev` để seed tài khoản quản lý khi bảng `users`
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Tài khoản seed chỉ tạo khi profile `dev` được bật:
+Tài khoản seed mặc định cho môi trường `dev`:
 
 ```text
-Email: admin@gmail.com
-Password: admin123
-Role: MANAGER
+- ADMIN:   admin@gmail.com   / admin123   (Yêu cầu mã 2FA OTP từ log/Redis)
+- MANAGER: manager@gmail.com / manager123 (Quản trị thực đơn, nhân sự, kho)
+- CASHIER: cashier@gmail.com / cashier123 (Sơ đồ bàn, thanh toán, lịch sử hóa đơn)
+- STAFF:   staff@gmail.com   / staff123   (Sơ đồ bàn, gọi món, gộp bàn, takeaway)
+- CHEF:    chef@gmail.com    / chef123    (KDS Bếp realtime, Kanban, nấu gom món, kho)
 ```
 
 Ứng dụng chạy mặc định tại:
