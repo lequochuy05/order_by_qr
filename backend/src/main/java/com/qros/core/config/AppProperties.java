@@ -162,6 +162,15 @@ public class AppProperties {
         private String fromName = "QROS";
         private String brandName = "QROS";
         private String copyright = "2026 QROS";
+        private String brevoApiKey;
+
+        public String getBrevoApiKey() {
+            return brevoApiKey;
+        }
+
+        public void setBrevoApiKey(String brevoApiKey) {
+            this.brevoApiKey = brevoApiKey;
+        }
 
         public String getFromName() {
             return fromName;

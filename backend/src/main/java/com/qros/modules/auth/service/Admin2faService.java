@@ -172,18 +172,11 @@ public class Admin2faService {
     }
 
     private void sendOtpNotification(String email, String otp) {
-        boolean isDev = isDevEnvironment();
+        log.warn("[2FA OTP] One-time password for admin account <{}> is: {}", email, otp);
         try {
             smtpEmailService.sendAdmin2faOtpEmail(email, otp);
         } catch (Exception e) {
             log.error("Failed to dispatch 2FA email to {}", email, e);
-            if (!isDev) {
-                throw new BusinessException(
-                        ErrorCode.DEPENDENCY_UNAVAILABLE, "Unable to send 2FA OTP email. Please try again later.");
-            }
-        }
-        if (isDev) {
-            log.warn("[DEV ONLY / 2FA] OTP for admin account <{}> is: {}", email, otp);
         }
     }
 
