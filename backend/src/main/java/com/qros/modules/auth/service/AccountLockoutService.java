@@ -95,8 +95,8 @@ public class AccountLockoutService {
                 long remainingMinutes = Math.max(1, (durationSeconds + 59) / 60);
                 throw new BusinessException(
                         ErrorCode.ACCOUNT_LOCKED,
-                        "Account has been temporarily locked for " + remainingMinutes
-                                + " minute(s) due to " + maxAttempts + " consecutive failed attempts.",
+                        "Account has been temporarily locked for " + remainingMinutes + " minute(s) due to "
+                                + maxAttempts + " consecutive failed attempts.",
                         Map.of("retryAfterSeconds", durationSeconds));
             }
         } catch (BusinessException ex) {
