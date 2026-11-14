@@ -146,7 +146,9 @@ class WebSocketService {
     [...this.subscriptions].forEach((subscription) => {
       try {
         subscription.unsubscribe();
-      } catch {}
+      } catch {
+        // Ignored during disconnection cleanup
+      }
     });
     this.subscriptions.clear();
     this.connected = false;

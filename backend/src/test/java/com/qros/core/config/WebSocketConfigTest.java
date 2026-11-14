@@ -95,7 +95,8 @@ class WebSocketConfigTest {
                 "admin", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
         Message<byte[]> message = subscribeMessage("/topic/kitchen", auth);
 
-        assertThatCode(() -> hierarchicalConfig.webSocketAuthInterceptor()
+        assertThatCode(() -> hierarchicalConfig
+                        .webSocketAuthInterceptor()
                         .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .doesNotThrowAnyException();
     }

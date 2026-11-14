@@ -50,12 +50,15 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
-                .headers(headers -> headers.contentSecurityPolicy(csp -> csp.policyDirectives(
-                                "default-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'"))
-                        .referrerPolicy(referrer -> referrer.policy(
-                                ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        .permissionsPolicyHeader(permissions -> permissions.policy(
-                                "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self), unload=(self)")))
+                .headers(
+                        headers -> headers.contentSecurityPolicy(
+                                        csp -> csp.policyDirectives(
+                                                "default-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'"))
+                                .referrerPolicy(referrer -> referrer.policy(
+                                        ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                                .permissionsPolicyHeader(
+                                        permissions -> permissions.policy(
+                                                "camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self), unload=(self)")))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage());
                 }))

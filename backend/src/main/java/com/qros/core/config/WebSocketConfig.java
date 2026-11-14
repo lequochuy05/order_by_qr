@@ -5,11 +5,11 @@ import com.qros.shared.security.PasswordVersionedUserDetails;
 import com.qros.shared.security.TokenBlacklistService;
 import com.qros.shared.time.AppTime;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.Collection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -268,8 +268,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         Set<String> allowedRoles = PROTECTED_TOPICS.get(destination);
         Collection<? extends GrantedAuthority> reachable =
                 roleHierarchy.getReachableGrantedAuthorities(auth.getAuthorities());
-        boolean allowed =
-                reachable.stream().anyMatch(authority -> allowedRoles.contains(authority.getAuthority()));
+        boolean allowed = reachable.stream().anyMatch(authority -> allowedRoles.contains(authority.getAuthority()));
         if (!allowed) {
             throw new AccessDeniedException("Insufficient role for topic " + destination);
         }

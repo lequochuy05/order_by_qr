@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
@@ -133,16 +133,20 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
     }
   };
 
-  const effectiveMenuItems = user?.mustChangePassword
-    ? [
-        {
-          title: 'Đổi mật khẩu',
-          path: '/admin/profile',
-          icon: <KeyRound size={20} />,
-          roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF'],
-        },
-      ]
-    : menuItems;
+  const effectiveMenuItems = useMemo(
+    () =>
+      user?.mustChangePassword
+        ? [
+            {
+              title: 'Đổi mật khẩu',
+              path: '/admin/profile',
+              icon: <KeyRound size={20} />,
+              roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF'],
+            },
+          ]
+        : menuItems,
+    [user?.mustChangePassword],
+  );
 
   // Tự động mở menu cha nếu đang ở trang con
   useEffect(() => {
