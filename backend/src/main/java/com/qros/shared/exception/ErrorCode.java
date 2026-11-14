@@ -31,11 +31,11 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid refresh token"),
     PASSWORD_INVALID(HttpStatus.BAD_REQUEST, "Current password is incorrect"),
     PASSWORD_RESET_TOKEN_INVALID(HttpStatus.BAD_REQUEST, "Token invalid or expired"),
-    PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "Tài khoản cần đổi mật khẩu trước khi thực hiện các thao tác khác"),
-    INVALID_2FA_CODE(HttpStatus.BAD_REQUEST, "Mã xác thực 2FA không chính xác"),
-    EXPIRED_2FA_TICKET(HttpStatus.UNAUTHORIZED, "Phiên xác thực 2FA đã hết hạn hoặc không tồn tại"),
-    TOO_MANY_2FA_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Bạn đã nhập sai mã 2FA quá 5 lần. Vui lòng đăng nhập lại"),
-    COOLDOWN_2FA(HttpStatus.TOO_MANY_REQUESTS, "Vui lòng chờ 60 giây trước khi yêu cầu gửi lại mã"),
+    PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "Password change required before performing other actions"),
+    INVALID_2FA_CODE(HttpStatus.BAD_REQUEST, "Invalid 2FA verification code"),
+    EXPIRED_2FA_TICKET(HttpStatus.UNAUTHORIZED, "2FA verification ticket expired or not found"),
+    TOO_MANY_2FA_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "Too many failed 2FA attempts. Please log in again"),
+    COOLDOWN_2FA(HttpStatus.TOO_MANY_REQUESTS, "Please wait 60 seconds before requesting a new code"),
 
     SETTINGS_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "System settings are not initialized"),
 

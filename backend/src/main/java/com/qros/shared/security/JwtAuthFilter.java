@@ -1,7 +1,6 @@
 package com.qros.shared.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qros.modules.user.model.User;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
@@ -110,7 +109,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     private boolean isPasswordChangeRequired(UserDetails userDetails, HttpServletRequest request) {
-        if (!(userDetails instanceof User user) || !user.isMustChangePassword()) {
+        if (!(userDetails instanceof PasswordVersionedUserDetails pwdUser) || !pwdUser.isMustChangePassword()) {
             return false;
         }
 

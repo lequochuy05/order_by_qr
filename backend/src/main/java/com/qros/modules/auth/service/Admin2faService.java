@@ -179,7 +179,7 @@ public class Admin2faService {
             log.error("Failed to dispatch 2FA email to {}", email, e);
             if (!isDev) {
                 throw new BusinessException(
-                        ErrorCode.DEPENDENCY_UNAVAILABLE, "Không thể gửi email chứa mã OTP 2FA. Vui lòng thử lại sau.");
+                        ErrorCode.DEPENDENCY_UNAVAILABLE, "Unable to send 2FA OTP email. Please try again later.");
             }
         }
         if (isDev) {

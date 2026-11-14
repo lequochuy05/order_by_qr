@@ -5,4 +5,8 @@ import java.time.LocalDateTime;
 public interface PasswordVersionedUserDetails {
 
     LocalDateTime getPasswordChangedAt();
+
+    default boolean isMustChangePassword() {
+        return false;
+    }
 }

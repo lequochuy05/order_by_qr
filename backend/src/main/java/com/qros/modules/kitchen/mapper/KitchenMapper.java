@@ -28,7 +28,8 @@ public class KitchenMapper {
                         : null,
                 order.getOrderType(),
                 visibleItems.stream()
-                        .sorted(Comparator.comparing(OrderItem::getCreatedAt))
+                        .sorted(Comparator.comparing(
+                                OrderItem::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())))
                         .map(item -> toItemResponse(item, batchNumbers))
                         .toList(),
                 order.getCreatedAt());

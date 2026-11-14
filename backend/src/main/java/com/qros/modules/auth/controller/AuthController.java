@@ -99,7 +99,7 @@ public class AuthController {
         LoginResult result = authService.login(req);
 
         if (result.response().requires2fa()) {
-            return ApiResponse.success("Vui lòng nhập mã OTP 2FA đã gửi về email của bạn", result.response());
+            return ApiResponse.success("Please enter the 2FA OTP sent to your email", result.response());
         }
 
         String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
@@ -125,7 +125,7 @@ public class AuthController {
         String refreshToken = refreshTokenService.createRefreshToken(result.authUser());
         setRefreshCookie(response, refreshToken, Duration.ofMillis(jwtProperties.getRefreshExpirationMs()));
 
-        return ApiResponse.success("Xác thực 2FA thành công", result.response());
+        return ApiResponse.success("2FA verification successful", result.response());
     }
 
     @PostMapping("/resend-2fa")
@@ -138,7 +138,7 @@ public class AuthController {
         authRateLimitService.checkLogin(clientAddress, ticketEmail != null ? ticketEmail : req.preAuthToken());
 
         admin2faService.resend2fa(req.preAuthToken());
-        return ApiResponse.success("Mã xác thực mới đã được gửi đến email của bạn", null);
+        return ApiResponse.success("New verification code has been sent to your email", null);
     }
 
     @PostMapping("/refresh")

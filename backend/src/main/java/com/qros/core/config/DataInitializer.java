@@ -39,11 +39,11 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
-        seedUserIfNotExists("admin@gmail.com", "admin123", "Quản Trị Viên", UserRole.ADMIN);
-        seedUserIfNotExists("manager@gmail.com", "manager123", "Quản Lý Nhà Hàng", UserRole.MANAGER);
-        seedUserIfNotExists("chef@gmail.com", "chef123", "Bếp Trưởng", UserRole.CHEF);
-        seedUserIfNotExists("staff@gmail.com", "staff123", "Nhân Viên Phục Vụ", UserRole.STAFF);
-        seedUserIfNotExists("cashier@gmail.com", "cashier123", "Thu Ngân", UserRole.CASHIER);
+        seedUserIfNotExists("admin@gmail.com", "admin123", "Administrator", UserRole.ADMIN);
+        seedUserIfNotExists("manager@gmail.com", "manager123", "Restaurant Manager", UserRole.MANAGER);
+        seedUserIfNotExists("chef@gmail.com", "chef123", "Head Chef", UserRole.CHEF);
+        seedUserIfNotExists("staff@gmail.com", "staff123", "Service Staff", UserRole.STAFF);
+        seedUserIfNotExists("cashier@gmail.com", "cashier123", "Cashier", UserRole.CASHIER);
     }
 
     private void seedUserIfNotExists(String email, String rawPassword, String fullName, UserRole role) {

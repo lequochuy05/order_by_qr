@@ -59,8 +59,8 @@ public class AccountLockoutService {
                 long remainingMinutes = Math.max(1, (remainingSeconds + 59) / 60);
                 throw new BusinessException(
                         ErrorCode.ACCOUNT_LOCKED,
-                        "Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá " + properties.getMaxFailedAttempts()
-                                + " lần. Vui lòng thử lại sau " + remainingMinutes + " phút.",
+                        "Account is temporarily locked due to exceeding " + properties.getMaxFailedAttempts()
+                                + " failed attempts. Please try again after " + remainingMinutes + " minute(s).",
                         Map.of("retryAfterSeconds", remainingSeconds));
             }
         } catch (BusinessException ex) {
@@ -95,8 +95,8 @@ public class AccountLockoutService {
                 long remainingMinutes = Math.max(1, (durationSeconds + 59) / 60);
                 throw new BusinessException(
                         ErrorCode.ACCOUNT_LOCKED,
-                        "Tài khoản đã bị tạm khóa " + remainingMinutes + " phút do nhập sai mật khẩu quá " + maxAttempts
-                                + " lần liên tiếp.",
+                        "Account has been temporarily locked for " + remainingMinutes
+                                + " minute(s) due to " + maxAttempts + " consecutive failed attempts.",
                         Map.of("retryAfterSeconds", durationSeconds));
             }
         } catch (BusinessException ex) {
