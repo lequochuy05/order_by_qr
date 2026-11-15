@@ -89,7 +89,8 @@ const PaymentModalContent = (props) => {
 
       <PaymentActions
         paymentMethod={payment.paymentMethod}
-        loading={payment.loading}
+        loading={payment.loading || payment.isSubmittingPayment}
+        isSubmittingPayment={payment.isSubmittingPayment}
         cashDisabled={payment.voucherRequiresApply || payment.isInsufficient}
         cashDisabledReason={
           payment.isInsufficient

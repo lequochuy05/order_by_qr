@@ -63,16 +63,19 @@ export const queryKeys = {
     all: ['orders'],
     active: ['orders', 'active'],
     activeTakeaway: ['orders', 'active-takeaway'],
-    history: (filters = {}) => [
-      'orders',
-      'history',
-      filters.page,
-      filters.size,
-      filters.from,
-      filters.to,
-      filters.status,
-      filters.tableNumber,
-    ],
+    history: (filters = null) =>
+      filters && Object.keys(filters).length > 0
+        ? [
+            'orders',
+            'history',
+            filters.page,
+            filters.size,
+            filters.from,
+            filters.to,
+            filters.status,
+            filters.tableNumber,
+          ]
+        : ['orders', 'history'],
     detail: (id) => ['orders', id],
   },
 

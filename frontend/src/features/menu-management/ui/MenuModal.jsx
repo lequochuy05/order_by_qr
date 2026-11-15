@@ -97,18 +97,43 @@ const MenuItemModal = ({
 
     // Validate Item Options
     if (formData.itemOptions && formData.itemOptions.length > 0) {
+      // D-fix: check for duplicate option group names
+      const optionNames = formData.itemOptions.map((o) => o.name?.trim().toLowerCase()).filter(Boolean);
+      const dupOptNames = optionNames.filter((n, i) => optionNames.indexOf(n) !== i);
+
       formData.itemOptions.forEach((opt, optIdx) => {
         if (!opt.name?.trim()) {
           newErrors[`option_${optIdx}_name`] = 'Tên nhóm không được để trống';
+        } else if (dupOptNames.includes(opt.name.trim().toLowerCase())) {
+          // D-fix: duplicate option group name
+          newErrors[`option_${optIdx}_name`] = 'Tên nhóm bị trùng với nhóm khác';
         }
         if (opt.maxSelection < 1) {
           newErrors[`option_${optIdx}_max`] = 'Chọn tối đa phải ít nhất là 1';
+        } else if (
+          opt.optionValues &&
+          opt.optionValues.length > 0 &&
+          opt.maxSelection > opt.optionValues.length
+        ) {
+          // D-fix: maxSelection exceeds available choices
+          newErrors[`option_${optIdx}_max`] =
+            `Chọn tối đa không được vượt quá số lựa chọn (${opt.optionValues.length})`;
         }
 
         if (opt.optionValues && opt.optionValues.length > 0) {
+          // D-fix: check for duplicate value names within the same group
+          const valNames = opt.optionValues.map((v) => v.name?.trim().toLowerCase()).filter(Boolean);
+          const dupValNames = valNames.filter((n, i) => valNames.indexOf(n) !== i);
+
           opt.optionValues.forEach((val, valIdx) => {
             if (!val.name?.trim()) {
               newErrors[`option_${optIdx}_val_${valIdx}_name`] = 'Tên giá trị không được để trống';
+            } else if (dupValNames.includes(val.name.trim().toLowerCase())) {
+              newErrors[`option_${optIdx}_val_${valIdx}_name`] = 'Tên giá trị bị trùng';
+            }
+            // D-fix: extra price cannot be negative
+            if (Number(val.extraPrice) < 0) {
+              newErrors[`option_${optIdx}_val_${valIdx}_extraPrice`] = 'Giá thêm không được âm';
             }
           });
         } else {
@@ -454,6 +479,12 @@ const MenuItemModal = ({
                               đ
                             </span>
                           </div>
+                          {errors[`option_${optIdx}_val_${valIdx}_extraPrice`] && (
+                            <p className="text-red-500 text-[9px] mt-1 flex items-center gap-1 font-bold">
+                              <AlertCircle size={10} />{' '}
+                              {errors[`option_${optIdx}_val_${valIdx}_extraPrice`]}
+                            </p>
+                          )}
                         </div>
                         <button
                           type="button"

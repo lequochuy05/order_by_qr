@@ -13,6 +13,8 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
 
     boolean existsByMenuItem_IdAndInventoryItem_IdAndIdNot(Long menuItemId, Long inventoryItemId, Long id);
 
+    boolean existsByInventoryItem_Id(Long inventoryItemId);
+
     long countByMenuItem_Id(Long menuItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})

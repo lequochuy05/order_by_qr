@@ -88,7 +88,10 @@ public class VoucherCheckoutService {
         return voucher;
     }
 
-    @Transactional(readOnly = true)
+    // C5 fix: use a read-write @Transactional (not readOnly) so the pessimistic lock
+    // acquired by findByCodeIgnoreCaseForUpdate is held until the caller's transaction
+    // commits, preventing concurrent checkouts from both passing the usage-limit check.
+    @Transactional
     public VoucherPaymentResult resolveForPayment(String code, BigDecimal subtotal) {
         String normalizedCode = normalizeNullableCode(code);
         BigDecimal safeSubtotal = subtotal != null ? subtotal : BigDecimal.ZERO;
@@ -98,7 +101,7 @@ public class VoucherCheckoutService {
         }
 
         Voucher voucher = voucherRepository
-                .findByCodeIgnoreCase(normalizedCode)
+                .findByCodeIgnoreCaseForUpdate(normalizedCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
 
         VoucherValidationStatus status = resolveStatus(voucher);

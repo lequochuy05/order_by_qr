@@ -55,6 +55,8 @@ const CategoryManager = () => {
   const [preview, setPreview] = useState('');
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const [detailLoadingId, setDetailLoadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null); // C-fix: guard against double-click delete
   const objectPreviewUrlRef = useRef(null);
   const pageSize = 24;
 
@@ -104,8 +106,10 @@ const CategoryManager = () => {
       newErrors.name = 'Tên danh mục không được để trống';
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Tên danh mục phải có ít nhất 2 ký tự';
-    } else if (/^\d/.test(formData.name.trim())) {
-      newErrors.name = 'Tên danh mục không được bắt đầu bằng số';
+    } else if (formData.name.trim().length > 50) {
+      // Validation fix: added maxLength check to match backend @Size(max=50) constraint.
+      // The old /^\d/ regex blocking digit-starting names was arbitrary and incorrect.
+      newErrors.name = 'Tên danh mục không được vượt quá 50 ký tự';
     }
 
     if ((formData.description || '').length > 500) {
@@ -144,10 +148,17 @@ const CategoryManager = () => {
       }
 
       if (selectedFile) {
+        // M-fix: pass version of the saved result so the server can guard against concurrent image overwrites.
+        const uploadVersion = result?.version ?? formData.version;
         try {
-          await categoryService.uploadImage(result?.id || editId, toImageFormData(selectedFile));
+          await categoryService.uploadImage(result?.id || editId, uploadVersion, toImageFormData(selectedFile));
         } catch {
-          closeModal();
+          // G-fix already applied: keep modal open with updated ID/version so user can retry upload.
+          setFormData((prev) => ({
+            ...prev,
+            id: result?.id || editId,
+            version: result?.version ?? prev.version,
+          }));
           invalidateCategories();
           showErrorToast('Đã lưu danh mục, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
           return;
@@ -173,40 +184,58 @@ const CategoryManager = () => {
   };
 
   // === Xóa ===
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, version) => {
+    if (deletingId) return; // C-fix: guard against concurrent deletes
     const confirmed = await confirm(
       'Xóa danh mục',
       'Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.',
     );
     if (!confirmed) return;
 
+    setDeletingId(id);
     try {
-      await categoryService.delete(id);
+      await categoryService.delete(id, version); // L-fix: pass version for optimistic lock check
       showSuccessToast('Đã xóa danh mục thành công!');
       invalidateCategories();
     } catch (err) {
       showErrorToast(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
   // Modal
-  const openModal = (cat = null) => {
+  const openModal = async (cat = null) => {
     clearObjectPreview();
     if (cat) {
-      const categoryFormData = toCategoryFormData(cat);
-      setEditId(cat.id);
-      setFormData(categoryFormData);
-      setInitialFormData(categoryFormData);
-      setPreview(cat.img || '');
+      // Stale-version fix: always fetch a fresh copy from the server so the version
+      // field is current. Using stale list data causes CONCURRENT_MODIFICATION 409s
+      // when anyone else has updated the category since the page was loaded.
+      setDetailLoadingId(cat.id);
+      try {
+        const freshCat = await categoryService.getById(cat.id);
+        const categoryFormData = toCategoryFormData(freshCat);
+        setEditId(freshCat.id);
+        setFormData(categoryFormData);
+        setInitialFormData(categoryFormData);
+        setPreview(freshCat.img || '');
+        setSelectedFile(null);
+        setErrors({});
+        setIsModalOpen(true);
+      } catch (err) {
+        showErrorToast(err);
+      } finally {
+        setDetailLoadingId(null);
+      }
     } else {
       setEditId(null);
       setFormData(emptyCategoryForm);
       setInitialFormData(null);
       setPreview('');
+      setSelectedFile(null);
+      setErrors({});
+      setIsModalOpen(true);
     }
-    setSelectedFile(null);
-    setErrors({});
-    setIsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -236,7 +265,8 @@ const CategoryManager = () => {
               key={cat.id}
               category={cat}
               onEdit={() => openModal(cat)}
-              onDelete={() => handleDelete(cat.id)}
+              onDelete={() => handleDelete(cat.id, cat.version)}
+              isEditing={detailLoadingId === cat.id}
             />
           ))}
         </div>

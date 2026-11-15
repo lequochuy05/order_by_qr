@@ -82,8 +82,8 @@ public class ComboController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
-        comboService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+        comboService.delete(id, version);
         return ApiResponse.success("Combo deleted successfully", null);
     }
 }

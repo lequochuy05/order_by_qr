@@ -321,6 +321,7 @@ const usePayosPayment = ({
     changeAmount,
     isInsufficient,
     hasUnfinishedItems,
+    isSubmittingPayment,
     handleConfirmCashPay,
   } = useCashPayment({
     cashPaymentEnabled,
@@ -354,6 +355,7 @@ const usePayosPayment = ({
     changeAmount,
     isInsufficient,
     hasUnfinishedItems,
+    isSubmittingPayment,
     setPaymentMethod,
     selectCash,
     handleCreatePayosQR,

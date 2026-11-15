@@ -28,7 +28,8 @@ const USER_ROLE_OPTIONS = [
 const isValidPassword = (value) =>
   /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(value);
 
-const UserModal = ({ isOpen, onClose, data, onSubmit, errors = {}, setErrors }) => {
+const UserModal = ({ isOpen, onClose, data: incomingData, initialData, onSubmit, errors = {}, setErrors }) => {
+  const data = incomingData || initialData;
   const { user: currentUser } = useAuth();
   const availableRoleOptions = React.useMemo(() => {
     if (currentUser?.role === 'MANAGER') {

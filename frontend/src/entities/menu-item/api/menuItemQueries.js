@@ -22,3 +22,16 @@ export const useMenuDetailQuery = (id, options = {}) =>
     enabled: !!id,
     ...options,
   });
+
+/**
+ * A-fix: Fetch ALL active menu items for combo composition.
+ * Uses React Query with staleTime=60s so ComboModal always gets fresh data
+ * without redundant network calls within a minute.
+ */
+export const useMenuAllQuery = (options = {}) =>
+  useQuery({
+    queryKey: [...queryKeys.menu.all, 'all'],
+    queryFn: () => menuItemService.getAll(),
+    staleTime: 60_000,
+    ...options,
+  });

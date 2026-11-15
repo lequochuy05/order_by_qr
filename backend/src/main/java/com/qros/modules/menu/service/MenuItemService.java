@@ -174,12 +174,18 @@ public class MenuItemService {
     }
 
     @Transactional
-    public void delete(@NonNull Long id) {
+    public void delete(@NonNull Long id, @NonNull Long version) {
         MenuItem item = getEntityById(id);
+        // L-fix: assert version to prevent concurrent delete race condition.
+        assertVersionMatches(item.getVersion(), version);
 
-        if (comboItemRepository.existsInActiveCombo(id)) {
+        // Orphaned-reference fix: block deletion if the item is in ANY non-deleted combo
+        // (active OR inactive). The old check only blocked active combos — allowing deletion
+        // while in an inactive combo, which creates null references when that combo is re-activated.
+        if (comboItemRepository.existsInAnyNonDeletedCombo(id)) {
             throw new BusinessException(
-                    ErrorCode.BUSINESS_ERROR, "Cannot delete menu item that is part of an active combo");
+                    ErrorCode.BUSINESS_ERROR,
+                    "Cannot delete menu item that is part of a combo. Please remove it from all combos first.");
         }
 
         String oldImg = item.getImg();
@@ -195,10 +201,14 @@ public class MenuItemService {
     }
 
     @Transactional
-    public MenuItemImageResponse uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
+    public MenuItemImageResponse uploadImage(@NonNull Long id, @NonNull Long version, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
         MenuItem item = getEntityById(id);
+        // M-fix: assert version before upload to prevent overwriting an image on a stale entity.
+        // Without this guard, two concurrent uploads could race: both load the same old item,
+        // the first updates the img URL, and the second upload still succeeds, silently losing the first image.
+        assertVersionMatches(item.getVersion(), version);
         String oldUrl = item.getImg();
 
         try {

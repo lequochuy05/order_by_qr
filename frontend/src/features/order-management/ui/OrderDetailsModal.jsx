@@ -9,7 +9,7 @@ import {
 import { X, Receipt, Clock, Utensils, Printer, RotateCw, UserCheck, CreditCard } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 
-export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onReconcile }) {
+export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingId, onPrint, onReconcile }) {
   if (!isOpen || !order) return null;
   const subtotalAmount = getOrderSubtotalAmount(order);
   const discountAmount = getOrderDiscountAmount(order);
@@ -155,10 +155,11 @@ export default function OrderDetailsModal({ isOpen, onClose, order, onPrint, onR
       <div className="flex gap-3 border-t border-slate-200/80 bg-slate-50/60 p-5 dark:border-slate-800/80 dark:bg-slate-900/60">
         <button
           onClick={() => onReconcile(order.id)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+          disabled={reconcilingId === order.id}
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
         >
-          <RotateCw size={16} />
-          <span>Tra soát</span>
+          <RotateCw size={16} className={reconcilingId === order.id ? 'animate-spin text-indigo-600' : ''} />
+          <span>{reconcilingId === order.id ? 'Đang tra soát...' : 'Tra soát'}</span>
         </button>
         {order.status === ORDER_STATUSES.COMPLETED && (
           <button

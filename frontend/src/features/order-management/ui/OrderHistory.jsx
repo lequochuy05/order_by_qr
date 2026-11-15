@@ -32,6 +32,7 @@ const OrderHistoryContent = () => {
       <OrderHistoryTable
         orders={history.orders}
         loading={history.loading}
+        reconcilingId={history.reconcilingId}
         onSelect={history.setSelectedOrder}
         onPrint={history.printOrder}
         onReconcile={history.reconcileOrder}
@@ -48,6 +49,7 @@ const OrderHistoryContent = () => {
         isOpen={Boolean(history.selectedOrder)}
         onClose={() => history.setSelectedOrder(null)}
         order={history.selectedOrder}
+        reconcilingId={history.reconcilingId}
         onPrint={history.printOrder}
         onReconcile={history.reconcileOrder}
       />

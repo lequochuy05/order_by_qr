@@ -157,7 +157,7 @@ public class InventoryItemService {
     public void delete(@NonNull Long id) {
         InventoryItem item = getEntityById(id);
 
-        if (!recipeItemRepository.findByInventoryItemId(id).isEmpty()) {
+        if (recipeItemRepository.existsByInventoryItem_Id(id)) {
             throw new BusinessException(ErrorCode.INVENTORY_ITEM_IN_USE);
         }
 

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '@shared/api/authService.js';
-import { Mail, ArrowLeft, Loader2, AlertCircle, CheckCircle, KeyRound } from 'lucide-react';
+import { AuthRainBackground } from '@shared/ui';
+import { Mail, ArrowLeft, Loader2, AlertCircle, CheckCircle, KeyRound, ShieldAlert } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
@@ -36,12 +37,7 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 p-4 transition-colors dark:bg-[#0B0F17]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl dark:bg-indigo-500/10" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-500/15 blur-3xl dark:bg-violet-500/10" />
-      </div>
-
+    <AuthRainBackground>
       <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-2xl transition-all animate-in fade-in zoom-in duration-300 dark:border-slate-800/80 dark:bg-slate-900/90 md:p-10">
         {sent ? (
           <div className="text-center">
@@ -49,12 +45,13 @@ const ForgotPasswordPage = () => {
               <CheckCircle size={32} />
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              Đã Gửi Hướng Dẫn
+              Yêu Cầu Đã Được Tiếp Nhận
             </h1>
-            <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-              Chúng tôi đã gửi link đặt lại mật khẩu tới email{' '}
-              <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{email}</span>. Vui
-              lòng kiểm tra hộp thư của bạn trong vài phút.
+            <p className="mt-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Nếu địa chỉ email <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{email}</span> tồn tại trong hệ thống QROS, liên kết đặt lại mật khẩu đã được gửi về hộp thư của bạn.
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              Vui lòng kiểm tra hộp thư đến (bao gồm cả thư mục Thư rác/Spam) trong vài phút.
             </p>
             <div className="mt-6 flex flex-col gap-3">
               <button
@@ -114,6 +111,9 @@ const ForgotPasswordPage = () => {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">Lưu ý:</span> Để bảo mật thông tin, nếu email tồn tại trong hệ thống thì liên kết đặt lại mật khẩu sẽ được gửi về hộp thư của bạn.
+                </p>
               </div>
 
               <button
@@ -143,7 +143,7 @@ const ForgotPasswordPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </AuthRainBackground>
   );
 };
 

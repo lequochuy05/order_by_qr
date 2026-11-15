@@ -1,10 +1,10 @@
-import { Eye, Printer, RotateCw } from 'lucide-react';
+import { Eye, Printer, RotateCw, ShoppingBag } from 'lucide-react';
 
 import { getOrderStatusMeta, ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 
-const OrderHistoryRow = ({ order, onSelect, onPrint, onReconcile }) => (
+const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile }) => (
   <tr
     className="group cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/30 dark:border-slate-800/60 dark:hover:bg-slate-800/40"
     onClick={() => onSelect(order)}
@@ -19,10 +19,12 @@ const OrderHistoryRow = ({ order, onSelect, onPrint, onReconcile }) => (
     <td className="p-5">
       {order.table?.tableNumber || order.table?.name ? (
         <span className="rounded-xl border border-slate-200/80 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-          {order.table.tableNumber || order.table.name}
+          Bàn {order.table.tableNumber || order.table.name}
         </span>
       ) : (
-        <span className="italic text-xs text-slate-400 dark:text-slate-500">Mang đi</span>
+        <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
+          <ShoppingBag size={13} /> Mang về
+        </span>
       )}
     </td>
     <td className="p-5 font-mono font-black text-slate-900 dark:text-white">
@@ -41,11 +43,12 @@ const OrderHistoryRow = ({ order, onSelect, onPrint, onReconcile }) => (
       <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 dark:text-slate-500 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
+          disabled={isReconciling}
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-500 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
           title="Tra soát thanh toán"
           onClick={() => onReconcile(order.id)}
         >
-          <RotateCw size={16} />
+          <RotateCw size={16} className={isReconciling ? 'animate-spin text-indigo-600' : ''} />
         </button>
         {order.status === ORDER_STATUSES.COMPLETED && (
           <button

@@ -1,7 +1,7 @@
 import { Power, X } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 
-const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
+const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive, isSubmitting = false }) => {
   return (
     <SharedModal
       isOpen={isOpen}
@@ -12,7 +12,8 @@ const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
       {/* Nút đóng nhanh */}
       <button
         onClick={onCancel}
-        className="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        disabled={isSubmitting}
+        className="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
       >
         <X size={20} />
       </button>
@@ -41,13 +42,14 @@ const ConfirmToggleModal = ({ isOpen, onConfirm, onCancel, currentActive }) => {
       <div className="flex flex-col gap-3">
         <button
           onClick={onConfirm}
-          className={`w-full py-3.5 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 ${
+          disabled={isSubmitting}
+          className={`w-full py-3.5 text-white rounded-2xl font-bold shadow-lg transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 ${
             currentActive
               ? 'bg-gradient-to-r from-rose-600 to-red-600 shadow-rose-600/25 hover:from-rose-500 hover:to-red-500'
               : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500'
           }`}
         >
-          Thay đổi
+          {isSubmitting ? 'Đang cập nhật...' : 'Thay đổi'}
         </button>
         <button
           onClick={onCancel}

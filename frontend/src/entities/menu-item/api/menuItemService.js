@@ -93,6 +93,9 @@ const clearMenuCache = () => {
 };
 
 export const menuItemService = {
+  // Cache invalidation fix: clearCache was defined but NOT exported, causing
+  // WebSocketInvalidator's menuItemService.clearCache?.() to silently do nothing.
+  clearCache: clearMenuCache,
   getAll: (categoryId, options) => getMenuList(categoryId, options).then(normalizePageContent),
   getPage: (params, options) => getMenuPage(params, options),
   getById: (id, options) => getMenuDetail(id, options),
@@ -108,17 +111,19 @@ export const menuItemService = {
     clearMenuCache();
     return res;
   },
-  uploadImage: async (id, file) => {
+  uploadImage: async (id, version, file) => {
     clearMenuCache();
     const formData = new FormData();
     formData.append('file', file);
-    const res = await api.post(`/menu-items/${id}/image`, formData);
+    // M-fix: version required by backend to guard against concurrent image overwrites.
+    const res = await api.post(`/menu-items/${id}/image`, formData, { params: { version } });
     clearMenuCache();
     return res;
   },
-  delete: async (id) => {
+  delete: async (id, version) => {
     clearMenuCache();
-    await api.delete(`/menu-items/${id}`);
+    // L-fix: version required by backend DELETE endpoint for optimistic locking.
+    await api.delete(`/menu-items/${id}`, { params: { version } });
     clearMenuCache();
   },
   generateDescription: async (itemName, categoryName, price, ingredients) => {

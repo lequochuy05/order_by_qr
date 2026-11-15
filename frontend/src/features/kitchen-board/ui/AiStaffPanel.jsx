@@ -37,7 +37,7 @@ const AiStaffPanel = () => {
         .slice(-10)
         .map((message) => ({
           role: message.role === 'assistant' ? 'model' : 'user',
-          content: message.content,
+          content: (message.content || '').slice(0, 2000),
         })),
     [messages],
   );

@@ -73,8 +73,12 @@ public class AiMenuDescriptionService {
             }
             json = json.trim();
 
-            if (!json.startsWith("{")) {
-                log.warn("AI response is not JSON (missing opening brace)");
+            int firstBrace = json.indexOf('{');
+            int lastBrace = json.lastIndexOf('}');
+            if (firstBrace >= 0 && lastBrace > firstBrace) {
+                json = json.substring(firstBrace, lastBrace + 1);
+            } else {
+                log.warn("AI response is not JSON (missing braces): {}", reply);
                 throw new BusinessException(
                         ErrorCode.APP_ERROR, "AI không thể tạo mô tả ngay lúc này. Vui lòng thử lại sau.");
             }

@@ -85,6 +85,7 @@ const useInventoryItemForm = ({ onSaved }) => {
       quantityOnHand: Number(inventoryForm.quantityOnHand),
       lowStockThreshold: Number(inventoryForm.lowStockThreshold),
       active: inventoryForm.active,
+      version: editingItem?.version ?? null,
     };
 
     setIsInventorySubmitting(true);
@@ -101,7 +102,18 @@ const useInventoryItemForm = ({ onSaved }) => {
         }
         showSuccessToast('Đã cập nhật nguyên liệu');
       } else {
-        await inventoryService.createItem(payload);
+        const created = await inventoryService.createItem(payload);
+        const initialQty = Number(inventoryForm.quantityOnHand || 0);
+        if (initialQty > 0 && created?.id) {
+          try {
+            await inventoryService.stockIn(created.id, {
+              quantity: initialQty,
+              note: 'Khởi tạo tồn kho ban đầu',
+            });
+          } catch (stockError) {
+            console.error('Failed to set initial stock:', stockError);
+          }
+        }
         showSuccessToast('Đã thêm nguyên liệu');
       }
 

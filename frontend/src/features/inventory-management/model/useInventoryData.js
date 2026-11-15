@@ -3,15 +3,13 @@ import { queryKeys } from '@shared/api/queryKeys.js';
 import { useState, useEffect } from 'react';
 import { INVENTORY_PAGE_SIZE } from '../lib/inventoryConstants.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
-import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import {
   useInventoryPageQuery,
   useInventorySummaryQuery,
   useStockMovementsQuery,
 } from '@entities/inventory';
 
-const useInventoryData = ({ onInventoryUpdated } = {}) => {
+const useInventoryData = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [stockFilter, setStockFilter] = useState('ALL');
   const [activeTab, setActiveTab] = useState('items');
@@ -46,16 +44,8 @@ const useInventoryData = ({ onInventoryUpdated } = {}) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all });
   };
 
-  useWebSocket(
-    '/topic/inventory',
-    (message) => {
-      if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
-      playNotificationSound();
-      refreshAfterMutation();
-      onInventoryUpdated?.();
-    },
-    { scope: 'admin' },
-  );
+  // Duplicate WebSocket fix: removed local subscription to /topic/inventory.
+  // WebSocketInvalidator already handles /topic/inventory centrally.
 
   return {
     items: inventoryData?.content || [],

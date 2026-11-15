@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 
 import { ProtectedRoute } from '@features/auth';
 import AdminLayout from '@widgets/admin-layout/AdminLayout.jsx';
@@ -46,15 +46,28 @@ const CustomerOrderingRoute = () => (
   </ErrorBoundary>
 );
 
-const AppRouter = () => (
-  <ErrorBoundary fullScreen>
-    <Suspense fallback={<LoadingScreen />}>
-      <Routes>
-        <Route path="/:tableCode/menu" element={<CustomerOrderingRoute />} />
-        <Route path="/menu" element={<CustomerOrderingRoute />} />
-        <Route path="/login" element={<AuthRoute />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
+const AppRouter = () => {
+  const location = useLocation();
+
+  return (
+    // resetKeys=[location.pathname] giúp ErrorBoundary tự reset khi user navigate sang URL khác
+    // tránh bị kẹt màn hình lỗi sau khi Back/Forward trình duyệt
+    <ErrorBoundary fullScreen resetKeys={[location.pathname]}>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/:tableCode/menu" element={<CustomerOrderingRoute />} />
+          <Route path="/menu" element={<CustomerOrderingRoute />} />
+          <Route path="/login" element={<AuthRoute />} />
+          <Route path="/forgot-password" element={
+            <ErrorBoundary fullScreen>
+              <ForgotPasswordPage />
+            </ErrorBoundary>
+          } />
+          <Route path="/reset-password" element={
+            <ErrorBoundary fullScreen>
+              <ResetPasswordPage />
+            </ErrorBoundary>
+          } />
 
         <Route
           element={
@@ -107,6 +120,7 @@ const AppRouter = () => (
       </Routes>
     </Suspense>
   </ErrorBoundary>
-);
+  );
+};
 
 export default AppRouter;

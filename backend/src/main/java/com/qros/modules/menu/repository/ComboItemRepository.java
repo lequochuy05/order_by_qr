@@ -29,4 +29,17 @@ public interface ComboItemRepository extends JpaRepository<ComboItem, Long> {
         AND ci.combo.isDeleted = false
     """)
     boolean existsInActiveCombo(@Param("menuItemId") Long menuItemId);
+
+    // Orphaned-reference fix: check ALL non-deleted combos (active OR inactive).
+    // A MenuItem deleted while in an inactive combo creates null references that
+    // break combo rendering and ordering when that combo is later re-activated.
+    @Query(
+            """
+        SELECT COUNT(ci) > 0
+        FROM ComboItem ci
+        WHERE ci.menuItem.id = :menuItemId
+        AND ci.isDeleted = false
+        AND ci.combo.isDeleted = false
+        """)
+    boolean existsInAnyNonDeletedCombo(@Param("menuItemId") Long menuItemId);
 }

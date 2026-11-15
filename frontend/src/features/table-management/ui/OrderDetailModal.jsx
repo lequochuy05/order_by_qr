@@ -15,11 +15,14 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const [editingId, setEditingId] = useState(null);
   const [editVal, setEditVal] = useState({ quantity: 1, notes: '' });
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [preparingItemIds, setPreparingItemIds] = useState(() => new Set());
   const preparingItemIdsRef = useRef(new Set());
   const preparedRequestQueueRef = useRef(Promise.resolve());
   const orderIdRef = useRef(order?.id);
   const suppressWsReloadUntilRef = useRef(0);
+  const wsTimerRef = useRef(null);
 
   const { user } = useAuth();
 
@@ -27,12 +30,17 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
     orderIdRef.current = order?.id;
   }, [order?.id]);
 
+  useEffect(() => () => {
+    if (wsTimerRef.current) clearTimeout(wsTimerRef.current);
+  }, []);
+
   // Realtime: tự động reload order khi có thay đổi từ WebSocket
   const handleWsMessage = useCallback(() => {
     if (!isOpen || !orderIdRef.current || !onOrderUpdate) return;
     if (Date.now() < suppressWsReloadUntilRef.current) return;
     // Delay nhẹ để backend kịp commit, rồi reload qua callback của parent
-    setTimeout(onOrderUpdate, 300);
+    if (wsTimerRef.current) clearTimeout(wsTimerRef.current);
+    wsTimerRef.current = setTimeout(onOrderUpdate, 300);
   }, [isOpen, onOrderUpdate]);
   useWebSocket('/topic/orders', handleWsMessage, { scope: 'admin' });
 
@@ -75,6 +83,8 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const cancelDelete = () => setConfirmDeleteId(null);
 
   const handleDelete = async (itemId) => {
+    if (isDeleting) return;
+    setIsDeleting(true);
     try {
       await orderService.deleteOrderItem(itemId);
       setItems((prev) =>
@@ -86,8 +96,10 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
       showSuccessToast('Đã hủy món thành công');
       await onOrderUpdate();
     } catch (error) {
-      setConfirmDeleteId(null);
       showErrorToast(error);
+    } finally {
+      setIsDeleting(false);
+      setConfirmDeleteId(null);
     }
   };
 
@@ -97,6 +109,8 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   };
 
   const saveEdit = async (itemId) => {
+    if (isSavingEdit) return;
+    setIsSavingEdit(true);
     try {
       await orderService.updateOrderItem(itemId, editVal);
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...editVal } : i)));
@@ -105,6 +119,8 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
       await onOrderUpdate();
     } catch (error) {
       showErrorToast(error);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -285,13 +301,16 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => saveEdit(item.id)}
-                          className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 active:scale-95"
+                          disabled={isSavingEdit}
+                          className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <Save size={15} /> Lưu
+                          {isSavingEdit ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                          {isSavingEdit ? 'Đang lưu...' : 'Lưu'}
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
-                          className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                          disabled={isSavingEdit}
+                          className="rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           Hủy
                         </button>
@@ -300,13 +319,16 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                       <div className="flex flex-col gap-1.5">
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/25 transition hover:from-rose-500 hover:to-red-500 active:scale-95"
+                          disabled={isDeleting}
+                          className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-rose-600/25 transition hover:from-rose-500 hover:to-red-500 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <Trash2 size={13} /> Xác nhận hủy
+                          {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                          {isDeleting ? 'Đang hủy...' : 'Xác nhận hủy'}
                         </button>
                         <button
                           onClick={cancelDelete}
-                          className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                          disabled={isDeleting}
+                          className="rounded-xl bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-slate-200 active:scale-95 disabled:opacity-60 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                         >
                           Quay lại
                         </button>

@@ -103,10 +103,18 @@ class WebSocketService {
     const subscribeNow = () => {
       if (!this.client?.connected) return null;
       const subscription = this.client.subscribe(topic, (message) => {
+        // Tách riêng parse JSON và thực thi callback để tránh gọi callback 2 lần
+        // khi callback ném lỗi runtime (vd: TypeError trong React state update)
+        let parsedPayload;
         try {
-          callback(JSON.parse(message.body));
+          parsedPayload = JSON.parse(message.body);
         } catch {
-          callback(message.body);
+          parsedPayload = message.body; // Fallback cho non-JSON message
+        }
+        try {
+          callback(parsedPayload);
+        } catch (callbackError) {
+          console.error(`[WebSocketService] Callback error on topic ${topic}:`, callbackError);
         }
       });
 
@@ -134,7 +142,13 @@ class WebSocketService {
       unsubscribe: () => {
         active = false;
         this.onConnectCallbacks = this.onConnectCallbacks.filter((cb) => cb !== queuedSubscribe);
-        if (innerSubscription) innerSubscription.unsubscribe();
+        if (innerSubscription) {
+          try {
+            innerSubscription.unsubscribe();
+          } catch {
+            // Ignored if socket is already closed or closing
+          }
+        }
       },
     };
   }

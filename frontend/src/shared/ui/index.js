@@ -22,3 +22,5 @@ export { default as StatsToolbar } from './StatsToolbar.jsx';
 export { default as SpotlightGrid } from './SpotlightGrid.jsx';
 export { default as ItemOptionsModal } from './ItemOptionsModal.jsx';
 export { default as SystemErrorPage } from './SystemErrorPage.jsx';
+export { default as AuthRainBackground } from './AuthRainBackground.jsx';
+

@@ -59,6 +59,10 @@ const useCustomerCart = ({
         return;
       }
 
+      // H3 fix: capture qty/isCombo BEFORE setCart so we can call the side-effect
+      // OUTSIDE the updater. Updater functions must be pure; async calls inside
+      // them run twice in React StrictMode and risk stale-closure bugs.
+      const shouldLoadCrossSell = !isCombo && qty === 1;
       setCart((current) => {
         const group = isCombo ? 'combos' : 'items';
         const updatedGroup = { ...current[group] };
@@ -72,11 +76,12 @@ const useCustomerCart = ({
             qty,
             note: current[group][product.id]?.note || '',
           };
-          if (!isCombo && qty === 1) loadCrossSellRecommendations(product.id);
         }
 
         return { ...current, [group]: updatedGroup };
       });
+
+      if (shouldLoadCrossSell) loadCrossSellRecommendations(product.id);
     },
     [assertCanOrder, loadCrossSellRecommendations],
   );
@@ -85,8 +90,13 @@ const useCustomerCart = ({
     (product, selectedValueIds, selectedOptionObjs, finalPrice) => {
       if (!assertCanOrder(product)) return;
 
+      // H5 fix: sort IDs numerically before building the cartId key so that the
+      // same combination of options always maps to the same cart slot regardless
+      // of the order they were selected in the UI.
+      const sortedValueIds = [...selectedValueIds].sort((a, b) => Number(a) - Number(b));
+      const cartId = `${product.id}_${sortedValueIds.join('_')}`;
+
       setCart((current) => {
-        const cartId = `${product.id}_${selectedValueIds.join('_')}`;
         const currentQty = current.items[cartId]?.qty || 0;
 
         return {
@@ -98,7 +108,7 @@ const useCustomerCart = ({
               cartId,
               actualId: product.id,
               price: finalPrice,
-              selectedOptionValueIds: selectedValueIds,
+              selectedOptionValueIds: sortedValueIds,
               selectedOptionObjs,
               qty: currentQty + 1,
               note: current.items[cartId]?.note || '',

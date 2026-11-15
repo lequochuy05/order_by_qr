@@ -156,19 +156,27 @@ const TableFormModal = ({
                 <span>Quét để đặt món</span>
               </div>
               {formData.id && (
-                <button
-                  type="button"
-                  onClick={handleRegenerateQr}
-                  disabled={isRegeneratingQr}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:bg-slate-700"
-                >
-                  {isRegeneratingQr ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <RefreshCw size={14} />
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRegenerateQr}
+                    disabled={isRegeneratingQr || (formData.status && formData.status !== 'AVAILABLE')}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:cursor-not-allowed disabled:from-slate-300 disabled:to-slate-300 disabled:text-slate-500 disabled:shadow-none dark:disabled:from-slate-700 dark:disabled:to-slate-700 dark:disabled:text-slate-400"
+                    title={formData.status && formData.status !== 'AVAILABLE' ? 'Chỉ có thể đổi mã QR khi bàn đang ở trạng thái Trống' : ''}
+                  >
+                    {isRegeneratingQr ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={14} />
+                    )}
+                    <span>{isRegeneratingQr ? 'Đang tạo...' : 'Tạo lại QR'}</span>
+                  </button>
+                  {formData.status && formData.status !== 'AVAILABLE' && (
+                    <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 text-center px-2">
+                      * Không thể đổi mã QR khi bàn đang có khách hoặc chưa kết thúc phiên
+                    </span>
                   )}
-                  <span>{isRegeneratingQr ? 'Đang tạo...' : 'Tạo lại QR'}</span>
-                </button>
+                </div>
               )}
             </div>
           </div>

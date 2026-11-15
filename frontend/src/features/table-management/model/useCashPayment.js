@@ -22,6 +22,7 @@ const useCashPayment = ({
   const tableNumber = table?.tableNumber;
 
   const [cashReceived, setCashReceived] = useState('');
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   const numericCash = Number(cashReceived) || 0;
   const isInsufficient = numericCash > 0 && numericCash < finalAmount;
@@ -35,6 +36,7 @@ const useCashPayment = ({
   const hasUnfinishedItems = unfinishedItems.length > 0;
 
   const handleConfirmCashPay = useCallback(async () => {
+    if (isSubmittingPayment) return;
     if (!cashPaymentEnabled) return;
     if (preview.voucherRequiresApply) return;
     if (isInsufficient) {
@@ -66,6 +68,7 @@ const useCashPayment = ({
       if (!confirmed) return;
     }
 
+    setIsSubmittingPayment(true);
     try {
       const voucherCode = preview.payableVoucherCode;
       const actualCash = numericCash > 0 ? numericCash : finalAmount;
@@ -99,8 +102,11 @@ const useCashPayment = ({
       );
     } catch (error) {
       showErrorToast(error);
+    } finally {
+      setIsSubmittingPayment(false);
     }
   }, [
+    isSubmittingPayment,
     cashPaymentEnabled,
     changeAmount,
     confirm,
@@ -123,6 +129,7 @@ const useCashPayment = ({
     changeAmount,
     isInsufficient,
     hasUnfinishedItems,
+    isSubmittingPayment,
     handleConfirmCashPay,
   };
 };

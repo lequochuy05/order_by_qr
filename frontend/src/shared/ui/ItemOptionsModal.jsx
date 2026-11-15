@@ -168,8 +168,10 @@ const ItemOptionsModal = ({
                 {fmtVND(item.price)}
               </p>
             </div>
+            {/* H8 fix: aria-label added so screen readers announce "Đóng" for the icon-only button */}
             <button
               onClick={onClose}
+              aria-label="Đóng"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
             >
               <X size={18} />
@@ -180,9 +182,15 @@ const ItemOptionsModal = ({
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {item.itemOptions?.map((opt) => {
             const invalid = submitted && opt.required && !hasRequiredSelection(opt);
+            // H8 fix: single-select groups use radiogroup, multi-select use group
+            const groupRole = opt.maxSelection === 1 ? 'radiogroup' : 'group';
+            const optionRole = opt.maxSelection === 1 ? 'radio' : 'checkbox';
             return (
               <div
                 key={opt.id}
+                role={groupRole}
+                aria-label={opt.name}
+                aria-required={opt.required}
                 className={`space-y-3 rounded-2xl border p-3.5 transition-colors ${
                   invalid
                     ? 'border-red-200 bg-red-50/70 dark:border-red-500/30 dark:bg-red-500/10'
@@ -211,6 +219,8 @@ const ItemOptionsModal = ({
                     <button
                       key={val.id}
                       type="button"
+                      role={optionRole}
+                      aria-checked={isOptionSelected(opt.id, val.id, opt.maxSelection)}
                       onClick={() => handleOptionSelect(opt.id, val.id, opt.maxSelection)}
                       className={`min-h-14 rounded-2xl border px-3 py-2 text-left transition-all active:scale-[0.98] ${
                         isOptionSelected(opt.id, val.id, opt.maxSelection)

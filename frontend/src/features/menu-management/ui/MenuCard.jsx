@@ -21,6 +21,17 @@ const MenuItemCard = ({ item, onEdit, onDelete, isEditing = false }) => (
           {item.category?.name}
         </div>
       )}
+      {/* Status F-fix: show availability badges so staff can spot unlisted/sold-out items at a glance */}
+      {!item.active && (
+        <div className="absolute left-2.5 top-2.5 rounded-lg bg-slate-700/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md">
+          Ngừng bán
+        </div>
+      )}
+      {item.active && item.available === false && (
+        <div className="absolute left-2.5 top-2.5 rounded-lg bg-amber-500/90 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md">
+          Hết hàng
+        </div>
+      )}
     </div>
 
     <div className="flex-grow">

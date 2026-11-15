@@ -74,14 +74,19 @@ const useKitchenOrders = () => {
       try {
         await orderService.updateItemStatus(itemId, newStatus, user?.userId);
       } catch {
-        showError('Không thể cập nhật trạng thái món');
-        fetchKitchenOrders({ silent: true });
+        // H6+H7 fix: guard state updates and rollback fetch against unmounted component
+        if (isMountedRef.current) {
+          showError('Không thể cập nhật trạng thái món');
+          fetchKitchenOrders({ silent: true });
+        }
       } finally {
-        setProcessingItems((current) => {
-          const next = new Set(current);
-          next.delete(itemId);
-          return next;
-        });
+        if (isMountedRef.current) {
+          setProcessingItems((current) => {
+            const next = new Set(current);
+            next.delete(itemId);
+            return next;
+          });
+        }
       }
     },
     [fetchKitchenOrders, processingItems, showError, user?.userId],
@@ -114,14 +119,19 @@ const useKitchenOrders = () => {
       try {
         await orderService.batchUpdateItemStatus(idsToProcess, newStatus, user?.userId);
       } catch {
-        showError('Không thể cập nhật trạng thái các món');
-        fetchKitchenOrders({ silent: true });
+        // H6+H7 fix: guard state updates and rollback fetch against unmounted component
+        if (isMountedRef.current) {
+          showError('Không thể cập nhật trạng thái các món');
+          fetchKitchenOrders({ silent: true });
+        }
       } finally {
-        setProcessingItems((current) => {
-          const next = new Set(current);
-          idsToProcess.forEach((id) => next.delete(id));
-          return next;
-        });
+        if (isMountedRef.current) {
+          setProcessingItems((current) => {
+            const next = new Set(current);
+            idsToProcess.forEach((id) => next.delete(id));
+            return next;
+          });
+        }
       }
     },
     [fetchKitchenOrders, processingItems, showError, user?.userId],
@@ -143,14 +153,19 @@ const useKitchenOrders = () => {
       try {
         await orderService.cancelKitchenItem(itemId, reason);
       } catch {
-        showError('Không thể hủy món ăn');
-        fetchKitchenOrders({ silent: true });
+        // H6+H7 fix: guard state updates and rollback fetch against unmounted component
+        if (isMountedRef.current) {
+          showError('Không thể hủy món ăn');
+          fetchKitchenOrders({ silent: true });
+        }
       } finally {
-        setProcessingItems((current) => {
-          const next = new Set(current);
-          next.delete(itemId);
-          return next;
-        });
+        if (isMountedRef.current) {
+          setProcessingItems((current) => {
+            const next = new Set(current);
+            next.delete(itemId);
+            return next;
+          });
+        }
       }
     },
     [fetchKitchenOrders, processingItems, showError],

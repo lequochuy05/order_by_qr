@@ -155,10 +155,15 @@ public class ComboService {
     }
 
     @Transactional
-    public void delete(@NonNull Long id) {
+    public void delete(@NonNull Long id, @NonNull Long version) {
         Combo combo = getEntityByIdWithItems(id);
+        // L-fix: assert version to prevent concurrent delete race condition.
+        assertVersionMatches(combo.getVersion(), version);
 
-        comboItemRepo.softDeleteByComboId(id);
+        // Redundant-bulk-delete fix: removed comboItemRepo.softDeleteByComboId(id).
+        // The CascadeType.ALL + orphanRemoval + @SQLDelete("UPDATE combo_items SET is_deleted = true WHERE id = ?")
+        // on ComboItem already handles soft-deletion correctly within the same transaction.
+        // The extra JPQL bulk UPDATE bypassed the L1 cache and triggered a second soft-delete per row.
         comboRepo.delete(combo);
 
         eventPublisher.publishEvent(new ComboChangeEvent("deleted", id));

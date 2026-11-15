@@ -6,6 +6,7 @@ import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.repository.UserRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.UserChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ public class UserAvatarService {
     private final TransactionSideEffectService sideEffects;
     private final UserMapper userMapper;
     private final ImageFileValidator imageFileValidator;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
@@ -47,6 +50,7 @@ public class UserAvatarService {
                     () -> storageService.delete(newUrl), "delete rolled back avatar image for user " + id);
             u.setAvatarUrl(newUrl);
             userRepository.save(u);
+            eventPublisher.publishEvent(new UserChangeEvent());
             log.info("Avatar updated for user: {}", u.getEmail());
             return userMapper.toDto(u);
         } catch (IOException e) {
