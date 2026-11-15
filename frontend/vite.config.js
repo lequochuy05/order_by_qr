@@ -148,6 +148,9 @@ export default defineConfig({
     },
   },
   server: {
+    headers: {
+      'Permissions-Policy': 'fullscreen=(self), unload=(self)',
+    },
     proxy: {
       // Bắt các request API đẩy sang Spring Boot
       '/api/v1': {

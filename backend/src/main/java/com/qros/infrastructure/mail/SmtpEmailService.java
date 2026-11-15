@@ -47,9 +47,8 @@ public class SmtpEmailService {
         this.mailProperties = mailProperties;
         this.appProperties = appProperties;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+        this.httpClient =
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
     /**
@@ -84,7 +83,8 @@ public class SmtpEmailService {
      * Dispatches HTML email via Brevo REST API if API key is present, otherwise falls back to SMTP.
      */
     private void sendHtmlEmail(@NonNull String to, @NonNull String subject, @NonNull String htmlContent) {
-        String brevoKey = appProperties.getEmail() != null ? appProperties.getEmail().getBrevoApiKey() : null;
+        String brevoKey =
+                appProperties.getEmail() != null ? appProperties.getEmail().getBrevoApiKey() : null;
         if (brevoKey != null && !brevoKey.isBlank()) {
             sendViaBrevoApi(to, subject, htmlContent, brevoKey.trim());
             return;
@@ -103,10 +103,14 @@ public class SmtpEmailService {
             String senderName = appProperties.getEmail().getFromName();
 
             Map<String, Object> body = Map.of(
-                    "sender", Map.of("name", senderName, "email", senderEmail),
-                    "to", List.of(Map.of("email", to)),
-                    "subject", subject,
-                    "htmlContent", htmlContent);
+                    "sender",
+                    Map.of("name", senderName, "email", senderEmail),
+                    "to",
+                    List.of(Map.of("email", to)),
+                    "subject",
+                    subject,
+                    "htmlContent",
+                    htmlContent);
 
             String jsonPayload = objectMapper.writeValueAsString(body);
 

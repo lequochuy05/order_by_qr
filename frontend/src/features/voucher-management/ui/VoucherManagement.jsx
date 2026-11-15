@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Ticket } from 'lucide-react';
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import {
@@ -14,7 +13,6 @@ import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';
 import VoucherModal from './VoucherModal.jsx';
-import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { fmtVND, fmtDate } from '@shared/lib/formatters.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
@@ -48,6 +46,7 @@ const VoucherManager = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [formErrors, setFormErrors] = useState({});
   const isMountedRef = useRef(true);
@@ -93,15 +92,8 @@ const VoucherManager = () => {
     };
   }, []);
 
-  useWebSocket(
-    '/topic/vouchers',
-    (message) => {
-      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-        playNotificationSound();
-      }
-    },
-    { scope: 'admin' },
-  );
+  // Duplicate WebSocket fix: removed local subscription to /topic/vouchers.
+  // WebSocketInvalidator already handles /topic/vouchers centrally.
 
   useEffect(() => {
     setCurrentPage(0);
@@ -116,13 +108,18 @@ const VoucherManager = () => {
     const safeValidTo =
       data.validTo && !data.validTo.includes('T') ? `${data.validTo}T23:59:59` : data.validTo;
 
+    const parsedUsageLimit =
+      data.usageLimit === null || data.usageLimit === undefined || data.usageLimit === '' || data.usageLimit === 0
+        ? null
+        : parseInt(data.usageLimit, 10) || null;
+
     const payload = {
       ...data,
       code: data.code.trim().toUpperCase(),
       type: data.discountPercent ? 'PERCENTAGE' : 'FIXED_AMOUNT',
       discountPercent: data.discountPercent ? parseFloat(data.discountPercent) : null,
       discountAmount: data.discountAmount ? parseFloat(data.discountAmount) : null,
-      usageLimit: parseInt(data.usageLimit) || 0,
+      usageLimit: parsedUsageLimit,
       validFrom: safeValidFrom,
       validTo: safeValidTo,
     };
@@ -150,13 +147,17 @@ const VoucherManager = () => {
   };
 
   const handleDelete = async (id) => {
+    if (deletingId) return;
     const confirmed = await confirm('Xóa voucher', 'Bạn chắc chắn muốn xóa voucher này?');
     if (!confirmed) return;
+    setDeletingId(id);
     try {
       await deleteVoucher(id);
       showSuccessToast('Đã xóa voucher thành công');
     } catch (err) {
       showErrorToast(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 

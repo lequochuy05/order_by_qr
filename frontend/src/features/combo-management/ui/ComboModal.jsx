@@ -106,7 +106,15 @@ const ComboModal = ({
     if (index > -1) newItems.splice(index, 1);
     else newItems.push({ menuItemId: menuId, quantity: 1 });
 
-    setFormData({ ...formData, items: newItems, price: calculateAutoPrice(newItems) });
+    // B-fix: only auto-calculate price when creating a new combo (no initialData.id).
+    // When editing an existing combo the admin may have intentionally set a custom price —
+    // silently overwriting it on every item toggle is confusing and destructive.
+    const newPrice =
+      !initialData?.id && formData.price === 0
+        ? calculateAutoPrice(newItems)
+        : Number(formData.price);
+
+    setFormData({ ...formData, items: newItems, price: newPrice });
     if (errors.items) setErrors({ ...errors, items: null });
   };
 
@@ -115,7 +123,12 @@ const ComboModal = ({
     const newItems = formData.items.map((i) =>
       Number(i.menuItemId) === Number(menuId) ? { ...i, quantity } : i,
     );
-    setFormData({ ...formData, items: newItems, price: calculateAutoPrice(newItems) });
+    // B-fix: same guard — only auto-update price on qty changes if no custom price was set.
+    const newPrice =
+      !initialData?.id && formData.price === 0
+        ? calculateAutoPrice(newItems)
+        : Number(formData.price);
+    setFormData({ ...formData, items: newItems, price: newPrice });
   };
 
   if (!isOpen) return null;

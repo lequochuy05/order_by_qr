@@ -17,10 +17,19 @@ const PaymentActions = ({
           type="button"
           onClick={onCashPay}
           disabled={loading || cashDisabled}
-          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-base font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none dark:shadow-none dark:disabled:bg-slate-700"
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-base font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-60 disabled:shadow-none dark:shadow-none dark:disabled:from-slate-700 dark:disabled:to-slate-700"
         >
-          {loading ? <Loader2 className="animate-spin" /> : <CreditCard size={24} />}
-          XÁC NHẬN THANH TOÁN
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={24} />
+              <span>ĐANG XỬ LÝ THANH TOÁN...</span>
+            </>
+          ) : (
+            <>
+              <CreditCard size={24} />
+              <span>XÁC NHẬN THANH TOÁN</span>
+            </>
+          )}
         </button>
         {cashDisabled && cashDisabledReason && (
           <p className="text-center text-xs font-semibold text-amber-600">{cashDisabledReason}</p>

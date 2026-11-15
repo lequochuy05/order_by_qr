@@ -7,6 +7,13 @@ import { publicWsService } from '@shared/lib/websocket.js';
 const useCustomerMenuRealtime = ({ tableCode, sessionToken }) => {
   const [wsConnected, setWsConnected] = useState(() => publicWsService.isConnected());
 
+  // H2 fix: Connect unconditionally so wsConnected is accurate for ALL customers,
+  // not just those who already have a sessionToken. Without this, 100% of new
+  // visitors see the "Ngoại tuyến" badge even when the server is reachable.
+  useEffect(() => {
+    publicWsService.connect();
+  }, []);
+
   useWebSocket(
     sessionToken ? '/topic/tables' : null,
     (message) => {

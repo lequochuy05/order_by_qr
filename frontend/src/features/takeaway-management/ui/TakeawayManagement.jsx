@@ -46,14 +46,22 @@ const TakeawayManagement = () => {
   };
 
   const handleDetail = async (order) => {
-    const fullOrder = order?.id ? await orderService.getOrderById(order.id) : null;
-    setDetailModal({ open: true, order: fullOrder || order });
+    try {
+      const fullOrder = order?.id ? await orderService.getOrderById(order.id) : null;
+      setDetailModal({ open: true, order: fullOrder || order });
+    } catch (e) {
+      showErrorToast(e);
+    }
   };
 
   const handlePay = async (order) => {
     try {
-      const updated = await orderService.updateOrderStatus(order.id, ORDER_STATUSES.AWAITING_PAYMENT);
-      setPayModal({ open: true, order: updated || order });
+      let currentOrder = order;
+      if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
+        currentOrder = await orderService.updateOrderStatus(order.id, ORDER_STATUSES.AWAITING_PAYMENT);
+      }
+      const fullOrder = currentOrder?.id ? await orderService.getOrderById(currentOrder.id) : currentOrder;
+      setPayModal({ open: true, order: fullOrder || currentOrder });
     } catch (e) {
       showErrorToast(e);
     }

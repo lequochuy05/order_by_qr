@@ -2,7 +2,7 @@ import { Search } from 'lucide-react';
 
 import OrderHistoryRow from './OrderHistoryRow.jsx';
 
-const OrderHistoryTable = ({ orders, loading, onSelect, onPrint, onReconcile }) => (
+const OrderHistoryTable = ({ orders, loading, reconcilingId, onSelect, onPrint, onReconcile }) => (
   <div className="overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90">
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
@@ -42,6 +42,7 @@ const OrderHistoryTable = ({ orders, loading, onSelect, onPrint, onReconcile }) 
               <OrderHistoryRow
                 key={order.id}
                 order={order}
+                isReconciling={reconcilingId === order.id}
                 onSelect={onSelect}
                 onPrint={onPrint}
                 onReconcile={onReconcile}

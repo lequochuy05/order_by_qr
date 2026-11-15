@@ -47,6 +47,7 @@ const TableManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRegeneratingQr, setIsRegeneratingQr] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [deletingId, setDeletingId] = useState(null);
 
   const { showError } = useStatusModal();
   const { confirm } = useConfirmModal();
@@ -185,18 +186,28 @@ const TableManager = () => {
   };
 
   const handleDeleteTable = async (id) => {
+    if (deletingId) return;
     const confirmed = await confirm('Xóa bàn', 'Bạn có chắc chắn muốn xóa bàn này?');
     if (!confirmed) return;
+    setDeletingId(id);
     try {
       await deleteMutation.mutateAsync(id);
       showSuccessToast('Đã xóa bàn');
     } catch (e) {
       showErrorToast(e);
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleRegenerateQr = async (id) => {
     if (isRegeneratingQr) return null;
+    const targetTable = board?.tables?.find((t) => t.id === id);
+    if (targetTable && targetTable.status !== 'AVAILABLE') {
+      showErrorToast(new Error('Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.'));
+      return null;
+    }
+
     const confirmed = await confirm(
       'Tạo lại mã QR',
       'Mã QR cũ của bàn này sẽ không còn dùng được. Bạn có chắc chắn muốn xóa QR cũ và tạo mã QR mới?',

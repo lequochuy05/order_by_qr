@@ -87,7 +87,9 @@ public class CategoryService {
         Category saved = saveCategory(category);
         eventPublisher.publishEvent(new CategoryChangeEvent("created", saved.getId()));
 
-        return categoryMapper.toResponse(saved);
+        // N+1 fix: toSummaryResponse avoids lazy-loading the full menuItems collection.
+        // The admin list view never needs menuItems on create/update response.
+        return categoryMapper.toSummaryResponse(saved);
     }
 
     @Transactional
@@ -115,12 +117,17 @@ public class CategoryService {
         Category saved = saveCategory(category);
         eventPublisher.publishEvent(new CategoryChangeEvent("updated", saved.getId()));
 
-        return categoryMapper.toResponse(saved);
+        // N+1 fix: toSummaryResponse avoids lazy-loading the full menuItems collection.
+        return categoryMapper.toSummaryResponse(saved);
     }
 
     @Transactional
-    public void delete(@NonNull Long id) {
+    public void delete(@NonNull Long id, @NonNull Long version) {
+        // E+L-fix: assert version before deleting to prevent concurrent-delete race conditions.
+        // Two admins could simultaneously open the category list; without this guard, both would
+        // succeed, resulting in a silent double-delete and a confusing 404 for the second one.
         Category category = getEntityById(id);
+        assertVersionMatches(category.getVersion(), version);
 
         if (menuItemRepository.existsByCategoryId(id)) {
             throw new BusinessException(
@@ -140,10 +147,12 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryImageResponse uploadImage(@NonNull Long id, @NonNull MultipartFile file) {
+    public CategoryImageResponse uploadImage(@NonNull Long id, @NonNull Long version, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
         Category category = getEntityById(id);
+        // M-fix: assert version before upload to prevent overwriting an image on a stale entity.
+        assertVersionMatches(category.getVersion(), version);
         String oldUrl = category.getImg();
 
         try {

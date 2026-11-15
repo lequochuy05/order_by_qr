@@ -41,11 +41,19 @@ const ERROR_CODE_MESSAGES = {
   TABLE_NOT_FOUND: 'Không tìm thấy bàn.',
   TABLE_CODE_INVALID: 'Mã bàn không hợp lệ.',
   TABLE_NUMBER_EXISTS: 'Số bàn đã tồn tại.',
+  TABLE_IN_USE: 'Bàn đang có khách hoặc phiên phục vụ chưa kết thúc. Không thể thực hiện thao tác này.',
+  TABLE_STATUS_TRANSITION_INVALID: 'Chuyển đổi trạng thái bàn không hợp lệ.',
   TABLE_QR_GENERATION_FAILED: 'Không thể tạo mã QR cho bàn.',
   TABLE_QR_SIGNATURE_INVALID: 'Mã QR bàn không hợp lệ hoặc đã hết hạn. Vui lòng quét lại mã QR tại bàn.',
   TABLE_SESSION_NOT_FOUND: 'Không tìm thấy phiên sử dụng bàn.',
   TABLE_SESSION_INVALID: 'Phiên sử dụng bàn không hợp lệ.',
   TABLE_SESSION_EXPIRED: 'Phiên sử dụng bàn đã hết hạn.',
+  TABLE_MERGE_REQUIRES_MULTIPLE_TABLES: 'Gộp bàn cần chọn ít nhất 2 bàn trở lên.',
+  TABLE_ALREADY_IN_ANOTHER_SESSION: 'Bàn đã thuộc một phiên phục vụ hoặc nhóm gộp khác.',
+  TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS: 'Không thể gộp các bàn khi có nhiều hơn 1 bàn đang có đơn hàng mở.',
+  TABLE_MERGE_CAPACITY_EXCEEDED: 'Số lượng khách vượt quá tổng sức chứa của các bàn gộp.',
+  TABLE_MERGE_PAYMENT_IN_PROGRESS: 'Không thể gộp bàn trong khi đang có giao dịch thanh toán.',
+  TABLE_SESSION_MEMBERSHIP_NOT_FOUND: 'Không tìm thấy thông tin liên kết bàn trong nhóm gộp.',
 
   ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng.',
   ORDER_ITEM_NOT_FOUND: 'Không tìm thấy món trong đơn hàng.',
@@ -56,6 +64,7 @@ const ERROR_CODE_MESSAGES = {
   ORDER_ALREADY_PAID: 'Đơn hàng đã được thanh toán.',
   ORDER_PAYMENT_INVALID: 'Thông tin thanh toán của đơn hàng không hợp lệ.',
   ORDER_PAYMENT_IN_PROGRESS: 'Đơn hàng đang trong quá trình thanh toán.',
+  ORDER_HAS_UNFINISHED_ITEMS: 'Đơn hàng còn món đang được chế biến trong bếp.',
   ORDER_IDEMPOTENCY_CONFLICT: 'Yêu cầu đặt món này đã được gửi trước đó.',
 
   VOUCHER_NOT_FOUND: 'Không tìm thấy voucher.',
@@ -155,6 +164,10 @@ const MESSAGE_PATTERNS = [
   [/^Menu item not found:\s*(.+)$/i, 'Không tìm thấy món ăn: $1'],
   [/^Table number not found:\s*(.+)$/i, 'Không tìm thấy bàn số $1'],
   [/^Unsupported payment method:\s*(.+)$/i, 'Phương thức thanh toán không được hỗ trợ: $1'],
+  [/^Cannot regenerate QR code while the table is in use/i, 'Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.'],
+  [/^Cannot set table to .* while it has an open session or active order/i, 'Không thể đổi trạng thái bàn khi đang có phiên sử dụng hoặc đơn hàng chưa thanh toán.'],
+  [/^Cannot delete a table with an open session or active order/i, 'Không thể xóa bàn khi đang có phiên sử dụng hoặc đơn hàng hoạt động.'],
+  [/^A table can wait for payment only when it has an active order/i, 'Chỉ có thể chuyển bàn sang trạng thái chờ thanh toán khi có đơn hàng hoạt động.'],
 ];
 
 const FIELD_LABELS = {

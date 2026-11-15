@@ -107,7 +107,10 @@ const AdminLayoutContent = () => {
             }`}
           >
             <div className="admin-content mx-auto w-full min-w-0 max-w-7xl">
-              <Outlet />
+              {/* Bọc Outlet riêng để lỗi trang con không làm sập Sidebar + Header */}
+              <ErrorBoundary fullScreen={false}>
+                <Outlet />
+              </ErrorBoundary>
             </div>
           </main>
 

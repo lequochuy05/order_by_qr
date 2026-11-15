@@ -10,6 +10,9 @@
     "test": "node tests/run-tests.js",
     "test:coverage": "node --experimental-test-coverage tests/run-tests.js",
     "preview": "vite preview",
+    "cap:sync": "cap sync android",
+    "cap:open": "cap open android",
+    "build:android": "npm run build && cap sync android",
     "format": "prettier --write \"src/**/*.{js,jsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,css,json}\""
   },

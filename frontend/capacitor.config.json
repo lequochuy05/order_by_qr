@@ -3,7 +3,6 @@
   "appName": "QROS",
   "webDir": "dist",
   "server": {
-    "url": "https://wqros.vercel.app/",
-    "cleartext": false
+    "cleartext": true
   }
 }

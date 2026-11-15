@@ -7,9 +7,7 @@ import useStockAction from './useStockAction.js';
 
 const useInventoryManagement = () => {
   const recipe = useRecipeEditor();
-  const data = useInventoryData({
-    onInventoryUpdated: recipe.refreshInventoryOptions,
-  });
+  const data = useInventoryData();
   const { refreshAfterMutation, refreshInventoryView: refreshDataView } = data;
   const { refreshInventoryOptions, refreshRecipeSources } = recipe;
 

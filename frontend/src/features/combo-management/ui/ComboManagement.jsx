@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { comboService, useComboPageQuery } from '@entities/combo';
-import { menuItemService } from '@entities/menu-item';
+import { useMenuAllQuery } from '@entities/menu-item';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
@@ -13,7 +12,6 @@ import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
-import { playNotificationSound } from '@shared/lib/notificationSound.js';
 
 const normalizeComboPayload = (data) => ({
   name: data.name.trim(),
@@ -31,7 +29,6 @@ const normalizeComboPayload = (data) => ({
 });
 
 const ComboManager = () => {
-  const [menuItems, setMenuItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -45,6 +42,7 @@ const ComboManager = () => {
   });
   const [errors, setErrors] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null); // C-fix: guard against double-click delete
   const [currentPage, setCurrentPage] = useState(0);
   const isMountedRef = useRef(true);
   const pageSize = 24;
@@ -63,6 +61,11 @@ const ComboManager = () => {
   const totalPages = comboData?.totalPages || 0;
   const totalElements = comboData?.totalElements || 0;
 
+  // A-fix: use React Query for menuItems so ComboModal always gets fresh data.
+  // Previously a plain useState + ensureMenuItems() only fetched once per mount,
+  // meaning newly added/removed menu items were invisible until a full page reload.
+  const { data: menuItems = [] } = useMenuAllQuery();
+
   const invalidateCombos = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
@@ -75,26 +78,11 @@ const ComboManager = () => {
     };
   }, []);
 
-  const ensureMenuItems = useCallback(async () => {
-    if (menuItems.length > 0) return menuItems;
-    const data = await menuItemService.getAll();
-    if (isMountedRef.current) {
-      setMenuItems(data || []);
-    }
-    return data || [];
-  }, [menuItems]);
+  const [isToggling, setIsToggling] = useState(false);
 
-  useWebSocket(
-    '/topic/combos',
-    (message) => {
-      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-        comboService.clearCache();
-        invalidateCombos();
-        playNotificationSound();
-      }
-    },
-    { scope: 'admin' },
-  );
+  // Duplicate WebSocket fix: removed the local useWebSocket('/topic/combos') subscription.
+  // WebSocketInvalidator already handles /topic/combos centrally with cache-clear + invalidation.
+  // The duplicate caused double invalidation and spurious notification sounds on every combo update.
 
   useEffect(() => {
     setCurrentPage(0);
@@ -128,15 +116,19 @@ const ComboManager = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, version) => {
+    if (deletingId) return; // C-fix: guard against concurrent deletes
     const confirmed = await confirm('Xóa combo', 'Bạn có chắc chắn muốn xóa combo này?');
     if (!confirmed) return;
+    setDeletingId(id);
     try {
-      await comboService.delete(id);
+      await comboService.delete(id, version); // L-fix: pass version for optimistic lock check
       showSuccessToast('Đã xóa Combo thành công!');
       invalidateCombos();
     } catch (err) {
       showErrorToast(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -145,7 +137,12 @@ const ComboManager = () => {
   };
 
   const handleConfirmToggle = async () => {
+    // isToggling guard: prevents race condition when user double-clicks the confirm button.
+    // The first click would succeed (version V→V+1); the second click sending V would trigger
+    // a CONCURRENT_MODIFICATION error that confuses the user.
+    if (isToggling) return;
     const { id, version } = toggleConfirm;
+    setIsToggling(true);
     try {
       await comboService.toggleActive(id, version);
       setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
@@ -153,13 +150,15 @@ const ComboManager = () => {
     } catch (err) {
       setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
       showErrorToast(err);
+    } finally {
+      setIsToggling(false);
     }
   };
 
   const handleEdit = async (id) => {
     setDetailLoadingId(id);
     try {
-      const [detail] = await Promise.all([comboService.getById(id), ensureMenuItems()]);
+      const detail = await comboService.getById(id);
       if (!isMountedRef.current) return;
       const formatted = {
         ...detail,
@@ -183,14 +182,17 @@ const ComboManager = () => {
     }
   };
 
-  const handleOpenCreate = async () => {
+  const handleOpenCreate = () => {
     setEditingCombo(null);
     setErrors({});
+    setIsModalOpen(true);
+  };
+
+  // K-fix: handler for quick available toggle directly from ComboCard.
+  const handleToggleAvailable = async (id, version) => {
     try {
-      await ensureMenuItems();
-      if (isMountedRef.current) {
-        setIsModalOpen(true);
-      }
+      await comboService.toggleAvailable(id, version);
+      invalidateCombos();
     } catch (err) {
       showErrorToast(err);
     }
@@ -226,7 +228,8 @@ const ComboManager = () => {
               combo={c}
               onEdit={() => handleEdit(c.id)}
               onToggle={() => handleRequestToggle(c.id, c.active, c.version)}
-              onDelete={() => handleDelete(c.id)}
+              onToggleAvailable={handleToggleAvailable}
+              onDelete={() => handleDelete(c.id, c.version)}
               isEditing={detailLoadingId === c.id}
             />
           ))}
@@ -254,6 +257,7 @@ const ComboManager = () => {
         currentActive={toggleConfirm.active}
         onConfirm={handleConfirmToggle}
         onCancel={() => setToggleConfirm({ isOpen: false, id: null, active: false, version: null })}
+        isSubmitting={isToggling}
       />
 
       <ComboModal

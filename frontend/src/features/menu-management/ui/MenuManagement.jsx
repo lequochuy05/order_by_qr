@@ -62,6 +62,7 @@ const MenuManager = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [detailLoadingId, setDetailLoadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null); // C-fix: guard against double-click delete
 
   const [formData, setFormData] = useState(emptyMenuForm);
   const [initialFormData, setInitialFormData] = useState(null);
@@ -152,13 +153,22 @@ const MenuManager = () => {
       }
 
       if (selectedFile) {
+        // M-fix: pass version of the saved result so the server can guard against concurrent image overwrites.
+        const uploadVersion = res.version ?? formData.version;
         try {
-          await menuItemService.uploadImage(res.id || formData.id, selectedFile);
+          await menuItemService.uploadImage(res.id || formData.id, uploadVersion, selectedFile);
         } catch (uploadError) {
-          closeModal();
-          invalidateMenu();
+          // G-fix: keep modal open so the user can retry the upload without losing their edits.
+          // Update formData with the saved item's ID/version so a retry submit goes to update, not create.
           console.error('Error uploading menu item image:', uploadError);
-          showErrorToast('Đã lưu món ăn, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
+          invalidateMenu();
+          const savedId = res.id || formData.id;
+          setFormData((prev) => ({
+            ...prev,
+            id: savedId,
+            version: res.version ?? prev.version,
+          }));
+          showErrorToast('Đã lưu món ăn, nhưng chưa tải được ảnh. Vui lòng thử tải ảnh lại.');
           return;
         }
       }
@@ -184,15 +194,19 @@ const MenuManager = () => {
   };
 
   // DELETE
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, version) => {
+    if (deletingId) return; // C-fix: guard against concurrent deletes
     const confirmed = await confirm('Xóa món ăn', 'Bạn có chắc chắn muốn xóa món ăn này?');
     if (!confirmed) return;
+    setDeletingId(id);
     try {
-      await menuItemService.delete(id);
+      await menuItemService.delete(id, version); // L-fix: pass version for optimistic lock check
       showSuccessToast('Đã xóa món ăn thành công');
       invalidateMenu();
     } catch (err) {
       showErrorToast(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -275,7 +289,7 @@ const MenuManager = () => {
               key={it.id}
               item={it}
               onEdit={handleEditItem}
-              onDelete={() => handleDelete(it.id)}
+              onDelete={() => handleDelete(it.id, it.version)}
               isEditing={detailLoadingId === it.id}
             />
           ))}

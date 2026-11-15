@@ -64,14 +64,17 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
-        categoryService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+        categoryService.delete(id, version);
         return ApiResponse.success("Category deleted successfully", null);
     }
 
     @PostMapping("/{id}/image")
     public ApiResponse<CategoryImageResponse> uploadImage(
-            @PathVariable @NonNull Long id, @RequestParam("file") @NonNull MultipartFile file) {
-        return ApiResponse.success("Category image uploaded successfully", categoryService.uploadImage(id, file));
+            @PathVariable @NonNull Long id,
+            @RequestParam @NonNull Long version,
+            @RequestParam("file") @NonNull MultipartFile file) {
+        return ApiResponse.success(
+                "Category image uploaded successfully", categoryService.uploadImage(id, version, file));
     }
 }

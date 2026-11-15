@@ -8,7 +8,6 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip as RechartsTooltip,
   Tooltip,
 } from 'recharts';
 import { DollarSign, Loader2, Receipt, ShoppingBag, TrendingUp } from 'lucide-react';
@@ -212,7 +211,7 @@ const RevenueStats = () => {
                       tick={{ fill: '#94a3b8', fontSize: 12 }}
                       tickFormatter={(v) => `${v / 1000}k`}
                     />
-                    <RechartsTooltip
+                    <Tooltip
                       formatter={(v) => [fmtVND(v), 'Doanh thu']}
                       labelFormatter={(l, p) => p[0]?.payload.fullDate}
                       contentStyle={{

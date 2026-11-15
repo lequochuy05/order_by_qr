@@ -28,7 +28,9 @@ export const profileService = {
     clearProfileCache();
     const formData = new FormData();
     formData.append('file', file);
-    const res = await api.post('/users/me/avatar', formData);
+    const res = await api.post('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     clearProfileCache();
     return res;
   },

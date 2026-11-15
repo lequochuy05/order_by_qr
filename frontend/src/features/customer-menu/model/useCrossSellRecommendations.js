@@ -5,6 +5,10 @@ import { publicMenuService } from '@entities/public-menu/api/publicMenuService.j
 const useCrossSellRecommendations = (hydrateRecommendationItems, enabled = true) => {
   const [crossSellItems, setCrossSellItems] = useState([]);
   const cacheRef = useRef(new Map());
+  // H4 fix: sequence counter to discard stale in-flight responses.
+  // If loadCrossSellRecommendations is called again before a previous request
+  // resolves, the older response will be silently dropped.
+  const requestIdRef = useRef(0);
 
   const clearCrossSell = useCallback(() => {
     cacheRef.current.clear();
@@ -15,14 +19,20 @@ const useCrossSellRecommendations = (hydrateRecommendationItems, enabled = true)
     (itemId) => {
       if (!enabled || !itemId) return;
 
+      const myRequestId = ++requestIdRef.current;
+
       const cached = cacheRef.current.get(itemId);
       if (Array.isArray(cached)) {
-        setCrossSellItems(cached);
+        if (myRequestId === requestIdRef.current) setCrossSellItems(cached);
         return;
       }
 
       if (cached?.then) {
-        cached.then(setCrossSellItems).catch(() => {});
+        cached
+          .then((items) => {
+            if (myRequestId === requestIdRef.current) setCrossSellItems(items);
+          })
+          .catch(() => {});
         return;
       }
 
@@ -39,7 +49,11 @@ const useCrossSellRecommendations = (hydrateRecommendationItems, enabled = true)
         });
 
       cacheRef.current.set(itemId, request);
-      request.then(setCrossSellItems).catch(() => {});
+      request
+        .then((items) => {
+          if (myRequestId === requestIdRef.current) setCrossSellItems(items);
+        })
+        .catch(() => {});
     },
     [enabled, hydrateRecommendationItems],
   );

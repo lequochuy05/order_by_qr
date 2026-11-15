@@ -110,6 +110,10 @@ public class OrderStatusService {
                 .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
 
+        if (order.getStatus() == targetStatus) {
+            return orderMapper.toResponse(order);
+        }
+
         try {
             orderStateFactory.validateTransition(order.getStatus(), targetStatus);
         } catch (IllegalStateException e) {
@@ -187,6 +191,10 @@ public class OrderStatusService {
         Order order = orderRepository
                 .findByIdForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
+
+        if (order.isPaid() || order.isCompleted()) {
+            throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "Cannot delete a paid or completed order");
+        }
 
         restoreReservableItems(order);
 

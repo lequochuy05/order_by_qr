@@ -100,7 +100,18 @@ public class PaymentService {
                     recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(finalTx));
             return paymentMapper.toCreateResponse(persistenceService.completeOnlineCreation(finalTx.getId(), result));
         } catch (RuntimeException exception) {
-            persistenceService.markOnlineCreationFailed(finalTx.getId(), exception.getMessage());
+            // H9 fix: wrap the failure-mark in its own try/catch so a secondary persistence
+            // error (e.g. DB timeout) is logged but does NOT swallow the original gateway
+            // exception. This preserves idempotency even if the DB blips during failure recording.
+            try {
+                persistenceService.markOnlineCreationFailed(finalTx.getId(), exception.getMessage());
+            } catch (Exception markFailedEx) {
+                log.error(
+                        "Failed to mark transaction {} as FAILED after gateway error: {}",
+                        finalTx.getId(),
+                        markFailedEx.getMessage(),
+                        markFailedEx);
+            }
             throw exception;
         }
     }

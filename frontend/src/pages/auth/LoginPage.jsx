@@ -15,6 +15,8 @@ import {
   KeyRound,
   UtensilsCrossed,
 } from 'lucide-react';
+import { AuthRainBackground } from '@shared/ui';
+
 
 const LoginPage = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -98,7 +100,10 @@ const LoginPage = () => {
       handleLoginSuccess(data);
     } catch (err) {
       const retrySec = Number(err.data?.details?.retryAfterSeconds);
-      if (retrySec > 0 || err.status === 429) {
+      if (err.data?.code === 'ACCOUNT_LOCKED' || err.status === 423) {
+        const remainingMinutes = Math.max(1, Math.ceil((retrySec || 900) / 60));
+        setError(`Tài khoản bị tạm khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau ${remainingMinutes} phút.`);
+      } else if (retrySec > 0 || err.status === 429) {
         setError(`Thao tác quá nhanh. Vui lòng thử lại sau ${retrySec || 60} giây.`);
       } else {
         const msg = buildErrorMessage(err, { includeDetails: false });
@@ -165,13 +170,7 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-slate-50 p-4 transition-colors dark:bg-[#0B0F17]">
-      {/* Decorative Ambient Glow */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-indigo-500/15 blur-3xl dark:bg-indigo-500/10" />
-        <div className="absolute -bottom-32 -right-32 h-96 w-96 rounded-full bg-violet-500/15 blur-3xl dark:bg-violet-500/10" />
-      </div>
-
+    <AuthRainBackground>
       {/* Main Card */}
       <div className="relative w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-2xl transition-all animate-in fade-in zoom-in duration-300 dark:border-slate-800/80 dark:bg-slate-900/90 md:p-10">
         {/* ================= GIAO DIỆN XÁC THỰC 2FA (ADMIN) ================= */}
@@ -380,7 +379,7 @@ const LoginPage = () => {
           </div>
         )}
       </div>
-    </div>
+    </AuthRainBackground>
   );
 };
 

@@ -7,13 +7,13 @@ import java.util.List;
 
 public record AiStaffRequest(
         @NotBlank(message = "Message cannot be empty")
-                @Size(max = 500, message = "Message cannot exceed 500 characters")
+                @Size(max = 1000, message = "Message cannot exceed 1000 characters")
                 String message,
-        @Valid @Size(max = 10, message = "History cannot exceed 10 messages") List<StaffChatMessage> history) {
+        @Valid @Size(max = 20, message = "History cannot exceed 20 messages") List<StaffChatMessage> history) {
 
     public record StaffChatMessage(
             @NotBlank(message = "Role cannot be empty") String role,
             @NotBlank(message = "Content cannot be empty")
-                    @Size(max = 800, message = "Content cannot exceed 800 characters")
+                    @Size(max = 5000, message = "Content cannot exceed 5000 characters")
                     String content) {}
 }

@@ -72,14 +72,23 @@ export const comboService = {
     clearComboCache();
     return res;
   },
-  delete: async (id) => {
+  delete: async (id, version) => {
     clearComboCache();
-    await api.delete(`/combos/${id}`);
+    // L-fix: version required by backend DELETE endpoint for optimistic locking.
+    await api.delete(`/combos/${id}`, { params: { version } });
     clearComboCache();
   },
   toggleActive: async (id, version) => {
     clearComboCache();
     const res = await api.patch(`/combos/${id}/toggle-active`, null, { params: { version } });
+    clearComboCache();
+    return res;
+  },
+  // toggleAvailable fix: backend endpoint existed but was never exposed in the service.
+  // Without this, admins had to open the full edit modal just to toggle stock availability.
+  toggleAvailable: async (id, version) => {
+    clearComboCache();
+    const res = await api.patch(`/combos/${id}/toggle-available`, null, { params: { version } });
     clearComboCache();
     return res;
   },

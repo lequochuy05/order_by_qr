@@ -67,14 +67,17 @@ public class MenuItemController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> delete(@PathVariable @NonNull Long id) {
-        menuItemService.delete(id);
+    public ApiResponse<Void> delete(@PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+        menuItemService.delete(id, version);
         return ApiResponse.success("Menu item deleted successfully", null);
     }
 
     @PostMapping("/{id}/image")
     public ApiResponse<MenuItemImageResponse> uploadImage(
-            @PathVariable @NonNull Long id, @RequestParam("file") @NonNull MultipartFile file) {
-        return ApiResponse.success("Menu item image uploaded successfully", menuItemService.uploadImage(id, file));
+            @PathVariable @NonNull Long id,
+            @RequestParam @NonNull Long version,
+            @RequestParam("file") @NonNull MultipartFile file) {
+        return ApiResponse.success(
+                "Menu item image uploaded successfully", menuItemService.uploadImage(id, version, file));
     }
 }

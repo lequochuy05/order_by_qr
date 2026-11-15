@@ -25,7 +25,7 @@ public class AiMenuDescriptionController {
     private final AiQuotaService aiQuotaService;
 
     @PostMapping("/description")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<AiMenuDescriptionResponse> generateDescription(
             @Valid @RequestBody AiMenuDescriptionRequest request, @NonNull Principal principal) {
         aiQuotaService.checkMenuDescription(principal.getName());

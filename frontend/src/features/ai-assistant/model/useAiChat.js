@@ -14,6 +14,14 @@ const useAiChat = (language) => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,9 +51,10 @@ const useAiChat = (language) => {
     () =>
       messages
         .filter((message) => !isWelcomeMessage(message.content))
+        .slice(-10)
         .map((message) => ({
           role: message.role === 'assistant' ? 'model' : 'user',
-          content: message.content,
+          content: (message.content || '').slice(0, 2000),
         })),
     [messages],
   );
@@ -60,14 +69,20 @@ const useAiChat = (language) => {
       setIsLoading(true);
       try {
         const response = await api.post('/public/ai/chat', { message: trimmed, history: buildHistory() });
-        setMessages((current) => [
-          ...current,
-          { role: 'assistant', content: response?.reply || copy.fallbackReply },
-        ]);
+        if (isMountedRef.current) {
+          setMessages((current) => [
+            ...current,
+            { role: 'assistant', content: response?.reply || copy.fallbackReply },
+          ]);
+        }
       } catch {
-        setMessages((current) => [...current, { role: 'assistant', content: copy.errorReply }]);
+        if (isMountedRef.current) {
+          setMessages((current) => [...current, { role: 'assistant', content: copy.errorReply }]);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
     },
     [buildHistory, copy.errorReply, copy.fallbackReply, isLoading],

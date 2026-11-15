@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { WifiOff } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { useCustomerMenuQuery, useRecommendationsQuery } from '@entities/public-menu';
@@ -43,7 +44,7 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
   const { weatherLine, isLoading: loadingWeather } = useRestaurantWeather();
   const { flyItem, cartRef, fly, clearFly } = useFlyToCart();
 
-  const { data: menuData, isLoading: loadingMenu, refetch: refetchMenu } = useCustomerMenuQuery();
+  const { data: menuData, isLoading: loadingMenu, isError: isMenuError, error: menuError, refetch: refetchMenu } = useCustomerMenuQuery();
   const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
   const closeCurrentOrderSheet = useCallback(() => setShowCurrentOrderSheet(false), []);
   const session = useCustomerMenuSession(tableCode, {
@@ -146,6 +147,29 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
       : menuItems.filter((item) => item.category?.id === parseInt(selectedCategory));
 
   if (loadingMenu || session.isLoading) return <CustomerMenuSkeleton />;
+
+  // HIGH-1 FIX: Hiển thị lỗi rõ ràng thay vì menu rỗng khi API thất bại
+  if (isMenuError) {
+    return (
+      <div className="flex h-dvh min-h-dvh flex-col items-center justify-center bg-white p-8 text-center dark:bg-slate-900">
+        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+          <WifiOff size={32} />
+        </div>
+        <h2 className="text-base font-black text-slate-800 dark:text-slate-100">
+          Không thể tải thực đơn
+        </h2>
+        <p className="mt-2 max-w-xs text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          {menuError?.message || 'Đã có lỗi xảy ra khi kết nối đến máy chủ. Vui lòng thử lại.'}
+        </p>
+        <button
+          onClick={() => handleRefresh()}
+          className="mt-6 rounded-2xl bg-indigo-600 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-indigo-600/25 transition-all active:scale-95 hover:bg-indigo-500"
+        >
+          Tải lại menu
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>

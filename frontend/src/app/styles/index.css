@@ -275,3 +275,53 @@ body,
 .dark * {
   scrollbar-color: hsl(215 20% 25%) transparent;
 }
+
+/* Auth Full-Screen Diagonal Rain Animation */
+@keyframes auth-rain-fall {
+  0% {
+    transform: translate3d(-60px, -120px, 0) rotate(-24deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--rain-opacity, 0.5);
+  }
+  85% {
+    opacity: var(--rain-opacity, 0.5);
+  }
+  100% {
+    transform: translate3d(120px, 115vh, 0) rotate(-24deg);
+    opacity: 0;
+  }
+}
+
+.auth-rain-streak {
+  position: absolute;
+  top: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(99, 102, 241, 0.35) 50%,
+    rgba(79, 70, 229, 0.75) 100%
+  );
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+  animation: auth-rain-fall linear infinite;
+  will-change: transform, opacity;
+}
+
+:is(.dark .auth-rain-streak) {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(56, 189, 248, 0.45) 50%,
+    rgba(129, 140, 248, 0.85) 100%
+  );
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-rain-streak {
+    animation: none !important;
+    display: none !important;
+  }
+}

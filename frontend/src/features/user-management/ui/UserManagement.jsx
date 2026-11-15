@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@features/auth';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
@@ -19,7 +18,6 @@ import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import UserCard from './UserCard';
 import UserModal from './UserModal';
 import EmptyState from '@shared/ui/EmptyState.jsx';
-import { playNotificationSound } from '@shared/lib/notificationSound.js';
 import { USER_STATUS } from '@shared/lib/formatters.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
@@ -37,6 +35,7 @@ const StaffManager = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
+  const [deletingId, setDeletingId] = useState(null);
   const isMountedRef = useRef(true);
   const pageSize = 24;
 
@@ -65,19 +64,10 @@ const StaffManager = () => {
     };
   }, []);
 
-  // WebSocket Realtime
-  useWebSocket(
-    '/topic/users',
-    (message) => {
-      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
-        playNotificationSound();
-      }
-    },
-    { scope: 'admin' },
-  );
+  // Duplicate WebSocket fix: removed local subscription to /topic/users.
+  // WebSocketInvalidator already handles /topic/users centrally.
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(0);
   }, [debouncedSearchTerm, statusFilter]);
 
@@ -115,7 +105,14 @@ const StaffManager = () => {
 
       let avatarResult = null;
       if (selectedFile) {
-        avatarResult = await uploadAvatar({ id: result.id, file: selectedFile });
+        try {
+          avatarResult = await uploadAvatar({ id: result.id, file: selectedFile });
+        } catch (avatarError) {
+          console.error('Error uploading avatar:', avatarError);
+          setEditingStaff(result);
+          showErrorToast('Đã lưu thông tin nhân viên, nhưng chưa tải được avatar. Vui lòng thử lại.');
+          return;
+        }
       }
 
       const savedStaff = avatarResult || result;
@@ -147,15 +144,20 @@ const StaffManager = () => {
       }
     }
   };
+
   //  Xóa
   const handleDelete = async (id) => {
+    if (deletingId) return;
     const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
     if (!confirmed) return;
+    setDeletingId(id);
     try {
       await deleteUser(id);
       showSuccessToast('Đã xóa nhân viên thành công!');
     } catch (err) {
       showErrorToast(err);
+    } finally {
+      setDeletingId(null);
     }
   };
 

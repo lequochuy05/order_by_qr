@@ -36,6 +36,12 @@ api.interceptors.request.use((config) => {
   } else if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
+
+  // Tự động bỏ Content-Type nếu dữ liệu gửi lên là FormData để trình duyệt tự tính boundary
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+
   return config;
 });
 

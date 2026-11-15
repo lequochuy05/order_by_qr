@@ -46,16 +46,22 @@ const useOrderHistory = () => {
     });
   }, []);
 
+  const [reconcilingId, setReconcilingId] = useState(null);
+
   const reconcileOrder = useCallback(
     async (orderId) => {
+      if (reconcilingId) return;
+      setReconcilingId(orderId);
       try {
         const reconciledOrder = await reconcileMutation.mutateAsync(orderId);
         showSuccessToast(`Tra soát thành công: #${reconciledOrder?.id || orderId}`);
       } catch (error) {
         showErrorToast(error);
+      } finally {
+        setReconcilingId(null);
       }
     },
-    [reconcileMutation],
+    [reconcileMutation, reconcilingId],
   );
 
   return {
@@ -65,6 +71,7 @@ const useOrderHistory = () => {
     analytics,
     averageOrder,
     loading,
+    reconcilingId,
     totalPages: ordersQuery.data?.totalPages || 0,
     totalElements: ordersQuery.data?.totalElements || 0,
     setSelectedOrder,

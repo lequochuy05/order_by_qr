@@ -170,7 +170,12 @@ const ProfilePage = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      showError('Vui lòng chọn một file hình ảnh.', 'File không hợp lệ');
+      showError('Vui lòng chọn một file hình ảnh (JPG, PNG, WebP).', 'File không hợp lệ');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showError('Kích thước file ảnh đại diện không được vượt quá 5MB.', 'Dung lượng quá lớn');
       return;
     }
 
