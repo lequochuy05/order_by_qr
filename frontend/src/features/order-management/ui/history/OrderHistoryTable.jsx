@@ -1,17 +1,23 @@
 import { Search } from 'lucide-react';
 
+import { useTranslation } from '@shared/lib/i18n';
 import OrderHistoryRow from './OrderHistoryRow.jsx';
 
-const OrderHistoryTable = ({ orders, loading, reconcilingId, onSelect, onPrint, onReconcile }) => (
+function OrderHistoryTable({ orders, loading, reconcilingId, onSelect, onPrint, onReconcile }) {
+  const { isEn } = useTranslation('orders');
+  const columns = isEn
+    ? ['Order ID', 'Time', 'Table', 'Amount', 'Status', 'Actions']
+    : ['Mã ĐH', 'Thời gian', 'Bàn', 'Tổng tiền', 'Trạng thái', 'Thao tác'];
+  return (
   <div className="overflow-hidden rounded-3xl border border-[#1E293B] bg-white/90 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90">
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-[#1E293B]/20 bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-[#1E293B] dark:bg-slate-950/80 dark:text-slate-400">
-            {['Mã ĐH', 'Thời gian', 'Bàn', 'Tổng tiền', 'Trạng thái', 'Thao tác'].map((label) => (
+            {columns.map((label, index) => (
               <th
                 key={label}
-                className={`p-5 font-bold ${label === 'Thao tác' ? 'text-right' : ''}`}
+                className={`p-5 font-bold ${index === 5 ? 'text-right' : ''}`}
               >
                 {label}
               </th>
@@ -24,7 +30,7 @@ const OrderHistoryTable = ({ orders, loading, reconcilingId, onSelect, onPrint, 
               <td colSpan="6" className="p-16 text-center text-slate-500 dark:text-slate-400">
                 <div className="flex flex-col items-center justify-center gap-3">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600 dark:border-slate-800 dark:border-t-indigo-400" />
-                  <p className="text-xs font-semibold">Đang tải dữ liệu...</p>
+                  <p className="text-xs font-semibold">{isEn ? 'Loading data...' : 'Đang tải dữ liệu...'}</p>
                 </div>
               </td>
             </tr>
@@ -33,7 +39,7 @@ const OrderHistoryTable = ({ orders, loading, reconcilingId, onSelect, onPrint, 
               <td colSpan="6" className="p-16 text-center text-slate-500 dark:text-slate-400">
                 <div className="flex flex-col items-center justify-center gap-2">
                   <Search size={36} className="mb-2 text-slate-300 dark:text-slate-600" />
-                  <p className="text-sm italic">Không tìm thấy đơn hàng nào phù hợp.</p>
+                  <p className="text-sm italic">{isEn ? 'No matching orders found.' : 'Không tìm thấy đơn hàng nào phù hợp.'}</p>
                 </div>
               </td>
             </tr>
@@ -53,6 +59,7 @@ const OrderHistoryTable = ({ orders, loading, reconcilingId, onSelect, onPrint, 
       </table>
     </div>
   </div>
-);
+  );
+}
 
 export default OrderHistoryTable;

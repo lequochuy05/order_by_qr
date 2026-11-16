@@ -5,9 +5,11 @@ import OrderDetailsModal from './OrderDetailsModal.jsx';
 import OrderHistoryFilters from './history/OrderHistoryFilters.jsx';
 import OrderHistoryStats from './history/OrderHistoryStats.jsx';
 import OrderHistoryTable from './history/OrderHistoryTable.jsx';
+import { useTranslation } from '@shared/lib/i18n';
 
 const OrderHistoryContent = () => {
   const history = useOrderHistory();
+  const { isEn } = useTranslation('orders');
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-7xl space-y-4 p-0 animate-in fade-in duration-500 sm:space-y-6 sm:p-3 lg:p-6">
@@ -41,7 +43,7 @@ const OrderHistoryContent = () => {
         currentPage={history.currentPage}
         totalPages={history.totalPages}
         totalElements={history.totalElements}
-        itemLabel="đơn hàng"
+        itemLabel={isEn ? 'orders' : 'đơn hàng'}
         loading={history.loading}
         onPageChange={history.setCurrentPage}
       />

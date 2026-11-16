@@ -3,8 +3,12 @@ import { Eye, Printer, RotateCw, ShoppingBag } from 'lucide-react';
 import { getOrderStatusMeta, ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
+import { useTranslation } from '@shared/lib/i18n';
 
-const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile }) => (
+function OrderHistoryRow({ order, isReconciling, onSelect, onPrint, onReconcile }) {
+  const { isEn, language } = useTranslation('orders');
+  const tableNum = order.table?.tableNumber || order.table?.name;
+  return (
   <tr
     className="group cursor-pointer border-b border-slate-100 transition-colors hover:bg-indigo-50/30 dark:border-slate-800/60 dark:hover:bg-slate-800/40"
     onClick={() => onSelect(order)}
@@ -17,13 +21,13 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
       {fmtDateTime(order.createdAt)}
     </td>
     <td className="p-5">
-      {order.table?.tableNumber || order.table?.name ? (
+      {tableNum ? (
         <span className="rounded-xl border border-slate-200/80 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-          Bàn {order.table.tableNumber || order.table.name}
+          {isEn ? `Table ${tableNum}` : `Bàn ${tableNum}`}
         </span>
       ) : (
         <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-2.5 py-1 text-xs font-bold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
-          <ShoppingBag size={13} /> Mang về
+          <ShoppingBag size={13} /> {isEn ? 'Takeaway' : 'Mang về'}
         </span>
       )}
     </td>
@@ -33,10 +37,10 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
     <td className="p-5">
       <span
         className={`rounded-full border px-3 py-1 text-[11px] font-bold ${
-          getOrderStatusMeta(order.status).classes
+          getOrderStatusMeta(order.status, language).classes
         }`}
       >
-        {getOrderStatusMeta(order.status).label}
+        {getOrderStatusMeta(order.status, language).label}
       </span>
     </td>
     <td className="p-5 text-right">
@@ -45,7 +49,7 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
           type="button"
           disabled={isReconciling}
           className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-500 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
-          title="Tra soát thanh toán"
+          title={isEn ? 'Reconcile payment' : 'Tra soát thanh toán'}
           onClick={() => onReconcile(order.id)}
         >
           <RotateCw size={16} className={isReconciling ? 'animate-spin text-indigo-600' : ''} />
@@ -54,7 +58,7 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
           <button
             type="button"
             className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-emerald-50 hover:text-emerald-600 active:scale-95 dark:text-slate-500 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-400"
-            title="In hóa đơn"
+            title={isEn ? 'Print receipt' : 'In hóa đơn'}
             onClick={() => onPrint(order)}
           >
             <Printer size={16} />
@@ -63,7 +67,7 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
         <button
           type="button"
           className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-900 active:scale-95 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-white"
-          title="Xem chi tiết"
+          title={isEn ? 'View details' : 'Xem chi tiết'}
           onClick={() => onSelect(order)}
         >
           <Eye size={16} />
@@ -71,6 +75,7 @@ const OrderHistoryRow = ({ order, isReconciling, onSelect, onPrint, onReconcile 
       </div>
     </td>
   </tr>
-);
+  );
+}
 
 export default OrderHistoryRow;

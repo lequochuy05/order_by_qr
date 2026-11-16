@@ -11,7 +11,7 @@ const ProfilePasswordField = ({ label, value, visible, error, onChange }) => (
         type={visible ? 'text' : 'password'}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className={`w-full rounded-2xl border bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:ring-indigo-500/20 ${
+        className={`w-full rounded-2xl border bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-indigo-500/20 ${
           error
             ? 'border-rose-300 focus:border-rose-500 dark:border-rose-500/50'
             : 'border-slate-200/80 focus:border-indigo-500 dark:border-slate-800 dark:focus:border-indigo-400'

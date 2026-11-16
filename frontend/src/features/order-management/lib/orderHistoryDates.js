@@ -1,10 +1,12 @@
-export const DATE_PRESETS = [
-  { label: 'Tất cả', value: 'all' },
-  { label: 'Hôm nay', value: 'today' },
-  { label: 'Hôm qua', value: 'yesterday' },
-  { label: '7 ngày', value: '7days' },
-  { label: '30 ngày', value: '30days' },
+export const getDatePresets = (language) => [
+  { label: language === 'en' ? 'All' : 'Tất cả', value: 'all' },
+  { label: language === 'en' ? 'Today' : 'Hôm nay', value: 'today' },
+  { label: language === 'en' ? 'Yesterday' : 'Hôm qua', value: 'yesterday' },
+  { label: language === 'en' ? '7 days' : '7 ngày', value: '7days' },
+  { label: language === 'en' ? '30 days' : '30 ngày', value: '30days' },
 ];
+// Keep DATE_PRESETS as backward-compat alias:
+export const DATE_PRESETS = getDatePresets('vi');
 
 const formatLocalDate = (date) => {
   const year = date.getFullYear();

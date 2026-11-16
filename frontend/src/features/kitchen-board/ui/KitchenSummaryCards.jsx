@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { AlertTriangle, CheckCircle2, Clock3, Flame } from 'lucide-react';
+import { useTranslation } from '@shared/lib/i18n';
 
 const TONES = {
   orange: {
@@ -47,24 +48,28 @@ const SummaryCard = ({ label, value, icon, tone }) => {
   );
 };
 
-const KitchenSummaryCards = ({ summary, overdueMinutes }) => (
-  <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5 sm:gap-4">
-    <SummaryCard label="Chờ nấu" value={summary.pending} icon={Clock3} tone="orange" />
-    <SummaryCard label="Đang nấu" value={summary.cooking} icon={Flame} tone="blue" />
-    <SummaryCard label="Vừa hoàn thành" value={summary.finished} icon={CheckCircle2} tone="green" />
-    <SummaryCard
-      label={`Quá ${overdueMinutes} phút`}
-      value={summary.overdue}
-      icon={AlertTriangle}
-      tone="red"
-    />
-    <SummaryCard
-      label="Chờ trung bình"
-      value={`${summary.averageWait}p`}
-      icon={Clock3}
-      tone="slate"
-    />
-  </div>
-);
+const KitchenSummaryCards = ({ summary, overdueMinutes }) => {
+  const { isEn } = useTranslation('kitchen');
+
+  return (
+    <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5 sm:gap-4">
+      <SummaryCard label={isEn ? 'Pending' : 'Chờ nấu'} value={summary.pending} icon={Clock3} tone="orange" />
+      <SummaryCard label={isEn ? 'Cooking' : 'Đang nấu'} value={summary.cooking} icon={Flame} tone="blue" />
+      <SummaryCard label={isEn ? 'Finished' : 'Vừa hoàn thành'} value={summary.finished} icon={CheckCircle2} tone="green" />
+      <SummaryCard
+        label={isEn ? `Overdue (${overdueMinutes}m)` : `Quá ${overdueMinutes} phút`}
+        value={summary.overdue}
+        icon={AlertTriangle}
+        tone="red"
+      />
+      <SummaryCard
+        label={isEn ? 'Average wait' : 'Chờ trung bình'}
+        value={isEn ? `${summary.averageWait}m` : `${summary.averageWait}p`}
+        icon={Clock3}
+        tone="slate"
+      />
+    </div>
+  );
+};
 
 export default KitchenSummaryCards;

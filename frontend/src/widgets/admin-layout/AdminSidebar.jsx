@@ -197,10 +197,12 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
           <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
             <div className="flex items-center gap-1.5 font-bold mb-1">
               <ShieldAlert size={14} className="text-amber-400" />
-              <span>Yêu cầu bảo mật</span>
+              <span>{label('Yêu cầu bảo mật')}</span>
             </div>
             <p className="text-slate-400 text-[11px] leading-relaxed">
-              Bạn cần đổi mật khẩu khởi tạo để kích hoạt đầy đủ tính năng.
+              {preferences.language === 'en'
+                ? 'You must change your initial password to activate full access.'
+                : 'Bạn cần đổi mật khẩu khởi tạo để kích hoạt đầy đủ tính năng.'}
             </p>
           </div>
         )}
@@ -329,6 +331,7 @@ const englishMenuLabels = {
   'Quản lý danh mục': 'Categories',
   'Quản lý món ăn': 'Menu items',
   'Quản lý combo': 'Combos',
+  'Quản lý kho': 'Inventory',
   'Quản lý voucher': 'Vouchers',
   'Quản lý nhân viên': 'Staff',
   'Lịch sử đơn hàng': 'Order history',
@@ -341,6 +344,8 @@ const englishMenuLabels = {
   'Thông tin cá nhân': 'Profile',
   'Cài đặt nhà hàng': 'Restaurant settings',
   'Tùy chọn cá nhân': 'Preferences',
+  'Đổi mật khẩu': 'Change password',
+  'Yêu cầu bảo mật': 'Security requirement',
 };
 
 const getMenuLabel = (text, language) => {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChefHat } from 'lucide-react';
+import { useTranslation } from '@shared/lib/i18n';
 import KitchenCard from './KitchenCard';
 
 const toneClasses = {
@@ -31,6 +32,7 @@ const KitchenColumn = ({
   onCancelItem,
   processingItems,
 }) => {
+  const { isEn } = useTranslation('kitchen');
   const classes = toneClasses[tone];
   const overdueCount = items.filter((item) => item.isOverdue).length;
 
@@ -57,7 +59,7 @@ const KitchenColumn = ({
 
           {overdueCount > 0 && (
             <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-600 dark:bg-rose-500/10 dark:text-rose-300">
-              {overdueCount} trễ
+              {overdueCount} {isEn ? 'overdue' : 'trễ'}
             </span>
           )}
         </div>
@@ -70,9 +72,11 @@ const KitchenColumn = ({
               <ChefHat size={24} />
             </span>
             <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-              Không có món trong cột này
+              {isEn ? 'No items in this column' : 'Không có món trong cột này'}
             </p>
-            <p className="mt-1 text-xs text-slate-400">Danh sách sẽ tự cập nhật khi có thay đổi.</p>
+            <p className="mt-1 text-xs text-slate-400">
+              {isEn ? 'List updates automatically as orders change.' : 'Danh sách sẽ tự cập nhật khi có thay đổi.'}
+            </p>
           </div>
         ) : (
           items.map((item) => (

@@ -8,6 +8,7 @@ import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSo
 import useSettingsStore from '@shared/model/settingsStore.js';
 import KitchenColumn from './KitchenColumn.jsx';
 import { aggregateBatchCookingItems, KITCHEN_COLUMNS } from './lib/kitchenItems.js';
+import { useTranslation } from '@shared/lib/i18n';
 import useKitchenFilters from './model/useKitchenFilters.js';
 import useKitchenNotifications from './model/useKitchenNotifications.js';
 import useKitchenOrders from './model/useKitchenOrders.js';
@@ -19,6 +20,7 @@ import KitchenToolbar from './ui/KitchenToolbar.jsx';
 
 const KitchenBoardContent = () => {
   const { user } = useAuth();
+  const { isEn } = useTranslation('kitchen');
   const [viewMode, setViewMode] = useState('kanban');
   const settings = useSettingsStore((state) => state.settings);
   const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
@@ -29,6 +31,35 @@ const KitchenBoardContent = () => {
     settings.newOrderNotificationEnabled !== false,
   );
   const previousOverdueCountRef = useRef(null);
+
+  const localizedColumns = useMemo(
+    () =>
+      KITCHEN_COLUMNS.map((column) => {
+        if (column.status === 'PENDING') {
+          return {
+            ...column,
+            title: isEn ? 'Pending' : column.title,
+            subtitle: isEn ? 'Priority by longest wait' : column.subtitle,
+          };
+        }
+        if (column.status === 'COOKING') {
+          return {
+            ...column,
+            title: isEn ? 'Cooking' : column.title,
+            subtitle: isEn ? 'Items being prepared' : column.subtitle,
+          };
+        }
+        if (column.status === 'FINISHED') {
+          return {
+            ...column,
+            title: isEn ? 'Finished' : column.title,
+            subtitle: isEn ? 'Ready to serve or pay' : column.subtitle,
+          };
+        }
+        return column;
+      }),
+    [isEn],
+  );
 
   const batchCount = useMemo(
     () => aggregateBatchCookingItems(filters.filteredItems).length,
@@ -46,12 +77,14 @@ const KitchenBoardContent = () => {
     ) {
       playNotificationSound();
       playLoudSound();
-      showBrowserNotification('Cảnh báo bếp', {
-        body: `${filters.summary.overdue} món đã chờ quá ${overdueMinutes} phút.`,
+      showBrowserNotification(isEn ? 'Kitchen Alert' : 'Cảnh báo bếp', {
+        body: isEn
+          ? `${filters.summary.overdue} items have been waiting over ${overdueMinutes} mins.`
+          : `${filters.summary.overdue} món đã chờ quá ${overdueMinutes} phút.`,
         tag: 'kitchen-overdue',
       });
     }
-  }, [filters.summary.overdue, overdueMinutes, settings.kitchenOverdueNotificationEnabled]);
+  }, [filters.summary.overdue, isEn, overdueMinutes, settings.kitchenOverdueNotificationEnabled]);
 
   return (
     <div className="w-full min-w-0 space-y-6 text-slate-900 dark:text-slate-100">
@@ -98,7 +131,7 @@ const KitchenBoardContent = () => {
         />
       ) : (
         <div className="mt-5 grid gap-5 xl:grid-cols-3">
-          {KITCHEN_COLUMNS.map((column) => (
+          {localizedColumns.map((column) => (
             <KitchenColumn
               key={column.status}
               {...column}

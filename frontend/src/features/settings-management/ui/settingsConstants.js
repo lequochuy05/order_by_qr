@@ -31,6 +31,7 @@ export const defaultSettings = {
   newOrderNotificationEnabled: true,
   paymentNotificationEnabled: true,
   kitchenOverdueNotificationEnabled: true,
+  allowSettlementWithUnfinishedItems: false,
 };
 
 export const settingsCopy = {
@@ -99,6 +100,9 @@ export const settingsCopy = {
       expiryTitle: 'Thời hạn thanh toán online',
       expiry: 'QR hết hạn sau (phút)',
       expiryHelp: 'Áp dụng cho giao dịch PayOS mới, từ 1 đến 120 phút.',
+      settlementTitle: 'Quy định thanh toán',
+      allowSettlementWithUnfinishedItems: 'Thanh toán khi còn món chưa hoàn thành',
+      allowSettlementWithUnfinishedItemsDesc: 'Cho phép thu ngân quyết toán đơn bàn ngay cả khi bếp vẫn còn món đang chế biến.',
     },
     customerMenu: {
       title: 'Menu khách hàng',
@@ -246,6 +250,9 @@ export const settingsCopy = {
       expiryTitle: 'Online payment expiration',
       expiry: 'QR expires after (minutes)',
       expiryHelp: 'Applied to new PayOS transactions, from 1 to 120 minutes.',
+      settlementTitle: 'Settlement rules',
+      allowSettlementWithUnfinishedItems: 'Allow settlement with unfinished items',
+      allowSettlementWithUnfinishedItemsDesc: 'Allow cashier to settle table bill even when kitchen items are still being prepared.',
     },
     customerMenu: {
       title: 'Customer menu',

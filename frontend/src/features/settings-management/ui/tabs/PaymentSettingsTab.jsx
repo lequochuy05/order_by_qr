@@ -1,4 +1,4 @@
-import { Banknote, CreditCard, QrCode } from 'lucide-react';
+import { Banknote, CheckCircle2, CreditCard, QrCode } from 'lucide-react';
 import { SaveButton } from '@shared/ui';
 
 import {
@@ -43,6 +43,18 @@ const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSav
           value={settings.paymentQrExpiresInMinutes}
           onChange={(value) => setSettingsValue(setSettings, 'paymentQrExpiresInMinutes', value)}
           className="max-w-md"
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title={copy.payment.settlementTitle}>
+        <ToggleRow
+          icon={CheckCircle2}
+          title={copy.payment.allowSettlementWithUnfinishedItems}
+          description={copy.payment.allowSettlementWithUnfinishedItemsDesc}
+          checked={settings.allowSettlementWithUnfinishedItems}
+          onChange={(value) =>
+            setSettingsValue(setSettings, 'allowSettlementWithUnfinishedItems', value)
+          }
         />
       </SettingsGroup>
     </div>

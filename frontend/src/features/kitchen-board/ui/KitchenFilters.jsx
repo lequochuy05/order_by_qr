@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { AlertTriangle, Search, SlidersHorizontal, StickyNote } from 'lucide-react';
+import { useTranslation } from '@shared/lib/i18n';
 
 const FilterButton = ({ active, onClick, label, icon }) => (
   <button
@@ -25,7 +26,10 @@ const KitchenFilters = ({
   onSearchChange,
   onCategoryChange,
   onAttentionChange,
-}) => (
+}) => {
+  const { isEn } = useTranslation('kitchen');
+
+  return (
   <section className="mt-5 rounded-3xl border border-[#1E293B] bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-[#1E293B] dark:bg-[#0F172A]/90">
     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
       <div className="flex flex-1 flex-col gap-3 sm:flex-row">
@@ -35,8 +39,8 @@ const KitchenFilters = ({
             type="search"
             value={searchTerm}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Tìm theo bàn, món, mã đơn hoặc ghi chú..."
-            className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950/80 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+            placeholder={isEn ? 'Search table, dish, order code or note...' : 'Tìm theo bàn, món, mã đơn hoặc ghi chú...'}
+            className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950/80 dark:focus:bg-slate-900 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
           />
         </label>
         <label className="relative block sm:w-56">
@@ -47,9 +51,9 @@ const KitchenFilters = ({
           <select
             value={categoryFilter}
             onChange={(event) => onCategoryChange(event.target.value)}
-            className="w-full appearance-none rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950/80 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
+            className="w-full appearance-none rounded-2xl border border-slate-200/80 bg-slate-50/80 py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700/80 dark:bg-slate-950/80 dark:focus:bg-slate-900 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/20"
           >
-            <option value="ALL">Tất cả danh mục</option>
+            <option value="ALL">{isEn ? 'All categories' : 'Tất cả danh mục'}</option>
             {categories.map((category) => (
               <option key={category} value={category}>
                 {category}
@@ -62,31 +66,32 @@ const KitchenFilters = ({
         <FilterButton
           active={attentionFilter === 'ALL'}
           onClick={() => onAttentionChange('ALL')}
-          label="Tất cả"
+          label={isEn ? 'All' : 'Tất cả'}
         />
         <FilterButton
           active={attentionFilter === 'OVERDUE'}
           onClick={() => onAttentionChange('OVERDUE')}
-          label="Quá hạn"
+          label={isEn ? 'Overdue' : 'Quá hạn'}
           icon={AlertTriangle}
         />
         <FilterButton
           active={attentionFilter === 'NOTES'}
           onClick={() => onAttentionChange('NOTES')}
-          label="Có ghi chú"
+          label={isEn ? 'Has notes' : 'Có ghi chú'}
           icon={StickyNote}
         />
         <span className="ml-1 font-mono text-xs text-slate-400">
           {lastUpdatedAt
-            ? `Cập nhật lúc ${lastUpdatedAt.toLocaleTimeString('vi-VN', {
+            ? `${isEn ? 'Updated at ' : 'Cập nhật lúc '}${lastUpdatedAt.toLocaleTimeString(isEn ? 'en-US' : 'vi-VN', {
                 hour: '2-digit',
                 minute: '2-digit',
               })}`
-            : 'Đang đồng bộ...'}
+            : (isEn ? 'Syncing...' : 'Đang đồng bộ...')}
         </span>
       </div>
     </div>
   </section>
 );
+};
 
 export default KitchenFilters;

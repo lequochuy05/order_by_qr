@@ -27,16 +27,20 @@ import AddItemModal from './AddItemModal.jsx';
 import PaymentModal from './PaymentModal.jsx';
 import MergeTableModal from './MergeTableModal.jsx';
 import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUS, TABLE_STATUS_EN, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-
-const tableStatusFilterOptions = Object.entries(TABLE_STATUS).map(([id, meta]) => ({
-  id,
-  name: meta.label,
-}));
+import { useTranslation } from '@shared/lib/i18n';
 
 const TableManager = () => {
+  const { isEn, copy } = useTranslation('tables');
   const [filter, setFilter] = useState('ALL');
+
+  const tableStatusFilterOptions = React.useMemo(() => {
+    return Object.entries(TABLE_STATUS).map(([id, meta]) => ({
+      id,
+      name: isEn ? (TABLE_STATUS_EN[id]?.label || meta.label) : meta.label,
+    }));
+  }, [isEn]);
 
   // Modal States
   const [formModal, setFormModal] = useState({ open: false, data: null });
@@ -58,7 +62,7 @@ const TableManager = () => {
 
   const checkPermission = () => {
     if (!canManageTables) {
-      showError('Bạn không có quyền thực hiện chức năng này!');
+      showError(isEn ? 'You do not have permission to perform this action!' : 'Bạn không có quyền thực hiện chức năng này!');
       return false;
     }
     return true;
@@ -122,12 +126,12 @@ const TableManager = () => {
       case 'PAY':
         try {
           if (!order) {
-            showError('Không tìm thấy đơn đang hoạt động của bàn này');
+            showError(isEn ? 'No active order found for this table' : 'Không tìm thấy đơn đang hoạt động của bàn này');
             queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
             break;
           }
           if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
-            showError('Vui lòng hoàn thành các món trước khi thanh toán');
+            showError(isEn ? 'Please finish preparation before payment' : 'Vui lòng hoàn thành các món trước khi thanh toán');
             break;
           }
           const fullOrder = await orderService.getOrderById(order.id);
@@ -170,13 +174,13 @@ const TableManager = () => {
       } else {
         await createMutation.mutateAsync(data);
       }
-      showSuccessToast(data.id ? 'Cập nhật bàn thành công' : 'Thêm bàn thành công');
+      showSuccessToast(data.id ? (isEn ? 'Table updated successfully' : 'Cập nhật bàn thành công') : (isEn ? 'Table created successfully' : 'Thêm bàn thành công'));
       setFormErrors({});
       setFormModal({ open: false, data: null });
     } catch (e) {
       const errorMsg = e.message || '';
       if (e?.code === 'TABLE_NUMBER_EXISTS' || errorMsg.includes('Table number already exists')) {
-        setFormErrors({ tableNumber: 'Số bàn này đã tồn tại' });
+        setFormErrors({ tableNumber: isEn ? 'This table number already exists' : 'Số bàn này đã tồn tại' });
       } else {
         showErrorToast(e);
       }
@@ -187,12 +191,12 @@ const TableManager = () => {
 
   const handleDeleteTable = async (id) => {
     if (deletingId) return;
-    const confirmed = await confirm('Xóa bàn', 'Bạn có chắc chắn muốn xóa bàn này?');
+    const confirmed = await confirm(copy.deleteTable, copy.deleteTableConfirm);
     if (!confirmed) return;
     setDeletingId(id);
     try {
       await deleteMutation.mutateAsync(id);
-      showSuccessToast('Đã xóa bàn');
+      showSuccessToast(copy.deleteTableSuccess);
     } catch (e) {
       showErrorToast(e);
     } finally {
@@ -204,20 +208,20 @@ const TableManager = () => {
     if (isRegeneratingQr) return null;
     const targetTable = board?.tables?.find((t) => t.id === id);
     if (targetTable && targetTable.status !== 'AVAILABLE') {
-      showErrorToast(new Error('Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.'));
+      showErrorToast(new Error(isEn ? 'Cannot regenerate QR while table is occupied or active.' : 'Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.'));
       return null;
     }
 
     const confirmed = await confirm(
-      'Tạo lại mã QR',
-      'Mã QR cũ của bàn này sẽ không còn dùng được. Bạn có chắc chắn muốn xóa QR cũ và tạo mã QR mới?',
+      copy.regenerateQr,
+      isEn ? 'The old QR code for this table will no longer work. Are you sure you want to generate a new QR code?' : 'Mã QR cũ của bàn này sẽ không còn dùng được. Bạn có chắc chắn muốn xóa QR cũ và tạo mã QR mới?',
     );
     if (!confirmed) return null;
 
     setIsRegeneratingQr(true);
     try {
       const updatedTable = await regenerateQrMutation.mutateAsync(id);
-      showSuccessToast('Đã tạo lại mã QR cho bàn');
+      showSuccessToast(isEn ? 'New QR code generated' : 'Đã tạo lại mã QR cho bàn');
       setFormModal((prev) => ({ ...prev, data: updatedTable }));
       return updatedTable;
     } catch (e) {
@@ -233,7 +237,7 @@ const TableManager = () => {
     setIsSubmitting(true);
     try {
       await orderService.addItemsToOrder(payload);
-      showSuccessToast('Đã thêm món vào bàn');
+      showSuccessToast(isEn ? 'Items added to table' : 'Đã thêm món vào bàn');
       setAddItemModal({ open: false, table: null });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
     } catch (e) {
@@ -248,7 +252,7 @@ const TableManager = () => {
     setIsSubmitting(true);
     try {
       await mergeMutation.mutateAsync(payload);
-      showSuccessToast('Đã gộp bàn thành công');
+      showSuccessToast(isEn ? 'Tables merged successfully' : 'Đã gộp bàn thành công');
       setMergeModal({ open: false, table: null });
       queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
     } catch (e) {
@@ -261,18 +265,19 @@ const TableManager = () => {
   return (
     <div className="w-full min-w-0 space-y-4 p-0 sm:space-y-6 sm:p-3 lg:p-6">
       <ManagementHeader
-        title="Quản lý bàn ăn"
+        title={copy.title}
         showFilter={true}
         filterOptions={tableStatusFilterOptions}
         filterValue={filter}
         setFilterValue={setFilter}
+        filterAllLabel={copy.allStatuses}
         onAddClick={() => {
           if (checkPermission()) {
             setFormErrors({});
             setFormModal({ open: true, data: null });
           }
         }}
-        addButtonText="Thêm bàn"
+        addButtonText={copy.addTable}
         hideAddButton={!canManageTables}
       />
       <div className="mt-6">
