@@ -40,6 +40,7 @@ import {
   getDemandLevel,
   getRevenueInsight,
 } from '@shared/lib/analytics/forecastUtils.js';
+import { useTranslation } from '@shared/lib/i18n';
 import useDashboard from '../model/useDashboard.js';
 
 // Modern, vibrant Evondev-style color palette for donut chart
@@ -55,7 +56,7 @@ const PIE_COLORS = [
 ];
 
 // Custom Tooltip for Forecast Area/Line Chart
-const CustomForecastTooltip = ({ active, payload, label }) => {
+const CustomForecastTooltip = ({ active, payload, label, language = 'vi' }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -77,7 +78,9 @@ const CustomForecastTooltip = ({ active, payload, label }) => {
                     className="w-2.5 h-2.5 rounded-full"
                     style={{ backgroundColor: isActual ? '#6366F1' : '#F59E0B' }}
                   />
-                  {isActual ? 'Doanh thu thực tế' : 'Dự báo AI'}:
+                  {isActual
+                    ? (language === 'en' ? 'Actual revenue' : 'Doanh thu thực tế')
+                    : (language === 'en' ? 'AI forecast' : 'Dự báo AI')}:
                 </span>
                 <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
                   {fmtVND(entry.value)}
@@ -125,6 +128,7 @@ const DashboardOverview = () => {
   } = useDashboard();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { isEn, language } = useTranslation('dashboard');
 
   const handleManualRefresh = async () => {
     try {
@@ -143,7 +147,7 @@ const DashboardOverview = () => {
           <Activity className="absolute text-indigo-600 dark:text-indigo-400 w-6 h-6 animate-pulse" />
         </div>
         <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-          Đang cập nhật số liệu kinh doanh...
+          {isEn ? 'Updating business metrics...' : 'Đang cập nhật số liệu kinh doanh...'}
         </p>
       </div>
     );
@@ -157,17 +161,17 @@ const DashboardOverview = () => {
             <AlertCircle size={30} />
           </div>
           <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
-            Không thể tải dữ liệu
+            {isEn ? 'Unable to load data' : 'Không thể tải dữ liệu'}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-            Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.
+            {isEn ? 'An error occurred connecting to the server. Please check your network.' : 'Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng kiểm tra lại đường truyền mạng.'}
           </p>
           <button
             onClick={() => refetch()}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2.5 text-sm font-bold text-white hover:from-rose-700 hover:to-red-700 transition-all shadow-md shadow-rose-600/25 active:scale-95"
           >
             <RefreshCw size={16} />
-            Thử lại ngay
+            {isEn ? 'Retry' : 'Thử lại ngay'}
           </button>
         </div>
       </div>
@@ -175,7 +179,7 @@ const DashboardOverview = () => {
   }
 
   const forecastSummary = getForecastSummary(revenueForecastData);
-  const revenueInsight = getRevenueInsight(forecastSummary);
+  const revenueInsight = getRevenueInsight(forecastSummary, language);
 
   // Calculate table occupancy percentage
   const occupancyPercent =
@@ -198,15 +202,15 @@ const DashboardOverview = () => {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Tổng quan kinh doanh
+                {isEn ? 'Business Overview' : 'Tổng quan kinh doanh'}
               </h1>
               <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-[#1E293B]/25 dark:border-[#1E293B]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                Trực tiếp
+                {isEn ? 'Live' : 'Trực tiếp'}
               </span>
             </div>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Theo dõi doanh thu, hiệu suất vận hành bàn và dự báo kinh doanh thông minh.
+              {isEn ? 'Track revenue, table performance and AI-powered business forecasts.' : 'Theo dõi doanh thu, hiệu suất vận hành bàn và dự báo kinh doanh thông minh.'}
             </p>
           </div>
 
@@ -217,7 +221,7 @@ const DashboardOverview = () => {
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#0F172A] border border-[#1E293B] text-xs font-bold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all active:scale-95 disabled:opacity-60"
             >
               <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-indigo-600' : ''} />
-              <span>{isRefreshing ? 'Đang cập nhật...' : 'Làm mới số liệu'}</span>
+              <span>{isRefreshing ? (isEn ? 'Refreshing...' : 'Đang cập nhật...') : (isEn ? 'Refresh' : 'Làm mới số liệu')}</span>
             </button>
           </div>
         </div>
@@ -231,7 +235,7 @@ const DashboardOverview = () => {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Doanh thu hôm nay
+                  {isEn ? 'Revenue today' : 'Doanh thu hôm nay'}
                 </p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {fmtVND(todayRevenue)}
@@ -244,9 +248,9 @@ const DashboardOverview = () => {
             <div className="mt-4 flex items-center gap-2 pt-3 border-t border-[#1E293B]/15 dark:border-[#1E293B]/60 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md">
                 <ArrowUpRight size={12} />
-                Theo ca bán
+                {isEn ? 'By shift' : 'Theo ca bán'}
               </span>
-              <span>Doanh thu tính từ 00:00</span>
+              <span>{isEn ? 'Revenue since midnight' : 'Doanh thu tính từ 00:00'}</span>
             </div>
           </div>
 
@@ -255,7 +259,7 @@ const DashboardOverview = () => {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Đơn hàng hôm nay
+                  {isEn ? 'Orders today' : 'Đơn hàng hôm nay'}
                 </p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {todayOrders.total}
@@ -268,9 +272,9 @@ const DashboardOverview = () => {
             <div className="mt-4 flex items-center gap-2 pt-3 border-t border-[#1E293B]/15 dark:border-[#1E293B]/60 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
                 <CheckCircle2 size={12} />
-                {todayOrders.completed} hoàn thành
+                {todayOrders.completed} {isEn ? 'completed' : 'hoàn thành'}
               </span>
-              <span>{todayOrders.total - todayOrders.completed} đang xử lý</span>
+              <span>{todayOrders.total - todayOrders.completed} {isEn ? 'processing' : 'đang xử lý'}</span>
             </div>
           </div>
 
@@ -279,7 +283,7 @@ const DashboardOverview = () => {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Bàn đang phục vụ
+                  {isEn ? 'Tables serving' : 'Bàn đang phục vụ'}
                 </p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                   {tablesContext.occupied}
@@ -294,9 +298,9 @@ const DashboardOverview = () => {
             </div>
             <div className="mt-4 flex items-center gap-2 pt-3 border-t border-[#1E293B]/15 dark:border-[#1E293B]/60 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-flex items-center gap-1 font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-2 py-0.5 rounded-md">
-                {occupancyPercent}% công suất
+                {occupancyPercent}% {isEn ? 'occupancy' : 'công suất'}
               </span>
-              <span>Đang có khách ngồi</span>
+              <span>{isEn ? 'Currently occupied' : 'Đang có khách ngồi'}</span>
             </div>
           </div>
 
@@ -305,7 +309,7 @@ const DashboardOverview = () => {
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Giá trị TB / đơn
+                  {isEn ? 'Avg order value' : 'Giá trị TB / đơn'}
                 </p>
                 <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                   {fmtVND(avgOrderValue)}
@@ -319,7 +323,7 @@ const DashboardOverview = () => {
             <span className="inline-flex items-center gap-1 font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md">
               AOV
             </span>
-            <span>Hiệu quả chi tiêu khách hàng</span>
+            <span>{isEn ? 'Customer spend efficiency' : 'Hiệu quả chi tiêu khách hàng'}</span>
           </div>
         </div>
       </div>
@@ -338,11 +342,11 @@ const DashboardOverview = () => {
                   <TrendingUp size={20} />
                 </span>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Dự báo doanh thu 7 ngày tới
+                  {isEn ? '7-day Revenue Forecast' : 'Dự báo doanh thu 7 ngày tới'}
                 </h3>
               </div>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                Kết hợp dữ liệu bán hàng thực tế và mô hình AI dự báo chu kỳ
+                {isEn ? 'Combining actual sales data with AI cycle forecasting models.' : 'Kết hợp dữ liệu bán hàng thực tế và mô hình AI dự báo chu kỳ'}
               </p>
             </div>
 
@@ -357,7 +361,7 @@ const DashboardOverview = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               <div className="rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-[#1E293B]/25 dark:border-[#1E293B] p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-indigo-900/70 dark:text-indigo-300">
-                  Dự báo ngày mai
+                  {isEn ? 'Tomorrow forecast' : 'Dự báo ngày mai'}
                 </p>
                 <p className="mt-1 text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono">
                   {fmtVND(forecastSummary.forecastTomorrow)}
@@ -366,7 +370,7 @@ const DashboardOverview = () => {
 
               <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-[#1E293B]/25 dark:border-[#1E293B] p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  So với TB 7 ngày
+                  {isEn ? 'vs 7-day avg' : 'So với TB 7 ngày'}
                 </p>
                 <p className="mt-1 text-lg font-black text-slate-900 dark:text-white font-mono flex items-center gap-1">
                   {forecastSummary.diffPercent >= 0 ? (
@@ -381,11 +385,11 @@ const DashboardOverview = () => {
 
               <div className="rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-[#1E293B]/25 dark:border-[#1E293B] p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-emerald-900/70 dark:text-emerald-300">
-                  Xu hướng
+                  {isEn ? 'Trend' : 'Xu hướng'}
                 </p>
                 <p className="mt-1 text-lg font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  {getTrendLabel(forecastSummary.trend)}
+                  {getTrendLabel(forecastSummary.trend, language)}
                 </p>
               </div>
             </div>
@@ -397,7 +401,7 @@ const DashboardOverview = () => {
               <Lightbulb className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold text-indigo-900 dark:text-indigo-300">
-                  Gợi ý điều hành:{' '}
+                  {isEn ? 'Management tip:' : 'Gợi ý điều hành:'}{' '}
                 </span>
                 <span>{revenueInsight}</span>
               </div>
@@ -408,11 +412,11 @@ const DashboardOverview = () => {
           <div className="flex items-center gap-6 text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4">
             <span className="flex items-center gap-2">
               <span className="w-3.5 h-3.5 rounded-md bg-indigo-500" />
-              Doanh thu thực tế
+              {isEn ? 'Actual revenue' : 'Doanh thu thực tế'}
             </span>
             <span className="flex items-center gap-2">
               <span className="w-3.5 h-1 border-t-2 border-dashed border-amber-500" />
-              Dự báo bởi AI
+              {isEn ? 'AI forecast' : 'Dự báo bởi AI'}
             </span>
           </div>
 
@@ -450,7 +454,7 @@ const DashboardOverview = () => {
                     tickLine={false}
                     width={50}
                   />
-                  <Tooltip content={<CustomForecastTooltip />} />
+                  <Tooltip content={<CustomForecastTooltip language={language} />} />
                   <Area
                     type="monotone"
                     dataKey="actual"
@@ -474,7 +478,7 @@ const DashboardOverview = () => {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-400">
-                Chưa có dữ liệu dự báo doanh thu
+                {isEn ? 'No forecast data yet' : 'Chưa có dữ liệu dự báo doanh thu'}
               </div>
             )}
           </div>
@@ -489,20 +493,20 @@ const DashboardOverview = () => {
                   <ChefHat size={20} />
                 </span>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                  Gợi ý chuẩn bị món
+                  {isEn ? 'Prep suggestions' : 'Gợi ý chuẩn bị món'}
                 </h3>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                30 Ngày qua
+                {isEn ? 'Last 30 days' : '30 Ngày qua'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-              Dự kiến số lượng suất ăn cần chuẩn bị trước để tối ưu thời gian ra món.
+              {isEn ? 'Estimated servings to prep ahead to optimize cook time.' : 'Dự kiến số lượng suất ăn cần chuẩn bị trước để tối ưu thời gian ra món.'}
             </p>
 
             <div className="space-y-3.5">
               {popularDishesForecast.map((dish, idx) => {
-                const demand = getDemandLevel(dish.estimatedQty);
+                const demand = getDemandLevel(dish.estimatedQty, language);
                 const rankColors = [
                   'bg-gradient-to-r from-amber-400 to-amber-600 text-white shadow-amber-500/20',
                   'bg-gradient-to-r from-slate-400 to-slate-600 text-white shadow-slate-500/20',
@@ -532,11 +536,11 @@ const DashboardOverview = () => {
                             {dish.name}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Dự kiến bán:{' '}
+                            {isEn ? 'Est. sold:' : 'Dự kiến bán:'}{' '}
                             <span className="font-extrabold text-indigo-600 dark:text-indigo-400">
                               {dish.estimatedQty}
                             </span>{' '}
-                            suất
+                            {isEn ? 'servings' : 'suất'}
                           </p>
                         </div>
                       </div>
@@ -563,7 +567,7 @@ const DashboardOverview = () => {
 
               {popularDishesForecast.length === 0 && (
                 <div className="py-8 text-center text-slate-400 text-xs">
-                  Chưa có dữ liệu dự báo món ăn hôm nay.
+                  {isEn ? 'No dish forecast data for today.' : 'Chưa có dữ liệu dự báo món ăn hôm nay.'}
                 </div>
               )}
             </div>
@@ -583,11 +587,11 @@ const DashboardOverview = () => {
                 <Layers size={20} />
               </span>
               <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-                Tỉ trọng danh mục
+                {isEn ? 'Category breakdown' : 'Tỉ trọng danh mục'}
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-              Doanh thu phân bổ theo các nhóm món ăn trong 7 ngày
+              {isEn ? 'Revenue by food category over 7 days' : 'Doanh thu phân bổ theo các nhóm món ăn trong 7 ngày'}
             </p>
 
             <div className="h-56 relative flex items-center justify-center">
@@ -616,14 +620,14 @@ const DashboardOverview = () => {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="text-center text-slate-400 text-xs">Chưa có thông tin bán hàng</div>
+                <div className="text-center text-slate-400 text-xs">{isEn ? 'No sales data yet' : 'Chưa có thông tin bán hàng'}</div>
               )}
 
               {/* Center Donut Label */}
               {categoryShares.length > 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Tổng cộng
+                    {isEn ? 'Total' : 'Tổng cộng'}
                   </span>
                   <span className="text-xs font-black text-slate-800 dark:text-slate-200 font-mono">
                     {fmtCompactVND(totalCategoryRevenue)}
@@ -667,11 +671,11 @@ const DashboardOverview = () => {
               <UtensilsCrossed size={20} />
             </span>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              Top món bán chạy
+              {isEn ? 'Top selling dishes' : 'Top món bán chạy'}
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-            5 món có số lượng và doanh thu cao nhất 7 ngày qua
+            {isEn ? 'Top 5 by quantity and revenue in the last 7 days' : '5 món có số lượng và doanh thu cao nhất 7 ngày qua'}
           </p>
 
           <div className="space-y-3.5">
@@ -710,11 +714,11 @@ const DashboardOverview = () => {
                           {dish.name}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          Đã bán:{' '}
+                          {isEn ? 'Sold:' : 'Đã bán:'}{' '}
                           <span className="font-extrabold text-slate-800 dark:text-slate-200">
                             {dish.totalQty}
                           </span>{' '}
-                          phần
+                          {isEn ? 'servings' : 'phần'}
                         </p>
                       </div>
                     </div>
@@ -738,7 +742,7 @@ const DashboardOverview = () => {
 
             {topDishes.length === 0 && (
               <div className="py-8 text-center text-slate-400 text-xs">
-                Chưa có món nào được ghi nhận bán ra.
+                {isEn ? 'No dishes recorded yet.' : 'Chưa có món nào được ghi nhận bán ra.'}
               </div>
             )}
           </div>
@@ -751,18 +755,18 @@ const DashboardOverview = () => {
               <Clock size={20} />
             </span>
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              Đơn hàng mới nhất
+              {isEn ? 'Recent orders' : 'Đơn hàng mới nhất'}
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
-            Nhật ký giao dịch phát sinh gần nhất trong ngày
+            {isEn ? 'Latest transactions today' : 'Nhật ký giao dịch phát sinh gần nhất trong ngày'}
           </p>
 
           <div className="space-y-3">
             {recentOrders.map((order, idx) => {
               const tableNumber = order.table?.tableNumber || order.tableNumber;
               const orderAmount = order.finalAmount ?? getOrderFinalAmount(order);
-              const statusMeta = getOrderStatusMeta(order.status);
+              const statusMeta = getOrderStatusMeta(order.status, language);
 
               return (
                 <div
@@ -779,7 +783,7 @@ const DashboardOverview = () => {
                           #{order.id}
                         </span>
                         <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-200/60 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                          {tableNumber ? `Bàn ${tableNumber}` : 'Mang đi'}
+                          {tableNumber ? (isEn ? `Table ${tableNumber}` : `Bàn ${tableNumber}`) : (isEn ? 'Takeaway' : 'Mang đi')}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
@@ -804,7 +808,7 @@ const DashboardOverview = () => {
 
             {recentOrders.length === 0 && (
               <div className="py-8 text-center text-slate-400 text-xs">
-                Chưa phát sinh đơn hàng nào hôm nay.
+                {isEn ? 'No orders today yet.' : 'Chưa phát sinh đơn hàng nào hôm nay.'}
               </div>
             )}
           </div>

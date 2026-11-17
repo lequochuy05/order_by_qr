@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react';
+import { useTranslation } from '@shared/lib/i18n';
 import SharedModal from './SharedModal.jsx';
 
 const ConfirmModal = ({
@@ -7,15 +8,21 @@ const ConfirmModal = ({
   onConfirm,
   title,
   message,
-  confirmText = 'Xác nhận',
-  cancelText = 'Hủy',
+  confirmText,
+  cancelText,
   loading = false,
 }) => {
+  const { isEn } = useTranslation('common');
+  const resolvedConfirmText = confirmText || (isEn ? 'Confirm' : 'Xác nhận');
+  const resolvedCancelText = cancelText || (isEn ? 'Cancel' : 'Hủy');
+  const resolvedTitle = title || (isEn ? 'Confirmation' : 'Xác nhận');
+  const loadingText = isEn ? 'Processing...' : 'Đang xử lý...';
+
   return (
     <SharedModal
       isOpen={isOpen}
       onClose={loading ? undefined : onClose}
-      ariaLabel={title || 'Xác nhận'}
+      ariaLabel={resolvedTitle}
       className="max-w-sm overflow-hidden p-0 sm:p-0 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 dark:bg-slate-900"
       backdropClassName="bg-black/50 backdrop-blur-sm"
     >
@@ -25,7 +32,7 @@ const ConfirmModal = ({
           <AlertTriangle size={32} />
         </div>
         <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-          {title || 'Xác nhận'}
+          {resolvedTitle}
         </h3>
       </div>
 
@@ -41,14 +48,14 @@ const ConfirmModal = ({
             disabled={loading}
             className="flex-1 py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all active:scale-95 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            {cancelText}
+            {resolvedCancelText}
           </button>
           <button
             onClick={onConfirm}
             disabled={loading}
             className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 transition-all active:scale-95 shadow-md shadow-rose-500/25 disabled:opacity-60"
           >
-            {loading ? 'Đang xử lý...' : confirmText}
+            {loading ? loadingText : resolvedConfirmText}
           </button>
         </div>
       </div>

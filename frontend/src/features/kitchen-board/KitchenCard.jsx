@@ -13,21 +13,27 @@ import {
 import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
+import { useTranslation } from '@shared/lib/i18n';
 
 const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing }) => {
+  const { isEn } = useTranslation('kitchen');
   const priority = getPriority(item);
   const { confirm } = useConfirmModal();
 
   const handleCancel = async () => {
     if (!onCancelItem || isProcessing) return;
     const isTakeaway = item.orderType === 'TAKEAWAY';
-    const destinationLabel = isTakeaway ? 'đơn Mang về' : `Bàn ${item.tableName}`;
+    const destinationLabel = isTakeaway
+      ? (isEn ? 'Takeaway order' : 'đơn Mang về')
+      : (isEn ? `Table ${item.tableName}` : `Bàn ${item.tableName}`);
     const confirmed = await confirm(
-      'Hủy món ăn',
-      `Bạn có chắc chắn muốn hủy món "${item.itemName}" của ${destinationLabel}?\nKho nguyên liệu sẽ được tự động hoàn trả.`,
+      isEn ? 'Cancel item' : 'Hủy món ăn',
+      isEn
+        ? `Are you sure you want to cancel "${item.itemName}" for ${destinationLabel}?\nInventory will be automatically restored.`
+        : `Bạn có chắc chắn muốn hủy món "${item.itemName}" của ${destinationLabel}?\nKho nguyên liệu sẽ được tự động hoàn trả.`,
     );
     if (confirmed) {
-      await onCancelItem(item.id, 'Bếp hủy món');
+      await onCancelItem(item.id, isEn ? 'Kitchen cancelled' : 'Bếp hủy món');
     }
   };
 
@@ -44,31 +50,31 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
           <div className="flex flex-wrap items-center gap-2">
             {isTakeaway ? (
               <span className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-2.5 py-1 text-xs font-black text-white shadow-sm">
-                Mang về
+                {isEn ? 'Takeaway' : 'Mang về'}
               </span>
             ) : (
               <span className="rounded-lg bg-slate-900 px-2.5 py-1 text-xs font-black text-white dark:bg-slate-700">
-                Bàn {item.tableName}
+                {isEn ? `Table ${item.tableName}` : `Bàn ${item.tableName}`}
               </span>
             )}
             <span className="text-xs font-semibold text-slate-400">
-              Đơn <span className="font-mono font-bold text-slate-600 dark:text-slate-300">#{item.orderId}</span>
+              {isEn ? 'Order' : 'Đơn'} <span className="font-mono font-bold text-slate-600 dark:text-slate-300">#{item.orderId}</span>
             </span>
             {item.batchNumber > 1 && (
               <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-                Đợt {item.batchNumber} (Gọi thêm)
+                {isEn ? `Batch ${item.batchNumber} (Add-on)` : `Đợt ${item.batchNumber} (Gọi thêm)`}
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
-            <WaitBadge item={item} priority={priority} />
+            <WaitBadge item={item} priority={priority} isEn={isEn} />
             {onCancelItem && (status === ORDER_ITEM_STATUSES.PENDING || status === ORDER_ITEM_STATUSES.COOKING) && (
               <button
                 type="button"
                 onClick={handleCancel}
                 disabled={isProcessing}
                 className="rounded-lg p-1 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-rose-950/30"
-                title="Hủy món ăn"
+                title={isEn ? 'Cancel item' : 'Hủy món ăn'}
               >
                 <Trash2 size={14} />
               </button>
@@ -112,7 +118,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               <StickyNote size={16} className="mt-0.5 shrink-0" />
               <div>
                 <p className="text-[11px] font-black uppercase tracking-wider opacity-70">
-                  Ghi chú bếp
+                  {isEn ? 'Kitchen notes' : 'Ghi chú bếp'}
                 </p>
                 <p className="mt-0.5 font-semibold">{item.notes}</p>
               </div>
@@ -121,9 +127,9 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
         )}
 
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800">
-          <span>Nhận lúc {fmtTime(item.createdAt)}</span>
-          {status === ORDER_ITEM_STATUSES.COOKING && <span>Đang nấu {item.stageMinutes} phút</span>}
-          {status === ORDER_ITEM_STATUSES.FINISHED && <span>Xong lúc {fmtTime(item.statusUpdatedAt)}</span>}
+          <span>{isEn ? `Received at ${fmtTime(item.createdAt)}` : `Nhận lúc ${fmtTime(item.createdAt)}`}</span>
+          {status === ORDER_ITEM_STATUSES.COOKING && <span>{isEn ? `Cooking for ${item.stageMinutes} mins` : `Đang nấu ${item.stageMinutes} phút`}</span>}
+          {status === ORDER_ITEM_STATUSES.FINISHED && <span>{isEn ? `Done at ${fmtTime(item.statusUpdatedAt)}` : `Xong lúc ${fmtTime(item.statusUpdatedAt)}`}</span>}
         </div>
 
         <div className="mt-3">
@@ -133,8 +139,8 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               disabled={isProcessing}
               loading={isProcessing}
               icon={Flame}
-              label="Bắt đầu nấu"
-              loadingLabel="Đang chuyển món..."
+              label={isEn ? 'Start cooking' : 'Bắt đầu nấu'}
+              loadingLabel={isEn ? 'Moving...' : 'Đang chuyển món...'}
               className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-md shadow-indigo-600/25"
             />
           )}
@@ -144,8 +150,8 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               disabled={isProcessing}
               loading={isProcessing}
               icon={Check}
-              label="Hoàn thành món"
-              loadingLabel="Đang hoàn thành..."
+              label={isEn ? 'Complete item' : 'Hoàn thành món'}
+              loadingLabel={isEn ? 'Completing...' : 'Đang hoàn thành...'}
               className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-600/25"
             />
           )}
@@ -161,7 +167,7 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
               ) : (
                 <RotateCcw size={14} />
               )}
-              {isProcessing ? 'Đang hoàn tác...' : 'Hoàn tác về đang nấu'}
+              {isProcessing ? (isEn ? 'Reverting...' : 'Đang hoàn tác...') : (isEn ? 'Revert to cooking' : 'Hoàn tác về đang nấu')}
             </button>
           )}
         </div>
@@ -170,12 +176,12 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
   );
 };
 
-const WaitBadge = ({ item, priority }) => {
+const WaitBadge = ({ item, priority, isEn }) => {
   if (item.status === ORDER_ITEM_STATUSES.FINISHED) {
     return (
       <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
         <Check size={13} />
-        Đã xong
+        {isEn ? 'Done' : 'Đã xong'}
       </span>
     );
   }
@@ -185,7 +191,7 @@ const WaitBadge = ({ item, priority }) => {
       className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-black ${priority.badge}`}
     >
       {item.isOverdue ? <AlertTriangle size={13} /> : <Clock3 size={13} />}
-      {item.waitMinutes} phút
+      {item.waitMinutes} {isEn ? 'mins' : 'phút'}
     </span>
   );
 };

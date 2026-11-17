@@ -14,7 +14,18 @@ export const TABLE_STATUS = {
   [TABLE_STATUSES.INACTIVE]: { label: 'Ngưng hoạt động', color: 'rose' },
 };
 
-export const getTableStatusMeta = (status) => {
-  const meta = TABLE_STATUS[status] || { label: status || 'Không rõ', color: 'slate' };
+export const TABLE_STATUS_EN = {
+  [TABLE_STATUSES.AVAILABLE]: { label: 'Available', color: 'slate' },
+  [TABLE_STATUSES.OCCUPIED]: { label: 'Occupied', color: 'orange' },
+  [TABLE_STATUSES.WAITING_FOR_PAYMENT]: { label: 'Awaiting payment', color: 'cyan' },
+  [TABLE_STATUSES.INACTIVE]: { label: 'Inactive', color: 'rose' },
+};
+
+export const getTableStatusMeta = (status, language = 'vi') => {
+  const statusDict = language === 'en' ? TABLE_STATUS_EN : TABLE_STATUS;
+  const meta = statusDict[status] || TABLE_STATUS[status] || {
+    label: status || (language === 'en' ? 'Unknown' : 'Không rõ'),
+    color: 'slate',
+  };
   return { ...meta, classes: getStatusClasses(meta.color) };
 };

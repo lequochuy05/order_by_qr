@@ -150,7 +150,7 @@ const ResetPasswordPage = () => {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
-                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-11 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
                     placeholder="••••••••"
                     onChange={(e) => setPassword(e.target.value)}
                   />
@@ -173,7 +173,7 @@ const ResetPasswordPage = () => {
                   <input
                     type="password"
                     value={confirmPassword}
-                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                    className="w-full rounded-2xl border border-slate-200/80 bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/15 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:bg-slate-900"
                     placeholder="••••••••"
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />

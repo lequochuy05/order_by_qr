@@ -72,7 +72,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
         <button
           onClick={toggleSidebar}
           className="flex shrink-0 p-2.5 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors dark:text-slate-300 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-          aria-label="Chuyển đổi menu thanh bên"
+          aria-label={preferences.language === 'en' ? 'Toggle sidebar' : 'Chuyển đổi menu thanh bên'}
         >
           <Menu size={22} />
         </button>
@@ -103,12 +103,12 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
             {wsConnected ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>Trực tuyến</span>
+                <span>{preferences.language === 'en' ? 'Online' : 'Trực tuyến'}</span>
               </>
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
-                <span>Ngoại tuyến</span>
+                <span>{preferences.language === 'en' ? 'Offline' : 'Ngoại tuyến'}</span>
               </>
             )}
           </div>
@@ -118,7 +118,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
         {!isCompactViewport && (
           <button
             className="relative p-2.5 text-slate-500 rounded-xl transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-            title="Thông báo hệ thống"
+            title={preferences.language === 'en' ? 'System notifications' : 'Thông báo hệ thống'}
           >
             <Bell size={19} />
             <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full ring-2 ring-white dark:ring-slate-900" />
@@ -134,7 +134,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
           {!isCompactViewport && (
             <div className="max-w-36 text-right">
               <p className="truncate text-sm font-extrabold leading-tight text-slate-900 dark:text-white">
-                {user?.fullName || 'Người dùng'}
+                {user?.fullName || (preferences.language === 'en' ? 'User' : 'Người dùng')}
               </p>
               <span className="inline-block text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md mt-0.5">
                 {preferences.language === 'en'
@@ -193,6 +193,7 @@ const AdminHeader = ({ toggleSidebar, isCompactViewport = false }) => {
 
 const vietnamesePageTitles = {
   '/admin/dashboard': 'Bảng điều khiển',
+  '/admin/takeaway': 'Bán mang về',
   '/admin/categories': 'Quản lý danh mục',
   '/admin/menu': 'Quản lý món ăn',
   '/admin/orders': 'Quản lý đơn hàng',
@@ -214,6 +215,7 @@ const vietnamesePageTitles = {
 
 const englishPageTitles = {
   '/admin/dashboard': 'Dashboard',
+  '/admin/takeaway': 'Takeaway Orders',
   '/admin/categories': 'Categories',
   '/admin/menu': 'Menu items',
   '/admin/orders': 'Orders',

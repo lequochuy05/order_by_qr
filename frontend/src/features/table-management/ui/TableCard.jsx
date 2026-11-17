@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Clock, Link2 } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { getTableStatusMeta, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { useTranslation } from '@shared/lib/i18n';
 
 const TableCard = ({
   table,
@@ -15,29 +16,30 @@ const TableCard = ({
   onMerge,
   userRole,
 }) => {
+  const { language, isEn } = useTranslation('tables');
   const finalAmount = getOrderFinalAmount(order);
   const hasOrder = order && finalAmount > 0;
   const isManager = userRole === 'ADMIN' || userRole === 'MANAGER';
-  const tableTitle = table.displayName || `Bàn ${table.tableNumber}`;
+  const tableTitle = table.displayName || (isEn ? `Table ${table.tableNumber}` : `Bàn ${table.tableNumber}`);
   const memberNumbers = table.memberTableNumbers || [];
   const totalCapacity = table.totalCapacity || table.capacity;
 
-  const status = getTableStatusMeta(table.status);
+  const status = getTableStatusMeta(table.status, language);
   const isWaitingPayment =
     table.status === TABLE_STATUSES.WAITING_FOR_PAYMENT ||
     order?.status === 'AWAITING_PAYMENT';
 
   // Tính toán thời gian đã ngồi, tự động cập nhật mỗi 30s
-  const calcTime = (createdAt) => {
+  const calcTime = useCallback((createdAt) => {
     if (!createdAt) return null;
     const start = new Date(createdAt);
     const now = new Date();
     const diffMs = now - start;
     const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return `${diffMins} phút`;
+    if (diffMins < 60) return isEn ? `${diffMins} mins` : `${diffMins} phút`;
     const hours = Math.floor(diffMins / 60);
-    return `${hours}h ${diffMins % 60}p`;
-  };
+    return isEn ? `${hours}h ${diffMins % 60}m` : `${hours}h ${diffMins % 60}p`;
+  }, [isEn]);
   const [timeElapsed, setTimeElapsed] = useState(() => calcTime(order?.createdAt));
   useEffect(() => {
     const refreshTimer = setTimeout(() => {
@@ -53,7 +55,7 @@ const TableCard = ({
       clearTimeout(refreshTimer);
       clearInterval(interval);
     };
-  }, [order?.createdAt]);
+  }, [order?.createdAt, calcTime]);
 
   const statusTheme = (() => {
     if (isWaitingPayment) {
@@ -98,8 +100,8 @@ const TableCard = ({
             <button
               type="button"
               onClick={onMerge}
-              aria-label={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
-              title={table.merged ? 'Gộp thêm bàn' : 'Gộp bàn'}
+              aria-label={table.merged ? (isEn ? 'Add merged table' : 'Gộp thêm bàn') : (isEn ? 'Merge table' : 'Gộp bàn')}
+              title={table.merged ? (isEn ? 'Add merged table' : 'Gộp thêm bàn') : (isEn ? 'Merge table' : 'Gộp bàn')}
               className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-indigo-600 shadow-sm transition hover:bg-indigo-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-indigo-400 dark:hover:bg-indigo-950/40"
             >
               <Link2 size={14} />
@@ -109,18 +111,18 @@ const TableCard = ({
                 <button
                   type="button"
                   onClick={onEdit}
-                  aria-label="Sửa bàn"
+                  aria-label={isEn ? 'Edit table' : 'Sửa bàn'}
                   className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-slate-600 shadow-sm transition hover:bg-indigo-50 hover:text-indigo-600 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-950/40 dark:hover:text-indigo-400"
-                  title="Sửa bàn"
+                  title={isEn ? 'Edit table' : 'Sửa bàn'}
                 >
                   <Edit size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={onDelete}
-                  aria-label="Xóa bàn"
+                  aria-label={isEn ? 'Delete table' : 'Xóa bàn'}
                   className="rounded-xl border border-slate-200/80 bg-white/90 p-1.5 text-rose-600 shadow-sm transition hover:bg-rose-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-rose-400 dark:hover:bg-rose-950/40"
-                  title="Xóa bàn"
+                  title={isEn ? 'Delete table' : 'Xóa bàn'}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -134,8 +136,8 @@ const TableCard = ({
         <div className="flex items-center gap-1 font-medium">
           <Users size={14} className="text-slate-400" />
           <span>
-            {table.guestCount ? `${table.guestCount} khách / ` : ''}
-            {totalCapacity} chỗ
+            {table.guestCount ? `${table.guestCount} ${isEn ? 'guests' : 'khách'} / ` : ''}
+            {totalCapacity} {isEn ? 'seats' : 'chỗ'}
           </span>
         </div>
         {table.merged && (
@@ -151,7 +153,9 @@ const TableCard = ({
       </div>
 
       <div className="mb-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800/60">
-        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">Tạm tính</p>
+        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          {isEn ? 'Subtotal' : 'Tạm tính'}
+        </p>
         <p className="text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-0.5">
           {hasOrder ? fmtVND(finalAmount) : fmtVND(0)}
         </p>
@@ -162,20 +166,20 @@ const TableCard = ({
           onClick={onDetail}
           className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          <FileText className="shrink-0 text-slate-400" size={15} /> <span className="truncate">Chi tiết</span>
+          <FileText className="shrink-0 text-slate-400" size={15} /> <span className="truncate">{isEn ? 'Details' : 'Chi tiết'}</span>
         </button>
         <button
           onClick={onAddItems}
           className="flex min-w-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-50 px-3 py-2.5 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100 active:scale-95 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-900/40"
         >
-          <PlusCircle className="shrink-0" size={15} /> <span className="truncate">Thêm món</span>
+          <PlusCircle className="shrink-0" size={15} /> <span className="truncate">{isEn ? 'Add items' : 'Thêm món'}</span>
         </button>
         {hasOrder && (
           <button
             onClick={onPay}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 min-[360px]:col-span-2 transition-all"
           >
-            <CreditCard size={15} /> Thanh toán
+            <CreditCard size={15} /> {isEn ? 'Payment' : 'Thanh toán'}
           </button>
         )}
       </div>

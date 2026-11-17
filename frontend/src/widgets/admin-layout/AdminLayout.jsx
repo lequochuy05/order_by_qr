@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { useAuth } from '@features/auth';
+import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
@@ -20,6 +21,8 @@ const getViewportWidth = () => {
 
 const AdminLayoutContent = () => {
   const { user } = useAuth();
+  const [preferences] = useAdminPreferences();
+  const isEn = preferences.language === 'en';
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth);
   const isCompactViewport = viewportWidth < 768;
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => getViewportWidth() >= 1024);
@@ -88,14 +91,16 @@ const AdminLayoutContent = () => {
                   <AlertTriangle className="h-4 w-4" />
                 </span>
                 <span className="truncate font-semibold">
-                  Tài khoản của bạn đang dùng mật khẩu tạm thời. Vui lòng đổi mật khẩu để bảo vệ hệ thống.
+                  {isEn
+                    ? 'Your account is using a temporary password. Please change your password to protect the system.'
+                    : 'Tài khoản của bạn đang dùng mật khẩu tạm thời. Vui lòng đổi mật khẩu để bảo vệ hệ thống.'}
                 </span>
               </div>
               <Link
                 to="/admin/profile?forceChangePassword=true"
                 className="inline-flex items-center gap-1 shrink-0 font-bold text-amber-800 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-100 text-xs underline underline-offset-2 hover:no-underline"
               >
-                Đổi mật khẩu ngay
+                {isEn ? 'Change password now' : 'Đổi mật khẩu ngay'}
                 <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>

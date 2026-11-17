@@ -8,8 +8,10 @@ import {
 } from '@entities/order/lib/orderMoney.js';
 import { X, Receipt, Clock, Utensils, Printer, RotateCw, UserCheck, CreditCard } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
+import { useTranslation } from '@shared/lib/i18n';
 
 export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingId, onPrint, onReconcile }) {
+  const { isEn } = useTranslation('orders');
   if (!isOpen || !order) return null;
   const subtotalAmount = getOrderSubtotalAmount(order);
   const discountAmount = getOrderDiscountAmount(order);
@@ -32,10 +34,10 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
           </div>
           <div>
             <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
-              Chi tiết đơn hàng
+              {isEn ? 'Order details' : 'Chi tiết đơn hàng'}
             </h2>
             <p className="mt-0.5 text-xs font-semibold text-slate-400 dark:text-slate-500">
-              Mã đơn:{' '}
+              {isEn ? 'Order ID' : 'Mã đơn'}:{' '}
               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
                 #{order.id?.toString().substring(0, 8).toUpperCase() || order.id}
               </span>
@@ -56,7 +58,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
             <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              <Clock size={12} /> Thời gian
+              <Clock size={12} /> {isEn ? 'Time' : 'Thời gian'}
             </span>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
               {fmtDateTime(order.createdAt)}
@@ -64,16 +66,18 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
           </div>
           <div className="rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
             <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              <Utensils size={12} /> Bàn
+              <Utensils size={12} /> {isEn ? 'Table' : 'Bàn'}
             </span>
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              {order.table?.tableNumber || 'Mang đi'}
+              {order.table?.tableNumber
+                ? (isEn ? `Table ${order.table.tableNumber}` : `Bàn ${order.table.tableNumber}`)
+                : (isEn ? 'Takeaway' : 'Mang về')}
             </span>
           </div>
           {order.paidByName && (
             <div className="col-span-2 rounded-2xl border border-indigo-200/60 bg-indigo-50/60 p-3.5 dark:border-indigo-800/40 dark:bg-indigo-950/40">
               <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                <UserCheck size={12} /> Thu ngân
+                <UserCheck size={12} /> {isEn ? 'Cashier' : 'Thu ngân'}
               </span>
               <span className="text-xs font-bold uppercase text-indigo-900 dark:text-indigo-200">
                 {order.paidByName}
@@ -83,10 +87,12 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
           {order.paymentMethod && (
             <div className="col-span-2 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-3.5 dark:border-slate-800/80 dark:bg-slate-900/60">
               <span className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                <CreditCard size={12} /> Hình thức thanh toán
+                <CreditCard size={12} /> {isEn ? 'Payment method' : 'Hình thức thanh toán'}
               </span>
               <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
-                {order.paymentMethod === PAYMENT_METHODS.PAYOS ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}
+                {order.paymentMethod === PAYMENT_METHODS.PAYOS
+                  ? (isEn ? 'Bank transfer (PayOS)' : 'Chuyển khoản (PayOS)')
+                  : (isEn ? 'Cash' : 'Tiền mặt')}
               </span>
             </div>
           )}
@@ -96,7 +102,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800/80 dark:bg-slate-900">
           <div className="border-b border-slate-200/80 bg-slate-50/60 px-5 py-3 dark:border-slate-800/80 dark:bg-slate-900/80">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
-              Danh sách món
+              {isEn ? 'Items' : 'Danh sách món'}
             </h3>
           </div>
           <div className="p-5 space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -108,7 +114,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
                       {item.itemNameSnapshot ||
                         item.menuItem?.name ||
                         item.combo?.name ||
-                        'Món không tên'}
+                        (isEn ? 'Unknown item' : 'Món không tên')}
                     </span>
                     <span className="rounded-lg bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 text-[10px] font-bold font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-300">
                       x{item.quantity}
@@ -131,19 +137,19 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
         {/* Financials */}
         <div className="space-y-2.5 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-5 dark:border-slate-800/80 dark:bg-slate-900/60">
           <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Tổng tiền món</span>
+            <span>{isEn ? 'Subtotal' : 'Tổng tiền món'}</span>
             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
               {fmtVND(subtotalAmount)}
             </span>
           </div>
           {discountAmount > 0 && (
             <div className="flex justify-between text-emerald-600 text-xs">
-              <span>Khuyến mãi</span>
+              <span>{isEn ? 'Discount' : 'Khuyến mãi'}</span>
               <span className="font-mono font-bold">-{fmtVND(discountAmount)}</span>
             </div>
           )}
           <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-3 dark:border-slate-800">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">THANH TOÁN</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100">{isEn ? 'TOTAL' : 'THANH TOÁN'}</span>
             <span className="text-2xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
               {fmtVND(finalAmount)}
             </span>
@@ -159,7 +165,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
           className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white py-3 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
         >
           <RotateCw size={16} className={reconcilingId === order.id ? 'animate-spin text-indigo-600' : ''} />
-          <span>{reconcilingId === order.id ? 'Đang tra soát...' : 'Tra soát'}</span>
+          <span>{reconcilingId === order.id ? (isEn ? 'Reconciling...' : 'Đang tra soát...') : (isEn ? 'Reconcile' : 'Tra soát')}</span>
         </button>
         {order.status === ORDER_STATUSES.COMPLETED && (
           <button
@@ -167,7 +173,7 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
             className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95"
           >
             <Printer size={16} />
-            <span>In biên lai</span>
+            <span>{isEn ? 'Print receipt' : 'In biên lai'}</span>
           </button>
         )}
       </div>
