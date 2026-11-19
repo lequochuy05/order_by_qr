@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -17,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 class IdempotencyServiceTest {
 
@@ -26,7 +26,7 @@ class IdempotencyServiceTest {
         when(repository.claim(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(1);
 
-        IdempotencyService service = new IdempotencyService(repository, new ObjectMapper(), new SimpleMeterRegistry());
+        IdempotencyService service = new IdempotencyService(repository, new JsonMapper(), new SimpleMeterRegistry());
         service.initializeMetrics();
         AtomicInteger executions = new AtomicInteger();
 
@@ -56,7 +56,7 @@ class IdempotencyServiceTest {
                 .thenReturn(0);
         when(repository.findByNamespaceAndRequestKey(anyString(), anyString())).thenReturn(Optional.of(request));
 
-        IdempotencyService service = new IdempotencyService(repository, new ObjectMapper(), new SimpleMeterRegistry());
+        IdempotencyService service = new IdempotencyService(repository, new JsonMapper(), new SimpleMeterRegistry());
         service.initializeMetrics();
 
         assertThatThrownBy(() -> service.execute(
@@ -65,8 +65,9 @@ class IdempotencyServiceTest {
                         new TestRequest("A"),
                         TestResponse.class,
                         () -> new TestResponse("created")))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.IDEMPOTENCY_CONFLICT));
         verify(repository, never()).save(any());
     }
 

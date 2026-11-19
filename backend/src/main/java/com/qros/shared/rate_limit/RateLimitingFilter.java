@@ -1,6 +1,5 @@
 package com.qros.shared.rate_limit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.exception.AppException;
 import com.qros.shared.response.ApiResponse;
 import com.qros.shared.response.ErrorResponse;
@@ -17,6 +16,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * RateLimitingFilter - Redis-backed fixed-window rate limiter for public endpoints.

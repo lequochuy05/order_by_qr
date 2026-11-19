@@ -1,7 +1,5 @@
 package com.qros.shared.idempotency;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -23,6 +21,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Lazy(false)
@@ -102,7 +102,7 @@ public class IdempotencyService {
         try {
             replayedCounter.increment();
             return objectMapper.readValue(request.getResponseJson(), responseType);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Unable to read stored idempotency response", exception);
         }
     }
@@ -110,7 +110,7 @@ public class IdempotencyService {
     private String hashPayload(Object requestPayload) {
         try {
             return sha256(objectMapper.writeValueAsString(requestPayload));
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to serialize idempotent request", exception);
         }
     }
@@ -118,7 +118,7 @@ public class IdempotencyService {
     private String writeResponse(Object response) {
         try {
             return objectMapper.writeValueAsString(response);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Unable to store idempotency response", exception);
         }
     }

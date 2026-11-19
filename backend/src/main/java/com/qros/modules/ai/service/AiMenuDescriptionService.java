@@ -1,7 +1,5 @@
 package com.qros.modules.ai.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.dto.request.AiMenuDescriptionRequest;
 import com.qros.modules.ai.dto.response.AiMenuDescriptionResponse;
@@ -15,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
@@ -88,12 +88,12 @@ public class AiMenuDescriptionService {
             List<String> tasteTags = new ArrayList<>();
             JsonNode tagsNode = root.path("tasteTags");
             if (tagsNode.isArray()) {
-                tagsNode.forEach(tag -> tasteTags.add(tag.asText()));
+                tagsNode.forEach(tag -> tasteTags.add(tag.asString()));
             }
 
             return new AiMenuDescriptionResponse(
-                    root.path("shortDescription").asText(""),
-                    root.path("engagingDescription").asText(""),
+                    root.path("shortDescription").asString(""),
+                    root.path("engagingDescription").asString(""),
                     tasteTags);
         } catch (BusinessException e) {
             throw e;

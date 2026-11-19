@@ -65,7 +65,7 @@ public class TableQrService {
 
     private String buildOrderingUrl(String tableCode) {
         String signature = tableQrSecurityService.generateSignature(tableCode);
-        return UriComponentsBuilder.fromHttpUrl(appProperties.getFrontend().getBaseUrl())
+        return UriComponentsBuilder.fromUriString(appProperties.getFrontend().getBaseUrl())
                 .path("/menu")
                 .queryParam("tableCode", tableCode)
                 .queryParam("sig", signature)

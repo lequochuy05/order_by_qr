@@ -13,6 +13,7 @@ public class AppProperties {
     private Frontend frontend = new Frontend();
     private Cors cors = new Cors();
     private Security security = new Security();
+    private Qr qr = new Qr();
     private Cache cache = new Cache();
     private Email email = new Email();
 
@@ -46,6 +47,14 @@ public class AppProperties {
 
     public void setSecurity(Security security) {
         this.security = security;
+    }
+
+    public Qr getQr() {
+        return qr;
+    }
+
+    public void setQr(Qr qr) {
+        this.qr = qr;
     }
 
     public Cache getCache() {
@@ -144,8 +153,22 @@ public class AppProperties {
 
     @Getter
     @Setter
+    public static class Qr {
+        private String secret;
+
+        public String getSecret() {
+            return secret;
+        }
+
+        public void setSecret(String secret) {
+            this.secret = secret;
+        }
+    }
+
+    @Getter
+    @Setter
     public static class Cache {
-        private String prefix = "qros:v3:";
+        private String prefix = "qros:v4:";
 
         public String getPrefix() {
             return prefix;

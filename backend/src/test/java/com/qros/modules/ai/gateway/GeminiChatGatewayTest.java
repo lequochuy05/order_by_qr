@@ -6,21 +6,22 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.modules.ai.config.GeminiProperties;
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class GeminiChatGatewayTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new JsonMapper();
     private final AiPromptBuilder promptBuilder = new AiPromptBuilder();
 
     @Test
@@ -77,8 +78,7 @@ class GeminiChatGatewayTest {
                 new GeminiChatGateway(properties, objectMapper, promptBuilder, new RestTemplateBuilder());
         ReflectionTestUtils.setField(gateway, "restTemplate", restTemplate);
 
-        String mockResponseBody =
-                """
+        String mockResponseBody = """
                 {
                   "candidates": [
                     {
@@ -122,5 +122,26 @@ class GeminiChatGatewayTest {
         assertThat(resolved)
                 .isEqualTo(
                         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=key123");
+    }
+
+    @Test
+    void maskSensitiveUrlRedactsApiKeyFromQueryStringsAndErrorMessages() {
+        GeminiProperties properties = new GeminiProperties(
+                true,
+                "secret-gemini-key",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+                5,
+                15,
+                0.7,
+                0.95,
+                500);
+        GeminiChatGateway gateway =
+                new GeminiChatGateway(properties, objectMapper, promptBuilder, new RestTemplateBuilder());
+
+        String masked = gateway.maskSensitiveUrl(
+                "I/O error on POST request for \"https://generativelanguage.googleapis.com/v1beta/models/gemini:generateContent?key=secret-gemini-key\"");
+
+        assertThat(masked).doesNotContain("secret-gemini-key");
+        assertThat(masked).contains("?key=***");
     }
 }
