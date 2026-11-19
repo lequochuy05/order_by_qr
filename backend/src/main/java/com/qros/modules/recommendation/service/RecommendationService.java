@@ -225,8 +225,8 @@ public class RecommendationService {
 
             case AFTERNOON -> containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay");
 
-            case DINNER -> containsAny(
-                    itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay", "giai khat");
+            case DINNER ->
+                containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay", "giai khat");
 
             case ANY -> true;
         };

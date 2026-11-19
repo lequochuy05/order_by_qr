@@ -1,7 +1,5 @@
 package com.qros.modules.auth.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.infrastructure.mail.SmtpEmailService;
 import com.qros.modules.user.model.User;
 import com.qros.shared.exception.BusinessException;
@@ -16,10 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class Admin2faService {
@@ -172,16 +171,12 @@ public class Admin2faService {
     }
 
     private void sendOtpNotification(String email, String otp) {
-        log.warn("[2FA OTP] One-time password for admin account <{}> is: {}", email, otp);
         try {
             smtpEmailService.sendAdmin2faOtpEmail(email, otp);
+            log.info("2FA code sent to admin account");
         } catch (Exception e) {
             log.error("Failed to dispatch 2FA email to {}", email, e);
         }
-    }
-
-    private boolean isDevEnvironment() {
-        return environment != null && environment.acceptsProfiles(Profiles.of("dev", "local", "test"));
     }
 
     private String generateOtp() {
@@ -193,7 +188,7 @@ public class Admin2faService {
         try {
             String json = objectMapper.writeValueAsString(ticket);
             redisTemplate.opsForValue().set(ticketKey(token), json, ttl);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize 2FA ticket", e);
         }
     }
@@ -201,7 +196,7 @@ public class Admin2faService {
     private TicketData deserializeTicket(String json) {
         try {
             return objectMapper.readValue(json, TicketData.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to deserialize 2FA ticket", e);
         }
     }

@@ -1,7 +1,5 @@
 package com.qros.modules.ai.gateway;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.modules.ai.config.GeminiProperties;
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.support.AiPromptBuilder;
@@ -10,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
@@ -100,22 +100,35 @@ public class GeminiChatGateway implements AiChatGateway {
                         continue;
                     }
                     if (isTransient && targetUrls.indexOf(url) < targetUrls.size() - 1) {
-                        log.warn("Gemini model in {} is overloaded (503/429), switching to alternate model...", url);
+                        log.warn(
+                                "Gemini model in {} is overloaded (503/429), switching to alternate model...",
+                                maskSensitiveUrl(url));
                         break;
                     }
                     log.error(
                             "Gemini API call failed with HTTP status {} {}: {}",
                             httpEx.getStatusCode(),
                             httpEx.getStatusText(),
-                            httpEx.getResponseBodyAsString());
+                            maskSensitiveUrl(httpEx.getResponseBodyAsString()));
                     return FALLBACK_REPLY;
                 } catch (Exception exception) {
-                    log.error("Gemini API call failed: {}", exception.getMessage(), exception);
+                    log.error("Gemini API call failed: {}", maskSensitiveUrl(exception.getMessage()));
                     return FALLBACK_REPLY;
                 }
             }
         }
         return FALLBACK_REPLY;
+    }
+
+    String maskSensitiveUrl(String text) {
+        if (text == null || text.isBlank()) {
+            return text;
+        }
+        String masked = text.replaceAll("([?&]key=)[^&\\s\"']+", "$1***");
+        if (properties.apiKey() != null && !properties.apiKey().isBlank()) {
+            masked = masked.replace(properties.apiKey().trim(), "***");
+        }
+        return masked;
     }
 
     private String resolveApiUrl() {
@@ -212,7 +225,7 @@ public class GeminiChatGateway implements AiChatGateway {
                 JsonNode parts = candidates.get(0).path("content").path("parts");
 
                 if (parts.isArray() && !parts.isEmpty()) {
-                    return parts.get(0).path("text").asText("Xin lỗi, tôi chưa hiểu ý bạn. Bạn muốn ăn gì nhỉ? 😊");
+                    return parts.get(0).path("text").asString("Xin lỗi, tôi chưa hiểu ý bạn. Bạn muốn ăn gì nhỉ? 😊");
                 }
             }
 

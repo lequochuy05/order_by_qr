@@ -17,8 +17,7 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = "table")
-    @Query(
-            """
+    @Query("""
             SELECT s
             FROM TableSession s
             WHERE s.table.id = :tableId
@@ -48,8 +47,7 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
     }
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE TableSession session
             SET session.lastActivityAt = :now,
                 session.updatedAt = :now
@@ -64,9 +62,7 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
         return findStaleSessionsByStatusWithoutOrdersForUpdate(cutoff, TableSessionStatus.OPEN.name());
     }
 
-    @Query(
-            value =
-                    """
+    @Query(value = """
             SELECT s.*
             FROM table_sessions s
             WHERE s.status = :status
@@ -79,8 +75,7 @@ public interface TableSessionRepository extends JpaRepository<TableSession, Long
                       AND o.is_deleted = false
               )
             FOR UPDATE SKIP LOCKED
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     List<TableSession> findStaleSessionsByStatusWithoutOrdersForUpdate(
             @Param("cutoff") LocalDateTime cutoff, @Param("status") String status);
 }

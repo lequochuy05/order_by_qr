@@ -1,6 +1,5 @@
 package com.qros.shared.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
@@ -23,6 +22,8 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * JwtAuthFilter - Security filter that intercepts each HTTP request to validate
@@ -39,7 +40,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     public JwtAuthFilter(
             JwtService jwtService, UserDetailsService userDetailsService, TokenBlacklistService tokenBlacklistService) {
-        this(jwtService, userDetailsService, tokenBlacklistService, new ObjectMapper());
+        this(
+                jwtService,
+                userDetailsService,
+                tokenBlacklistService,
+                JsonMapper.builder().build());
     }
 
     @Autowired
@@ -51,7 +56,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.tokenBlacklistService = tokenBlacklistService;
-        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+        this.objectMapper =
+                objectMapper != null ? objectMapper : JsonMapper.builder().build();
     }
 
     /**

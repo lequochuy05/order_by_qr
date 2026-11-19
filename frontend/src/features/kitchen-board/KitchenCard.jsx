@@ -11,14 +11,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useConfirm } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
 
 const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing }) => {
   const { isEn } = useTranslation('kitchen');
   const priority = getPriority(item);
-  const { confirm } = useConfirmModal();
+  const confirm = useConfirm();
 
   const handleCancel = async () => {
     if (!onCancelItem || isProcessing) return;

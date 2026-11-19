@@ -247,15 +247,13 @@ public class OrderItemWorkflowService {
             return;
         }
 
-        boolean valid =
-                switch (from) {
-                    case PENDING -> to == OrderItemStatus.COOKING
-                            || to == OrderItemStatus.FINISHED
-                            || to == OrderItemStatus.CANCELLED;
-                    case COOKING -> to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
-                    case FINISHED -> false;
-                    case CANCELLED -> false;
-                };
+        boolean valid = switch (from) {
+            case PENDING ->
+                to == OrderItemStatus.COOKING || to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
+            case COOKING -> to == OrderItemStatus.FINISHED || to == OrderItemStatus.CANCELLED;
+            case FINISHED -> false;
+            case CANCELLED -> false;
+        };
 
         if (!valid) {
             throw new BusinessException(

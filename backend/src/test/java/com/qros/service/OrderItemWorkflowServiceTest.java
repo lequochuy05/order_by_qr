@@ -191,8 +191,9 @@ class OrderItemWorkflowServiceTest {
         when(orderItemRepository.findDetailByIdForUpdate(10L)).thenReturn(Optional.of(finishedItem));
 
         assertThatThrownBy(() -> workflowService.updateItemStatus(10L, OrderItemStatus.CANCELLED, null))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.ORDER_INVALID_ITEM_STATUS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ORDER_INVALID_ITEM_STATUS));
 
         verify(inventoryReservationService, never()).restoreOrderItem(any());
         verify(orderRepository, never()).save(any());

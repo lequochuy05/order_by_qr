@@ -14,8 +14,7 @@ import org.springframework.lang.NonNull;
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
     @EntityGraph(attributePaths = {"category"})
-    @Query(
-            """
+    @Query("""
           SELECT m
           FROM MenuItem m
           WHERE m.category.id = :categoryId
@@ -24,8 +23,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
       """)
     List<MenuItem> findActiveSummariesByCategoryId(@Param("categoryId") Long categoryId);
 
-    @Query(
-            """
+    @Query("""
           SELECT COUNT(m)
           FROM MenuItem m
           WHERE m.category.id = :categoryId
@@ -50,8 +48,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findAllByIdIn(java.util.Collection<Long> ids);
 
     @EntityGraph(attributePaths = {"category"})
-    @Query(
-            """
+    @Query("""
           SELECT m
           FROM MenuItem m
           WHERE (CAST(:keyword AS string) IS NULL OR LOWER(m.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -65,8 +62,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findAllByActiveTrueOrderByDisplayOrderAscNameAsc();
 
     @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
-    @Query(
-            """
+    @Query("""
           SELECT DISTINCT m
           FROM MenuItem m
           WHERE m.active = true
@@ -77,8 +73,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findAllPublicAvailableItems();
 
     @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
-    @Query(
-            """
+    @Query("""
           SELECT DISTINCT m
           FROM MenuItem m
           WHERE m.active = true
@@ -88,8 +83,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findAllPublicItems();
 
     @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
-    @Query(
-            """
+    @Query("""
           SELECT DISTINCT m
           FROM MenuItem m
           WHERE m.category.id = :categoryId
@@ -101,8 +95,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findPublicAvailableItemsByCategoryId(@Param("categoryId") Long categoryId);
 
     @EntityGraph(attributePaths = {"category", "itemOptions", "itemOptions.optionValues"})
-    @Query(
-            """
+    @Query("""
           SELECT DISTINCT m
           FROM MenuItem m
           WHERE m.category.id = :categoryId
@@ -116,8 +109,7 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     List<MenuItem> findByActiveTrueAndAvailableTrueOrderByIdDesc(Pageable pageable);
 
     @EntityGraph(attributePaths = {"category"})
-    @Query(
-            """
+    @Query("""
       SELECT m
       FROM MenuItem m
       WHERE m.active = true

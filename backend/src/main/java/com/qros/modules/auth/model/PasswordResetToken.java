@@ -34,8 +34,7 @@ public class PasswordResetToken extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @NotBlank
-    @Column(nullable = false, unique = true, length = 64)
+    @NotBlank @Column(nullable = false, unique = true, length = 64)
     private String token;
 
     @NotNull @Column(nullable = false)

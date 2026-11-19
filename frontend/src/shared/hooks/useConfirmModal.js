@@ -42,6 +42,8 @@ export const useConfirmModalStore = create((set, get) => ({
   },
 }));
 
+export const useConfirm = () => useConfirmModalStore((state) => state.confirm);
+
 export const useConfirmModal = () => {
   const store = useConfirmModalStore();
 

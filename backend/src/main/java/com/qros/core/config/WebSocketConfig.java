@@ -1,5 +1,6 @@
 package com.qros.core.config;
 
+import com.qros.core.config.security.CorsOrigins;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.PasswordVersionedUserDetails;
 import com.qros.shared.security.TokenBlacklistService;
@@ -35,6 +36,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.messaging.StompSubProtocolErrorHandler;
 
 /**
  * WebSocketConfig - Configures WebSocket message broker and STOMP endpoints.
@@ -90,19 +92,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
      */
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
+        registry.setErrorHandler(new StompSubProtocolErrorHandler() {
+            @Override
+            public Message<byte[]> handleClientMessageProcessingError(
+                    Message<byte[]> clientMessage, @NonNull Throwable ex) {
+                Throwable root = ex;
+                while (root != null && root.getCause() != null && root != root.getCause()) {
+                    if (root instanceof AccessDeniedException) {
+                        break;
+                    }
+                    root = root.getCause();
+                }
+                return super.handleClientMessageProcessingError(clientMessage, root != null ? root : ex);
+            }
+        });
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(parseAllowedOrigins(appProperties.getCors().getAllowedOrigins()))
+                .setAllowedOrigins(CorsOrigins.parse(appProperties.getCors().getAllowedOrigins())
+                        .toArray(String[]::new))
                 .withSockJS();
-    }
-
-    /**
-     * Parses a comma-separated origin string into an array, trimming whitespace.
-     */
-    private static String[] parseAllowedOrigins(String origins) {
-        if (!org.springframework.util.StringUtils.hasText(origins)) {
-            return new String[] {"http://localhost:5173", "https://localhost", "https://wqros.vercel.app"};
-        }
-        return origins.split("\\s*,\\s*");
     }
 
     /**

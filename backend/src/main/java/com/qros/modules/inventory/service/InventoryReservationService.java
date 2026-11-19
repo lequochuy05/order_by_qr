@@ -134,8 +134,10 @@ public class InventoryReservationService {
         // 4. Aggregate required quantities per inventory item across the whole order
         Map<Long, BigDecimal> aggregatedRequirements = new LinkedHashMap<>();
         for (ReservationDraft draft : allDrafts) {
-            aggregatedRequirements.merge(draft.inventoryItemId(), draft.requiredQuantity(), (a, b) -> a.add(b)
-                    .setScale(QUANTITY_SCALE, RoundingMode.HALF_UP));
+            aggregatedRequirements.merge(
+                    draft.inventoryItemId(),
+                    draft.requiredQuantity(),
+                    (a, b) -> a.add(b).setScale(QUANTITY_SCALE, RoundingMode.HALF_UP));
         }
 
         // 5. Sort inventory item IDs to lock in a consistent order (prevent deadlock)

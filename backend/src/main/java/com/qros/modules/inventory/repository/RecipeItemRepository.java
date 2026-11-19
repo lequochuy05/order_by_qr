@@ -18,8 +18,7 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     long countByMenuItem_Id(Long menuItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id = :menuItemId
@@ -28,8 +27,7 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     List<RecipeItem> findByMenuItemId(@Param("menuItemId") Long menuItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.inventoryItem.id = :inventoryItemId
@@ -38,8 +36,7 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     List<RecipeItem> findByInventoryItemId(@Param("inventoryItemId") Long inventoryItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id IN :menuItemIds

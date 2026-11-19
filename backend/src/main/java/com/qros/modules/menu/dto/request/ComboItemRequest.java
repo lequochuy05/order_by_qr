@@ -9,5 +9,5 @@ import jakarta.validation.constraints.NotNull;
 public record ComboItemRequest(
         Long id,
         @NotNull(message = "Menu item ID is required") Long menuItemId,
-        @NotNull(message = "Quantity is required") @Min(value = 1, message = "Quantity must be at least 1")
-                Integer quantity) {}
+
+        @NotNull(message = "Quantity is required") @Min(value = 1, message = "Quantity must be at least 1") Integer quantity) {}

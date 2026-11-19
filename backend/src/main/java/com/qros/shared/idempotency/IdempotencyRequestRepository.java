@@ -18,9 +18,7 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
     }
 
     @Modifying
-    @Query(
-            value =
-                    """
+    @Query(value = """
                     INSERT INTO idempotency_requests (
                         namespace,
                         request_key,
@@ -38,8 +36,7 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
                         :expiresAt
                     )
                     ON CONFLICT (namespace, request_key) DO NOTHING
-                    """,
-            nativeQuery = true)
+                    """, nativeQuery = true)
     int claimWithStatus(
             @Param("namespace") String namespace,
             @Param("requestKey") String requestKey,
@@ -49,8 +46,7 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
             @Param("expiresAt") LocalDateTime expiresAt);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE IdempotencyRequest request
             SET request.status = :status,
                 request.responseJson = :responseJson,

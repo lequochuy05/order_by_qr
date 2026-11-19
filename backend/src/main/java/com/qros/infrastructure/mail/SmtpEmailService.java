@@ -1,6 +1,5 @@
 package com.qros.infrastructure.mail;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.mail.template.Admin2faTemplateBuilder;
 import com.qros.infrastructure.mail.template.ResetPasswordTemplateBuilder;
@@ -17,12 +16,13 @@ import java.util.Map;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.mail.MailProperties;
+import org.springframework.boot.mail.autoconfigure.MailProperties;
 import org.springframework.lang.NonNull;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * SmtpEmailService - Manages sending emails via Brevo REST API or SMTP fallback.

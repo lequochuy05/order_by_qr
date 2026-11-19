@@ -204,8 +204,9 @@ class OrderCreationServiceTest {
 
         assertThatThrownBy(() -> orderCreationService.createCustomerOrder(new CustomerCreateOrderRequest(
                         "T1", "SESSION", "req-2", null, List.of(new OrderItemRequest(1L, 1, null, List.of())))))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.ORDER_PAYMENT_IN_PROGRESS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ORDER_PAYMENT_IN_PROGRESS));
 
         verify(orderRepository, never()).save(any(Order.class));
     }
@@ -233,8 +234,10 @@ class OrderCreationServiceTest {
                         "req-legacy-duplicates",
                         null,
                         List.of(new OrderItemRequest(1L, 1, null, List.of())))))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode())
+                                .isEqualTo(ErrorCode.TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS));
 
         verify(orderRepository, never()).save(any(Order.class));
     }

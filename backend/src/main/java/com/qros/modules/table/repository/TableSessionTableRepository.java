@@ -15,8 +15,7 @@ import org.springframework.data.repository.query.Param;
 public interface TableSessionTableRepository extends JpaRepository<TableSessionTable, Long> {
 
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.table.id = :tableId
@@ -28,8 +27,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.table.id = :tableId
@@ -40,8 +38,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             @Param("tableId") Long tableId, @Param("status") TableSessionStatus status);
 
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
@@ -52,8 +49,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
@@ -63,8 +59,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
     List<TableSessionTable> findActiveBySessionIdForUpdate(@Param("sessionId") Long sessionId);
 
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.session.status = :status
@@ -72,8 +67,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             """)
     List<TableSessionTable> findActiveBySessionStatus(@Param("status") TableSessionStatus status);
 
-    @Query(
-            """
+    @Query("""
             SELECT membership.table.id
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
@@ -82,8 +76,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             """)
     List<Long> findActiveTableIdsBySessionId(@Param("sessionId") Long sessionId);
 
-    @Query(
-            """
+    @Query("""
             SELECT COUNT(membership) > 0
             FROM TableSessionTable membership
             WHERE membership.table.id = :tableId
@@ -93,8 +86,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
     boolean existsActiveOpenMembershipByTableId(
             @Param("tableId") Long tableId, @Param("status") TableSessionStatus status);
 
-    @Query(
-            """
+    @Query("""
             SELECT COUNT(membership) > 0
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
@@ -104,8 +96,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
     boolean existsActiveBySessionIdAndTableCode(
             @Param("sessionId") Long sessionId, @Param("tableCode") String tableCode);
 
-    @Query(
-            """
+    @Query("""
             SELECT membership
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
@@ -114,8 +105,7 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             """)
     Optional<TableSessionTable> findActivePrimaryBySessionId(@Param("sessionId") Long sessionId);
 
-    @Query(
-            """
+    @Query("""
             SELECT DISTINCT membership.session.id
             FROM TableSessionTable membership
             WHERE membership.table.id IN :tableIds

@@ -44,6 +44,11 @@ spring:
     problemdetails:
       enabled: false
 
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+
   servlet:
     multipart:
       max-file-size: 5MB
@@ -54,9 +59,11 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:true}
       repositories:
         enabled: false
 
@@ -122,9 +129,6 @@ server:
       - application/json
       - application/xml
     min-response-size: 1024
-  error:
-    include-message: never
-    include-binding-errors: never
 
 security:
   jwt:
@@ -178,10 +182,14 @@ cloudinary:
 
 app:
   base-url: ${APP_BASE_URL}
+  qr:
+    secret: ${QR_SIGNING_SECRET:}
+  security:
+    qr-secret: ${QR_SIGNING_SECRET:}
   frontend:
     base-url: ${APP_FRONTEND_BASE_URL}
   cache:
-    prefix:  "qros:v3:"
+    prefix: "qros:v4:"
   email:
     from-name: QROS
     brand-name: QROS
@@ -203,7 +211,7 @@ management:
         include: prometheus,health
   endpoint:
     prometheus:
-      enabled: true
+      access: read-only
     health:
       show-details: never
       probes:

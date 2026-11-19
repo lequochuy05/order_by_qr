@@ -195,8 +195,9 @@ class UserServiceTest {
                         "New Admin", "admin2@example.com", null, "Secret123!", UserRole.ADMIN, UserStatus.ACTIVE);
 
         assertThatThrownBy(() -> userService.create(createAdminReq, managerActor.getEmail()))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.FORBIDDEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     @Test
@@ -209,8 +210,9 @@ class UserServiceTest {
                 .thenReturn(List.of(targetAdmin, managerActor));
 
         assertThatThrownBy(() -> userService.delete(targetAdmin.getId(), managerActor.getEmail()))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.FORBIDDEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     @Test
@@ -221,8 +223,9 @@ class UserServiceTest {
         when(userRepository.findById(targetAdmin.getId())).thenReturn(Optional.of(targetAdmin));
 
         assertThatThrownBy(() -> userService.resetPassword(targetAdmin.getId(), "new-pass", managerActor.getEmail()))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.FORBIDDEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     @Test
@@ -237,15 +240,17 @@ class UserServiceTest {
         UpdateUserRequest updateAdminReq = new UpdateUserRequest(
                 "Admin Modified", targetAdmin.getEmail(), null, UserRole.ADMIN, UserStatus.ACTIVE);
         assertThatThrownBy(() -> userService.update(targetAdmin.getId(), updateAdminReq, managerActor.getEmail()))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.FORBIDDEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
 
         UpdateUserRequest promoteStaffToAdminReq = new UpdateUserRequest(
                 "Staff Promoted", targetStaff.getEmail(), null, UserRole.ADMIN, UserStatus.ACTIVE);
         assertThatThrownBy(
                         () -> userService.update(targetStaff.getId(), promoteStaffToAdminReq, managerActor.getEmail()))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.FORBIDDEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
     }
 
     private User user(Long id, String email, UserRole role, UserStatus status) {

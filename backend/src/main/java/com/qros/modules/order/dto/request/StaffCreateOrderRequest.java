@@ -9,8 +9,11 @@ public record StaffCreateOrderRequest(
         Long tableId,
         @Valid List<OrderComboRequest> combos,
         @Valid List<OrderItemRequest> items,
+
         @Size(max = 50, message = "Voucher code must not exceed 50 characters") String voucherCode,
+
         OrderType orderType,
+
         @Size(max = 100, message = "Client request ID must not exceed 100 characters") String clientRequestId) {
 
     public StaffCreateOrderRequest(

@@ -17,6 +17,7 @@ import { useTakeawayOrders } from '../model/useTakeawayOrders.js';
 
 const TakeawayManagement = () => {
   const { user } = useAuth();
+  const canPay = ['ADMIN', 'MANAGER', 'CASHIER'].includes(user?.role);
   const { language, isEn, copy } = useTranslation('takeaway');
   const [addItemModal, setAddItemModal] = useState({ open: false });
   const [detailModal, setDetailModal] = useState({ open: false, order: null });
@@ -57,6 +58,7 @@ const TakeawayManagement = () => {
   };
 
   const handlePay = async (order) => {
+    if (!canPay) return;
     try {
       let currentOrder = order;
       if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
@@ -165,14 +167,14 @@ const TakeawayManagement = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid gap-2 ${finalAmount > 0 && canPay ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <button
                       onClick={() => handleDetail(order)}
                       className="flex items-center justify-center gap-1 rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       {isEn ? 'Details' : 'Chi tiết'}
                     </button>
-                    {finalAmount > 0 && (
+                    {finalAmount > 0 && canPay && (
                       <button
                         onClick={() => handlePay(order)}
                         className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"

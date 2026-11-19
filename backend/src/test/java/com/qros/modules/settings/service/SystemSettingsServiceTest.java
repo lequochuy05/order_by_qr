@@ -52,8 +52,9 @@ class SystemSettingsServiceTest {
         when(settingsRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(settingsService::getSettingsEntity)
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.SETTINGS_NOT_FOUND));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.SETTINGS_NOT_FOUND));
 
         verify(settingsRepository, never()).saveAndFlush(any());
     }
@@ -85,8 +86,9 @@ class SystemSettingsServiceTest {
         SystemSettingsUpdateRequest staleRequest = request("Updated Restaurant", "VND", 9L);
 
         assertThatThrownBy(() -> settingsService.updateSettings(staleRequest, "manager@example.com"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.CONCURRENT_MODIFICATION));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CONCURRENT_MODIFICATION));
 
         verify(settingsRepository, never()).saveAndFlush(any());
     }

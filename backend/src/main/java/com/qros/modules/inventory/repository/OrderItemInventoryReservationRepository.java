@@ -31,8 +31,7 @@ public interface OrderItemInventoryReservationRepository extends JpaRepository<O
             Long inventoryItemId, InventoryReservationStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM OrderItemInventoryReservation r
             JOIN FETCH r.inventoryItem

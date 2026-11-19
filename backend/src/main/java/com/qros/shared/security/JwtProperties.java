@@ -19,8 +19,7 @@ public class JwtProperties {
     private String refreshCookieName;
     private boolean refreshCookieSecure;
 
-    @Pattern(regexp = "Lax|Strict|None", message = "Refresh cookie SameSite must be Lax, Strict, or None")
-    private String refreshCookieSameSite = "Lax";
+    @Pattern(regexp = "Lax|Strict|None", message = "Refresh cookie SameSite must be Lax, Strict, or None") private String refreshCookieSameSite = "Lax";
 
     public String getSecret() {
         return secret;
@@ -70,8 +69,7 @@ public class JwtProperties {
         this.refreshCookieSameSite = refreshCookieSameSite;
     }
 
-    @AssertTrue(message = "Refresh cookie must be secure when SameSite=None")
-    public boolean isRefreshCookieConfigurationSecure() {
+    @AssertTrue(message = "Refresh cookie must be secure when SameSite=None") public boolean isRefreshCookieConfigurationSecure() {
         return !"None".equals(refreshCookieSameSite) || refreshCookieSecure;
     }
 }

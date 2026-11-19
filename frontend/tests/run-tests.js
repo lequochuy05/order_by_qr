@@ -4,6 +4,7 @@ import './unit/designSystem.test.js';
 import './unit/errorMessages.test.js';
 import './unit/frontendHardening.test.js';
 import './unit/inventory.test.js';
+import './unit/invoiceGenerator.test.js';
 import './unit/kitchenItems.test.js';
 import './unit/orderHistoryDates.test.js';
 import './unit/orderMoney.test.js';

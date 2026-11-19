@@ -39,11 +39,8 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
         return null;
       }
 
-      // Chỉ gọi preview khi có voucher để kiểm tra
-      if (!table?.id) {
-        setError('Không thể áp dụng voucher khi thiếu thông tin bàn');
-        return null;
-      }
+      // Đơn mang về không có bàn (table.id rỗng) — vẫn preview bình thường với tableId = null
+      const isTakeaway = !table?.id || order?.orderType === 'TAKEAWAY';
 
       setLoading(true);
       try {
@@ -66,7 +63,8 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
           }));
 
         const response = await orderService.previewOrder({
-          tableId: table.id,
+          tableId: isTakeaway ? null : table.id,
+          ...(isTakeaway ? { orderType: 'TAKEAWAY' } : {}),
           items,
           combos,
           voucherCode: normalizedCode,

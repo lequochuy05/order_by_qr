@@ -109,34 +109,20 @@ public class StaffContextProvider {
                 .collect(Collectors.groupingBy(
                         DiningTable::getStatus, () -> new EnumMap<>(TableStatus.class), Collectors.counting()));
 
-        builder.append("TRẠNG THÁI BÀN:\n");
-        builder.append("  - Tổng: ").append(tables.size());
+        builder.append("TỔNG QUAN TRẠNG THÁI BÀN:\n");
+        builder.append("  - Tổng số bàn: ").append(tables.size());
         for (TableStatus status : TableStatus.values()) {
             builder.append(" | ").append(tableStatusLabel(status)).append(": ").append(counts.getOrDefault(status, 0L));
         }
-        builder.append("\n");
-
-        if (tables.isEmpty()) {
-            builder.append("  - Chưa có bàn trong hệ thống.\n\n");
-            return;
-        }
-
-        tables.forEach(table -> builder.append("  - Bàn ")
-                .append(table.getTableNumber())
-                .append(" | ")
-                .append(tableStatusLabel(table.getStatus()))
-                .append(" | sức chứa ")
-                .append(table.getCapacity())
-                .append("\n"));
-        builder.append("\n");
+        builder.append("\n\n");
     }
 
     private void appendRecentOrderContext(StringBuilder builder, LocalDateTime now) {
-        List<Order> recentOrders = recentOrders();
+        List<Order> recentOrders = recentOrders(now);
 
-        builder.append("ORDER GẦN ĐÂY:\n");
+        builder.append("ORDER ĐANG PHỤC VỤ TRONG CA (GẦN ĐÂY):\n");
         if (recentOrders.isEmpty()) {
-            builder.append("  - Chưa có order gần đây.\n");
+            builder.append("  - Không có order đang phục vụ cần lưu ý.\n\n");
             return;
         }
 
@@ -154,18 +140,22 @@ public class StaffContextProvider {
                     .append(" | tạo ")
                     .append(ageMinutes)
                     .append(" phút trước")
-                    .append(" | tổng ")
-                    .append(formatMoney(order.getFinalAmount()))
                     .append(" | món: ")
                     .append(items)
                     .append("\n");
         });
+        builder.append("\n");
     }
 
-    private List<Order> recentOrders() {
+    private List<Order> recentOrders(LocalDateTime now) {
+        LocalDateTime cutoff = now.minusHours(12);
         PageRequest pageable = PageRequest.of(0, RECENT_ORDER_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
         List<Long> orderIds = orderRepository.findAll(pageable).getContent().stream()
-                .filter(o -> o.getStatus() != OrderStatus.COMPLETED && o.getStatus() != OrderStatus.CANCELLED)
+                .filter(o -> o.getStatus() != OrderStatus.COMPLETED
+                        && o.getStatus() != OrderStatus.CANCELLED
+                        && o.getStatus() != OrderStatus.AWAITING_PAYMENT
+                        && o.getCreatedAt() != null
+                        && o.getCreatedAt().isAfter(cutoff))
                 .map(Order::getId)
                 .toList();
 

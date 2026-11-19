@@ -21,8 +21,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     Page<InventoryItem> findByNameContainingIgnoreCaseOrderByNameAsc(String name, Pageable pageable);
 
-    @Query(
-            """
+    @Query("""
             SELECT i
             FROM InventoryItem i
             WHERE (CAST(:keyword AS string) IS NULL OR LOWER(i.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')) OR LOWER(i.unit) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -42,8 +41,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     long countByActiveTrue();
 
-    @Query(
-            """
+    @Query("""
             SELECT COUNT(i)
             FROM InventoryItem i
             WHERE i.active = true
@@ -51,8 +49,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             """)
     long countLowStockActiveItems();
 
-    @Query(
-            """
+    @Query("""
             SELECT COUNT(i)
             FROM InventoryItem i
             WHERE i.active = true
@@ -75,8 +72,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
     Optional<InventoryItem> findByIdForUpdate(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT i
             FROM InventoryItem i
             WHERE i.id IN :ids
@@ -84,8 +80,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             """)
     List<InventoryItem> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
 
-    @Query(
-            """
+    @Query("""
             SELECT i
             FROM InventoryItem i
             WHERE i.active = true
@@ -94,8 +89,7 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             """)
     List<InventoryItem> findAvailableActiveItems();
 
-    @Query(
-            """
+    @Query("""
             SELECT i
             FROM InventoryItem i
             WHERE i.active = true

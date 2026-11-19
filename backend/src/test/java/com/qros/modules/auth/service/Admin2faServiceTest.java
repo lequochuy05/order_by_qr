@@ -8,7 +8,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.infrastructure.mail.SmtpEmailService;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
@@ -21,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class Admin2faServiceTest {
 
@@ -37,7 +38,7 @@ class Admin2faServiceTest {
         valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         smtpEmailService = mock(SmtpEmailService.class);
-        objectMapper = new ObjectMapper();
+        objectMapper = new JsonMapper();
 
         admin2faService = new Admin2faService(redisTemplate, smtpEmailService, objectMapper);
     }
@@ -63,15 +64,15 @@ class Admin2faServiceTest {
         when(valueOperations.get("qros:2fa:ticket:expired-token")).thenReturn(null);
 
         assertThatThrownBy(() -> admin2faService.verify2fa("expired-token", "123456"))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.EXPIRED_2FA_TICKET));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.EXPIRED_2FA_TICKET));
     }
 
     @Test
     void verify2faWithValidOtpReturnsEmailAndCleansUp() {
         String token = "valid-ticket-123";
-        String ticketJson =
-                """
+        String ticketJson = """
                 {"email":"admin@qros.vn","otp":"654321","attempts":0}
                 """;
         when(valueOperations.get("qros:2fa:ticket:" + token)).thenReturn(ticketJson);
@@ -86,8 +87,7 @@ class Admin2faServiceTest {
     @Test
     void verify2faWithWrongOtpIncrementsAttemptsAndThrowsInvalidCode() {
         String token = "wrong-otp-token";
-        String ticketJson =
-                """
+        String ticketJson = """
                 {"email":"admin@qros.vn","otp":"654321","attempts":1}
                 """;
         when(valueOperations.get("qros:2fa:ticket:" + token)).thenReturn(ticketJson);
@@ -95,8 +95,9 @@ class Admin2faServiceTest {
                 .thenReturn(200L);
 
         assertThatThrownBy(() -> admin2faService.verify2fa(token, "000000"))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_2FA_CODE));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_2FA_CODE));
 
         verify(valueOperations).set(eq("qros:2fa:ticket:" + token), anyString(), eq(Duration.ofSeconds(200)));
     }
@@ -104,8 +105,7 @@ class Admin2faServiceTest {
     @Test
     void verify2faWhenMaxAttemptsReachedThrowsTooManyAttemptsAndDeletes() {
         String token = "max-attempts-token";
-        String ticketJson =
-                """
+        String ticketJson = """
                 {"email":"admin@qros.vn","otp":"654321","attempts":4}
                 """;
         when(valueOperations.get("qros:2fa:ticket:" + token)).thenReturn(ticketJson);
@@ -113,8 +113,9 @@ class Admin2faServiceTest {
                 .thenReturn(100L);
 
         assertThatThrownBy(() -> admin2faService.verify2fa(token, "000000"))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.TOO_MANY_2FA_ATTEMPTS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.TOO_MANY_2FA_ATTEMPTS));
 
         verify(redisTemplate).delete("qros:2fa:ticket:" + token);
         verify(redisTemplate).delete("qros:2fa:cooldown:" + token);
@@ -126,15 +127,15 @@ class Admin2faServiceTest {
         when(redisTemplate.hasKey("qros:2fa:cooldown:" + token)).thenReturn(true);
 
         assertThatThrownBy(() -> admin2faService.resend2fa(token))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.COOLDOWN_2FA));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.COOLDOWN_2FA));
     }
 
     @Test
     void resend2faSuccessUpdatesTicketAndResetsCooldown() {
         String token = "resend-valid-token";
-        String ticketJson =
-                """
+        String ticketJson = """
                 {"email":"admin@qros.vn","otp":"111111","attempts":2}
                 """;
         when(redisTemplate.hasKey("qros:2fa:cooldown:" + token)).thenReturn(false);
@@ -150,8 +151,7 @@ class Admin2faServiceTest {
     @Test
     void getTicketEmailReturnsEmailWhenTicketExists() {
         String token = "existing-ticket";
-        String ticketJson =
-                """
+        String ticketJson = """
                 {"email":"admin@qros.vn","otp":"123456","attempts":0}
                 """;
         when(valueOperations.get("qros:2fa:ticket:" + token)).thenReturn(ticketJson);

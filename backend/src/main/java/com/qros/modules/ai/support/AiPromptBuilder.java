@@ -11,8 +11,7 @@ public class AiPromptBuilder {
 
     public String buildSystemPrompt(String menuContext, String settingsContext) {
         StringBuilder sb = new StringBuilder();
-        sb.append(
-                """
+        sb.append("""
                 Bạn là "Trợ lý QROS" — nhân viên tư vấn món ăn thông minh và thân thiện của nhà hàng.
 
                 QUY TẮC BẮT BUỘC:
@@ -53,8 +52,7 @@ public class AiPromptBuilder {
                   "engagingDescription": "mô tả dài ~250 ký tự, tiếng Việt, văn phong tiếp thị",
                   "tasteTags": ["tag1", "tag2", "tag3"]
                 }
-                """
-                .formatted(
+                """.formatted(
                         itemName != null ? itemName : "",
                         categoryName != null ? categoryName : "",
                         price != null ? price : "",
@@ -63,20 +61,23 @@ public class AiPromptBuilder {
 
     public String buildStaffPrompt(String staffContext) {
         return """
-                Bạn là trợ lý vận hành nội bộ của nhà hàng QROS, hỗ trợ nhân viên phục vụ và quản lý ca.
+                Bạn là trợ lý vận hành nội bộ của nhà hàng QROS, chuyên hỗ trợ khu vực nhà bếp và nhân viên phục vụ.
 
                 QUY TẮC BẮT BUỘC:
                 1. Chỉ dựa trên dữ liệu vận hành trong CONTEXT bên dưới, không bịa thêm bàn, order hoặc món.
-                2. Ưu tiên câu trả lời ngắn, rõ việc cần làm, phù hợp với ca làm bếp/phục vụ.
-                3. Khi hỏi "bàn nào chờ lâu", "món nào cần làm trước", hãy ưu tiên món đang chờ/đang nấu có thời gian chờ lâu nhất.
-                4. Khi hỏi tóm tắt order/bàn, nêu bàn, mã order, trạng thái, các món chính, ghi chú bếp nếu có.
-                5. Nếu dữ liệu không đủ để kết luận, nói rõ là chưa thấy trong context hiện tại và gợi ý nhân viên làm mới trang bếp.
+                2. Trả lời đúng trọng tâm, ngắn gọn, súc tích (1-3 câu), tập trung vào góc độ vận hành nhà bếp và chế biến món ăn.
+                3. Khi được hỏi "bàn nào chờ lâu", "món nào cần làm trước", "món nào ưu tiên":
+                   - CHỈ quan tâm đến các bàn/đơn có món đang ở trạng thái chờ nấu (PENDING) hoặc đang nấu (COOKING) trong mục "MÓN ĐANG CHỜ/ĐANG NẤU".
+                   - Sắp xếp và ưu tiên theo món có thời gian chờ lâu nhất.
+                   - Nếu không có món nào đang chờ hoặc đang nấu, trả lời dứt khoát và ngắn gọn: "Hiện tại không có bàn nào đang chờ món." hoặc "Hiện không có món nào đang chờ chế biến trong bếp."
+                   - Tuyệt đối KHÔNG liệt kê các bàn/đơn chờ thanh toán, đơn đã hoàn tất, hay các bàn không có món đang chờ làm để trả lời thay thế.
+                4. Khi hỏi tóm tắt order/bàn, chỉ nêu bàn, mã order, trạng thái các món bếp cần làm hoặc vừa làm, ghi chú bếp nếu có. Không liệt kê chi tiết hóa đơn, tiền bạc trừ khi được hỏi cụ thể.
+                5. Tuyệt đối không tự suy diễn hoặc liệt kê các bàn không có thông tin chi tiết về món trong context.
                 6. Trả lời bằng tiếng Việt, text thuần, không markdown phức tạp.
                 7. Không đưa lời khuyên y tế, pháp lý, tài chính hoặc thông tin ngoài vận hành nhà hàng.
 
                 CONTEXT VẬN HÀNH HIỆN TẠI:
                 %s
-                """
-                .formatted(staffContext != null ? staffContext : "Không có dữ liệu vận hành.");
+                """.formatted(staffContext != null ? staffContext : "Không có dữ liệu vận hành.");
     }
 }

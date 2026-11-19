@@ -87,8 +87,9 @@ class RefreshTokenServiceTest {
 
         assertThat(firstRotation.refreshToken()).isNotBlank().isNotEqualTo(tokenA);
         assertThatThrownBy(() -> refreshTokenService.refreshAccessToken(tokenA))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
     @Test
@@ -98,8 +99,9 @@ class RefreshTokenServiceTest {
         refreshTokenService.revokeRefreshToken(refreshToken);
 
         assertThatThrownBy(() -> refreshTokenService.refreshAccessToken(refreshToken))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
     @Test
@@ -108,8 +110,9 @@ class RefreshTokenServiceTest {
         user.setPasswordChangedAt(AppTime.now().plusSeconds(1));
 
         assertThatThrownBy(() -> refreshTokenService.refreshAccessToken(refreshToken))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
     }
 
     private boolean attemptRefresh(String refreshToken, CountDownLatch ready, CountDownLatch start) throws Exception {

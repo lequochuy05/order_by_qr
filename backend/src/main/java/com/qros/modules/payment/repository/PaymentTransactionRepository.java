@@ -50,8 +50,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
 
     boolean existsByOrderIdAndStatusIn(Long orderId, Collection<PaymentTransactionStatus> statuses);
 
-    @Query(
-            """
+    @Query("""
             SELECT COUNT(t) > 0
             FROM PaymentTransaction t
             WHERE t.order.tableSession.id = :sessionId
@@ -60,8 +59,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     boolean existsByOrderTableSessionIdAndStatusIn(
             @Param("sessionId") Long sessionId, @Param("statuses") Collection<PaymentTransactionStatus> statuses);
 
-    @Query(
-            """
+    @Query("""
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId
@@ -73,8 +71,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         """)
     List<PaymentTransaction> findPendingOnlineTransactionsByOrderId(@Param("orderId") Long orderId);
 
-    @Query(
-            """
+    @Query("""
                         SELECT COALESCE(SUM(t.amount), 0)
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId
@@ -87,8 +84,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
         return sumAmountByOrderIdAndStatus(orderId, PaymentTransactionStatus.PAID);
     }
 
-    @Query(
-            """
+    @Query("""
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.status = :status
@@ -98,8 +94,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransaction> findByStatusAndExpiresAtBefore(
             @Param("status") PaymentTransactionStatus status, @Param("now") LocalDateTime now);
 
-    @Query(
-            """
+    @Query("""
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.status IN :statuses

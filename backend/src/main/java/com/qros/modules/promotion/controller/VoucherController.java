@@ -72,8 +72,7 @@ public class VoucherController {
     @GetMapping("/validate")
     public ApiResponse<VoucherValidateResponse> validate(
             @RequestParam @NotBlank(message = "Voucher code cannot be empty") String code,
-            @RequestParam(defaultValue = "0") @DecimalMin(value = "0.00", message = "Subtotal cannot be negative")
-                    BigDecimal subtotal) {
+            @RequestParam(defaultValue = "0") @DecimalMin(value = "0.00", message = "Subtotal cannot be negative") BigDecimal subtotal) {
         return ApiResponse.success(voucherCheckoutService.validateCode(code, subtotal));
     }
 }

@@ -18,8 +18,7 @@ public interface TableSessionTokenRepository extends JpaRepository<TableSessionT
     Optional<TableSessionToken> findFirstByTokenHashAndRevokedAtIsNull(String tokenHash);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT t FROM TableSessionToken t
             WHERE t.session.id = :sessionId
               AND t.revokedAt IS NULL
@@ -28,8 +27,7 @@ public interface TableSessionTokenRepository extends JpaRepository<TableSessionT
     List<TableSessionToken> findActiveBySessionIdForUpdate(@Param("sessionId") Long sessionId);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE TableSessionToken t
             SET t.revokedAt = :now
             WHERE t.session.id = :sessionId
