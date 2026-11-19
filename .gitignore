@@ -120,6 +120,7 @@ desktop.ini
 .codegraph/
 .claude/
 .cursor/
+.github/modernize/
 *.patch
 CLAUDE.md
 TT_*.md
