@@ -13,7 +13,12 @@ import { useAuth } from '@features/auth';
 import { useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
 import useSettingsStore from '@shared/model/settingsStore.js';
-import { canSubscribeToOperations, isCustomerMenuPath } from './webSocketAccess.js';
+import {
+  canSubscribeToMarketing,
+  canSubscribeToOperations,
+  canSubscribeToUsers,
+  isCustomerMenuPath,
+} from './webSocketAccess.js';
 
 /**
  * WebSocket Invalidator Layer (Sprint 3D)
@@ -24,7 +29,9 @@ export const WebSocketInvalidator = () => {
   const { user } = useAuth();
   const location = useLocation();
   const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
-  const canSubscribeProtectedTopics = Boolean(user) && canSubscribeOperations;
+  const canSubscribeUsers = canSubscribeToUsers(user, location.pathname);
+  const canSubscribeMarketing = canSubscribeToMarketing(user, location.pathname);
+  const canSubscribeInventory = canSubscribeOperations;
   const canSubscribePublicCatalog = isCustomerMenuPath(location.pathname);
   const canSubscribeCatalog = Boolean(user) || canSubscribePublicCatalog;
   const canSubscribeSettings = Boolean(user) || canSubscribePublicCatalog;
@@ -111,7 +118,7 @@ export const WebSocketInvalidator = () => {
     scope: 'public',
   });
   useWebSocket(
-    canSubscribeProtectedTopics ? '/topic/users' : null,
+    canSubscribeUsers ? '/topic/users' : null,
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         userService.clearCache?.();
@@ -122,7 +129,7 @@ export const WebSocketInvalidator = () => {
   );
 
   useWebSocket(
-    canSubscribeProtectedTopics ? '/topic/vouchers' : null,
+    canSubscribeMarketing ? '/topic/vouchers' : null,
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         voucherService.clearCache?.();
@@ -133,7 +140,7 @@ export const WebSocketInvalidator = () => {
   );
 
   useWebSocket(
-    canSubscribeProtectedTopics ? '/topic/promotions' : null,
+    canSubscribeMarketing ? '/topic/promotions' : null,
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all });
@@ -143,7 +150,7 @@ export const WebSocketInvalidator = () => {
   );
 
   useWebSocket(
-    canSubscribeProtectedTopics ? '/topic/inventory' : null,
+    canSubscribeInventory ? '/topic/inventory' : null,
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         inventoryService.clearCache?.();

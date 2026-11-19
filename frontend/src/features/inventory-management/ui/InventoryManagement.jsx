@@ -33,6 +33,7 @@ const InventoryManagement = () => {
         onAddClick={isManager ? inventory.openCreate : undefined}
         addButtonText={isManager ? "Thêm nguyên liệu" : undefined}
         addButtonIcon={isManager ? Plus : undefined}
+        hideAddButton={!isManager}
         showFilter
         filterAllLabel="Tất cả tồn kho"
         filterValue={inventory.stockFilter}

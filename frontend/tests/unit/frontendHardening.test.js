@@ -4,7 +4,13 @@ import { dirname, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { canSubscribeToOperations, isCustomerMenuPath } from '../../src/app/webSocketAccess.js';
+import {
+  canSubscribeToKitchen,
+  canSubscribeToMarketing,
+  canSubscribeToOperations,
+  canSubscribeToUsers,
+  isCustomerMenuPath,
+} from '../../src/app/webSocketAccess.js';
 import { calculatePayosTimeLeft } from '../../src/entities/payment/lib/paymentExpiry.js';
 import { createPaymentWithRetry } from '../../src/entities/payment/lib/paymentRetry.js';
 import {
@@ -20,6 +26,43 @@ test('operation WebSocket topics require an authenticated admin route', () => {
   assert.equal(canSubscribeToOperations(user, '/admin/tables'), true);
   assert.equal(canSubscribeToOperations(user, '/menu'), false);
   assert.equal(canSubscribeToOperations(null, '/admin/tables'), false);
+});
+
+test('role-specific WebSocket subscriptions enforce role permissions', () => {
+  const chef = { role: 'CHEF' };
+  const manager = { role: 'MANAGER' };
+  const cashier = { role: 'CASHIER' };
+
+  // Users topic: only ADMIN, MANAGER
+  assert.equal(canSubscribeToUsers(manager, '/admin/users'), true);
+  assert.equal(canSubscribeToUsers(chef, '/admin/kitchen'), false);
+  assert.equal(canSubscribeToUsers(cashier, '/admin/tables'), false);
+
+  // Marketing (vouchers/promotions): ADMIN, MANAGER, CASHIER, STAFF (not CHEF)
+  assert.equal(canSubscribeToMarketing(manager, '/admin/vouchers'), true);
+  assert.equal(canSubscribeToMarketing(cashier, '/admin/vouchers'), true);
+  assert.equal(canSubscribeToMarketing(chef, '/admin/kitchen'), false);
+
+  // Kitchen: ADMIN, MANAGER, CHEF
+  assert.equal(canSubscribeToKitchen(chef, '/admin/kitchen'), true);
+  assert.equal(canSubscribeToKitchen(manager, '/admin/kitchen'), true);
+  assert.equal(canSubscribeToKitchen(cashier, '/admin/tables'), false);
+});
+
+test('staff role hides payment and prepared actions on management interfaces', () => {
+  const tableCardSource = readFileSync(
+    resolve(testDir, '../../src/features/table-management/ui/TableCard.jsx'),
+    'utf-8',
+  );
+  assert.match(tableCardSource, /canPay/);
+  assert.match(tableCardSource, /hasOrder\s*&&\s*canPay/);
+
+  const orderDetailModalSource = readFileSync(
+    resolve(testDir, '../../src/features/table-management/ui/OrderDetailModal.jsx'),
+    'utf-8',
+  );
+  assert.match(orderDetailModalSource, /isStaff/);
+  assert.match(orderDetailModalSource, /!isStaff\s*&&\s*\(/);
 });
 
 test('customer menu path detection excludes admin menu', () => {

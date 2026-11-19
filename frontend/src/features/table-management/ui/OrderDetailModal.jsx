@@ -25,6 +25,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const wsTimerRef = useRef(null);
 
   const { user } = useAuth();
+  const isStaff = user?.role === 'STAFF';
 
   useEffect(() => {
     orderIdRef.current = order?.id;
@@ -335,22 +336,24 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
-                        {/* Nút Báo Xong */}
-                        <button
-                          onClick={() => handlePrepared(item.id)}
-                          disabled={isPreparing}
-                          className="inline-flex items-center gap-1 rounded-xl border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:cursor-wait disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
-                        >
-                          {isPreparing ? (
-                            <span className="flex items-center gap-1">
-                              <Loader2 size={14} className="animate-spin" /> Đợi...
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <CheckCircle size={14} /> Xong
-                            </span>
-                          )}
-                        </button>
+                        {/* Nút Báo Xong - Ẩn đối với vai trò STAFF */}
+                        {!isStaff && (
+                          <button
+                            onClick={() => handlePrepared(item.id)}
+                            disabled={isPreparing}
+                            className="inline-flex items-center gap-1 rounded-xl border border-emerald-200/80 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100 active:scale-95 disabled:cursor-wait disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                          >
+                            {isPreparing ? (
+                              <span className="flex items-center gap-1">
+                                <Loader2 size={14} className="animate-spin" /> Đợi...
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1">
+                                <CheckCircle size={14} /> Xong
+                              </span>
+                            )}
+                          </button>
+                        )}
 
                         {/* Nút Sửa / Xóa */}
                         <button

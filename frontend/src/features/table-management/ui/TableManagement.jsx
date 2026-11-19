@@ -124,6 +124,10 @@ const TableManager = () => {
         break;
       }
       case 'PAY':
+        if (userRole === 'STAFF') {
+          showError(isEn ? 'Staff is not authorized to process payment' : 'Nhân viên không có quyền thực hiện thanh toán');
+          break;
+        }
         try {
           if (!order) {
             showError(isEn ? 'No active order found for this table' : 'Không tìm thấy đơn đang hoạt động của bàn này');

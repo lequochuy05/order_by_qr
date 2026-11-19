@@ -8,6 +8,17 @@ import {
 } from './orderMoney.js';
 import useSettingsStore from '@shared/model/settingsStore.js';
 
+const HTML_ESCAPE_MAP = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const escapeHtml = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPE_MAP[character]);
+
 /**
  * Tạo chuỗi HTML hóa đơn chuyên nghiệp
  * @param {Object} data - { order, table, paidBy, paidAt }
@@ -62,11 +73,11 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       return `
       <tr>
         <td style="padding: 10px 0;">
-          <div style="font-weight: bold; color: #000;">[COMBO] ${c.name}</div>
+          <div style="font-weight: bold; color: #000;">[COMBO] ${escapeHtml(c.name)}</div>
         </td>
-        <td style="text-align: center; padding: 10px 0;">${c.qty}</td>
-        <td style="text-align: right; padding: 10px 0;">${fmtVND(c.price)}</td>
-        <td style="text-align: right; padding: 10px 0; font-weight: bold;">${fmtVND(c.lineTotal)}</td>
+        <td style="text-align: center; padding: 10px 0;">${escapeHtml(c.qty)}</td>
+        <td style="text-align: right; padding: 10px 0;">${escapeHtml(fmtVND(c.price))}</td>
+        <td style="text-align: right; padding: 10px 0; font-weight: bold;">${escapeHtml(fmtVND(c.lineTotal))}</td>
       </tr>
     `;
     })
@@ -83,25 +94,25 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       // Xử lý Options (Topping/Lựa chọn)
       const optionsHtml = (it.options || it.orderItemOptions || [])
         .map((opt) => {
-          const extra = opt.extraPrice > 0 ? ` (+${fmtVND(opt.extraPrice)})` : '';
-          return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${opt.optionName}: ${opt.optionValueName}${extra}</div>`;
+          const extra = opt.extraPrice > 0 ? ` (+${escapeHtml(fmtVND(opt.extraPrice))})` : '';
+          return `<div style="font-size: 11px; color: #4b5563; margin-left: 8px;">• ${escapeHtml(opt.optionName)}: ${escapeHtml(opt.optionValueName)}${extra}</div>`;
         })
         .join('');
 
       const noteHtml = it.notes
-        ? `<div style="font-size: 11px; color: #ef4444; font-style: italic; margin-left: 8px;">* Ghi chú: ${it.notes}</div>`
+        ? `<div style="font-size: 11px; color: #ef4444; font-style: italic; margin-left: 8px;">* Ghi chú: ${escapeHtml(it.notes)}</div>`
         : '';
 
       return `
       <tr>
         <td style="padding: 10px 0; border-bottom: 1px dashed #eee;">
-          <div style="font-weight: 600; color: #1f2937;">${name}</div>
+          <div style="font-weight: 600; color: #1f2937;">${escapeHtml(name)}</div>
           ${optionsHtml}
           ${noteHtml}
         </td>
-        <td style="text-align: center; padding: 10px 0; border-bottom: 1px dashed #eee;">${qty}</td>
-        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee;">${fmtVND(price)}</td>
-        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee; font-weight: bold;">${fmtVND(lineTotal)}</td>
+        <td style="text-align: center; padding: 10px 0; border-bottom: 1px dashed #eee;">${escapeHtml(qty)}</td>
+        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee;">${escapeHtml(fmtVND(price))}</td>
+        <td style="text-align: right; padding: 10px 0; border-bottom: 1px dashed #eee; font-weight: bold;">${escapeHtml(fmtVND(lineTotal))}</td>
       </tr>
     `;
     })
@@ -114,7 +125,7 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   // Wifi footer section (only if wifi configured)
   const wifiHtml =
     settings.showWifiOnBill !== false && wifiSsid
-      ? `<div style="font-size: 11px; margin-top: 5px;">Wifi: ${wifiSsid}${wifiPassword ? ` / Pass: ${wifiPassword}` : ''}</div>`
+      ? `<div style="font-size: 11px; margin-top: 5px;">Wifi: ${escapeHtml(wifiSsid)}${wifiPassword ? ` / Pass: ${escapeHtml(wifiPassword)}` : ''}</div>`
       : '';
 
   // 4. Template HTML hoàn chỉnh
@@ -148,16 +159,16 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   <body>
     <div class="container">
       <div class="header">
-        <div class="store-name">${storeName}</div>
-        ${storeAddress ? `<div class="info">Đ/C: ${storeAddress}</div>` : ''}
-        ${storePhone ? `<div class="info">SĐT: ${storePhone}</div>` : ''}
-        <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">${billTitle}</div>
+        <div class="store-name">${escapeHtml(storeName)}</div>
+        ${storeAddress ? `<div class="info">Đ/C: ${escapeHtml(storeAddress)}</div>` : ''}
+        ${storePhone ? `<div class="info">SĐT: ${escapeHtml(storePhone)}</div>` : ''}
+        <div style="font-size: 16px; font-weight: bold; margin-top: 10px;">${escapeHtml(billTitle)}</div>
       </div>
 
-      <div class="info">Mã đơn: <span class="bold">#${order.id}</span></div>
-      <div class="info">Bàn: <span class="bold">${table?.tableNumber || 'Mang về'}</span></div>
-      <div class="info">Thời gian: ${timeStr}</div>
-      <div class="info">Thu ngân: ${paidBy || 'Hệ thống'}</div>
+      <div class="info">Mã đơn: <span class="bold">#${escapeHtml(order.id || order.orderCode || '')}</span></div>
+      <div class="info">Bàn: <span class="bold">${escapeHtml(table?.tableNumber || table?.tableCode || order?.table?.tableNumber || order?.table?.tableCode || 'Mang về')}</span></div>
+      <div class="info">Thời gian: ${escapeHtml(timeStr)}</div>
+      <div class="info">Thu ngân: ${escapeHtml(paidBy || 'Hệ thống')}</div>
       <div class="info">Hình thức thanh toán: <span class="bold">${order.paymentMethod === PAYMENT_METHODS.PAYOS ? 'Chuyển khoản (PayOS)' : 'Tiền mặt'}</span></div>
 
       <div class="divider"></div>
@@ -182,28 +193,28 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
       <table>
         <tr>
           <td style="padding: 3px 0;">Tổng cộng món:</td>
-          <td style="text-align: right;">${fmtVND(subtotalAmount)}</td>
+          <td style="text-align: right;">${escapeHtml(fmtVND(subtotalAmount))}</td>
         </tr>
         ${
           discountAmount > 0
             ? `
         <tr>
           <td style="padding: 3px 0;">Giảm giá (Voucher):</td>
-          <td style="text-align: right;">-${fmtVND(discountAmount)}</td>
+          <td style="text-align: right;">-${escapeHtml(fmtVND(discountAmount))}</td>
         </tr>
         `
             : ''
         }
         <tr style="font-size: 16px; font-weight: bold;">
           <td style="padding: 10px 0;">TỔNG THANH TOÁN:</td>
-          <td style="text-align: right; padding: 10px 0;">${fmtVND(finalAmount)}</td>
+          <td style="text-align: right; padding: 10px 0;">${escapeHtml(fmtVND(finalAmount))}</td>
         </tr>
       </table>
 
       <div class="divider"></div>
       
       <div class="footer">
-        <div style="font-weight: bold;">${billFooterMessage}</div>
+        <div style="font-weight: bold;">${escapeHtml(billFooterMessage)}</div>
         ${wifiHtml}
       </div>
     </div>

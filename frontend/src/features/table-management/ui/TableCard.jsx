@@ -20,6 +20,7 @@ const TableCard = ({
   const finalAmount = getOrderFinalAmount(order);
   const hasOrder = order && finalAmount > 0;
   const isManager = userRole === 'ADMIN' || userRole === 'MANAGER';
+  const canPay = ['ADMIN', 'MANAGER', 'CASHIER'].includes(userRole);
   const tableTitle = table.displayName || (isEn ? `Table ${table.tableNumber}` : `Bàn ${table.tableNumber}`);
   const memberNumbers = table.memberTableNumbers || [];
   const totalCapacity = table.totalCapacity || table.capacity;
@@ -174,7 +175,7 @@ const TableCard = ({
         >
           <PlusCircle className="shrink-0" size={15} /> <span className="truncate">{isEn ? 'Add items' : 'Thêm món'}</span>
         </button>
-        {hasOrder && (
+        {hasOrder && canPay && (
           <button
             onClick={onPay}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 min-[360px]:col-span-2 transition-all"

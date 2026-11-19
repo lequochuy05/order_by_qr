@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useConfirm } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 import { aggregateBatchCookingItems } from '../lib/kitchenItems.js';
 
@@ -23,7 +23,7 @@ const BatchCookingView = ({
   processingItems,
 }) => {
   const groups = useMemo(() => aggregateBatchCookingItems(items), [items]);
-  const { confirm } = useConfirmModal();
+  const confirm = useConfirm();
 
   const handleCancelItem = async (item) => {
     if (!onCancelItem || processingItems.has(item.id)) return;
