@@ -89,8 +89,9 @@ class CurrentUserServiceTest {
         PasswordChangeRequest request = new PasswordChangeRequest("WrongPass", "NewPass123");
 
         assertThatThrownBy(() -> service.changeCurrentPassword(email, request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.PASSWORD_INVALID));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PASSWORD_INVALID));
 
         verify(userRepository, never()).save(user);
         verify(refreshTokenService, never()).revokeUserTokens(anyLong());

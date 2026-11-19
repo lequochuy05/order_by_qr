@@ -59,9 +59,7 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "10")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 50, message = "Limit cannot exceed 50")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 50, message = "Limit cannot exceed 50") int limit) {
         return ApiResponse.success(analyticsService.getUserPerformance(from, to, limit));
     }
 
@@ -78,9 +76,7 @@ public class AnalyticsController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "10")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 50, message = "Limit cannot exceed 50")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 50, message = "Limit cannot exceed 50") int limit) {
         return ApiResponse.success(analyticsService.getTopSellingItems(from, to, limit));
     }
 

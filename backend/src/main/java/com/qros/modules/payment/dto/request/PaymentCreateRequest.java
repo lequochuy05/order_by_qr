@@ -8,7 +8,9 @@ import java.math.BigDecimal;
 public record PaymentCreateRequest(
         @NotNull(message = "Order ID is required") Long orderId,
         @NotNull(message = "Payment method is required") PaymentMethod paymentMethod,
+
         @Size(max = 50, message = "Voucher code must not exceed 50 characters") String voucherCode,
+
         @Size(max = 100, message = "Idempotency key must not exceed 100 characters") String idempotencyKey,
         /** Amount of cash handed by the customer. Used for change calculation (cash payments only). */
         BigDecimal cashReceived,

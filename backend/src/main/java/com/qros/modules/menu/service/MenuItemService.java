@@ -117,8 +117,9 @@ public class MenuItemService {
                 .build();
 
         if (req.itemOptions() != null) {
-            req.itemOptions().forEach(optionReq -> item.getItemOptions()
-                    .add(menuItemOptionService.buildItemOption(optionReq, item)));
+            req.itemOptions()
+                    .forEach(optionReq ->
+                            item.getItemOptions().add(menuItemOptionService.buildItemOption(optionReq, item)));
         }
 
         MenuItem saved = saveMenuItem(item);

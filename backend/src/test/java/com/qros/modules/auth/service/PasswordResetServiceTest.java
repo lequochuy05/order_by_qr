@@ -142,8 +142,9 @@ class PasswordResetServiceTest {
                 mock(AccountLockoutService.class));
 
         assertThatThrownBy(() -> service.createOtpAndSendOtp("0912345678"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.FEATURE_DISABLED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FEATURE_DISABLED));
 
         verify(tokenRepository, never()).save(any());
     }

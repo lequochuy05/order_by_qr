@@ -27,7 +27,6 @@ public final class ResetPasswordTemplateBuilder {
                   <p>&copy; %s</p>
               </div>
             </div>
-            """
-                .formatted(brandName, resetLink, copyright);
+            """.formatted(brandName, resetLink, copyright);
     }
 }

@@ -26,8 +26,7 @@ public class AccountLockoutService {
     private static final String LOCKOUT_ATTEMPTS_PREFIX = "auth:lockout:failed:";
     private static final String LOCKOUT_LOCKED_PREFIX = "auth:lockout:locked:";
 
-    private static final DefaultRedisScript<Long> RECORD_FAILED_SCRIPT = new DefaultRedisScript<>(
-            """
+    private static final DefaultRedisScript<Long> RECORD_FAILED_SCRIPT = new DefaultRedisScript<>("""
             local current = redis.call('INCR', KEYS[1])
             if current == 1 then
                 redis.call('EXPIRE', KEYS[1], ARGV[1])
@@ -37,8 +36,7 @@ public class AccountLockoutService {
                 redis.call('DEL', KEYS[1])
             end
             return current
-            """,
-            Long.class);
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final AuthLockoutProperties properties;

@@ -194,8 +194,10 @@ class PayosServiceImplTest {
 
         assertThatThrownBy(() -> paymentService.createPayment(
                         new PaymentCreateRequest(1L, PaymentMethod.PAYOS, null, "idem-1"), null))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception ->
+                                assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PAYMENT_IDEMPOTENCY_CONFLICT));
 
         verify(gatewayResolver, never()).resolve(any());
         verify(transactionRepository, never()).saveAndFlush(any(PaymentTransaction.class));

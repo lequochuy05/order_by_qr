@@ -69,17 +69,16 @@ public class DiscountCalculator {
             return ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
 
-        BigDecimal rawDiscount =
-                switch (type) {
-                    case FIXED_AMOUNT -> discountAmount != null ? discountAmount : ZERO;
-                    case PERCENTAGE -> {
-                        if (discountPercent == null) {
-                            yield ZERO;
-                        }
+        BigDecimal rawDiscount = switch (type) {
+            case FIXED_AMOUNT -> discountAmount != null ? discountAmount : ZERO;
+            case PERCENTAGE -> {
+                if (discountPercent == null) {
+                    yield ZERO;
+                }
 
-                        yield safeSubtotal.multiply(discountPercent).divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
-                    }
-                };
+                yield safeSubtotal.multiply(discountPercent).divide(HUNDRED, MONEY_SCALE, RoundingMode.HALF_UP);
+            }
+        };
 
         if (rawDiscount.compareTo(ZERO) <= 0) {
             return ZERO.setScale(MONEY_SCALE, RoundingMode.HALF_UP);

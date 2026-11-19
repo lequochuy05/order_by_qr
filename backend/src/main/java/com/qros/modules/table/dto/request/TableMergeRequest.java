@@ -7,5 +7,7 @@ import java.util.List;
 
 public record TableMergeRequest(
         @NotNull Long primaryTableId,
+
         @NotNull @Size(min = 2, max = 6, message = "Select between 2 and 6 tables to merge") List<Long> tableIds,
+
         @NotNull @Min(1) Integer guestCount) {}

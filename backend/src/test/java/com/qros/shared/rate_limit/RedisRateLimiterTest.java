@@ -61,7 +61,8 @@ class RedisRateLimiterTest {
         RedisRateLimiter limiter = new RedisRateLimiter(redisTemplate);
 
         assertThatThrownBy(() -> limiter.requireAllowed("ai:public:ip", "127.0.0.1", 5, Duration.ofMinutes(1), false))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.FEATURE_DISABLED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FEATURE_DISABLED));
     }
 }

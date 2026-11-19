@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateDiningTableRequest(
-        @NotBlank(message = "Table number cannot be empty")
-                @Size(max = 10, message = "Table number must not exceed 10 characters")
-                String tableNumber,
-        @NotNull(message = "Capacity is required") @Min(value = 1, message = "Capacity must be at least 1 person")
-                Integer capacity) {}
+        @NotBlank(message = "Table number cannot be empty") @Size(max = 10, message = "Table number must not exceed 10 characters") String tableNumber,
+
+        @NotNull(message = "Capacity is required") @Min(value = 1, message = "Capacity must be at least 1 person") Integer capacity) {}

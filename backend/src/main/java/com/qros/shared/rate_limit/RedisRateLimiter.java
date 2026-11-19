@@ -17,8 +17,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class RedisRateLimiter {
 
-    private static final DefaultRedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>(
-            """
+    private static final DefaultRedisScript<Long> RATE_LIMIT_SCRIPT = new DefaultRedisScript<>("""
             local current = redis.call('INCR', KEYS[1])
             if current == 1 then
                 redis.call('PEXPIRE', KEYS[1], ARGV[1])
@@ -27,8 +26,7 @@ public class RedisRateLimiter {
                 return redis.call('PTTL', KEYS[1])
             end
             return -1
-            """,
-            Long.class);
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
 

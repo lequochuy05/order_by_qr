@@ -39,8 +39,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             })
     Optional<OrderItem> findDetailByIdForUpdate(@Param("id") Long id);
 
-    @Query(
-            """
+    @Query("""
           SELECT oi.menuItem
           FROM OrderItem oi
           JOIN oi.order o
@@ -57,8 +56,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
           """)
     List<MenuItem> findPopularAvailableMenuItems(Pageable pageable);
 
-    @Query(
-            """
+    @Query("""
           SELECT other.menuItem
           FROM OrderItem base
           JOIN base.order o

@@ -279,8 +279,9 @@ class TableSessionServiceTest {
                 .thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> tableSessionService.heartbeat(new TableSessionHeartbeatRequest("SESSION")))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.TABLE_SESSION_EXPIRED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TABLE_SESSION_EXPIRED));
     }
 
     @Test
@@ -333,8 +334,9 @@ class TableSessionServiceTest {
                 .thenReturn(Optional.of(token));
 
         assertThatThrownBy(() -> tableSessionService.requireOpenSessionForRead("BAN_05", "SESSION"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.TABLE_SESSION_EXPIRED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.TABLE_SESSION_EXPIRED));
     }
 
     @Test

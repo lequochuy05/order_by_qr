@@ -34,8 +34,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Page<Voucher> findAllByOrderByIdDesc(Pageable pageable);
 
-    @Query(
-            """
+    @Query("""
             SELECT v
             FROM Voucher v
             WHERE (CAST(:keyword AS string) IS NULL OR LOWER(v.code) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -82,8 +81,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
             Pageable pageable);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE Voucher v
             SET v.usedCount = v.usedCount + 1
             WHERE v.id = :id

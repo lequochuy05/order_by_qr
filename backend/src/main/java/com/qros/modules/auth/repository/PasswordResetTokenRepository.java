@@ -18,8 +18,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     Optional<PasswordResetToken> findByTokenForUpdate(@Param("token") String token);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT t FROM PasswordResetToken t
             WHERE t.user.phone = :phone
               AND t.used = false
@@ -34,8 +33,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
             Pageable pageable);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
                         UPDATE PasswordResetToken t
                         SET t.used = true
                         WHERE t.user.id = :userId AND t.used = false
