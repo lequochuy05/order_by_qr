@@ -41,4 +41,26 @@ class ClientAddressResolverTest {
 
         assertThat(new ClientAddressResolver(properties).resolve(request)).isEqualTo("198.51.100.22");
     }
+
+    @Test
+    void ignoresSpoofedLeftmostForwardedIpAndUsesRightmostPublicClientIp() {
+        AppProperties properties = new AppProperties();
+        properties.getSecurity().setTrustProxyHeaders(true);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader("X-Forwarded-For")).thenReturn("198.51.100.99, 203.0.113.10, 10.0.0.5");
+
+        assertThat(new ClientAddressResolver(properties).resolve(request)).isEqualTo("203.0.113.10");
+    }
+
+    @Test
+    void rejectsNonIpGarbageInForwardedHeadersAndFallsBackToRemoteAddr() {
+        AppProperties properties = new AppProperties();
+        properties.getSecurity().setTrustProxyHeaders(true);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader("X-Forwarded-For")).thenReturn("spoofed-bypass-key-123");
+        when(request.getHeader("X-Real-IP")).thenReturn("not-an-ip");
+        when(request.getRemoteAddr()).thenReturn("203.0.113.50");
+
+        assertThat(new ClientAddressResolver(properties).resolve(request)).isEqualTo("203.0.113.50");
+    }
 }

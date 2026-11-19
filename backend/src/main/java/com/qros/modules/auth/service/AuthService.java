@@ -12,6 +12,8 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final String DEFAULT_DUMMY_BCRYPT_HASH =
             "$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG";
 
@@ -75,7 +78,12 @@ public class AuthService {
     public LoginResult login(@NonNull LoginRequest req) {
         String email = req.email().trim().toLowerCase();
 
-        accountLockoutService.checkLocked(email);
+        try {
+            accountLockoutService.checkLocked(email);
+        } catch (BusinessException ex) {
+            log.warn("Login denied because the account is locked email={}", maskEmail(email));
+            throw ex;
+        }
 
         User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
 
@@ -88,11 +96,13 @@ public class AuthService {
         }
 
         if (user == null || !passwordMatches) {
+            log.warn("Login failed: invalid credentials email={}", maskEmail(email));
             accountLockoutService.recordFailedAttempt(email);
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
 
         if (user.getStatus() != UserStatus.ACTIVE) {
+            log.warn("Login denied for inactive account userId={}", user.getId());
             throw new BusinessException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
@@ -100,6 +110,7 @@ public class AuthService {
         if (user.getRole() == UserRole.ADMIN && admin2faService != null) {
             String preAuthToken = admin2faService.initiate2fa(user);
             LoginResponse response = LoginResponse.require2fa(maskEmail(user.getEmail()), preAuthToken);
+            log.info("Admin login requires 2FA userId={}", user.getId());
             return new LoginResult(response, null);
         }
 
@@ -109,6 +120,7 @@ public class AuthService {
         LoginResponse response = LoginResponse.of(user, accessToken);
         AuthenticatedUser authUser = AuthenticatedUser.from(user);
 
+        log.info("Login succeeded userId={} role={}", user.getId(), user.getRole());
         return new LoginResult(response, authUser);
     }
 
@@ -130,6 +142,7 @@ public class AuthService {
         LoginResponse response = LoginResponse.of(user, accessToken);
         AuthenticatedUser authUser = AuthenticatedUser.from(user);
 
+        log.info("Admin login completed after 2FA userId={}", user.getId());
         return new LoginResult(response, authUser);
     }
 

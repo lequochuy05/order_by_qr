@@ -474,10 +474,15 @@ public class OrderCreationService {
 
     private void mergeExistingItem(
             OrderItem existingItem, Integer additionalQuantity, Map<OrderItem, Integer> quantitiesToReserve) {
+        final int mergedQuantity;
+        try {
+            mergedQuantity = Math.addExact(existingItem.getQuantity(), additionalQuantity);
+            quantitiesToReserve.merge(existingItem, additionalQuantity, Math::addExact);
+        } catch (ArithmeticException ex) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Order item quantity exceeds maximum limit");
+        }
 
-        quantitiesToReserve.merge(existingItem, additionalQuantity, Integer::sum);
-
-        existingItem.setQuantity(existingItem.getQuantity() + additionalQuantity);
+        existingItem.setQuantity(mergedQuantity);
         orderPricingService.recalculateLineTotal(existingItem);
     }
 

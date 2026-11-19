@@ -85,6 +85,33 @@ class WebSocketConfigTest {
     }
 
     @Test
+    void chefCanSubscribeToKitchenOrdersAndInventory() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+
+        for (String topic : java.util.List.of("/topic/kitchen", "/topic/orders", "/topic/inventory")) {
+            Message<byte[]> message = subscribeMessage(topic, auth);
+            assertThatCode(() -> config.webSocketAuthInterceptor()
+                            .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void chefCannotSubscribeToUsersOrVouchersTopic() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+
+        for (String topic : java.util.List.of("/topic/users", "/topic/vouchers", "/topic/promotions")) {
+            Message<byte[]> message = subscribeMessage(topic, auth);
+            assertThatThrownBy(() -> config.webSocketAuthInterceptor()
+                            .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Insufficient role");
+        }
+    }
+
+    @Test
     void adminCanSubscribeToKitchenTopicWithRoleHierarchy() {
         org.springframework.security.access.hierarchicalroles.RoleHierarchy hierarchy =
                 org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl.fromHierarchy(
