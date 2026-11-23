@@ -12,5 +12,12 @@ public record InventoryItemRequest(
 
         @DecimalMin(value = "0.000", message = "Low stock threshold cannot be negative") BigDecimal lowStockThreshold,
 
+        @DecimalMin(value = "0.00", message = "Unit cost cannot be negative") BigDecimal unitCost,
+
         Boolean active,
-        Long version) {}
+        Long version) {
+
+    public InventoryItemRequest(String name, String unit, BigDecimal lowStockThreshold, Boolean active, Long version) {
+        this(name, unit, lowStockThreshold, null, active, version);
+    }
+}

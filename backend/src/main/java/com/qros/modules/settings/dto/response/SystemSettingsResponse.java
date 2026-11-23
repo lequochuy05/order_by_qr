@@ -36,4 +36,5 @@ public record SystemSettingsResponse(
         Boolean newOrderNotificationEnabled,
         Boolean paymentNotificationEnabled,
         Boolean kitchenOverdueNotificationEnabled,
-        Boolean allowSettlementWithUnfinishedItems) {}
+        Boolean allowSettlementWithUnfinishedItems,
+        Boolean customerSelfCheckoutEnabled) {}

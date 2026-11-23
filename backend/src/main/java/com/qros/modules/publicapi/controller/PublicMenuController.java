@@ -9,6 +9,8 @@ import com.qros.modules.menu.mapper.PublicMenuMapper;
 import com.qros.modules.menu.service.CategoryService;
 import com.qros.modules.menu.service.ComboService;
 import com.qros.modules.menu.service.MenuItemService;
+import com.qros.modules.promotion.dto.response.PromotionResponse;
+import com.qros.modules.promotion.service.PromotionService;
 import com.qros.modules.settings.model.SystemSettings;
 import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.dto.response.PublicTable;
@@ -32,6 +34,12 @@ public class PublicMenuController {
     private final InventoryAvailabilityService inventoryAvailabilityService;
     private final PublicMenuMapper publicMenuMapper;
     private final SystemSettingsService settingsService;
+    private final PromotionService promotionService;
+
+    @GetMapping("/promotions/active")
+    public ApiResponse<List<PromotionResponse>> getActivePromotions() {
+        return ApiResponse.success(promotionService.findActivePromotionResponses());
+    }
 
     @GetMapping("/categories")
     public ApiResponse<List<PublicCategoryItem>> getCategories() {

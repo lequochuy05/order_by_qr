@@ -111,6 +111,18 @@ public class PublicMenuMapper {
                                 item.getMenuItem().getName(), item.getMenuItem().getImg(), item.getQuantity()))
                         .toList();
 
+        boolean comboAvailable = Boolean.TRUE.equals(combo.getAvailable())
+                && (combo.getItems() == null
+                        || combo.getItems().isEmpty()
+                        || combo.getItems().stream()
+                                .filter(item -> !item.isDeleted())
+                                .allMatch(item -> item.getMenuItem() != null
+                                        && !item.getMenuItem().isDeleted()
+                                        && Boolean.TRUE.equals(
+                                                item.getMenuItem().getActive())
+                                        && Boolean.TRUE.equals(
+                                                item.getMenuItem().getAvailable())));
+
         return new PublicComboItem(
                 combo.getId(),
                 combo.getName(),
@@ -118,7 +130,7 @@ public class PublicMenuMapper {
                 null,
                 combo.getPrice(),
                 lines,
-                combo.getAvailable(),
+                comboAvailable,
                 combo.getDisplayOrder());
     }
 

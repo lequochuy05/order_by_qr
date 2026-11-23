@@ -37,8 +37,6 @@ public class OrderTableSyncService {
         TableStatus nextStatus;
         if (order.getStatus() == OrderStatus.CANCELLED || order.getStatus() == OrderStatus.COMPLETED) {
             nextStatus = TableStatus.AVAILABLE;
-        } else if (order.getStatus() == OrderStatus.AWAITING_PAYMENT) {
-            nextStatus = TableStatus.WAITING_FOR_PAYMENT;
         } else {
             boolean hasBillableItems = order.getOrderItems().stream().anyMatch(OrderItem::isBillable);
 

@@ -6,6 +6,10 @@ import java.util.Collection;
 public interface TableActiveOrderChecker {
     boolean hasActiveOrders(Long tableId);
 
+    default boolean hasUnfinishedItems(Long tableId) {
+        return false;
+    }
+
     boolean hasActiveOrdersForSession(Long sessionId);
 
     boolean hasPaymentInProgressForSession(Long sessionId);
@@ -17,4 +21,6 @@ public interface TableActiveOrderChecker {
     void attachActiveOrdersToSession(Collection<Long> tableIds, TableSession session);
 
     void cancelEmptyActiveOrdersForSession(Long sessionId);
+
+    default void validateAndPrepareSessionForPaymentRequest(Long sessionId) {}
 }

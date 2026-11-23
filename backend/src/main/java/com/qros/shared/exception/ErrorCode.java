@@ -63,6 +63,18 @@ public enum ErrorCode {
     TABLE_MERGE_PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Cannot merge while payment is in progress"),
     TABLE_SESSION_MEMBERSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "Table session membership not found"),
 
+    SERVICE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Service request not found"),
+    SERVICE_REQUEST_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "Please wait before sending another service request"),
+    SERVICE_REQUEST_DUPLICATE_ACTIVE(
+            HttpStatus.CONFLICT, "An active service request with this reason already exists for this table"),
+    SERVICE_REQUEST_OPEN_LIMIT_REACHED(
+            HttpStatus.TOO_MANY_REQUESTS, "This table has reached the maximum number of open service requests"),
+    SERVICE_REQUEST_ALREADY_CLAIMED(
+            HttpStatus.CONFLICT, "This service request has already been claimed by another staff member"),
+    SERVICE_REQUEST_INVALID_STATE(HttpStatus.CONFLICT, "Service request cannot be modified in its current state"),
+    SERVICE_REQUEST_NOT_ASSIGNED_TO_USER(
+            HttpStatus.FORBIDDEN, "Only the assigned staff member or a manager can perform this action"),
+
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found"),
     ORDER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Order item not found"),
     ORDER_CONTENT_EMPTY(HttpStatus.BAD_REQUEST, "Order content cannot be empty"),

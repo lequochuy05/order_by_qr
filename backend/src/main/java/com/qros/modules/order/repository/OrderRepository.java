@@ -97,6 +97,18 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     boolean existsByTableIdAndStatusIn(Long tableId, Collection<OrderStatus> statuses);
 
+    @Query("""
+            SELECT COUNT(item) > 0
+            FROM Order o
+            JOIN o.orderItems item
+            WHERE o.table.id = :tableId
+              AND o.status IN :statuses
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.FINISHED
+            """)
+    boolean existsUnfinishedBillableItemByTableId(
+            @Param("tableId") Long tableId, @Param("statuses") Collection<OrderStatus> statuses);
+
     boolean existsByTableSessionIdAndStatusIn(Long tableSessionId, Collection<OrderStatus> statuses);
 
     @Query("""

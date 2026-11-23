@@ -8,14 +8,17 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.TableSessionTable;
 import com.qros.modules.table.model.TableSessionToken;
+import com.qros.modules.table.model.enums.ServiceRequestStatus;
 import com.qros.modules.table.model.enums.TableSessionSource;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableServiceRequestRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.modules.table.repository.TableSessionTokenRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.ServiceRequestChangeEvent;
 import com.qros.shared.event.DomainEvents.TableChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -49,6 +52,8 @@ public class TableSessionService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32;
+    private static final List<ServiceRequestStatus> OPEN_SERVICE_REQUEST_STATUSES =
+            List.of(ServiceRequestStatus.PENDING, ServiceRequestStatus.CLAIMED);
 
     private final DiningTableRepository tableRepository;
     private final TableSessionRepository sessionRepository;
@@ -60,6 +65,7 @@ public class TableSessionService {
     private final TableSessionProperties tableSessionProperties;
     private final TransactionSideEffectService sideEffects;
     private final TableQrSecurityService tableQrSecurityService;
+    private final TableServiceRequestRepository serviceRequestRepository;
 
     public TableSessionService(
             DiningTableRepository tableRepository,
@@ -81,6 +87,32 @@ public class TableSessionService {
                 activeOrderChecker,
                 tableSessionProperties,
                 sideEffects,
+                null,
+                null);
+    }
+
+    public TableSessionService(
+            DiningTableRepository tableRepository,
+            TableSessionRepository sessionRepository,
+            TableSessionTableRepository membershipRepository,
+            TableSessionTokenRepository tokenRepository,
+            CacheManager cacheManager,
+            ApplicationEventPublisher eventPublisher,
+            TableActiveOrderChecker activeOrderChecker,
+            TableSessionProperties tableSessionProperties,
+            TransactionSideEffectService sideEffects,
+            TableQrSecurityService tableQrSecurityService) {
+        this(
+                tableRepository,
+                sessionRepository,
+                membershipRepository,
+                tokenRepository,
+                cacheManager,
+                eventPublisher,
+                activeOrderChecker,
+                tableSessionProperties,
+                sideEffects,
+                tableQrSecurityService,
                 null);
     }
 
@@ -95,7 +127,8 @@ public class TableSessionService {
             TableActiveOrderChecker activeOrderChecker,
             TableSessionProperties tableSessionProperties,
             TransactionSideEffectService sideEffects,
-            TableQrSecurityService tableQrSecurityService) {
+            TableQrSecurityService tableQrSecurityService,
+            TableServiceRequestRepository serviceRequestRepository) {
         this.tableRepository = tableRepository;
         this.sessionRepository = sessionRepository;
         this.membershipRepository = membershipRepository;
@@ -106,6 +139,7 @@ public class TableSessionService {
         this.tableSessionProperties = tableSessionProperties;
         this.sideEffects = sideEffects;
         this.tableQrSecurityService = tableQrSecurityService;
+        this.serviceRequestRepository = serviceRequestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -284,6 +318,7 @@ public class TableSessionService {
     public void requestPayment(@NonNull String tableCode, @NonNull String sessionToken) {
         TableSession session = requireOpenSession(sessionToken);
         validateSessionBelongsToTable(session, tableCode);
+        activeOrderChecker.validateAndPrepareSessionForPaymentRequest(session.getId());
 
         List<DiningTable> memberTables = lockActiveMemberTables(session.getId());
         List<DiningTable> changed = memberTables.stream()
@@ -329,8 +364,23 @@ public class TableSessionService {
         membershipRepository.saveAll(memberships);
         tables.forEach(this::releaseTableIfUnused);
 
+        int closedRequests = 0;
+        if (serviceRequestRepository != null) {
+            closedRequests = serviceRequestRepository.closeOpenRequestsBySessionId(
+                    sessionId,
+                    ServiceRequestStatus.CANCELLED,
+                    OPEN_SERVICE_REQUEST_STATUSES,
+                    "SYSTEM",
+                    "Table session closed",
+                    now);
+        }
+
         evictTableSessionCachesForTables(tables);
         eventPublisher.publishEvent(new TableChangeEvent());
+        if (closedRequests > 0) {
+            Long tableId = session.getTable() != null ? session.getTable().getId() : null;
+            eventPublisher.publishEvent(new ServiceRequestChangeEvent("AUTO_CLOSED", null, tableId));
+        }
     }
 
     @Scheduled(fixedDelayString = "${table-session.cleanup-fixed-delay-ms:300000}")
@@ -345,6 +395,7 @@ public class TableSessionService {
 
         LocalDateTime now = AppTime.now();
         List<DiningTable> changedTables = new ArrayList<>();
+        boolean autoClosedRequests = false;
         for (TableSession session : staleSessions) {
             List<DiningTable> memberTables = lockActiveMemberTables(session.getId());
             List<TableSessionTable> memberships = membershipRepository.findActiveBySessionIdForUpdate(session.getId());
@@ -366,11 +417,27 @@ public class TableSessionService {
                     changedTables.add(table);
                 }
             }
+
+            if (serviceRequestRepository != null) {
+                int closed = serviceRequestRepository.closeOpenRequestsBySessionId(
+                        session.getId(),
+                        ServiceRequestStatus.CANCELLED,
+                        OPEN_SERVICE_REQUEST_STATUSES,
+                        "SYSTEM",
+                        "Table session expired",
+                        now);
+                if (closed > 0) {
+                    autoClosedRequests = true;
+                }
+            }
         }
 
         sessionRepository.saveAll(staleSessions);
         evictTableSessionCachesForTables(changedTables);
         eventPublisher.publishEvent(new TableChangeEvent());
+        if (autoClosedRequests) {
+            eventPublisher.publishEvent(new ServiceRequestChangeEvent("AUTO_CLOSED", null, null));
+        }
         log.info("Expired {} stale table sessions without orders", staleSessions.size());
     }
 

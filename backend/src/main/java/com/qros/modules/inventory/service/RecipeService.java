@@ -33,6 +33,7 @@ public class RecipeService {
     private final MenuItemRepository menuItemRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeMapper recipeMapper;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
@@ -64,8 +65,9 @@ public class RecipeService {
                 .map(itemRequest -> createRecipeItem(menuItem, itemRequest))
                 .toList();
 
-        List<RecipeItem> savedRecipeItems = recipeItemRepository.saveAll(newRecipeItems);
+        List<RecipeItem> savedRecipeItems = recipeItemRepository.saveAllAndFlush(newRecipeItems);
 
+        inventoryAvailabilityService.syncAvailabilityForMenuItems(List.of(menuItemId), true);
         eventPublisher.publishEvent(new InventoryChangeEvent("recipe_updated", menuItemId));
         eventPublisher.publishEvent(new MenuChangeEvent("recipe_updated", menuItemId));
 
@@ -87,8 +89,10 @@ public class RecipeService {
 
         if (!recipeItems.isEmpty()) {
             recipeItemRepository.deleteAll(recipeItems);
+            recipeItemRepository.flush();
         }
 
+        inventoryAvailabilityService.syncAvailabilityForMenuItems(List.of(menuItemId), true);
         eventPublisher.publishEvent(new InventoryChangeEvent("recipe_deleted", menuItemId));
         eventPublisher.publishEvent(new MenuChangeEvent("recipe_deleted", menuItemId));
     }

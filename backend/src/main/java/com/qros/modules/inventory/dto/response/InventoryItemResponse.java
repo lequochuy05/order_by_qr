@@ -10,6 +10,7 @@ public record InventoryItemResponse(
         BigDecimal reservedQuantity,
         BigDecimal availableQuantity,
         BigDecimal lowStockThreshold,
+        BigDecimal unitCost,
         Boolean lowStock,
         Boolean active,
         Long version) {}

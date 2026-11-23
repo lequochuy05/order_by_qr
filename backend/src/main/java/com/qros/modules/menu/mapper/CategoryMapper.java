@@ -37,10 +37,15 @@ public class CategoryMapper {
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
                 category.getVersion(),
+                menuItems.size(),
                 menuItems);
     }
 
     public CategoryResponse toSummaryResponse(Category category) {
+        return toSummaryResponse(category, 0L);
+    }
+
+    public CategoryResponse toSummaryResponse(Category category, long itemCount) {
         if (category == null) {
             return null;
         }
@@ -55,6 +60,7 @@ public class CategoryMapper {
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
                 category.getVersion(),
+                itemCount,
                 Collections.emptyList());
     }
 

@@ -123,15 +123,25 @@ public class VoucherCheckoutService {
                 .findByCodeIgnoreCase(normalizedCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
 
+        BigDecimal safeSubtotal = subtotal != null ? subtotal : BigDecimal.ZERO;
+        BigDecimal computedVoucherDiscount =
+                discountCalculator.calculate(voucher, safeSubtotal).appliedDiscountAmount();
+        BigDecimal appliedVoucherDiscount =
+                discountAmount != null ? computedVoucherDiscount.min(discountAmount) : computedVoucherDiscount;
+        BigDecimal resolvedFinalAmount = finalAmount != null
+                ? finalAmount
+                : discountCalculator.calculateFinalAmount(
+                        safeSubtotal, discountAmount != null ? discountAmount : appliedVoucherDiscount);
+
         DiscountResult result = new DiscountResult(
                 voucher.getId(),
                 voucher.getCode(),
                 voucher.getType(),
-                subtotal != null ? subtotal : BigDecimal.ZERO,
+                safeSubtotal,
                 voucher.getDiscountAmount(),
                 voucher.getDiscountPercent(),
-                discountAmount != null ? discountAmount : BigDecimal.ZERO,
-                finalAmount != null ? finalAmount : BigDecimal.ZERO);
+                appliedVoucherDiscount,
+                resolvedFinalAmount);
 
         return new VoucherPaymentResult(voucher, result);
     }

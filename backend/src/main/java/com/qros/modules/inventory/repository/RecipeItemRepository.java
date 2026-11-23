@@ -43,4 +43,23 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
             ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
             """)
     List<RecipeItem> findByMenuItemIds(@Param("menuItemIds") List<Long> menuItemIds);
+
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query("""
+            SELECT r
+            FROM RecipeItem r
+            WHERE r.inventoryItem.id IN :inventoryItemIds
+            ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
+            """)
+    List<RecipeItem> findByInventoryItemIds(@Param("inventoryItemIds") java.util.Collection<Long> inventoryItemIds);
+
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query("""
+            SELECT r
+            FROM RecipeItem r
+            WHERE r.inventoryItem.active = true
+              AND r.menuItem.active = true
+            ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
+            """)
+    List<RecipeItem> findAllActiveWithMenuAndInventory();
 }

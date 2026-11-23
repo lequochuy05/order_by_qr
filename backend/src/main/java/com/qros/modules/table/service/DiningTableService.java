@@ -229,10 +229,17 @@ public class DiningTableService {
                     "Cannot set table to " + newStatus + " while it has an open session or active order");
         }
 
-        if (newStatus == TableStatus.WAITING_FOR_PAYMENT && !usage.hasActiveOrders()) {
-            throw new BusinessException(
-                    ErrorCode.TABLE_STATUS_TRANSITION_INVALID,
-                    "A table can wait for payment only when it has an active order");
+        if (newStatus == TableStatus.WAITING_FOR_PAYMENT) {
+            if (!usage.hasActiveOrders()) {
+                throw new BusinessException(
+                        ErrorCode.TABLE_STATUS_TRANSITION_INVALID,
+                        "A table can wait for payment only when it has an active order");
+            }
+            if (activeOrderChecker.hasUnfinishedItems(table.getId())) {
+                throw new BusinessException(
+                        ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
+                        "Cannot set table to WAITING_FOR_PAYMENT while kitchen still has unfinished items");
+            }
         }
     }
 

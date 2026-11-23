@@ -29,6 +29,10 @@ public final class SecurityRoutes {
         ApiRoutes.PUBLIC + "/orders/preview",
         ApiRoutes.PUBLIC + "/tables/*/start-session",
         ApiRoutes.PUBLIC + "/tables/*/request-payment",
+        ApiRoutes.PUBLIC + "/tables/*/service-requests",
+        ApiRoutes.PUBLIC + "/tables/*/service-requests/*/cancel",
+        ApiRoutes.PUBLIC + "/tables/*/self-checkout",
+        ApiRoutes.PUBLIC + "/tables/*/self-checkout/*/cancel",
         ApiRoutes.PUBLIC + "/sessions/heartbeat",
         ApiRoutes.PUBLIC + "/ai/chat",
         ApiRoutes.WEBHOOKS + "/**"
@@ -81,6 +85,10 @@ public final class SecurityRoutes {
 
     public static final String[] KITCHEN_GET = {ApiRoutes.KITCHEN + "/orders"};
 
+    public static final String[] STAFF_SERVICE_REQUEST_GET = {
+        ApiRoutes.TABLE_SERVICE_REQUESTS, ApiRoutes.TABLE_SERVICE_REQUESTS + "/**"
+    };
+
     public static final String[] MANAGER_POST = {
         ApiRoutes.USERS,
         ApiRoutes.USERS + "/*/avatar",
@@ -93,6 +101,8 @@ public final class SecurityRoutes {
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
         ApiRoutes.AI + "/chat",
+        ApiRoutes.AI + "/insights/**",
+        ApiRoutes.AI + "/merchandising/**",
         ApiRoutes.AI + "/menu-item/**",
         ApiRoutes.AI + "/combo/**"
     };
@@ -132,16 +142,24 @@ public final class SecurityRoutes {
     public static final String[] KITCHEN_PATCH = {
         ApiRoutes.KITCHEN + "/items/*/status",
         ApiRoutes.KITCHEN + "/items/*/prepared",
-        ApiRoutes.KITCHEN + "/items/batch-status"
+        ApiRoutes.KITCHEN + "/items/batch-status",
+        ApiRoutes.MENU_ITEMS + "/*/toggle-available",
+        ApiRoutes.COMBOS + "/*/toggle-available"
     };
 
     public static final String[] KITCHEN_DELETE = {ApiRoutes.KITCHEN + "/items/*"};
 
     public static final String[] INVENTORY_OPERATION_POST = {
-        ApiRoutes.INVENTORY + "/*/stock-in", ApiRoutes.INVENTORY + "/*/adjust"
+        ApiRoutes.INVENTORY + "/*/stock-in",
+        ApiRoutes.INVENTORY + "/*/adjust",
+        ApiRoutes.INVENTORY_ITEMS + "/*/stock-in",
+        ApiRoutes.INVENTORY_ITEMS + "/*/adjust",
+        ApiRoutes.INVENTORY_ITEMS + "/batch-stock-in"
     };
 
-    public static final String[] STAFF_AI_POST = {ApiRoutes.AI + "/staff/query"};
+    public static final String[] INVENTORY_AI_POST = {ApiRoutes.AI + "/inventory/**"};
+
+    public static final String[] STAFF_AI_POST = {ApiRoutes.AI + "/staff/query", ApiRoutes.AI + "/staff/analyze-notes"};
 
     public static final String[] STAFF_OPERATION_POST = {
         ApiRoutes.ORDERS,
@@ -154,7 +172,12 @@ public final class SecurityRoutes {
     public static final String[] STAFF_OPERATION_DELETE = {ApiRoutes.ORDER_ITEMS + "/*"};
 
     public static final String[] STAFF_OPERATION_PATCH = {
-        ApiRoutes.ORDERS + "/*/status", ApiRoutes.ORDERS + "/*/cancel", ApiRoutes.ORDER_ITEMS + "/**"
+        ApiRoutes.ORDERS + "/*/status",
+        ApiRoutes.ORDERS + "/*/cancel",
+        ApiRoutes.ORDER_ITEMS + "/**",
+        ApiRoutes.TABLE_SERVICE_REQUESTS + "/*/claim",
+        ApiRoutes.TABLE_SERVICE_REQUESTS + "/*/resolve",
+        ApiRoutes.TABLE_SERVICE_REQUESTS + "/*/cancel"
     };
 
     public static final String[] PAYMENT_ROUTES = {ApiRoutes.PAYMENTS, ApiRoutes.PAYMENTS + "/**"};

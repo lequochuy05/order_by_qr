@@ -126,6 +126,9 @@ public class SystemSettings {
     @Column(nullable = false)
     private Boolean allowSettlementWithUnfinishedItems;
 
+    @Column(nullable = false)
+    private Boolean customerSelfCheckoutEnabled;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

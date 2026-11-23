@@ -1,8 +1,10 @@
 package com.qros.modules.inventory.controller;
 
+import com.qros.modules.inventory.dto.request.BatchStockInRequest;
 import com.qros.modules.inventory.dto.request.InventoryItemRequest;
 import com.qros.modules.inventory.dto.request.StockAdjustmentRequest;
 import com.qros.modules.inventory.dto.request.StockInRequest;
+import com.qros.modules.inventory.dto.response.BatchStockInResponse;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
 import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.service.InventoryItemService;
@@ -14,6 +16,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -94,6 +97,18 @@ public class InventoryItemController {
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody StockInRequest request) {
         return ApiResponse.success("Stock imported successfully", inventoryItemService.stockIn(id, request));
+    }
+
+    @PostMapping("/batch-stock-in")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
+    public ApiResponse<BatchStockInResponse> batchStockIn(
+            @Valid @RequestBody BatchStockInRequest request, Authentication authentication) {
+        boolean canUpdateUnitCost = authentication != null
+                && authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_MANAGER".equals(authority.getAuthority())
+                                || "ROLE_ADMIN".equals(authority.getAuthority()));
+        return ApiResponse.success(
+                "Batch stock imported successfully", inventoryItemService.batchStockIn(request, canUpdateUnitCost));
     }
 
     @PostMapping("/{id}/adjust")

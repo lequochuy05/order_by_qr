@@ -3,6 +3,7 @@ package com.qros.modules.order.repository;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.OrderItem;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
@@ -77,4 +78,33 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
           ORDER BY COUNT(other.menuItem.id) DESC
           """)
     List<MenuItem> findCrossSellAvailableMenuItems(@Param("itemId") Long itemId, Pageable pageable);
+
+    @Query("""
+          SELECT m1.id,
+                 m1.name,
+                 m2.id,
+                 m2.name,
+                 COUNT(DISTINCT o.id)
+          FROM OrderItem firstItem
+          JOIN firstItem.order o
+          JOIN o.orderItems secondItem
+          JOIN firstItem.menuItem m1
+          JOIN m1.category c1
+          JOIN secondItem.menuItem m2
+          JOIN m2.category c2
+          WHERE m1.id < m2.id
+            AND m1.active = true
+            AND m1.available = true
+            AND c1.active = true
+            AND m2.active = true
+            AND m2.available = true
+            AND c2.active = true
+            AND firstItem.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            AND secondItem.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+            AND o.status = com.qros.modules.order.model.enums.OrderStatus.COMPLETED
+            AND o.createdAt >= :from
+          GROUP BY m1.id, m1.name, m2.id, m2.name
+          ORDER BY COUNT(DISTINCT o.id) DESC
+          """)
+    List<Object[]> findFrequentlyPairedMenuItems(@Param("from") LocalDateTime from, Pageable pageable);
 }

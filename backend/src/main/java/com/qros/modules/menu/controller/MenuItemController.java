@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -64,6 +65,13 @@ public class MenuItemController {
     public ApiResponse<MenuItemResponse> update(
             @PathVariable @NonNull Long id, @Valid @RequestBody @NonNull MenuItemRequest req) {
         return ApiResponse.success("Menu item updated successfully", menuItemService.update(id, req));
+    }
+
+    @PatchMapping("/{id}/toggle-available")
+    public ApiResponse<MenuItemResponse> toggleAvailable(
+            @PathVariable @NonNull Long id, @RequestParam(required = false) Long version) {
+        return ApiResponse.success(
+                "Menu item availability updated successfully", menuItemService.toggleAvailable(id, version));
     }
 
     @DeleteMapping("/{id}")

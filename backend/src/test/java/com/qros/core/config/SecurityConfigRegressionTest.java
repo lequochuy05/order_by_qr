@@ -49,8 +49,12 @@ class SecurityConfigRegressionTest {
         String userAdminController = readController(mainSource, "UserAdminController.java");
         String voucherController = readController(mainSource, "VoucherController.java");
         String aiStaffController = readController(mainSource, "AiStaffController.java");
+        String aiInsightsController = readController(mainSource, "AiInsightsController.java");
+        String aiInventoryController = readController(mainSource, "AiInventoryController.java");
+        String aiMerchandisingController = readController(mainSource, "AiMerchandisingController.java");
         String analyticsController = readController(mainSource, "AnalyticsController.java");
         String forecastController = readController(mainSource, "ForecastController.java");
+        String tableServiceRequestController = readController(mainSource, "TableServiceRequestController.java");
 
         assertThat(paymentController)
                 .containsAnyOf(
@@ -65,9 +69,13 @@ class SecurityConfigRegressionTest {
                         "@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasAnyRole('ADMIN', 'MANAGER')\")");
         assertThat(voucherController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
         assertThat(aiStaffController).contains("@PreAuthorize(\"hasAnyRole('MANAGER','STAFF','CHEF')\")");
+        assertThat(aiInsightsController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
+        assertThat(aiInventoryController).contains("@PreAuthorize(\"hasAnyRole('MANAGER', 'CHEF')\")");
+        assertThat(aiMerchandisingController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
         assertThat(analyticsController).contains("@PreAuthorize(\"hasRole('MANAGER')\")");
         assertThat(forecastController)
                 .containsAnyOf("@PreAuthorize(\"hasRole('MANAGER')\")", "@PreAuthorize(\"hasRole('ADMIN')\")");
+        assertThat(tableServiceRequestController).contains("@PreAuthorize(\"hasAnyRole('MANAGER', 'STAFF')\")");
     }
 
     @Test
@@ -152,6 +160,9 @@ class SecurityConfigRegressionTest {
         assertThat(source)
                 .contains(
                         ".requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)\n                        .hasAnyRole(\"MANAGER\", \"STAFF\", \"CHEF\")");
+        assertThat(source)
+                .contains(
+                        ".requestMatchers(HttpMethod.GET, STAFF_SERVICE_REQUEST_GET)\n                        .hasAnyRole(\"MANAGER\", \"STAFF\")");
     }
 
     private String readController(Path mainSource, String filename) throws Exception {

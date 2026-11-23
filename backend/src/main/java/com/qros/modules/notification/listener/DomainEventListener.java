@@ -73,4 +73,9 @@ public class DomainEventListener {
     public void onInventoryChange(InventoryChangeEvent event) {
         notificationService.notifyInventoryChange(event.type(), event.id());
     }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onServiceRequestChange(ServiceRequestChangeEvent event) {
+        notificationService.notifyServiceRequestChange(event.action(), event.requestId(), event.tableId());
+    }
 }

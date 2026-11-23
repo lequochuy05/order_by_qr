@@ -15,6 +15,7 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
+import com.qros.modules.promotion.service.PromotionService;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
@@ -28,13 +29,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class OrderPricingService {
 
     private final MenuItemRepository menuItemRepository;
@@ -43,14 +43,64 @@ public class OrderPricingService {
     private final VoucherCheckoutService voucherCheckoutService;
     private final OrderValidator orderValidator;
     private final TableSessionService tableSessionService;
+    private final PromotionService promotionService;
+
+    public OrderPricingService(
+            MenuItemRepository menuItemRepository,
+            ComboRepository comboRepository,
+            ItemOptionValueRepository itemOptionValueRepository,
+            VoucherCheckoutService voucherCheckoutService,
+            OrderValidator orderValidator,
+            TableSessionService tableSessionService) {
+        this(
+                menuItemRepository,
+                comboRepository,
+                itemOptionValueRepository,
+                voucherCheckoutService,
+                orderValidator,
+                tableSessionService,
+                null);
+    }
+
+    @Autowired
+    public OrderPricingService(
+            MenuItemRepository menuItemRepository,
+            ComboRepository comboRepository,
+            ItemOptionValueRepository itemOptionValueRepository,
+            VoucherCheckoutService voucherCheckoutService,
+            OrderValidator orderValidator,
+            TableSessionService tableSessionService,
+            PromotionService promotionService) {
+        this.menuItemRepository = menuItemRepository;
+        this.comboRepository = comboRepository;
+        this.itemOptionValueRepository = itemOptionValueRepository;
+        this.voucherCheckoutService = voucherCheckoutService;
+        this.orderValidator = orderValidator;
+        this.tableSessionService = tableSessionService;
+        this.promotionService = promotionService;
+    }
+
+    public BigDecimal calculatePromotionDiscount(BigDecimal subtotal) {
+        if (promotionService == null || subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return safe(promotionService.calculatePromotionDiscount(subtotal));
+    }
 
     public void recalculateOrderTotals(Order order) {
         order.getOrderItems().forEach(this::recalculateLineTotal);
 
         BigDecimal subtotal = calculateSubtotal(order);
-        BigDecimal discount = safe(order.getDiscountAmount());
+        BigDecimal promotionDiscount = calculatePromotionDiscount(subtotal);
+        BigDecimal voucherDiscount = BigDecimal.ZERO;
 
-        setOrderMoney(order, subtotal, discount);
+        if (order.getVoucherCode() != null && !order.getVoucherCode().isBlank()) {
+            DiscountResult preview = voucherCheckoutService.previewVoucher(order.getVoucherCode(), subtotal);
+            voucherDiscount = safe(preview.appliedDiscountAmount());
+        }
+
+        BigDecimal totalDiscount = promotionDiscount.add(voucherDiscount).min(subtotal);
+        setOrderMoney(order, subtotal, totalDiscount);
     }
 
     public void applyVoucher(Order order, String voucherCode) {
@@ -59,10 +109,14 @@ public class OrderPricingService {
         }
 
         BigDecimal subtotal = calculateSubtotal(order);
+        BigDecimal promotionDiscount = calculatePromotionDiscount(subtotal);
         VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode.trim(), subtotal);
+        BigDecimal totalDiscount = promotionDiscount
+                .add(safe(voucherResult.appliedDiscountAmount()))
+                .min(subtotal);
 
         order.setVoucherCode(voucherResult.voucherCode());
-        setOrderMoney(order, subtotal, voucherResult.appliedDiscountAmount());
+        setOrderMoney(order, subtotal, totalDiscount);
     }
 
     public void setOrderMoney(Order order, BigDecimal subtotal, BigDecimal discount) {
@@ -123,7 +177,11 @@ public class OrderPricingService {
         BigDecimal subtotalCombos = calculateComboSubtotal(combos);
         BigDecimal subtotal = subtotalItems.add(subtotalCombos);
 
+        BigDecimal discountPromotion = calculatePromotionDiscount(subtotal);
         DiscountResult discountResult = voucherCheckoutService.previewVoucher(voucherCode, subtotal);
+        BigDecimal voucherDiscount = safe(discountResult.appliedDiscountAmount());
+        BigDecimal totalDiscount = discountPromotion.add(voucherDiscount).min(subtotal);
+        BigDecimal finalAmount = calculateFinalTotal(subtotal, totalDiscount);
 
         boolean isVoucherValid = discountResult.voucherId() != null;
         String voucherMessage = isVoucherValid
@@ -134,11 +192,11 @@ public class OrderPricingService {
                 subtotalItems,
                 subtotalCombos,
                 subtotal,
-                discountResult.appliedDiscountAmount(),
-                discountResult.finalAmount(),
+                totalDiscount,
+                finalAmount,
                 isVoucherValid,
                 voucherMessage,
-                BigDecimal.ZERO);
+                discountPromotion);
     }
 
     private void validateOrderContent(List<OrderItemRequest> items, List<OrderComboRequest> combos) {

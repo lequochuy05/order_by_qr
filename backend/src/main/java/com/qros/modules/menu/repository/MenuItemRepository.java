@@ -1,6 +1,7 @@
 package com.qros.modules.menu.repository;
 
 import com.qros.modules.menu.model.MenuItem;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,16 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     long countByCategoryIdAndActiveTrue(@Param("categoryId") Long categoryId);
 
     boolean existsByCategoryId(Long categoryId);
+
+    long countByCategoryId(Long categoryId);
+
+    @Query("""
+          SELECT m.category.id, COUNT(m)
+          FROM MenuItem m
+          WHERE m.category.id IN :categoryIds
+          GROUP BY m.category.id
+      """)
+    List<Object[]> countByCategoryIdIn(@Param("categoryIds") Collection<Long> categoryIds);
 
     boolean existsByNameIgnoreCase(String name);
 

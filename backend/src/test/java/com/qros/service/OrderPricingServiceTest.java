@@ -18,10 +18,17 @@ import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
+import com.qros.modules.order.dto.request.StaffCreateOrderRequest;
 import com.qros.modules.order.dto.response.OrderPreviewResponse;
+import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
+import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.service.OrderPricingService;
 import com.qros.modules.order.service.OrderValidator;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
+import com.qros.modules.promotion.model.enums.VoucherType;
+import com.qros.modules.promotion.service.PromotionService;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
@@ -58,6 +65,9 @@ class OrderPricingServiceTest {
     @Mock
     TableSessionService tableSessionService;
 
+    @Mock
+    PromotionService promotionService;
+
     private OrderPricingService orderPricingService;
 
     @BeforeEach
@@ -68,7 +78,8 @@ class OrderPricingServiceTest {
                 itemOptionValueRepository,
                 voucherCheckoutService,
                 orderValidator,
-                tableSessionService);
+                tableSessionService,
+                promotionService);
     }
 
     @Test
@@ -106,6 +117,57 @@ class OrderPricingServiceTest {
                     assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST);
                     assertThat(ex.getMessage()).isEqualTo("Combo quantity must be at least 1");
                 });
+    }
+
+    @Test
+    void previewStaffOrderAutomaticallyAppliesPromotionAndStacksVoucher() {
+        MenuItem coffee = menuItem(1L, "Coffee", "50000", optionValue(11L, "Standard", "0"));
+        when(menuItemRepository.findAllByIdIn(Set.of(1L))).thenReturn(List.of(coffee));
+        when(promotionService.calculatePromotionDiscount(new BigDecimal("100000")))
+                .thenReturn(new BigDecimal("15000.00"));
+        when(voucherCheckoutService.previewVoucher("SAVE10", new BigDecimal("100000")))
+                .thenReturn(new DiscountResult(
+                        9L,
+                        "SAVE10",
+                        VoucherType.FIXED_AMOUNT,
+                        new BigDecimal("100000"),
+                        new BigDecimal("10000.00"),
+                        null,
+                        new BigDecimal("10000.00"),
+                        new BigDecimal("90000.00")));
+
+        StaffCreateOrderRequest request = new StaffCreateOrderRequest(
+                1L, null, List.of(new OrderItemRequest(1L, 2, null, List.of())), "SAVE10", OrderType.DINE_IN, null);
+
+        OrderPreviewResponse response = orderPricingService.previewStaffOrder(request);
+
+        assertThat(response.subtotalAmount()).isEqualByComparingTo("100000.00");
+        assertThat(response.discountPromotion()).isEqualByComparingTo("15000.00");
+        assertThat(response.discountAmount()).isEqualByComparingTo("25000.00");
+        assertThat(response.finalAmount()).isEqualByComparingTo("75000.00");
+        assertThat(response.voucherValid()).isTrue();
+    }
+
+    @Test
+    void recalculateOrderTotalsAppliesActivePromotionDiscountAutomatically() {
+        Order order = Order.builder().id(1L).build();
+        OrderItem item = OrderItem.builder()
+                .id(10L)
+                .order(order)
+                .unitPrice(new BigDecimal("40000"))
+                .quantity(2)
+                .status(OrderItemStatus.PENDING)
+                .build();
+        order.getOrderItems().add(item);
+
+        when(promotionService.calculatePromotionDiscount(new BigDecimal("80000")))
+                .thenReturn(new BigDecimal("16000.00"));
+
+        orderPricingService.recalculateOrderTotals(order);
+
+        assertThat(order.getSubtotalAmount()).isEqualByComparingTo("80000");
+        assertThat(order.getDiscountAmount()).isEqualByComparingTo("16000.00");
+        assertThat(order.getFinalAmount()).isEqualByComparingTo("64000.00");
     }
 
     private MenuItem menuItem(Long id, String name, String price, ItemOptionValue value) {

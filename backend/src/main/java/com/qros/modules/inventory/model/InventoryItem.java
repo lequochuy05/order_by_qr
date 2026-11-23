@@ -58,6 +58,10 @@ public class InventoryItem extends BaseEntity {
     @Builder.Default
     private BigDecimal lowStockThreshold = BigDecimal.ZERO;
 
+    @Column(name = "unit_cost", nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal unitCost = BigDecimal.ZERO;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;
