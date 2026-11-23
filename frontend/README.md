@@ -1,55 +1,60 @@
 # QROS Frontend
 
-Frontend QROS là React/Vite SPA cho hai nhóm người dùng:
+Frontend QROS là React/Vite SPA (hỗ trợ PWA và đóng gói Android bằng Capacitor 8) cho hai nhóm người dùng:
 
-- Khách hàng: quét QR, xem menu, chọn món/combo, áp voucher, gửi đơn và theo dõi đơn hiện tại của bàn.
-- Nhân sự nhà hàng: đăng nhập trang quản trị để vận hành dashboard, bàn, bếp, menu, combo, kho, voucher, nhân viên, lịch sử đơn, thống kê, profile và settings.
+- Khách hàng: quét QR, xem menu, chọn món/combo, áp voucher, trò chuyện với trợ lý AI Gemini, gửi đơn và theo dõi đơn hiện tại của bàn.
+- Nhân sự nhà hàng: đăng nhập trang quản trị để vận hành dashboard, bàn, đơn mang về, bếp KDS, menu, combo, kho, voucher, nhân viên, lịch sử đơn, thống kê, profile và settings.
 
-Ứng dụng dùng STOMP/SockJS để nhận cập nhật realtime từ backend.
+Ứng dụng dùng STOMP/SockJS để nhận cập nhật realtime từ backend, hỗ trợ song ngữ `VI`/`EN` và Dark Mode (Evondev Signature).
 
 ## Công nghệ
 
-| Nhóm     | Công nghệ                                                  |
-| -------- | ---------------------------------------------------------- |
-| Core     | React 19.2, React DOM 19.2, Vite 7.2                       |
-| Routing  | React Router DOM 7                                         |
-| UI       | Tailwind CSS 4, lucide-react, react-icons, react-hot-toast |
-| Data     | TanStack Query 5, Axios, Zustand                           |
-| Realtime | `@stomp/stompjs`, SockJS                                   |
-| Chart    | Recharts                                                   |
-| QR       | qrcode.react                                               |
-| AI local | TensorFlow.js, optional dish classifier model              |
-| Tooling  | ESLint 9, Vite manual chunks                               |
+| Nhóm | Công nghệ |
+| --- | --- |
+| Core | React 19.2, React DOM 19.2, Vite 7.2 |
+| Routing | React Router DOM 7 |
+| UI | Tailwind CSS 4, lucide-react, react-icons, react-hot-toast |
+| Data | TanStack Query 5, Axios, Zustand 5 |
+| Realtime | `@stomp/stompjs`, SockJS |
+| Chart | Recharts 3 |
+| QR | qrcode.react |
+| PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core` & `@capacitor/android` (`^8.4.0`) |
+| Testing | Node.js `node:test` (`npm test`, `npm run test:coverage`) |
+| Tooling | ESLint 9, Prettier, Vite manual chunks |
 
 ## Cấu trúc
 
 ```text
 src/
-├── app/                    # App shell, providers, router, global styles
+├── app/                      # App shell, providers, router, i18n, theme, global styles
 ├── pages/
-│   ├── admin/              # Admin route pages
-│   ├── auth/               # Login page
-│   └── customer/           # Customer ordering pages
+│   ├── admin/                # Admin route pages
+│   ├── auth/                 # Login, forgot-password, reset-password pages
+│   ├── customer/             # Customer menu & ordering pages
+│   ├── landing/              # Landing page hướng dẫn quét QR
+│   └── system/               # System pages (unauthorized, not-found, offline, error)
 ├── features/
-│   ├── ai-assistant/       # Gemini chat + optional local classifier
-│   ├── analytics/          # Revenue, top dishes, staff stats UI/API
-│   ├── auth/               # Auth API, context, protected route
+│   ├── ai-assistant/         # Trợ lý AI Gemini (khách hàng & nhân sự)
+│   ├── analytics/            # Revenue, top dishes, staff stats & forecast UI/API
+│   ├── auth/                 # Auth API, context, 2FA, protected route
 │   ├── category-management/
 │   ├── combo-management/
-│   ├── customer-ordering/
+│   ├── customer-menu/        # Menu khách, giỏ hàng (cartStore.js), tạo đơn, đơn hiện tại
 │   ├── dashboard-overview/
 │   ├── inventory-management/
+│   ├── kitchen-board/        # KDS Bếp realtime (Kanban & Batch Cooking)
 │   ├── menu-management/
 │   ├── order-management/
-│   ├── payment/
 │   ├── profile-management/
 │   ├── settings-management/
 │   ├── table-management/
+│   ├── takeaway-management/  # Quản lý đơn mang về (Takeaway)
 │   ├── user-management/
 │   └── voucher-management/
-├── entities/               # UI/model nhỏ theo domain
-├── shared/                 # API client, hooks, lib, stores, shared UI
-└── widgets/                # Admin layout, customer menu, kitchen board
+├── entities/                 # UI/model nhỏ theo domain
+├── shared/                   # API client, hooks, lib, stores, shared UI
+└── widgets/
+    └── admin-layout/         # Layout quản trị (sidebar, header, navigation)
 ```
 
 Alias trong `vite.config.js`:
@@ -69,10 +74,12 @@ Alias trong `vite.config.js`:
 
 Frontend dùng biến Vite:
 
-| Biến           | Mô tả                                                                  |
-| -------------- | ---------------------------------------------------------------------- |
+| Biến | Mô tả |
+| --- | --- |
 | `VITE_API_URL` | Origin backend, ví dụ `http://localhost:8080`; client tự nối `/api/v1` |
-| `VITE_WS_URL`  | SockJS endpoint, ví dụ `http://localhost:8080/ws`                      |
+| `VITE_WS_URL` | SockJS endpoint, ví dụ `http://localhost:8080/ws` |
+| `VITE_RESTAURANT_LAT` | Vĩ độ vị trí nhà hàng (phục vụ kiểm tra khoảng cách/định vị khi cần) |
+| `VITE_RESTAURANT_LON` | Kinh độ vị trí nhà hàng |
 
 Local development hiện dùng:
 
@@ -113,53 +120,64 @@ http://localhost:8080
 
 Trang thường dùng:
 
-| URL                        | Mục đích                |
-| -------------------------- | ----------------------- |
-| `/menu?tableCode=<ma-ban>` | Giao diện khách hàng    |
-| `/login`                   | Đăng nhập quản trị      |
-| `/admin/dashboard`         | Dashboard               |
-| `/admin/tables`            | Sơ đồ bàn và thanh toán |
-| `/admin/kitchen`           | Bảng bếp                |
-| `/admin/inventory`         | Quản lý kho             |
-
-Route `/` hiển thị landing page hướng dẫn khách quét mã QR tại bàn.
+| URL | Mục đích |
+| --- | --- |
+| `/` | Landing page hướng dẫn khách quét mã QR tại bàn |
+| `/menu?tableCode=<ma-ban>` hoặc `/:tableCode/menu` | Giao diện khách hàng |
+| `/login` | Đăng nhập quản trị |
+| `/admin/dashboard` | Dashboard |
+| `/admin/tables` | Sơ đồ bàn và thanh toán |
+| `/admin/kitchen` | Bảng bếp KDS |
+| `/admin/inventory` | Quản lý kho |
 
 ## Scripts
 
-| Lệnh              | Mô tả                        |
-| ----------------- | ---------------------------- |
-| `npm run dev`     | Chạy Vite dev server         |
-| `npm run build`   | Build production vào `dist/` |
-| `npm run preview` | Preview bản build            |
-| `npm run lint`    | Chạy ESLint                  |
-
-Hiện `package.json` chưa có script test tự động.
+| Lệnh | Mô tả |
+| --- | --- |
+| `npm run dev` | Chạy Vite dev server |
+| `npm run build` | Build production vào `dist/` |
+| `npm run preview` | Preview bản build |
+| `npm run lint` | Chạy ESLint |
+| `npm test` | Chạy unit test bằng Node.js `node:test` (`tests/run-tests.js`) |
+| `npm run test:coverage` | Chạy unit test kèm báo cáo coverage (`--experimental-test-coverage`) |
+| `npm run cap:sync` | Đồng bộ web build sang project Capacitor Android (`cap sync android`) |
+| `npm run cap:open` | Mở project Android trong Android Studio (`cap open android`) |
+| `npm run build:android` | Build web production rồi đồng bộ sang Android (`npm run build && cap sync android`) |
+| `npm run format` | Định dạng mã nguồn bằng Prettier (`src/**/*.{js,jsx,css,json}`) |
+| `npm run format:check` | Kiểm tra định dạng Prettier không ghi đè file |
 
 ## Routing và phân quyền (RBAC)
 
 Routes chính được định nghĩa tại `src/app/router.jsx`:
 
-| Route                          | Vai trò được phép (Allowed Roles)          | Ghi chú |
-| ------------------------------ | ------------------------------------------ | ------- |
-| `/:tableCode/menu`             | Khách hàng (Quét mã QR bàn)                | Giao diện đặt món chính |
-| `/menu`                        | Mọi người (Public)                         | Xem thực đơn công khai |
-| `/login`                       | Mọi người (Public)                         | Đăng nhập (Hỗ trợ 2FA Admin) |
-| `/admin/profile`               | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`, `CHEF` | Hồ sơ cá nhân, đổi mật khẩu |
-| `/admin/settings`              | `ADMIN` (Toàn quyền), các vai trò khác (Tùy chọn) | Cài đặt hệ thống / cá nhân |
-| `/admin/dashboard`             | `ADMIN`, `MANAGER`                         | Tổng quan kinh doanh & KPI |
-| `/admin/categories`            | `ADMIN`, `MANAGER`                         | Quản trị danh mục |
-| `/admin/menu`                  | `ADMIN`, `MANAGER`                         | Quản trị món ăn & topping |
-| `/admin/combo`                 | `ADMIN`, `MANAGER`                         | Quản trị gói combo |
-| `/admin/inventory`             | `ADMIN`, `MANAGER`, `CHEF`                 | Quản lý kho & nguyên liệu |
-| `/admin/voucher`               | `ADMIN`, `MANAGER`                         | Quản trị mã giảm giá |
-| `/admin/staffs`                | `ADMIN`, `MANAGER`                         | Quản lý tài khoản nhân sự |
-| `/admin/statistics/revenue`    | **Chỉ `ADMIN`**                            | Phân tích doanh thu chuyên sâu |
-| `/admin/statistics/top-dishes` | `ADMIN`, `MANAGER`                         | Thống kê món bán chạy |
-| `/admin/statistics/staff`      | `ADMIN`, `MANAGER`                         | Thống kê hiệu suất nhân viên |
-| `/admin/tables`                | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`     | Sơ đồ bàn, gọi món, gộp bàn |
-| `/admin/takeaway`              | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`     | Quản lý đơn mang về |
-| `/admin/history`               | `ADMIN`, `MANAGER`, `CASHIER`              | Lịch sử & tra soát hóa đơn |
-| `/admin/kitchen`               | `ADMIN`, `MANAGER`, `CHEF`                 | KDS Bếp realtime (Kanban/Gom món) |
+| Route | Vai trò được phép (Allowed Roles) | Ghi chú |
+| --- | --- | --- |
+| `/` | Mọi người (Public) | Landing page hướng dẫn quét QR |
+| `/:tableCode/menu` | Khách hàng (Quét mã QR bàn) | Giao diện đặt món chính |
+| `/menu` | Mọi người (Public) | Xem thực đơn công khai |
+| `/login` | Mọi người (Public) | Đăng nhập (hỗ trợ 2FA Admin) |
+| `/forgot-password` | Mọi người (Public) | Quên mật khẩu (gửi yêu cầu đặt lại) |
+| `/reset-password` | Mọi người (Public) | Đặt lại mật khẩu từ link/token |
+| `/unauthorized` | Mọi người (Public) | Trang thông báo không đủ quyền truy cập |
+| `/not-found` | Mọi người (Public) | Trang 404 không tìm thấy đường dẫn |
+| `/offline` | Mọi người (Public) | Trang thông báo mất kết nối mạng (PWA) |
+| `/error/:statusCode` | Mọi người (Public) | Trang hiển thị lỗi HTTP theo mã trạng thái |
+| `/admin/profile` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`, `CHEF` | Hồ sơ cá nhân, đổi mật khẩu |
+| `/admin/settings` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF`, `CHEF` | Các tab cấu hình hệ thống chỉ mở cho `ADMIN`; tùy chọn cá nhân (ngôn ngữ, giao diện) mở cho cả 5 vai trò |
+| `/admin/dashboard` | `ADMIN`, `MANAGER` | Tổng quan kinh doanh & KPI |
+| `/admin/categories` | `ADMIN`, `MANAGER` | Quản trị danh mục |
+| `/admin/menu` | `ADMIN`, `MANAGER` | Quản trị món ăn & topping |
+| `/admin/combo` | `ADMIN`, `MANAGER` | Quản trị gói combo |
+| `/admin/inventory` | `ADMIN`, `MANAGER`, `CHEF` | Quản lý kho & nguyên liệu |
+| `/admin/voucher` | `ADMIN`, `MANAGER` | Quản trị mã giảm giá |
+| `/admin/staffs` | `ADMIN`, `MANAGER` | Quản lý tài khoản nhân sự |
+| `/admin/statistics/revenue` | **Chỉ `ADMIN`** | Phân tích doanh thu chuyên sâu |
+| `/admin/statistics/top-dishes` | `ADMIN`, `MANAGER` | Thống kê món bán chạy |
+| `/admin/statistics/staff` | `ADMIN`, `MANAGER` | Thống kê hiệu suất nhân viên |
+| `/admin/tables` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Sơ đồ bàn, gọi món, gộp bàn |
+| `/admin/takeaway` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Quản lý đơn mang về |
+| `/admin/history` | `ADMIN`, `MANAGER`, `CASHIER` | Lịch sử & tra soát hóa đơn |
+| `/admin/kitchen` | `ADMIN`, `MANAGER`, `CHEF` | KDS Bếp realtime (Kanban/Gom món) |
 
 `ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển hướng tới trang `/unauthorized`.
 
@@ -174,7 +192,7 @@ src/shared/api/httpClient.js
 Đặc điểm:
 
 - Dùng Axios với `withCredentials: true`.
-- Tự thêm prefix `/api` cho URL nội bộ chưa có `/api`.
+- Nối `API_PREFIX = '/api/v1'` vào `baseURL` (`VITE_API_URL` hoặc relative `/api/v1`).
 - Lưu access token trong memory qua `setAccessToken`.
 - Gửi `Authorization: Bearer <token>` khi có access token.
 - Tự unwrap backend `ApiResponse<T>`: trả về `data` khi `success=true`.
@@ -194,76 +212,109 @@ Ghi chú:
 
 ## Realtime
 
-WebSocket service:
+WebSocket service và hook:
 
 ```text
 src/shared/lib/websocket.js
 src/shared/hooks/useWebSocket.js
 ```
 
-Cấu hình:
+Ứng dụng tách biệt hai kết nối WebSocket theo ngữ cảnh:
+
+- `publicWsService`: dùng cho trang khách hàng (không gửi JWT), chỉ subscribe các topic công khai.
+- `adminWsService`: dùng cho khu vực quản trị/vận hành, đính kèm header `Authorization: Bearer <access-token>` khi kết nối để subscribe các protected topics.
+
+Cấu hình chung:
 
 - SockJS endpoint: `VITE_WS_URL` hoặc fallback `/ws`.
 - Production ưu tiên `VITE_WS_URL` trực tiếp tới backend; fallback `/ws` chỉ phù hợp khi reverse proxy hỗ trợ WebSocket upgrade rõ ràng.
 - STOMP reconnect delay: 5 giây.
 - Heartbeat incoming/outgoing: 10 giây.
-- Header `Authorization` được gửi khi có access token.
 
 Topics frontend đang dùng:
 
-| Topic               | Nơi dùng                             |
-| ------------------- | ------------------------------------ |
-| `/topic/tables`     | Sơ đồ bàn, payment modal, menu khách |
-| `/topic/kitchen`    | Bảng bếp                             |
-| `/topic/menu`       | Quản lý menu, menu khách             |
-| `/topic/categories` | Quản lý danh mục, menu khách         |
-| `/topic/combos`     | Quản lý combo, menu khách            |
-| `/topic/vouchers`   | Quản lý voucher                      |
-| `/topic/users`      | Quản lý nhân viên                    |
-| `/topic/settings`   | Settings và menu khách               |
-| `/topic/orders`     | Menu khách/current order updates     |
+| Topic | Service | Nơi dùng |
+| --- | --- | --- |
+| `/topic/tables` | `publicWsService` / `adminWsService` | Sơ đồ bàn, payment modal, cập nhật bàn & đơn cho menu khách |
+| `/topic/menu` | `publicWsService` / `adminWsService` | Quản lý menu, menu khách |
+| `/topic/categories` | `publicWsService` / `adminWsService` | Quản lý danh mục, menu khách |
+| `/topic/combos` | `publicWsService` / `adminWsService` | Quản lý combo, menu khách |
+| `/topic/settings` | `publicWsService` / `adminWsService` | Settings và menu khách |
+| `/topic/orders` | `adminWsService` (Admin-only) | Quản lý đơn hàng & lịch sử/vận hành nội bộ (menu khách dùng `/topic/tables`) |
+| `/topic/kitchen` | `adminWsService` | Bảng bếp KDS |
+| `/topic/vouchers` | `adminWsService` | Quản lý voucher |
+| `/topic/promotions` | `adminWsService` | Quản lý khuyến mãi |
+| `/topic/inventory` | `adminWsService` | Quản lý kho nguyên liệu |
+| `/topic/users` | `adminWsService` | Quản lý nhân viên |
 
 ## State management
 
 Zustand đang được dùng cho:
 
-- `features/customer-ordering/model/cartStore.js`: giỏ hàng khách.
-- `shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
+- `src/features/customer-menu/model/cartStore.js`: giỏ hàng khách.
+- `src/shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
 
 Auth user state dùng React Context thay vì Zustand.
 
 ## Các feature chức năng
 
-| Module                 | Mô tả                                                    |
-| ---------------------- | -------------------------------------------------------- |
-| `customer-ordering`    | Menu khách, cart, tạo đơn, đơn hiện tại                  |
-| `ai-assistant`         | Chat Gemini qua backend và classifier local tùy chọn     |
-| `auth`                 | Login, refresh session, protected route                  |
-| `dashboard-overview`   | Tổng quan vận hành cho dashboard                         |
-| `table-management`     | Sơ đồ bàn, modal thanh toán, in hóa đơn, QR              |
-| `kitchen-board`        | Board bếp realtime                                       |
-| `menu-management`      | CRUD món và upload ảnh                                   |
-| `category-management`  | CRUD/search danh mục và upload ảnh                       |
-| `combo-management`     | CRUD combo                                               |
+| Module | Mô tả |
+| --- | --- |
+| `customer-menu` | Menu khách, cart (`cartStore.js`), tạo đơn, theo dõi đơn hiện tại |
+| `ai-assistant` | Trợ lý AI Gemini qua backend cho khách hàng và nhân sự |
+| `auth` | Login, Admin 2FA OTP, refresh session, quên/đặt lại mật khẩu, protected route |
+| `dashboard-overview` | Tổng quan vận hành cho dashboard |
+| `table-management` | Sơ đồ bàn, gộp bàn, modal thanh toán, in hóa đơn, QR |
+| `takeaway-management` | Quản lý đơn mang về (Takeaway) |
+| `kitchen-board` | Bảng bếp KDS realtime (Kanban & Batch Cooking) |
+| `menu-management` | CRUD món và upload ảnh |
+| `category-management` | CRUD/search danh mục và upload ảnh |
+| `combo-management` | CRUD combo |
 | `inventory-management` | Quản lý nguyên liệu, tồn kho, công thức và nhập/xuất kho |
-| `voucher-management`   | CRUD voucher                                             |
-| `user-management`      | CRUD nhân viên và avatar                                 |
-| `profile-management`   | Hồ sơ cá nhân, đổi mật khẩu, avatar                      |
-| `settings-management`  | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI     |
-| `analytics`            | Doanh thu, top món, hiệu suất nhân viên, forecast        |
-| `order-management`     | Lịch sử đơn và chi tiết đơn                              |
-| `payment`              | Gọi API thanh toán                                       |
-| `notifications`        | Âm báo và browser notification                           |
+| `voucher-management` | CRUD voucher |
+| `user-management` | CRUD nhân viên và avatar |
+| `profile-management` | Hồ sơ cá nhân, đổi mật khẩu, avatar |
+| `settings-management` | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI và tùy chọn cá nhân |
+| `analytics` | Doanh thu, top món, hiệu suất nhân viên, forecast |
+| `order-management` | Lịch sử đơn và chi tiết đơn |
+
+## Tính năng trải nghiệm & Đóng gói
+
+### Đa ngôn ngữ — Bilingual i18n (`VI` / `EN`)
+
+- Hỗ trợ chuyển đổi tức thì giữa Tiếng Việt (`VI`) và Tiếng Anh (`EN`) trên cả giao diện khách hàng và khu vực quản trị.
+- Ngôn ngữ người dùng chọn được lưu bền vững trên trình duyệt và áp dụng thống nhất cho nhãn điều hướng, form, thông báo và màn hình hệ thống.
+
+### Dark Mode (Evondev Signature)
+
+- Hỗ trợ chuyển đổi Light Mode / Dark Mode theo hệ thống thiết kế **Evondev Signature** (nền Deep Midnight `#0B0F17`, accent Indigo `#6366F1` & Royal Violet `#8B5CF6`, độ tương phản đạt chuẩn WCAG AA).
+- Tối ưu hiển thị cho môi trường thiếu sáng tại quầy thu ngân và màn hình Bếp KDS.
+
+### Progressive Web App (PWA)
+
+- Tích hợp `vite-plugin-pwa` để đăng ký Service Worker, manifest và hỗ trợ cài đặt trực tiếp lên màn hình chính (Home Screen) trên điện thoại/tablet.
+- Có sẵn trang `/offline` khi thiết bị mất kết nối mạng.
+
+### Đóng gói Android (Capacitor 8)
+
+- Sử dụng `@capacitor/core` và `@capacitor/android` (`^8.4.0`) để đóng gói bản web SPA thành ứng dụng Android gốc cho thiết bị POS/Tablet/Bếp.
+- Quy trình build nhanh:
+
+```bash
+npm run build:android
+npm run cap:open
+```
 
 ## Build và preview
 
 ```bash
 npm run lint
+npm test
 npm run build
 npm run preview
 ```
 
-Vite đang tách chunk vendor cho React, TensorFlow, icon, QR và data libs để giảm cảnh báo chunk lớn.
+Vite đang tách chunk vendor cho React, icon, chart, QR và data libs để tối ưu kích thước bundle và giảm cảnh báo chunk lớn.
 
 ## Docker
 
@@ -280,7 +331,7 @@ Runtime dùng Nginx:
 
 - Serve SPA từ `/usr/share/nginx/html`.
 - Rewrite route về `index.html`.
-- Proxy `/api` và `/ws` sang service `backend:8080`.
+- Proxy `/api/v1` và `/ws` sang service `backend:8080`.
 - Bật cache static asset và gzip.
 
 Nếu build từ root dự án:
@@ -294,6 +345,6 @@ docker build -t order-by-qr-frontend:latest \
 
 ## Deploy gợi ý
 
-- Vercel: `vercel.json` rewrite mọi route về `/index.html`.
+- Vercel: `vercel.json` cấu hình rewrite `/api/v1/(.*)` và `/ws(.*)` sang backend, SPA fallback về `/index.html`, cùng các header bảo mật và CSP.
 - Nginx container: dùng `frontend/nginx.conf`.
 - Khi deploy khác domain backend, cập nhật `VITE_API_URL`, `VITE_WS_URL` và backend `APP_CORS_ALLOWED_ORIGINS`.

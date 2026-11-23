@@ -47,5 +47,5 @@
 1. **Hiển thị Bảng Lịch sử đơn hàng trên Mobile:**
    - Trên màn hình hẹp 390px, bảng lịch sử đơn hàng có nhiều cột (Mã đơn, Bàn, Tổng tiền, Giảm giá, Thời gian, Trạng thái, Thao tác). Người dùng cần vuốt ngang để xem hết các cột.
    - *Đề xuất:* Trên mobile, nên chuyển bảng thành danh sách dạng Card (mỗi thẻ là 1 đơn hàng tóm tắt), bấm vào thẻ để mở Modal xem chi tiết.
-2. **Kích thước ảnh đại diện món ăn:**
-   - Một số ảnh ngoài Unsplash gặp lỗi bảo mật ORB khiến hiển thị icon ảnh vỡ trên một số thiết bị. Hệ thống đã có fallback icon thay thế, tuy nhiên nên cập nhật ảnh lưu trữ nội bộ hoặc Cloudinary để đạt độ thẩm mỹ cao nhất.
+2. **Kích thước ảnh đại diện món ăn (`BUG-02`):**
+   - Một số bản ghi legacy trên cơ sở dữ liệu bên ngoài (Neon DB) vẫn chứa URL ảnh từ Unsplash gặp lỗi bảo mật ORB khiến hiển thị icon ảnh vỡ trên một số thiết bị *(đã xác minh còn 0 URL `unsplash.com` trong mã nguồn `backend/src/` và Flyway migrations — xem `reports/BUG_REPORT.md`)*. Hệ thống đã có fallback icon thay thế; cần chạy script migrate các bản ghi DB cũ sang Cloudinary để đạt độ thẩm mỹ cao nhất.
