@@ -1,6 +1,8 @@
 package com.qros.modules.analytics.repository;
 
 import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.repository.projection.DayOfWeekTrafficProjection;
+import com.qros.modules.analytics.repository.projection.HourlyTrafficProjection;
 import com.qros.modules.analytics.repository.projection.OrderDetailProjection;
 import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
 import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
@@ -195,4 +197,36 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
             @Param("toExclusive") LocalDate toExclusive,
             @Param("orderId") Long orderId,
             @Param("tableNumber") String tableNumber);
+
+    @Query(value = """
+      SELECT CAST(EXTRACT(HOUR FROM fact.created_at) AS INTEGER) AS hourOfDay,
+             CAST(COUNT(fact.order_id) AS BIGINT) AS orderCount,
+             COALESCE(SUM(fact.final_amount), 0) AS revenue
+      FROM order_reporting_fact fact
+      WHERE fact.status = 'COMPLETED'
+        AND fact.payment_status = 'PAID'
+        AND fact.business_date >= :from
+        AND fact.business_date < :toExclusive
+        AND fact.created_at IS NOT NULL
+      GROUP BY CAST(EXTRACT(HOUR FROM fact.created_at) AS INTEGER)
+      ORDER BY hourOfDay ASC
+      """, nativeQuery = true)
+    List<HourlyTrafficProjection> hourlyOrderTraffic(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
+
+    @Query(value = """
+      SELECT CAST(EXTRACT(ISODOW FROM fact.created_at) AS INTEGER) AS isoDayOfWeek,
+             CAST(COUNT(fact.order_id) AS BIGINT) AS orderCount,
+             COALESCE(SUM(fact.final_amount), 0) AS revenue
+      FROM order_reporting_fact fact
+      WHERE fact.status = 'COMPLETED'
+        AND fact.payment_status = 'PAID'
+        AND fact.business_date >= :from
+        AND fact.business_date < :toExclusive
+        AND fact.created_at IS NOT NULL
+      GROUP BY CAST(EXTRACT(ISODOW FROM fact.created_at) AS INTEGER)
+      ORDER BY isoDayOfWeek ASC
+      """, nativeQuery = true)
+    List<DayOfWeekTrafficProjection> dayOfWeekOrderTraffic(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
 }

@@ -35,6 +35,18 @@ public class AiQuotaService {
         requireAllowed("ai:menu-description:user:daily", subject, properties.getMenuUserDaily());
     }
 
+    public void checkExecutiveInsights(@NonNull String username) {
+        String subject = normalize(username);
+        requireAllowed("ai:insights:user", subject, properties.getInsightsUser());
+        requireAllowed("ai:insights:user:daily", subject, properties.getInsightsUserDaily());
+    }
+
+    public void checkOperationsAi(@NonNull String username) {
+        String subject = normalize(username);
+        requireAllowed("ai:operations:user", subject, properties.getOperationsUser());
+        requireAllowed("ai:operations:user:daily", subject, properties.getOperationsUserDaily());
+    }
+
     private void requireAllowed(String scope, String subject, Policy policy) {
         rateLimiter.requireAllowed(scope, subject, policy.getMaxRequests(), policy.getWindow(), false);
     }

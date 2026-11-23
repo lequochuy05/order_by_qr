@@ -39,4 +39,30 @@ class AiQuotaServiceTest {
         verify(rateLimiter).requireAllowed("ai:staff:user", "chef@example.com", 20, Duration.ofMinutes(1), false);
         verify(rateLimiter).requireAllowed("ai:staff:user:daily", "chef@example.com", 300, Duration.ofDays(1), false);
     }
+
+    @Test
+    void executiveInsightsQuotaChecksMinuteAndDailyUserQuota() {
+        RedisRateLimiter rateLimiter = mock(RedisRateLimiter.class);
+        AiQuotaService service = new AiQuotaService(
+                rateLimiter, new ClientAddressResolver(new AppProperties()), new AiQuotaProperties());
+
+        service.checkExecutiveInsights(" Manager@Example.COM ");
+
+        verify(rateLimiter).requireAllowed("ai:insights:user", "manager@example.com", 10, Duration.ofMinutes(1), false);
+        verify(rateLimiter)
+                .requireAllowed("ai:insights:user:daily", "manager@example.com", 80, Duration.ofDays(1), false);
+    }
+
+    @Test
+    void operationsAiQuotaChecksMinuteAndDailyUserQuota() {
+        RedisRateLimiter rateLimiter = mock(RedisRateLimiter.class);
+        AiQuotaService service = new AiQuotaService(
+                rateLimiter, new ClientAddressResolver(new AppProperties()), new AiQuotaProperties());
+
+        service.checkOperationsAi(" Chef@Example.COM ");
+
+        verify(rateLimiter).requireAllowed("ai:operations:user", "chef@example.com", 15, Duration.ofMinutes(1), false);
+        verify(rateLimiter)
+                .requireAllowed("ai:operations:user:daily", "chef@example.com", 150, Duration.ofDays(1), false);
+    }
 }

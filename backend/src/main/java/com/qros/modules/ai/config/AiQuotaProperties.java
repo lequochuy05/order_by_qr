@@ -28,6 +28,14 @@ public class AiQuotaProperties {
 
     @Valid private Policy menuUserDaily = new Policy(100, Duration.ofDays(1));
 
+    @Valid private Policy insightsUser = new Policy(10, Duration.ofMinutes(1));
+
+    @Valid private Policy insightsUserDaily = new Policy(80, Duration.ofDays(1));
+
+    @Valid private Policy operationsUser = new Policy(15, Duration.ofMinutes(1));
+
+    @Valid private Policy operationsUserDaily = new Policy(150, Duration.ofDays(1));
+
     @Getter
     @Setter
     @NoArgsConstructor

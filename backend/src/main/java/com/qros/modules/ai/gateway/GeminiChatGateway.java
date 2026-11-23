@@ -5,6 +5,7 @@ import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,55 @@ public class GeminiChatGateway implements AiChatGateway {
 
     @Override
     public String chat(AiChatRequest request, String systemPrompt, String menuContext) {
+        String precheck = checkAvailabilityNotice();
+        if (precheck != null) {
+            return precheck;
+        }
+
+        Map<String, Object> payload = buildPayload(request, systemPrompt);
+        return executeGeminiRequest(payload);
+    }
+
+    @Override
+    public String chatWithImage(String userMessage, String systemPrompt, byte[] imageBytes, String mimeType) {
+        String precheck = checkAvailabilityNotice();
+        if (precheck != null) {
+            return precheck;
+        }
+
+        if (imageBytes == null || imageBytes.length == 0 || mimeType == null || mimeType.isBlank()) {
+            return chat(new AiChatRequest(userMessage, List.of()), systemPrompt, "");
+        }
+
+        String encodedImage = Base64.getEncoder().encodeToString(imageBytes);
+        String promptText = (userMessage == null || userMessage.isBlank())
+                ? "Analyze the attached supplier invoice image."
+                : userMessage;
+
+        Map<String, Object> payload = Map.of(
+                "system_instruction",
+                Map.of("parts", List.of(Map.of("text", systemPrompt != null ? systemPrompt : ""))),
+                "contents",
+                List.of(Map.of(
+                        "role",
+                        "user",
+                        "parts",
+                        List.of(
+                                Map.of("text", promptText),
+                                Map.of("inline_data", Map.of("mime_type", mimeType, "data", encodedImage))))),
+                "generationConfig",
+                Map.of(
+                        "temperature",
+                        Math.min(properties.temperature(), 0.2),
+                        "topP",
+                        properties.topP(),
+                        "maxOutputTokens",
+                        Math.max(properties.maxOutputTokens(), 2048)));
+
+        return executeGeminiRequest(payload);
+    }
+
+    private String checkAvailabilityNotice() {
         if (!properties.enabled()) {
             return "Tính năng trợ lý AI hiện chưa được bật.";
         }
@@ -61,9 +111,10 @@ public class GeminiChatGateway implements AiChatGateway {
             log.warn("Gemini API key is not configured");
             return "Tính năng trợ lý AI chưa được cấu hình API key.";
         }
+        return null;
+    }
 
-        Map<String, Object> payload = buildPayload(request, systemPrompt);
-
+    private String executeGeminiRequest(Map<String, Object> payload) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("x-goog-api-key", properties.apiKey());
