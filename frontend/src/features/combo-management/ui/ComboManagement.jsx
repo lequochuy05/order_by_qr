@@ -4,11 +4,13 @@ import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { comboService, useComboPageQuery } from '@entities/combo';
-import { useMenuAllQuery } from '@entities/menu-item';
+import { menuItemService, useMenuAllQuery } from '@entities/menu-item';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
+import { comboProposalToDraft } from '@shared/lib/aiMerchandisingDrafts.js';
+import AiComboSuggestionsPanel from './AiComboSuggestionsPanel.jsx';
 import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
 import ConfirmToggleModal from './ConfirmToggleModal';
@@ -67,6 +69,7 @@ const ComboManager = () => {
   const { data: menuItems = [] } = useMenuAllQuery();
 
   const invalidateCombos = () => {
+    menuItemService.clearCache?.();
     queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
   };
@@ -188,6 +191,12 @@ const ComboManager = () => {
     setIsModalOpen(true);
   };
 
+  const handleUseComboDraft = (proposal, index) => {
+    setEditingCombo(comboProposalToDraft(proposal, index));
+    setErrors({});
+    setIsModalOpen(true);
+  };
+
   // K-fix: handler for quick available toggle directly from ComboCard.
   const handleToggleAvailable = async (id, version) => {
     try {
@@ -215,6 +224,8 @@ const ComboManager = () => {
           { id: 'INACTIVE', name: 'Tạm ngưng' },
         ]}
       />
+
+      <AiComboSuggestionsPanel onUseDraft={handleUseComboDraft} />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
@@ -261,7 +272,7 @@ const ComboManager = () => {
       />
 
       <ComboModal
-        key={isModalOpen ? editingCombo?.id || 'new' : 'closed'}
+        key={isModalOpen ? editingCombo?.id || editingCombo?._draftKey || 'new' : 'closed'}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         menuItems={menuItems}

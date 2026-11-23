@@ -2,6 +2,8 @@ package com.qros.modules.order.service;
 
 import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.model.OrderItem;
+import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
@@ -10,6 +12,7 @@ import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.settings.service.SystemSettingsService;
+import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
@@ -19,6 +22,7 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class OrderSettlementService {
+
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
+            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
 
     private final OrderRepository orderRepository;
     private final OrderStateFactory orderStateFactory;
@@ -59,13 +66,31 @@ public class OrderSettlementService {
         Order order = loadForPayment(orderId);
         validatePayable(order, confirmUnfinishedItems);
 
+        BigDecimal subtotal = currentSubtotalAmount(order);
+        BigDecimal promotionDiscount = safe(orderPricingService.calculatePromotionDiscount(subtotal));
+
         if (voucherCode != null && !voucherCode.isBlank()) {
-            VoucherPaymentResult voucherResult =
-                    voucherCheckoutService.resolveForPayment(voucherCode, currentSubtotalAmount(order));
+            VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, subtotal);
+            BigDecimal totalDiscount = promotionDiscount
+                    .add(safe(voucherResult.appliedDiscountAmount()))
+                    .min(subtotal);
 
             order.setVoucherCode(voucherResult.voucherCode());
-            orderPricingService.setOrderMoney(
-                    order, currentSubtotalAmount(order), voucherResult.appliedDiscountAmount());
+            orderPricingService.setOrderMoney(order, subtotal, totalDiscount);
+
+            order = orderRepository.save(order);
+            orderCacheInvalidationService.evictAfterOrderMutation(order);
+            validatePayable(order, confirmUnfinishedItems);
+        } else if (order.getVoucherCode() != null && !order.getVoucherCode().isBlank()) {
+            order.setVoucherCode(null);
+            orderPricingService.setOrderMoney(order, subtotal, promotionDiscount);
+
+            order = orderRepository.save(order);
+            orderCacheInvalidationService.evictAfterOrderMutation(order);
+            validatePayable(order, confirmUnfinishedItems);
+        } else if (promotionDiscount.compareTo(currentDiscountAmount(order)) > 0) {
+            BigDecimal totalDiscount = promotionDiscount.min(subtotal);
+            orderPricingService.setOrderMoney(order, subtotal, totalDiscount);
 
             order = orderRepository.save(order);
             orderCacheInvalidationService.evictAfterOrderMutation(order);
@@ -73,6 +98,60 @@ public class OrderSettlementService {
         }
 
         return order;
+    }
+
+    @Transactional
+    public Order resolveSessionOrderForSelfCheckout(@NonNull String tableCode, @NonNull String sessionToken) {
+        TableSession session = tableSessionService.requireOpenSessionForOrdering(tableCode, sessionToken);
+
+        Order activeOrder = orderRepository
+                .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(session.getId(), ACTIVE_ORDER_STATUSES)
+                .orElseThrow(
+                        () -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "No active order found for this table"));
+
+        Order order = loadForPayment(activeOrder.getId());
+        boolean hasBillableItems = order.getOrderItems().stream().anyMatch(OrderItem::isBillable);
+        if (!hasBillableItems) {
+            throw new BusinessException(ErrorCode.ORDER_NOT_FOUND, "No billable items found for this order");
+        }
+
+        boolean allBillableFinished = order.getOrderItems().stream()
+                .filter(OrderItem::isBillable)
+                .allMatch(item -> item.getStatus() == OrderItemStatus.FINISHED);
+
+        if (!allBillableFinished) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
+                    "Cannot settle order: kitchen still has items being prepared");
+        }
+
+        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            OrderStatus fromStatus = order.getStatus();
+            orderStateFactory.validateTransition(fromStatus, OrderStatus.AWAITING_PAYMENT);
+            orderStateFactory.getState(OrderStatus.AWAITING_PAYMENT).handleRequest(order);
+            orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "self-checkout-initiated");
+            order = orderRepository.save(order);
+            orderCacheInvalidationService.evictAfterOrderMutation(order);
+        }
+
+        orderTableSyncService.recalcTableStatus(order);
+        return order;
+    }
+
+    @Transactional(readOnly = true)
+    public Order requireActiveSessionOrder(@NonNull String tableCode, @NonNull String sessionToken) {
+        TableSession session = tableSessionService.requireOpenSessionForRead(tableCode, sessionToken);
+        return orderRepository
+                .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(session.getId(), ACTIVE_ORDER_STATUSES)
+                .orElseThrow(
+                        () -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "No active order found for this table"));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean belongsToTableCode(Order order, @NonNull String tableCode) {
+        return order != null
+                && order.getTable() != null
+                && tableCode.equalsIgnoreCase(order.getTable().getTableCode());
     }
 
     @Transactional
@@ -164,6 +243,14 @@ public class OrderSettlementService {
 
     private BigDecimal currentSubtotalAmount(Order order) {
         return order.getSubtotalAmount() != null ? order.getSubtotalAmount() : BigDecimal.ZERO;
+    }
+
+    private BigDecimal currentDiscountAmount(Order order) {
+        return order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+    }
+
+    private BigDecimal safe(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     private void transitionToCompleted(Order order, OrderStatus fromStatus) {

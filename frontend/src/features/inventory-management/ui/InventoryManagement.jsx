@@ -6,10 +6,12 @@ import useInventoryManagement from '../model/useInventoryManagement.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import InventoryGrid from './components/InventoryGrid.jsx';
+import AiRestockPanel from './components/AiRestockPanel.jsx';
 import InventorySummaryCards from './components/InventorySummaryCards.jsx';
 import InventoryToolbar from './components/InventoryToolbar.jsx';
 import MovementList from './components/MovementList.jsx';
 import InventoryModal from './modals/InventoryModal.jsx';
+import InvoiceOcrModal from './modals/InvoiceOcrModal.jsx';
 import RecipeModal from './modals/RecipeModal.jsx';
 import StockModal from './modals/StockModal.jsx';
 
@@ -43,6 +45,8 @@ const InventoryManagement = () => {
 
       <InventorySummaryCards summary={inventory.summary} />
 
+      <AiRestockPanel onQuickRestock={inventory.handleQuickRestock} />
+
       <InventoryToolbar
         activeTab={inventory.activeTab}
         onTabChange={inventory.setActiveTab}
@@ -51,6 +55,7 @@ const InventoryManagement = () => {
         onMenuItemFocus={() => inventory.ensureMenuItems()}
         menuItems={inventory.menuItems}
         menuItemsLoading={inventory.menuItemsLoading}
+        onOpenInvoiceOcr={inventory.openInvoiceOcr}
         onOpenRecipe={inventory.openRecipe}
         onRefresh={() => inventory.refreshInventoryView(true)}
       />
@@ -120,6 +125,17 @@ const InventoryManagement = () => {
           onSubmit={inventory.saveRecipe}
           isSubmitting={inventory.isRecipeSubmitting}
           loading={inventory.recipeLoading}
+          isManager={isManager}
+        />
+      )}
+
+      {inventory.invoiceOcrOpen && (
+        <InvoiceOcrModal
+          inventoryItems={inventory.activeInventoryItems}
+          inventoryItemsLoading={inventory.inventoryItemsLoading}
+          isManager={isManager}
+          onClose={inventory.closeInvoiceOcr}
+          onSuccess={inventory.handleInventorySaved}
         />
       )}
     </div>

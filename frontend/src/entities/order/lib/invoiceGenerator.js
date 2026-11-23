@@ -199,7 +199,11 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
           discountAmount > 0
             ? `
         <tr>
-          <td style="padding: 3px 0;">Giảm giá (Voucher):</td>
+          <td style="padding: 3px 0;">${
+            order.voucherCode
+              ? `Giảm giá (KM / ${escapeHtml(order.voucherCode)}):`
+              : 'Khuyến mãi tự động:'
+          }</td>
           <td style="text-align: right;">-${escapeHtml(fmtVND(discountAmount))}</td>
         </tr>
         `

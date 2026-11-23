@@ -215,6 +215,11 @@ public class SystemSettingsService {
                 "allowSettlementWithUnfinishedItems",
                 settings.getAllowSettlementWithUnfinishedItems(),
                 request.allowSettlementWithUnfinishedItems());
+        addIfChanged(
+                changedFields,
+                "customerSelfCheckoutEnabled",
+                settings.getCustomerSelfCheckoutEnabled(),
+                request.customerSelfCheckoutEnabled());
         return List.copyOf(changedFields);
     }
 

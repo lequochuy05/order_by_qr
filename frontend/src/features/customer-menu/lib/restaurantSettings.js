@@ -19,6 +19,9 @@ const DEFAULT_RESTAURANT_SETTINGS = {
   showRecommendations: true,
   showCombos: true,
   showUnavailableItems: false,
+  onlinePaymentEnabled: true,
+  customerSelfCheckoutEnabled: false,
+  allowSettlementWithUnfinishedItems: false,
 };
 
 export const translateRecommendationReason = (reason) =>
@@ -34,6 +37,9 @@ export const normalizeRestaurantSettings = (settings = {}) => ({
   showRecommendations: settings.showRecommendations ?? true,
   showCombos: settings.showCombos ?? true,
   showUnavailableItems: settings.showUnavailableItems ?? false,
+  onlinePaymentEnabled: settings.onlinePaymentEnabled ?? true,
+  customerSelfCheckoutEnabled: settings.customerSelfCheckoutEnabled ?? false,
+  allowSettlementWithUnfinishedItems: settings.allowSettlementWithUnfinishedItems ?? false,
 });
 
 export const getTimeContext = (date = new Date()) => {

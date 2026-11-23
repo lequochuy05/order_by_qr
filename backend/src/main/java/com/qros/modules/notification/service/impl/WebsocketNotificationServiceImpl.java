@@ -3,6 +3,7 @@ package com.qros.modules.notification.service.impl;
 import com.qros.modules.notification.dto.internal.NotificationPayload;
 import com.qros.modules.notification.event.WebSocketEvent;
 import com.qros.modules.notification.service.NotificationService;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +26,12 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     private static final String TOPIC_USERS = "/topic/users";
     private static final String TOPIC_SETTINGS = "/topic/settings";
     private static final String TOPIC_INVENTORY = "/topic/inventory";
+    private static final String TOPIC_SERVICE_REQUESTS = "/topic/service-requests";
 
     private static final String EVENT_UPDATED = "UPDATED";
     private static final String EVENT_PAYMENT_SUCCESS = "PAYMENT_SUCCESS";
     private static final String EVENT_SETTINGS_UPDATED = "SETTINGS_UPDATED";
+    private static final String EVENT_SERVICE_REQUEST_UPDATED = "SERVICE_REQUEST_UPDATED";
 
     private final ApplicationEventPublisher eventPublisher;
 
@@ -47,6 +50,10 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     @Override
     public void notifyMenuChange(String type, Object id) {
         publishInternalEvent(TOPIC_MENU, NotificationPayload.eventWithId(type, id), "Menu catalog modified");
+        publishInternalEvent(
+                TOPIC_COMBOS,
+                NotificationPayload.eventWithId(type, id),
+                "Menu catalog modified for dependent combo views");
     }
 
     @Override
@@ -62,6 +69,8 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     @Override
     public void notifyComboChange(String event, Object id) {
         publishInternalEvent(TOPIC_COMBOS, NotificationPayload.eventWithId(event, id), "Menu combos updated");
+        publishInternalEvent(
+                TOPIC_MENU, NotificationPayload.eventWithId(event, id), "Menu combos updated for customer views");
     }
 
     @Override
@@ -82,6 +91,8 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     @Override
     public void notifyPromotionChange() {
         publishInternalEvent(TOPIC_PROMOTIONS, NotificationPayload.event(EVENT_UPDATED), "Promotions catalog modified");
+        publishInternalEvent(
+                TOPIC_MENU, NotificationPayload.event(EVENT_UPDATED), "Promotions catalog modified for customer views");
     }
 
     @Override
@@ -111,6 +122,28 @@ public class WebsocketNotificationServiceImpl implements NotificationService {
     @Override
     public void notifyMenuAvailabilityChange() {
         publishInternalEvent(TOPIC_MENU, NotificationPayload.event(EVENT_UPDATED), "Menu availability modified");
+        publishInternalEvent(TOPIC_COMBOS, NotificationPayload.event(EVENT_UPDATED), "Combo availability modified");
+        publishInternalEvent(
+                TOPIC_KITCHEN, NotificationPayload.event(EVENT_UPDATED), "Kitchen stock availability modified");
+    }
+
+    @Override
+    public void notifyServiceRequestChange(String action, Long requestId, Long tableId) {
+        String resolvedAction = (action == null || action.isBlank()) ? EVENT_UPDATED : action;
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("action", resolvedAction);
+        if (tableId != null) {
+            data.put("tableId", tableId);
+        }
+
+        publishInternalEvent(
+                TOPIC_SERVICE_REQUESTS,
+                NotificationPayload.eventWithIdAndData(resolvedAction, requestId, data),
+                "Table service request updated for staff queue");
+        publishInternalEvent(
+                TOPIC_TABLES,
+                NotificationPayload.eventWithIdAndData(EVENT_SERVICE_REQUEST_UPDATED, requestId, data),
+                "Table service request updated for table map and customer views");
     }
 
     private void publishInternalEvent(String topic, Object payload, String logMessage) {

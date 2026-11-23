@@ -1,0 +1,79 @@
+# Prototype Screen Map & Interaction Inventory — QROS (`02-design`)
+
+> **Tầng Knowledge:** `02-design` (Design System & Prototype)  
+> **Kế thừa bắt buộc từ (`01-po`):** [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.7`) · [vision.md](../01-po/vision.md)  
+> **Hệ thống thiết kế áp dụng:** [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) · [figma-tokens.json](./figma-tokens.json)  
+> **Bàn giao cho (`03-ba`):** [PRD_BY_USER_STAGE.md](../03-ba/PRD_BY_USER_STAGE.md) · [USER_STORIES.md](../03-ba/USER_STORIES.md)
+
+---
+
+## 1. Bối cảnh Thiết bị theo 6 Persona (Kế thừa trực tiếp từ `01-po/personas.md`)
+
+| Mã Persona | Vai trò | Thiết bị thiết kế chính | Ưu tiên trải nghiệm UX |
+|---|---|---|---|
+| `PER-01` | **Customer** (Thực khách tại bàn) | Mobile (375–430px) | Thao tác 1 tay, ảnh món lớn, không cần đăng nhập, giỏ hàng, gọi nhân viên & theo dõi món luôn trong tầm ngón cái |
+| `PER-02` | **Staff** (Nhân viên phục vụ sàn) | Mobile / Tablet POS | Nhìn nhanh 4 trạng thái bàn bằng màu sắc, nhận xử lý hàng đợi yêu cầu bàn 1 chạm, đặt hộ và gộp bàn tối đa 2–3 chạm |
+| `PER-03` | **Chef** (Đầu bếp KDS) | Tablet / Màn hình ngang (≥ 1024px) | Chữ to nhìn xa rõ, nút chuyển trạng thái lớn, nổi bật cảnh báo món quá 20 phút |
+| `PER-04` | **Cashier** (Thu ngân) | Tablet POS / Desktop | Chốt thanh toán nhanh, số tiền thẳng hàng dễ đọc, hiển thị mã VietQR rõ để khách quét |
+| `PER-05` | **Manager** (Quản lý cửa hàng) | Desktop / Tablet | Quản trị danh mục/thực đơn/kho/nhân sự theo bảng gọn, lọc nhanh, chỉnh sửa tại chỗ |
+| `PER-06` | **Admin** (Chủ nhà hàng) | Desktop / Mobile xem nhanh | Tổng quan tài chính rõ trong 30 giây, phân tách 8 nhóm cài đặt mạch lạc, bảo mật 2FA rõ ràng |
+
+---
+
+## 2. Bản đồ 27 Màn hình Prototype (`SCR-01` → `SCR-27`)
+
+*Toàn bộ màn hình được thiết kế trực tiếp từ 6 User Stages (`STG-01` → `STG-06`) và 6 Epics (`F1.1` → `F6.7`) của [01-po/journey-features.md](../01-po/journey-features.md).*
+
+### Nhóm A — Cổng vào, Xác thực, Menu Khách & Màn hình Hệ thống (`STG-01`, `STG-02`)
+
+| Screen ID | Tên màn hình | Đường dẫn đề xuất | User Stage | Persona | PO Feature (`01-po`) | Bố cục, Thành phần UI chính & Điểm chạm tương tác |
+|---|---|---|---|---|---|---|
+| `SCR-01` | Trang giới thiệu (Landing) | `/` | `STG-01` | All | `F1.1`, `F6.5` | Hero Display 36px, nút mở cổng nhân sự / trải nghiệm menu, công tắc đổi ngôn ngữ `VI/EN` & Sáng/Tối |
+| `SCR-02` | Đăng nhập Nhân sự & Xác thực 2FA | `/login` | `STG-01` | `PER-02..06` | `F6.4` | Khung đăng nhập trung tâm trên nền hiệu ứng nhẹ, bước nhập OTP 6 ô dành riêng cho Chủ quán (`PER-06`), đồng hồ đếm ngược gửi lại OTP, thông báo khóa tạm thời |
+| `SCR-03` | Quên mật khẩu | `/forgot-password` | `STG-01` | `PER-02..06` | `F6.4` | Form nhập email khôi phục, thông báo xác nhận trung tính an toàn, liên kết quay lại đăng nhập |
+| `SCR-04` | Đặt lại mật khẩu | `/reset-password` | `STG-01` | `PER-02..06` | `F6.4` | Ô nhập mật khẩu mới & xác nhận, chỉ báo độ mạnh mật khẩu, thông báo khi liên kết hết hạn |
+| `SCR-05` | Thực đơn Khách hàng tại bàn (QR Menu) | `/:tableCode/menu` | `STG-02`, `STG-05` | `PER-01` | `F1.1`–`F1.6`, `F3.2`, `F3.4` | Thanh số bàn & đổi ngôn ngữ; nút gọi nhân viên gắn badge số yêu cầu đang mở dẫn tới Bottom Sheet/Modal chọn lý do nhanh (6 chip) + ô ghi chú tùy chọn (tối đa 200 ký tự), nút gửi kèm đồng hồ đếm ngược chống bấm lặp và thẻ theo dõi trạng thái trực tiếp (*Đang chờ → Nhân viên đang tới → Hoàn tất*) kèm nút hủy khi còn chờ; thanh danh mục dính; thẻ món bo `16px` gắn badge hết hàng; hộp thoại chọn kích cỡ/topping & ghi chú; ngăn kéo giỏ hàng nổi; cửa sổ Trợ lý AI hiển thị kèm **thẻ gợi ý món/combo đặt trực tiếp** (ảnh thu gọn, tên món/combo, nhãn `Combo`, giá `tabular/mono`, lý do gợi ý ngắn, số lượng đang có trong giỏ, nút `+ Thêm` / `Chọn tùy chọn`, thanh *"Thêm nhanh toàn bộ gợi ý"* khi có từ 2 món không tùy chọn trở lên & nút mở nhanh giỏ hàng — tôn trọng khóa thanh toán/bảo trì và chế độ Sáng/Tối); ngăn kéo đơn hiện tại hiển thị tiến độ bếp trực tiếp & khung tự thanh toán VietQR + nhập voucher (khi quán bật) |
+| `SCR-06` | Không có quyền truy cập (403) | `/unauthorized` | `STG-01` | All | `F6.4` | Minh họa trực quan, giải thích ngắn gọn quyền bị giới hạn, nút quay về không gian phù hợp vai trò |
+| `SCR-07` | Không tìm thấy trang (404) | `/not-found` | `STG-01` | All | — | Màn hình lỗi 404 tối giản kèm nút quay về trang chính |
+| `SCR-08` | Chế độ mất kết nối (Offline) | `/offline` | `STG-01` | All | — | Biểu tượng mất mạng, hướng dẫn kiểm tra kết nối và nút thử tải lại |
+| `SCR-09` | Thông báo sự cố hệ thống | `/error/:statusCode` | `STG-01` | All | — | Hiển thị mã lỗi thân thiện, không lộ chi tiết kỹ thuật, nút tải lại hoặc quay về |
+
+### Nhóm B — Vận hành Sàn phục vụ, Bếp & Thu ngân (`STG-03`, `STG-04`, `STG-05`)
+
+| Screen ID | Tên màn hình | Đường dẫn đề xuất | User Stage | Persona | PO Feature (`01-po`) | Bố cục, Thành phần UI chính & Điểm chạm tương tác |
+|---|---|---|---|---|---|---|
+| `SCR-10` | Bảng điều khiển Tổng quan (Dashboard) | `/admin/dashboard` | `STG-06` | `PER-05`, `PER-06` | `F6.3`, `F6.6` | 4 thẻ KPI (`tabular/mono`), **Thẻ Phân tích Điều hành AI** (*AI Executive Summary Card*) gồm bộ chọn nhanh khung thời gian (*Hôm nay / 7 ngày / 30 ngày*), nút *"Phân tích nhanh bằng AI"*, dải chỉ số nhịp vận hành (`tabular/mono`), tiêu đề tóm tắt ca, danh sách điểm nhấn, cảnh báo bất thường phân tầng màu `Danger`/`Warning`/`Info` và 2–3 khuyến nghị hành động (đủ 5 trạng thái UI chuẩn, Light/Dark WCAG AA, `VI`/`EN`); biểu đồ miền doanh thu chuyển sắc, biểu đồ Donut cơ cấu thanh toán, danh sách món nổi bật |
+| `SCR-11` | Sơ đồ Bàn & Phiên phục vụ | `/admin/tables` | `STG-04`, `STG-05` | `PER-02`, `PER-04`, `PER-05`, `PER-06` | `F4.1`, `F4.2`, `F4.3`, `F4.5`, `F2.6`, `F3.1`–`F3.5` | Lưới thẻ bàn 4 màu trạng thái (*Trống / Đang có khách / Chờ thanh toán / Tạm ngưng*) kèm badge cảnh báo số yêu cầu hỗ trợ đang chờ ngay trên thẻ bàn và lối tắt mở nhanh hàng đợi `SCR-27`; hộp thoại đặt món hộ; hộp thoại gộp & hủy gộp nhiều bàn; chi tiết phiên bàn hiển thị chip cảnh báo dị ứng/ghi chú ưu tiên (`Danger`/`Warning`/`Info`) ngay bên dưới ghi chú món; hộp thoại thanh toán tiền mặt (tính tiền thối) / VietQR & áp voucher *(chỉ hiển thị cho Thu ngân trở lên)* |
+| `SCR-12` | Màn hình Bếp (KDS) | `/admin/kitchen` | `STG-03` | `PER-03`, `PER-05`, `PER-06` | `F2.1`–`F2.6`, `F5.3` | Chuyển đổi 2 góc nhìn: **Kanban 3 cột** (*Chờ chế biến → Đang nấu → Hoàn tất*) & **Nấu gom theo mẻ**; đồng hồ đếm thời gian chờ đổi màu `Danger` khi > 20 phút; nút lọc nhanh **"Dị ứng / Ưu tiên"** & chip cảnh báo dị ứng (`Danger`) / ghi chú khẩn ngay trên thẻ món cùng thẻ **AI Phân loại ghi chú & Cảnh báo dị ứng**; nút bật/tắt chuông báo; hộp thoại hủy món kèm lý do hết hàng |
+| `SCR-13` | Quản lý Đơn Mang về (Takeaway) | `/admin/takeaway` | `STG-04`, `STG-05` | `PER-02`, `PER-04`, `PER-05`, `PER-06` | `F4.4`, `F3.1`, `F3.2`, `F3.5` | Nút tạo đơn mang về nhanh, danh sách hàng đợi gắn badge `Info (Blue)`, theo dõi trạng thái bếp & thanh toán tại quầy |
+| `SCR-14` | Lịch sử Đơn hàng & Hóa đơn | `/admin/history` | `STG-05`, `STG-06` | `PER-04`, `PER-05`, `PER-06` | `F3.3`, `F3.5`, `F6.3` | Thanh lọc ngày/trạng thái/phương thức thanh toán, bảng hóa đơn có phân trang, ngăn kéo xem chi tiết hóa đơn & in lại hóa đơn |
+| `SCR-27` | Hàng đợi Yêu cầu Bàn | `/admin/service-requests` | `STG-04` | `PER-02`, `PER-04`, `PER-05`, `PER-06` *(chặn `PER-03`)* | `F4.5`, `F2.6` | Thanh lọc trạng thái (*Đang mở / Chờ tiếp nhận / Đang xử lý / Đã hoàn tất*), công tắc *"Chỉ xem việc của tôi"* & nút bật/tắt chuông báo; thẻ **AI Phân loại ghi chú khẩn** hỗ trợ phục vụ phát hiện yêu cầu dị ứng/khẩn cấp; danh sách thẻ yêu cầu bo `16px` ưu tiên bàn chờ lâu nhất lên đầu gồm số bàn (kèm nhãn nhóm nếu bàn gộp), chip lý do, ghi chú khách gắn chip cảnh báo dị ứng/ưu tiên (`Danger`/`Warning`), đồng hồ đếm thời gian chờ đổi màu `Danger` khi > 5 phút, tên nhân viên đang phụ trách và nút thao tác 1 chạm *"Nhận xử lý"* / *"Hoàn tất"* (hỗ trợ đầy đủ 5 trạng thái UI chuẩn `Default`, `Loading`, `Empty`, `Error & Validation`, `Live Sync & Offline` cùng Light/Dark & `VI/EN`) |
+
+### Nhóm C — Quản trị Thực đơn, Kho, Khuyến mãi, Nhân sự & Phân tích (`STG-06`)
+
+| Screen ID | Tên màn hình | Đường dẫn đề xuất | User Stage | Persona | PO Feature (`01-po`) | Bố cục, Thành phần UI chính & Điểm chạm tương tác |
+|---|---|---|---|---|---|---|
+| `SCR-15` | Quản lý Thực đơn (Menu) | `/admin/menu` | `STG-06` | `PER-05`, `PER-06` | `F1.2`, `F1.3`, `F5.2`, `F6.1` | Thanh tìm kiếm/lọc danh mục, bảng món kèm ảnh thumbnail, hộp thoại thêm/sửa món & tùy chọn/topping, nút "Gợi ý mô tả bằng AI", hộp thoại cấu hình công thức định lượng (BOM) |
+| `SCR-16` | Quản lý Danh mục | `/admin/categories` | `STG-06` | `PER-05`, `PER-06` | `F1.2`, `F6.1` | Danh sách danh mục thực đơn, bật/tắt hiển thị và sắp xếp thứ tự trên menu khách |
+| `SCR-17` | Quản lý Combo | `/admin/combos` | `STG-06` | `PER-05`, `PER-06` | `F1.2`, `F6.1`, `F6.7` | Form tạo gói combo chọn nhiều món kèm giá ưu đãi, ảnh minh họa và nút gợi ý mô tả AI; tích hợp thêm thẻ **AI Đề xuất Combo bán kèm** phân tích cặp món đặt chung và nút 1 chạm *"Tạo Combo từ gợi ý"* điền sẵn vào form tạo mới |
+| `SCR-18` | Quản lý Kho Nguyên liệu | `/admin/inventory` | `STG-03`, `STG-06` | `PER-03`, `PER-05`, `PER-06` | `F5.1`, `F5.3`–`F5.8` | Bảng nguyên liệu kèm badge cảnh báo `Warning`/`Danger` khi chạm ngưỡng tối thiểu; thẻ **AI Gợi ý nhập kho thông minh** (chọn khung dự báo `3 / 7 / 14 ngày`, badge khẩn cấp, ngày hết hàng dự kiến, chi phí dự kiến, nút *"Nhập nhanh"* mở sẵn hộp thoại nhập kho); nút **"Nhập từ hóa đơn AI"** trên thanh công cụ mở **Hộp thoại Quét hóa đơn AI** *(chụp ảnh trực tiếp hoặc kéo-thả/tải ảnh hóa đơn `JPEG`/`PNG`/`WebP`, khung xem trước ảnh, bảng rà soát từng dòng hàng trích xuất kèm badge Tự khớp / Quy đổi đơn vị / Lệch đơn vị / Chưa khớp, cho phép gán lại nguyên liệu, chỉnh số lượng/giá vốn và xác nhận nhập kho hàng loạt, tôn trọng đủ 5 trạng thái UI chuẩn, Light/Dark WCAG AA, `VI`/`EN`)*; hộp thoại thêm/sửa nguyên liệu bổ sung trường **Giá vốn / đơn vị** (`tabular/mono`); hộp thoại Định mức BOM tích hợp thanh **Kiểm tra Giá vốn & Biên lợi nhuận (COGS %)** trực tiếp và khối **"AI Gợi ý định mức & Giá vốn"** (cho phép Quản lý áp dụng nhanh công thức đề xuất); hộp thoại Nhập kho & Điều chỉnh tồn kho *(Bếp/Quản lý/Admin)*; xem lịch sử biến động kho |
+| `SCR-19` | Quản lý Mã giảm giá (Voucher) | `/admin/vouchers` | `STG-05`, `STG-06` | `PER-05`, `PER-06` | `F3.4` | Bảng mã giảm giá hiển thị tiến độ lượt dùng, hộp thoại tạo/sửa theo % hoặc số tiền, đơn tối thiểu và thời hạn |
+| `SCR-20` | Quản lý Chương trình Khuyến mãi | `/admin/promotions` | `STG-05`, `STG-06` | `PER-05`, `PER-06` | `F3.4`, `F6.7` | Cấu hình khuyến mãi tự động áp dụng theo khung giờ và các ngày trong tuần; kèm thẻ **AI Đề xuất Khung giờ Vàng / Giờ vắng khách** phân tích lưu lượng đơn theo giờ & ngày và nút 1 chạm *"Tạo Khuyến mãi từ gợi ý"* điền sẵn form tạo mới |
+| `SCR-21` | Quản lý Nhân sự & Phân quyền | `/admin/staff` | `STG-06` | `PER-05`, `PER-06` | `F6.4` | Danh sách nhân sự theo 5 vai trò nội bộ, hộp thoại cấp tài khoản, gán vai trò, bật/tắt hoạt động và yêu cầu đổi mật khẩu lần đầu |
+| `SCR-22` | Báo cáo Doanh thu Chuyên sâu | `/admin/statistics/revenue` | `STG-06` | `PER-06` | `F6.3` | Bộ chọn khoảng ngày/tháng, thẻ tổng hợp doanh thu & giảm giá, biểu đồ so sánh theo kỳ *(dành riêng Chủ quán)* |
+| `SCR-23` | Thống kê Món bán chạy | `/admin/statistics/top-dishes` | `STG-06` | `PER-05`, `PER-06` | `F6.3` | Bảng xếp hạng huy hiệu Vàng/Bạc/Đồng cho Top 3 và thanh tiến độ tỷ trọng doanh thu từng món |
+| `SCR-24` | Thống kê Hiệu suất Nhân sự | `/admin/statistics/staff` | `STG-06` | `PER-05`, `PER-06` | `F6.3` | Bảng tổng hợp số đơn phục vụ & doanh số theo từng nhân viên theo khung thời gian |
+| `SCR-25` | Dự báo Nhu cầu & Doanh thu (AI) | `/admin/analytics/forecast` | `STG-06` | `PER-06` | `F6.2` | Biểu đồ dự báo doanh số các ngày tới kèm thẻ khuyến nghị nhập nguyên liệu từ AI *(dành riêng Chủ quán)* |
+| `SCR-26` | Hồ sơ cá nhân & Cài đặt Hệ thống | `/admin/profile`, `/admin/settings` | `STG-01`, `STG-06` | `PER-02..06` (Cá nhân) · `PER-06` (Hệ thống) | `F6.4`, `F6.5` | Hồ sơ cá nhân & đổi mật khẩu; trang Cài đặt gồm **8 tab**: 1 tab Tùy chọn cá nhân *(Ngôn ngữ VI/EN, Sáng/Tối)* cho mọi nhân sự + 7 tab Hệ thống *(Thông tin quán, Thương hiệu/Logo, Thanh toán & công tắc Tự thanh toán tại bàn, Hóa đơn, Thông báo/Âm thanh, Vận hành, Bảo mật)* dành riêng cho Chủ quán |
+
+---
+
+## 3. Quy chuẩn 5 Trạng thái UI bắt buộc (Bàn giao cho BA viết đặc tả `03-ba`)
+
+Mọi màn hình `SCR-01` → `SCR-27` trong bản mẫu Prototype đều định nghĩa sẵn **5 trạng thái hiển thị chuẩn** theo [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) để BA chuyển hóa trực tiếp thành Acceptance Criteria:
+
+1. **Default / Populated:** Hiển thị đầy đủ nội dung, tôn trọng hệ màu Light/Dark và hỗ trợ chuyển đổi song ngữ `VI`/`EN`.
+2. **Loading:** Dùng hiệu ứng khung xương (skeleton shimmer) cho bảng/thẻ và trạng thái đang xử lý trên nút bấm (vô hiệu hóa bấm đúp).
+3. **Empty State:** Hiển thị minh họa ngắn gọn, lý do chưa có dữ liệu và nút hành động chính (tạo mới hoặc xóa bộ lọc).
+4. **Error & Validation:** Lỗi từng trường nhập hiển thị ngay dưới ô nhập liệu; lỗi nghiệp vụ/hệ thống hiển thị qua hộp thoại hoặc thanh thông báo nổi mà **không làm mất dữ liệu đang nhập**.
+5. **Live Sync & Offline:** Nhãn trạng thái có nhịp đập nhẹ phản ánh dữ liệu đồng bộ tức thì; khi mất mạng lập tức hiện dải cảnh báo mất kết nối ở mép trên hoặc chuyển sang màn hình `SCR-08`.

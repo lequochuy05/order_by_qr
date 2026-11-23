@@ -6,6 +6,7 @@ const CartModal = ({
   isOpen,
   onClose,
   cart,
+  activePromotion = null,
   fmtVND,
   handleUpdateCartItemQty,
   handleUpdateNote,
@@ -20,6 +21,12 @@ const CartModal = ({
   handleSubmitOrder,
 }) => {
   if (!isOpen) return null;
+
+  const subtotal = calculateTotal();
+  const promotionPercent = Number(activePromotion?.discountPercent || 0);
+  const promotionDiscount =
+    promotionPercent > 0 ? Math.min(subtotal, Math.round((subtotal * promotionPercent) / 100)) : 0;
+  const finalTotal = Math.max(0, subtotal - promotionDiscount);
 
   return (
     <SharedModal
@@ -173,14 +180,39 @@ const CartModal = ({
 
       {/* Tổng tiền và Submit */}
       <div className="safe-bottom mt-5 border-t border-slate-200/80 pt-4 transition-colors dark:border-slate-800/80">
-        <div className="flex justify-between items-center mb-4">
-          <span className="font-bold text-slate-400 dark:text-slate-500 uppercase text-xs tracking-wider">
-            Tổng cộng
-          </span>
-          <span className="text-2xl font-black font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
-            {fmtVND(calculateTotal())}
-          </span>
-        </div>
+        {promotionDiscount > 0 ? (
+          <div className="mb-4 space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>Tạm tính</span>
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                {fmtVND(subtotal)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs text-indigo-600 dark:text-indigo-400">
+              <span className="truncate font-semibold">
+                Khuyến mãi ({activePromotion.name} -{activePromotion.discountPercent}%)
+              </span>
+              <span className="shrink-0 font-mono font-bold">-{fmtVND(promotionDiscount)}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-dashed border-slate-200/80 pt-2 dark:border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Tổng dự kiến
+              </span>
+              <span className="font-mono text-2xl font-black tracking-tight text-indigo-600 dark:text-indigo-400">
+                {fmtVND(finalTotal)}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Tổng cộng
+            </span>
+            <span className="font-mono text-2xl font-black tracking-tight text-indigo-600 dark:text-indigo-400">
+              {fmtVND(subtotal)}
+            </span>
+          </div>
+        )}
         <button
           disabled={isSubmitting || orderingBlocked}
           onClick={handleSubmitOrder}

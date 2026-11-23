@@ -53,6 +53,12 @@ export const queryKeys = {
     detail: (id) => ['tables', id],
   },
 
+  serviceRequests: {
+    all: ['service-requests'],
+    queue: (filters = {}) => ['service-requests', 'queue', filters],
+    customer: (tableCode) => ['service-requests', 'customer', tableCode],
+  },
+
   menu: {
     all: ['menu'],
     customer: ['menu', 'customer'],

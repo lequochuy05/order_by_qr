@@ -10,7 +10,7 @@ Bạn đang hành động với tư cách là **Senior QA Automation Lead, Front
 Nhiệm vụ của bạn là **khảo sát, vận hành, kiểm thử tự động toàn diện và thu thập thư viện ảnh chụp màn hình (screenshot library) của toàn bộ ứng dụng QROS** trên môi trường thực tế, không dùng dữ liệu giả lập tĩnh hay trang mock.
 
 ### Nguyên tắc thực thi cốt lõi (Core Principles)
-1. **Dựa trên mã nguồn thực (Source Code Grounded):** Mọi route, component, modal, form và quyền hạn phải được bóc tách trực tiếp từ `frontend/src/app/router.jsx`, `backend/.../UserRole.java`, và các component thực tế.
+1. **Dựa trên mã nguồn thực (Source Code Grounded):** Mọi route, component, modal, form và quyền hạn phải được bóc tách trực tiếp từ `frontend/src/app/router.jsx`, `backend/src/main/java/com/qros/modules/user/model/enums/UserRole.java`, và các component thực tế.
 2. **Thực thi phân pha có kiểm soát (Phased Execution):** Không chạy dồn tất cả các bước vào một phiên đơn lẻ để tránh tràn context window hay timeout trình duyệt. Tiến hành tuần tự qua 5 Pha (Phase 1 → Phase 5).
 3. **Chiến lược Viewport thông minh (Smart Viewport Strategy):** Thu thập toàn diện trên 3 Viewport chuẩn đại diện (Desktop, Tablet, Mobile) và mở rộng kích thước biên khi phát hiện lỗi responsive.
 4. **Bảo tồn dữ liệu & Kiểm thử luồng động (Stateful E2E Flow):** Các màn hình đặc thù (Bếp KDS, Thu ngân, Khách đặt món) phải có dữ liệu active thực tế (Order/Session bàn) thay vì chỉ chụp màn hình rỗng (`EmptyState`).
@@ -27,17 +27,20 @@ Khảo sát và kiểm thử độc lập cho toàn bộ **6 vai trò** theo đ�
 | **2. Staff** | `STAFF` | JWT Form Login (`/login`) | Quản lý sơ đồ bàn (`/admin/tables`), gọi món tại bàn, gộp/tách bàn, đơn mang về (`/admin/takeaway`), hồ sơ cá nhân (`/admin/profile`). |
 | **3. Chef** | `CHEF` | JWT Form Login (`/login`) | Bếp / KDS (`/admin/kitchen`) realtime WebSocket/STOMP, cập nhật trạng thái món (Chờ nấu → Đang nấu → Hoàn thành), kiểm tra kho nguyên liệu (`/admin/inventory`). |
 | **4. Cashier** | `CASHIER` | JWT Form Login (`/login`) | Sơ đồ bàn (`/admin/tables`), thanh toán hóa đơn (Tiền mặt / VietQR PayOS), in hóa đơn, áp dụng voucher, lịch sử hóa đơn (`/admin/history`), đơn mang về (`/admin/takeaway`). |
-| **5. Manager** | `MANAGER` | JWT Form Login (`/login`) | Dashboard tổng quan (`/admin/dashboard`), quản lý Thực đơn / Món ăn (`/admin/menu`), Danh mục (`/admin/categories`), Combo (`/admin/combo`), Khuyến mãi/Voucher (`/admin/voucher`), Nhân sự (`/admin/staffs`), Báo cáo món bán chạy (`/admin/statistics/top-dishes`), Báo cáo hiệu suất nhân viên (`/admin/statistics/staff`), Toàn quyền Bàn & Bếp. |
+| **5. Manager** | `MANAGER` | JWT Form Login (`/login`) | Dashboard tổng quan (`/admin/dashboard`), quản lý Thực đơn / Món ăn (`/admin/menu`), Danh mục (`/admin/categories`), Combo (`/admin/combo`), Khuyến mãi/Voucher (`/admin/voucher`), Kho nguyên liệu (`/admin/inventory`), Lịch sử hóa đơn (`/admin/history`), Nhân sự (`/admin/staffs`), Báo cáo món bán chạy (`/admin/statistics/top-dishes`), Báo cáo hiệu suất nhân viên (`/admin/statistics/staff`), Toàn quyền Bàn & Bếp. |
 | **6. Admin** | `ADMIN` | JWT Form Login (`/login`) | Toàn bộ quyền của Manager + Báo cáo Doanh thu chi tiết (`/admin/statistics/revenue`), Quản trị người dùng & phân quyền hệ thống cấp cao nhất, Cấu hình hệ thống (`/admin/settings`). |
 
 > **Lưu ý nghiệp vụ:**
-> - Tài khoản nhân sự mẫu lấy từ cơ sở dữ liệu (`sample_data_...sql`):
+> - Tài khoản nhân sự mẫu lấy từ cơ sở dữ liệu (`sample_data_2026_10_14_to_2026_11_14.sql`):
 >   - Admin: `admin@gmail.com`
 >   - Manager: `manager@gmail.com`
 >   - Staff: `staff@gmail.com`
 >   - Cashier: `cashier@gmail.com`
 >   - Chef: `chef@gmail.com`
 > - Khách hàng (Customer) kiểm thử bằng bàn mẫu `T01` tại URL: `http://localhost:5173/T01/menu`.
+> - **Phạm vi mở rộng (Extended Audit Scope):**
+>   - **Bilingual i18n (`vi`/`en`):** Kiểm thử chuyển đổi ngôn ngữ Tiếng Việt (`vi`) và Tiếng Anh (`en`) trên các màn hình chính, đảm bảo không bị tràn chữ (text overflow) hay thiếu khóa dịch (`i18n`).
+>   - **Android Capacitor Audit:** Kiểm thử đóng gói WebView Android (Capacitor 8) bằng kịch bản chuyên dụng `scripts/android_audit.js` nhằm xác minh safe-area insets, cảm ứng di động và khả năng kết nối backend.
 
 ---
 
@@ -159,6 +162,7 @@ Thực hiện độc lập theo từng vai trò trên 3 viewports (`desktop`, `t
   - Danh mục (`/admin/categories`): Danh sách danh mục, modal thêm/sửa danh mục.
   - Combo món (`/admin/combo`): Quản lý gói combo món ăn.
   - Voucher (`/admin/voucher`): Bảng voucher, form tạo mã giảm giá mới.
+- **Quản lý Kho & Lịch sử đơn hàng:** Kho nguyên liệu (`/admin/inventory`), Lịch sử hóa đơn (`/admin/history`).
 - **Quản lý Nhân sự (`/admin/staffs`):** Bảng nhân viên, modal thêm nhân viên, đổi trạng thái/phân quyền.
 - **Báo cáo thống kê:** Món bán chạy (`/admin/statistics/top-dishes`), Hiệu suất nhân viên (`/admin/statistics/staff`).
 
@@ -224,16 +228,16 @@ screenshots/
 
 Nhiệm vụ chỉ được coi là hoàn tất khi thỏa mãn đầy đủ các điều kiện sau:
 
-- [ ] **Môi trường:** Backend, Frontend, Redis chạy ổn định trong suốt quá trình test; không can thiệp sửa đổi schema hay logic nghiệp vụ cốt lõi.
-- [ ] **Bao phủ 6 Role:** Cả 6 vai trò (`Customer`, `Staff`, `Chef`, `Cashier`, `Manager`, `Admin`) đều được kiểm thử đúng quyền hạn thực tế.
-- [ ] **Bao phủ Viewport:** 100% các trang và modal chính được chụp trên đủ 3 kích thước chuẩn: Desktop (`1440x900`), Tablet (`768x1024`), Mobile (`390x844`).
-- [ ] **Tương tác động:** Bắt được trạng thái mở của tất cả các Modals chính (Options, Cart, Table Detail, Payment, Category/Menu CRUD).
-- [ ] **Kho ảnh:** Toàn bộ ảnh chụp được sắp xếp đúng thư mục, định dạng PNG sắc nét, không bị chụp đè khi trang đang tải dở (loading spinner).
-- [ ] **Bàn giao đầy đủ 6 Báo cáo:**
+- [x] **Môi trường:** Backend, Frontend, Redis chạy ổn định trong suốt quá trình test; không can thiệp sửa đổi schema hay logic nghiệp vụ cốt lõi.
+- [x] **Bao phủ 6 Role:** Cả 6 vai trò (`Customer`, `Staff`, `Chef`, `Cashier`, `Manager`, `Admin`) đều được kiểm thử đúng quyền hạn thực tế.
+- [x] **Bao phủ Viewport:** 100% các trang và modal chính được chụp trên đủ 3 kích thước chuẩn: Desktop (`1440x900`), Tablet (`768x1024`), Mobile (`390x844`).
+- [x] **Tương tác động:** Bắt được trạng thái mở của tất cả các Modals chính (Options, Cart, Table Detail, Payment, Category/Menu CRUD).
+- [x] **Kho ảnh:** Toàn bộ ảnh chụp được sắp xếp đúng thư mục trong `screenshots/`, định dạng PNG sắc nét, không bị chụp đè khi trang đang tải dở (loading spinner).
+- [x] **Bàn giao đầy đủ 6 Báo cáo:**
   1. `reports/PROJECT_DISCOVERY.md`
   2. `reports/ROLE_FEATURE_MATRIX.md`
   3. `reports/SCREENSHOT_INVENTORY.md`
   4. `reports/QA_TEST_RESULTS.md`
   5. `reports/RESPONSIVE_AUDIT.md`
   6. `reports/BUG_REPORT.md`
-- [ ] **Kịch bản tự động:** Bàn giao bộ mã nguồn script Playwright hoàn chỉnh để có thể tái chạy (re-run) bất kỳ lúc nào trong CI/CD.
+- [x] **Kịch bản tự động:** Bàn giao bộ mã nguồn script Playwright hoàn chỉnh (`scripts/audit_playwright.js` và `scripts/android_audit.js`) để có thể tái chạy (re-run) bất kỳ lúc nào trong CI/CD.

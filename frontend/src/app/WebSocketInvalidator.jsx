@@ -7,6 +7,7 @@ import { categoryService } from '@entities/category';
 import { comboService } from '@entities/combo';
 import { inventoryService } from '@entities/inventory';
 import { menuItemService } from '@entities/menu-item';
+import { tableOrderCatalogService } from '@entities/public-menu';
 import { userService } from '@entities/user';
 import { voucherService } from '@entities/voucher';
 import { useAuth } from '@features/auth';
@@ -16,6 +17,7 @@ import useSettingsStore from '@shared/model/settingsStore.js';
 import {
   canSubscribeToMarketing,
   canSubscribeToOperations,
+  canSubscribeToServiceRequests,
   canSubscribeToUsers,
   isCustomerMenuPath,
 } from './webSocketAccess.js';
@@ -31,6 +33,7 @@ export const WebSocketInvalidator = () => {
   const canSubscribeOperations = canSubscribeToOperations(user, location.pathname);
   const canSubscribeUsers = canSubscribeToUsers(user, location.pathname);
   const canSubscribeMarketing = canSubscribeToMarketing(user, location.pathname);
+  const canSubscribeServiceRequests = canSubscribeToServiceRequests(user, location.pathname);
   const canSubscribeInventory = canSubscribeOperations;
   const canSubscribePublicCatalog = isCustomerMenuPath(location.pathname);
   const canSubscribeCatalog = Boolean(user) || canSubscribePublicCatalog;
@@ -95,12 +98,27 @@ export const WebSocketInvalidator = () => {
     { scope: 'admin' },
   );
 
+  useWebSocket(
+    canSubscribeServiceRequests ? '/topic/service-requests' : null,
+    (message) => {
+      if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
+        const action = message?.data?.action || message?.event;
+        if (action === 'CREATED' && settings.newOrderNotificationEnabled !== false) {
+          playNotificationSound();
+        }
+        queryClient.invalidateQueries({ queryKey: queryKeys.serviceRequests.all });
+      }
+    },
+    { scope: 'admin' },
+  );
+
   // Lắng nghe cập nhật catalog công khai cho trang khách hàng
   const handleCatalogUpdate = (message) => {
     if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
       categoryService.clearCache?.();
       menuItemService.clearCache?.();
       comboService.clearCache?.();
+      tableOrderCatalogService.clearCache?.();
       queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });

@@ -1,7 +1,10 @@
 import React from 'react';
 import {
   AlertTriangle,
+  Ban,
+  BookOpen,
   Check,
+  CheckCircle2,
   Clock3,
   Flame,
   Loader2,
@@ -14,11 +17,23 @@ import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useConfirm } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
+import { NoteSafetyBadges } from '@shared/ui';
 
-const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing }) => {
-  const { isEn } = useTranslation('kitchen');
+const KitchenCard = ({
+  item,
+  status,
+  onUpdateStatus,
+  onCancelItem,
+  onOpenRecipe,
+  onToggleAvailability,
+  isProcessing,
+  isTogglingAvailability = false,
+}) => {
+  const { language, isEn } = useTranslation('kitchen');
   const priority = getPriority(item);
   const confirm = useConfirm();
+  const isAvailable = item.isAvailable !== false;
+  const hasCatalogLink = Boolean(item.menuItemId || item.comboId);
 
   const handleCancel = async () => {
     if (!onCancelItem || isProcessing) return;
@@ -85,10 +100,18 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
         <div className="mt-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
-                <Tag size={13} />
-                {item.category}
-              </p>
+              <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <Tag size={13} />
+                  {item.category}
+                </p>
+                {!isAvailable && (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300">
+                    <Ban size={11} />
+                    {isEn ? 'Out of stock' : 'Tạm hết món'}
+                  </span>
+                )}
+              </div>
               <h3 className="text-lg font-black leading-snug text-slate-800 dark:text-slate-100">
                 {item.itemName}
               </h3>
@@ -116,11 +139,17 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
             <div className="flex items-start gap-2">
               <StickyNote size={16} className="mt-0.5 shrink-0" />
-              <div>
+              <div className="min-w-0 flex-1 space-y-1.5">
                 <p className="text-[11px] font-black uppercase tracking-wider opacity-70">
                   {isEn ? 'Kitchen notes' : 'Ghi chú bếp'}
                 </p>
-                <p className="mt-0.5 font-semibold">{item.notes}</p>
+                <p className="font-semibold">{item.notes}</p>
+                <NoteSafetyBadges
+                  note={item.notes}
+                  safety={item.noteSafety}
+                  language={language}
+                  compact
+                />
               </div>
             </div>
           </div>
@@ -131,6 +160,65 @@ const KitchenCard = ({ item, status, onUpdateStatus, onCancelItem, isProcessing 
           {status === ORDER_ITEM_STATUSES.COOKING && <span>{isEn ? `Cooking for ${item.stageMinutes} mins` : `Đang nấu ${item.stageMinutes} phút`}</span>}
           {status === ORDER_ITEM_STATUSES.FINISHED && <span>{isEn ? `Done at ${fmtTime(item.statusUpdatedAt)}` : `Xong lúc ${fmtTime(item.statusUpdatedAt)}`}</span>}
         </div>
+
+        {hasCatalogLink && (onOpenRecipe || onToggleAvailability) && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {onOpenRecipe && (
+              <button
+                type="button"
+                onClick={() =>
+                  onOpenRecipe({
+                    menuItemId: item.menuItemId,
+                    comboId: item.comboId,
+                    isCombo: item.isCombo,
+                    itemName: item.itemName,
+                    category: item.category,
+                    quantity: item.quantity,
+                    isAvailable,
+                  })
+                }
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-indigo-500/30 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300"
+              >
+                <BookOpen size={14} />
+                {isEn ? 'Recipe' : 'Công thức'}
+              </button>
+            )}
+            {onToggleAvailability && (
+              <button
+                type="button"
+                onClick={() =>
+                  onToggleAvailability({
+                    menuItemId: item.menuItemId,
+                    comboId: item.comboId,
+                    itemName: item.itemName,
+                    isAvailable,
+                  })
+                }
+                disabled={isTogglingAvailability}
+                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                  isAvailable
+                    ? 'border-rose-200 bg-rose-50/70 text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20'
+                }`}
+              >
+                {isTogglingAvailability ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : isAvailable ? (
+                  <Ban size={14} />
+                ) : (
+                  <CheckCircle2 size={14} />
+                )}
+                {isAvailable
+                  ? isEn
+                    ? 'Mark out of stock'
+                    : 'Báo hết món'
+                  : isEn
+                    ? 'Re-enable'
+                    : 'Mở bán lại'}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="mt-3">
           {status === ORDER_ITEM_STATUSES.PENDING && (
@@ -218,6 +306,14 @@ const getPriority = (item) => {
       card: 'border-emerald-100 dark:border-emerald-500/20',
       bar: 'bg-emerald-500',
       badge: '',
+    };
+  }
+
+  if (item.hasAllergenAlert) {
+    return {
+      card: 'border-rose-500 ring-2 ring-rose-500/20 dark:border-rose-500/75 dark:ring-rose-500/20',
+      bar: 'bg-rose-600',
+      badge: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200',
     };
   }
 

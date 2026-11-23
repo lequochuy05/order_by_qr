@@ -112,4 +112,25 @@ public class MenuItemMapper {
 
         return new CategorySummary(category.getId(), category.getName());
     }
+
+    public MenuItemResponse withAvailability(MenuItemResponse item, boolean available) {
+        if (item == null) {
+            return null;
+        }
+
+        return new MenuItemResponse(
+                item.id(),
+                item.name(),
+                item.description(),
+                item.img(),
+                item.price(),
+                item.active(),
+                available,
+                item.displayOrder(),
+                item.category(),
+                item.itemOptions(),
+                item.createdAt(),
+                item.updatedAt(),
+                item.version());
+    }
 }

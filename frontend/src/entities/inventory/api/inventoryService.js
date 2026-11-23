@@ -35,11 +35,13 @@ const normalizeInventoryItem = (item = {}) => {
   const quantityOnHand = Number(item.quantityOnHand ?? 0);
   const availableQuantity = Number(item.availableQuantity ?? quantityOnHand);
   const lowStockThreshold = Number(item.lowStockThreshold ?? 0);
+  const unitCost = Number(item.unitCost ?? 0);
   return {
     ...item,
     quantityOnHand,
     availableQuantity,
     lowStockThreshold,
+    unitCost,
     lowStock: item.lowStock ?? (lowStockThreshold > 0 && availableQuantity <= lowStockThreshold),
     outOfStock: item.outOfStock ?? availableQuantity <= 0,
   };
@@ -54,7 +56,9 @@ const inventoryItemPayload = (data = {}) => ({
   name: data.name,
   unit: data.unit,
   lowStockThreshold: Number(data.lowStockThreshold || 0),
+  unitCost: Number(data.unitCost || 0),
   active: data.active !== false,
+  version: data.version ?? null,
 });
 
 const { requestFn: getItemsCached, clearCache: clearItemsCache } = createKeyedCachedRequest(
@@ -126,6 +130,7 @@ export const inventoryService = {
 
   updateItem: async (id, data) => { clearAllInventoryCache(); const res = await api.put(`/inventory/items/${id}`, inventoryItemPayload(data)); clearAllInventoryCache(); return res; },
   stockIn: async (id, data) => { clearAllInventoryCache(); const res = await api.post(`/inventory/items/${id}/stock-in`, data); clearAllInventoryCache(); return res; },
+  batchStockIn: async (data) => { clearAllInventoryCache(); const res = await api.post('/inventory/items/batch-stock-in', data); clearAllInventoryCache(); return res; },
   adjust: async (id, data) => { clearAllInventoryCache(); const res = await api.post(`/inventory/items/${id}/adjust`, data); clearAllInventoryCache(); return res; },
   updateRecipe: async (menuItemId, data) => { clearAllInventoryCache(); const res = await api.put(`/inventory/recipes/${menuItemId}`, data); clearAllInventoryCache(); return res; },
 };

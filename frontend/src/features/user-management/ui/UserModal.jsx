@@ -175,7 +175,7 @@ const UserModal = ({ isOpen, onClose, data: incomingData, initialData, onSubmit,
       <form
         id="staffForm"
         onSubmit={handleSubmit}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
         noValidate
       >
         <ImageUploadField

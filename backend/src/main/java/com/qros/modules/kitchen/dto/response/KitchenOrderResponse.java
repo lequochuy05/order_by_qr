@@ -33,11 +33,19 @@ public record KitchenOrderResponse(
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {}
 
-    public record MenuItemSummary(Long id, String name, CategorySummary category) {}
+    public record MenuItemSummary(Long id, String name, CategorySummary category, Boolean available) {
+        public MenuItemSummary(Long id, String name, CategorySummary category) {
+            this(id, name, category, true);
+        }
+    }
 
     public record CategorySummary(String name) {}
 
-    public record ComboSummary(Long id, String name, BigDecimal price) {}
+    public record ComboSummary(Long id, String name, BigDecimal price, Boolean available) {
+        public ComboSummary(Long id, String name, BigDecimal price) {
+            this(id, name, price, true);
+        }
+    }
 
     public record KitchenOrderItemOptionResponse(
             Long valueId, String optionName, String optionValueName, BigDecimal extraPrice) {}

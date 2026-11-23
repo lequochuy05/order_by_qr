@@ -123,7 +123,15 @@ public class OrderStatusService {
         OrderStatus fromStatus = order.getStatus();
 
         OrderState state = orderStateFactory.getState(targetStatus);
-        state.handleRequest(order);
+        try {
+            state.handleRequest(order);
+        } catch (IllegalStateException e) {
+            throw new BusinessException(
+                    targetStatus == OrderStatus.AWAITING_PAYMENT
+                            ? ErrorCode.ORDER_HAS_UNFINISHED_ITEMS
+                            : ErrorCode.ORDER_INVALID_STATE,
+                    e.getMessage());
+        }
 
         orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "manual-status-update");
 

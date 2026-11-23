@@ -45,7 +45,8 @@ public class SystemSettingsMapper {
                 settings.getNewOrderNotificationEnabled(),
                 settings.getPaymentNotificationEnabled(),
                 settings.getKitchenOverdueNotificationEnabled(),
-                settings.getAllowSettlementWithUnfinishedItems());
+                settings.getAllowSettlementWithUnfinishedItems(),
+                Boolean.TRUE.equals(settings.getCustomerSelfCheckoutEnabled()));
     }
 
     public PublicSettingsResponse toPublicResponse(SystemSettings settings) {
@@ -75,7 +76,8 @@ public class SystemSettingsMapper {
                 settings.getNewOrderNotificationEnabled(),
                 settings.getPaymentNotificationEnabled(),
                 settings.getKitchenOverdueNotificationEnabled(),
-                settings.getAllowSettlementWithUnfinishedItems());
+                settings.getAllowSettlementWithUnfinishedItems(),
+                Boolean.TRUE.equals(settings.getCustomerSelfCheckoutEnabled()));
     }
 
     public void updateEntity(SystemSettings settings, SystemSettingsUpdateRequest request) {
@@ -111,6 +113,7 @@ public class SystemSettingsMapper {
         settings.setPaymentNotificationEnabled(request.paymentNotificationEnabled());
         settings.setKitchenOverdueNotificationEnabled(request.kitchenOverdueNotificationEnabled());
         settings.setAllowSettlementWithUnfinishedItems(request.allowSettlementWithUnfinishedItems());
+        settings.setCustomerSelfCheckoutEnabled(Boolean.TRUE.equals(request.customerSelfCheckoutEnabled()));
     }
 
     private String normalizeRequiredText(String value) {

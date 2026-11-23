@@ -267,6 +267,7 @@ const CategoryManager = () => {
               onEdit={() => openModal(cat)}
               onDelete={() => handleDelete(cat.id, cat.version)}
               isEditing={detailLoadingId === cat.id}
+              isDeleting={deletingId === cat.id}
             />
           ))}
         </div>

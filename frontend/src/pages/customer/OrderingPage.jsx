@@ -5,11 +5,11 @@ import ErrorBoundary from '@shared/ui/ErrorBoundary.jsx';
 export default function OrderingPage() {
   return (
     <CustomerMenu
-      renderAiAssistant={(hidden) => (
+      renderAiAssistant={(hidden, orderBridge) => (
         // ErrorBoundary riêng để crash AI (Web Speech API, streaming, v.v.)
         // không làm sập toàn bộ trang menu đặt món của khách hàng
         <ErrorBoundary fallbackComponent={() => null}>
-          <AiChatAssistant hidden={hidden} />
+          <AiChatAssistant hidden={hidden} orderBridge={orderBridge} />
         </ErrorBoundary>
       )}
     />

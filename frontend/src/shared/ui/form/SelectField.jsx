@@ -1,4 +1,5 @@
 import { createElement } from 'react';
+import { ChevronDown } from 'lucide-react';
 
 import FormError from '@shared/ui/FormError.jsx';
 import FormLabel from './FormLabel.jsx';
@@ -24,9 +25,9 @@ const SelectField = ({
 }) => (
   <label className={`block ${className}`}>
     {label && <FormLabel required={required}>{label}</FormLabel>}
-    <span className="relative block">
+    <span className="group relative block">
       {icon && (
-        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500">
+        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500 dark:text-slate-500">
           {createElement(icon, { size: 18 })}
         </span>
       )}
@@ -34,7 +35,7 @@ const SelectField = ({
         value={value ?? ''}
         onChange={(event) => onChange?.(event.target.value, event)}
         required={nativeRequired}
-        className={`${FORM_CONTROL_CLASS} cursor-pointer appearance-none ${
+        className={`${FORM_CONTROL_CLASS} cursor-pointer appearance-none pr-11 ${
           error ? FORM_CONTROL_ERROR_CLASS : FORM_CONTROL_NORMAL_CLASS
         } ${icon ? 'pl-11' : ''} ${selectClassName}`}
         {...props}
@@ -50,6 +51,10 @@ const SelectField = ({
             </option>
           ))}
       </select>
+      <ChevronDown
+        size={17}
+        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500 dark:text-slate-500"
+      />
     </span>
     <FormError message={error} />
   </label>

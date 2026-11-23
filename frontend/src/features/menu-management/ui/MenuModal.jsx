@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertCircle, Loader2, Plus, Sparkles, Trash2 } from 'lucide-react';
 import {
   CheckboxCard,
+  FormLabel,
   ImageUploadField,
   ModalActions,
   ModalHeader,
@@ -208,7 +209,7 @@ const MenuItemModal = ({
       <form
         id="menuForm"
         onSubmit={handleLocalSubmit}
-        className="custom-scrollbar space-y-8 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-7 overflow-y-auto p-6 sm:p-8"
       >
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           <div className="space-y-5">
@@ -273,9 +274,9 @@ const MenuItemModal = ({
           />
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-200">Mô tả món ăn</label>
+            <FormLabel className="!mb-0">Mô tả món ăn</FormLabel>
             {onAiGenerate && formData.name && (
               <button
                 type="button"
@@ -353,14 +354,16 @@ const MenuItemModal = ({
             {formData.itemOptions.map((opt, optIdx) => (
               <div
                 key={optIdx}
-                className="group/option relative space-y-6 rounded-3xl border border-slate-200/80 bg-slate-50/50 p-6 transition-all duration-300 animate-in slide-in-from-bottom-2 dark:border-slate-800/80 dark:bg-slate-900/60"
+                className="group/option relative space-y-5 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-5 transition-all duration-300 sm:p-6 dark:border-slate-800/80 dark:bg-slate-900/60"
               >
                 <button
                   type="button"
                   onClick={() => removeOption(optIdx)}
-                  className="absolute -right-3 -top-3 z-10 rounded-full border border-rose-200 bg-white p-2 text-rose-500 opacity-0 shadow-lg transition-all hover:bg-rose-500 hover:text-white group-hover/option:opacity-100 dark:border-rose-500/20 dark:bg-slate-900 dark:text-rose-300"
+                  title="Xóa nhóm tùy chọn"
+                  aria-label="Xóa nhóm tùy chọn"
+                  className="absolute -right-2.5 -top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-white text-rose-500 opacity-90 shadow-md transition-all hover:bg-rose-500 hover:text-white focus:opacity-100 sm:opacity-75 group-hover/option:opacity-100 dark:border-rose-500/30 dark:bg-slate-900 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={15} />
                 </button>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
@@ -385,7 +388,7 @@ const MenuItemModal = ({
                     <label className="mb-1.5 ml-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                       Bắt buộc?
                     </label>
-                    <label className="flex h-[44px] cursor-pointer items-center justify-center rounded-2xl bg-white shadow-sm transition-colors hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
+                    <label className="flex h-[44px] cursor-pointer items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-xs transition-colors hover:border-indigo-300 hover:bg-indigo-50/30 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40 dark:hover:bg-slate-800">
                       <input
                         type="checkbox"
                         className="h-4 w-4 cursor-pointer rounded border-slate-100 text-indigo-600 focus:ring-indigo-500/30 dark:border-slate-700"
@@ -442,7 +445,7 @@ const MenuItemModal = ({
                     {opt.optionValues.map((val, valIdx) => (
                       <div
                         key={valIdx}
-                        className="grid grid-cols-12 gap-3 items-center animate-in fade-in slide-in-from-right-2 duration-300"
+                        className="grid grid-cols-12 items-center gap-3"
                       >
                         <div className="col-span-7">
                           <input
@@ -505,8 +508,8 @@ const MenuItemModal = ({
               </div>
             ))}
             {formData.itemOptions.length === 0 && (
-              <div className="rounded-[2rem] border-2 border-dashed border-slate-100 bg-slate-50/50 py-12 text-center dark:border-slate-800 dark:bg-slate-950/50">
-                <p className="text-xs font-bold uppercase tracking-tighter text-slate-400 opacity-60 dark:text-slate-500">
+              <div className="rounded-2xl border-2 border-dashed border-slate-200/80 bg-slate-50/50 py-10 text-center dark:border-slate-800 dark:bg-slate-950/50">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   Món này chưa có tùy chọn đi kèm
                 </p>
               </div>

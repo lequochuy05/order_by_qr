@@ -32,6 +32,7 @@ export const defaultSettings = {
   paymentNotificationEnabled: true,
   kitchenOverdueNotificationEnabled: true,
   allowSettlementWithUnfinishedItems: false,
+  customerSelfCheckoutEnabled: false,
 };
 
 export const settingsCopy = {
@@ -103,6 +104,9 @@ export const settingsCopy = {
       settlementTitle: 'Quy định thanh toán',
       allowSettlementWithUnfinishedItems: 'Thanh toán khi còn món chưa hoàn thành',
       allowSettlementWithUnfinishedItemsDesc: 'Cho phép thu ngân quyết toán đơn bàn ngay cả khi bếp vẫn còn món đang chế biến.',
+      customerSelfCheckoutEnabled: 'Khách tự thanh toán VietQR tại bàn',
+      customerSelfCheckoutEnabledDesc:
+        'Cho phép khách tự nhập voucher và quét mã PayOS thanh toán ngay trên điện thoại.',
     },
     customerMenu: {
       title: 'Menu khách hàng',
@@ -253,6 +257,9 @@ export const settingsCopy = {
       settlementTitle: 'Settlement rules',
       allowSettlementWithUnfinishedItems: 'Allow settlement with unfinished items',
       allowSettlementWithUnfinishedItemsDesc: 'Allow cashier to settle table bill even when kitchen items are still being prepared.',
+      customerSelfCheckoutEnabled: 'Customer self-checkout via VietQR',
+      customerSelfCheckoutEnabledDesc:
+        'Allow dine-in customers to apply vouchers and pay directly via PayOS QR on their phone.',
     },
     customerMenu: {
       title: 'Customer menu',

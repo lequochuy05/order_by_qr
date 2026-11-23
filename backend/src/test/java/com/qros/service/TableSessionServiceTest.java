@@ -17,14 +17,17 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.TableSessionTable;
 import com.qros.modules.table.model.TableSessionToken;
+import com.qros.modules.table.model.enums.ServiceRequestStatus;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableServiceRequestRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.modules.table.repository.TableSessionTokenRepository;
 import com.qros.modules.table.service.TableActiveOrderChecker;
 import com.qros.modules.table.service.TableSessionService;
+import com.qros.shared.event.DomainEvents.ServiceRequestChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -406,5 +409,98 @@ class TableSessionServiceTest {
         assertThat(activeTokens.getFirst().getRevokedAt()).isNotNull();
         verify(tokenRepository).saveAll(any());
         verify(tokenRepository).save(any(TableSessionToken.class));
+    }
+
+    @Test
+    void requestPaymentValidatesActiveOrderBeforeUpdatingTableStatus() {
+        DiningTable table = DiningTable.builder()
+                .id(5L)
+                .tableCode("BAN_05")
+                .status(TableStatus.OCCUPIED)
+                .build();
+        TableSession session = TableSession.builder()
+                .id(100L)
+                .table(table)
+                .status(TableSessionStatus.OPEN)
+                .build();
+        TableSessionToken token = TableSessionToken.builder()
+                .id(200L)
+                .session(session)
+                .tokenHash("HASHED")
+                .issuedAt(AppTime.now())
+                .lastSeenAt(AppTime.now())
+                .build();
+
+        when(tokenRepository.findFirstByTokenHashAndRevokedAtIsNull(anyString()))
+                .thenReturn(Optional.of(token));
+        when(sessionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(session));
+        when(membershipRepository.findActiveBySessionId(100L)).thenReturn(List.of(membership(session, table)));
+        when(membershipRepository.existsActiveBySessionIdAndTableCode(100L, "BAN_05"))
+                .thenReturn(true);
+        org.mockito.Mockito.doThrow(new BusinessException(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS))
+                .when(activeOrderChecker)
+                .validateAndPrepareSessionForPaymentRequest(100L);
+
+        assertThatThrownBy(() -> tableSessionService.requestPayment("BAN_05", "SESSION"))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS));
+
+        assertThat(table.getStatus()).isEqualTo(TableStatus.OCCUPIED);
+        verify(tableRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void closeSessionAutoClosesOpenServiceRequestsAndPublishesEvent() {
+        TableServiceRequestRepository serviceRequestRepository =
+                org.mockito.Mockito.mock(TableServiceRequestRepository.class);
+        TableSessionService serviceWithRequests = new TableSessionService(
+                tableRepository,
+                sessionRepository,
+                membershipRepository,
+                tokenRepository,
+                cacheManager,
+                eventPublisher,
+                activeOrderChecker,
+                new TableSessionProperties(),
+                sideEffects,
+                null,
+                serviceRequestRepository);
+
+        DiningTable table = DiningTable.builder()
+                .id(5L)
+                .tableCode("BAN_05")
+                .status(TableStatus.OCCUPIED)
+                .build();
+        TableSession session = TableSession.builder()
+                .id(100L)
+                .table(table)
+                .status(TableSessionStatus.OPEN)
+                .build();
+        when(sessionRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(session));
+        when(membershipRepository.findActiveTableIdsBySessionId(100L)).thenReturn(List.of(5L));
+        when(tableRepository.findAllByIdInForUpdate(List.of(5L))).thenReturn(List.of(table));
+        when(membershipRepository.findActiveBySessionIdForUpdate(100L)).thenReturn(List.of(membership(session, table)));
+        when(activeOrderChecker.hasActiveOrders(5L)).thenReturn(false);
+        when(serviceRequestRepository.closeOpenRequestsBySessionId(
+                        eq(100L),
+                        eq(ServiceRequestStatus.CANCELLED),
+                        any(),
+                        eq("SYSTEM"),
+                        eq("Table session closed"),
+                        any()))
+                .thenReturn(2);
+
+        serviceWithRequests.closeSession(100L, TableSessionStatus.CLOSED, "Order settled");
+
+        verify(serviceRequestRepository)
+                .closeOpenRequestsBySessionId(
+                        eq(100L),
+                        eq(ServiceRequestStatus.CANCELLED),
+                        any(),
+                        eq("SYSTEM"),
+                        eq("Table session closed"),
+                        any());
+        verify(eventPublisher).publishEvent(new ServiceRequestChangeEvent("AUTO_CLOSED", null, 5L));
     }
 }

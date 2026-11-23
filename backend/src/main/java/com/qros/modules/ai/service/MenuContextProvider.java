@@ -1,5 +1,6 @@
 package com.qros.modules.ai.service;
 
+import com.qros.modules.inventory.service.InventoryAvailabilityService;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
@@ -15,10 +16,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,14 +30,74 @@ public class MenuContextProvider {
     private final MenuItemRepository menuItemRepository;
     private final ComboRepository comboRepository;
     private final CategoryRepository categoryRepository;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
 
     @Cacheable(value = CacheNames.AI_MENU_CONTEXT, key = "'current'")
+    @Transactional(readOnly = true)
     public String buildCurrentMenuContext() {
-        List<MenuItem> activeMenu = menuItemRepository.findAllByActiveTrueOrderByDisplayOrderAscNameAsc();
-        List<Combo> activeCombos = comboRepository.findAllActiveWithItems();
+        MenuCatalogSnapshot snapshot = loadAvailableCatalog();
         List<Category> activeCategories = categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc();
 
-        return buildMenuContext(activeMenu, activeCombos, activeCategories);
+        return buildMenuContext(
+                snapshot.menuItemsById().values().stream().toList(),
+                snapshot.combosById().values().stream().toList(),
+                activeCategories);
+    }
+
+    @Transactional(readOnly = true)
+    public MenuCatalogSnapshot loadAvailableCatalog() {
+        List<MenuItem> candidateItems = menuItemRepository.findAllPublicAvailableItems();
+        List<Long> candidateItemIds = candidateItems.stream()
+                .map(MenuItem::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, Boolean> itemStockAvailability = candidateItemIds.isEmpty()
+                ? Map.of()
+                : inventoryAvailabilityService.getMenuItemAvailability(candidateItemIds);
+
+        Map<Long, MenuItem> availableItemsById = candidateItems.stream()
+                .filter(this::isMenuItemActiveAndAvailable)
+                .filter(item -> itemStockAvailability.getOrDefault(item.getId(), true))
+                .collect(Collectors.toMap(
+                        MenuItem::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        List<Combo> candidateCombos = comboRepository.findAllActiveWithItems();
+        List<Long> candidateComboIds = candidateCombos.stream()
+                .map(Combo::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, Boolean> comboStockAvailability = candidateComboIds.isEmpty()
+                ? Map.of()
+                : inventoryAvailabilityService.getComboAvailabilityByIds(candidateComboIds);
+
+        Map<Long, Combo> availableCombosById = candidateCombos.stream()
+                .filter(this::isComboActiveAndAvailable)
+                .filter(combo -> comboStockAvailability.getOrDefault(combo.getId(), true))
+                .collect(
+                        Collectors.toMap(Combo::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        return new MenuCatalogSnapshot(availableItemsById, availableCombosById);
+    }
+
+    private boolean isMenuItemActiveAndAvailable(MenuItem item) {
+        return item != null
+                && item.getId() != null
+                && !item.isDeleted()
+                && Boolean.TRUE.equals(item.getActive())
+                && Boolean.TRUE.equals(item.getAvailable())
+                && item.getCategory() != null
+                && Boolean.TRUE.equals(item.getCategory().getActive());
+    }
+
+    private boolean isComboActiveAndAvailable(Combo combo) {
+        if (combo == null
+                || combo.getId() == null
+                || combo.isDeleted()
+                || !Boolean.TRUE.equals(combo.getActive())
+                || !Boolean.TRUE.equals(combo.getAvailable())) {
+            return false;
+        }
+        return inventoryAvailabilityService.areAllComboItemsOrderable(combo);
     }
 
     private String buildMenuContext(List<MenuItem> items, List<Combo> combos, List<Category> categories) {
@@ -43,8 +106,7 @@ public class MenuContextProvider {
         }
 
         Map<String, List<MenuItem>> grouped = items.stream()
-                .filter(item -> item.getCategory() != null)
-                .filter(item -> Boolean.TRUE.equals(item.getCategory().getActive()))
+                .filter(this::isMenuItemActiveAndAvailable)
                 .collect(Collectors.groupingBy(
                         item -> item.getCategory().getName(), LinkedHashMap::new, Collectors.toList()));
 
@@ -80,17 +142,25 @@ public class MenuContextProvider {
 
     private void appendMenuItemContext(StringBuilder builder, Map<String, List<MenuItem>> groupedItems) {
         if (groupedItems.isEmpty()) {
-            builder.append("\nMÓN LẺ THEO DANH MỤC:\n  Hiện chưa có món lẻ đang bán.\n");
+            builder.append("\nMÓN LẺ ĐANG CÒN HÀNG THEO DANH MỤC:\n  Hiện chưa có món lẻ còn hàng.\n");
             return;
         }
 
-        builder.append("\nMÓN LẺ THEO DANH MỤC:\n");
+        builder.append("\nMÓN LẺ ĐANG CÒN HÀNG THEO DANH MỤC:\n");
 
         groupedItems.forEach((category, menuItems) -> {
             builder.append("Danh mục ").append(category).append(":\n");
 
             menuItems.forEach(item -> {
-                builder.append("  - ").append(item.getName()).append(" | Giá: ").append(formatPrice(item.getPrice()));
+                builder.append("  - [ITEM:")
+                        .append(item.getId())
+                        .append("] ")
+                        .append(item.getName())
+                        .append(" | Giá: ")
+                        .append(formatPrice(item.getPrice()));
+                if (hasActiveOptions(item)) {
+                    builder.append(" | Có tùy chọn");
+                }
                 if (item.getDescription() != null && !item.getDescription().isBlank()) {
                     builder.append(" | Mô tả: ").append(item.getDescription());
                 }
@@ -99,9 +169,14 @@ public class MenuContextProvider {
         });
     }
 
+    private boolean hasActiveOptions(MenuItem item) {
+        return item.getItemOptions() != null
+                && item.getItemOptions().stream().anyMatch(option -> option != null && !option.isDeleted());
+    }
+
     private void appendComboContext(StringBuilder builder, List<Combo> combos) {
         List<Combo> activeCombos = combos.stream()
-                .filter(combo -> Boolean.TRUE.equals(combo.getActive()))
+                .filter(combo -> Boolean.TRUE.equals(combo.getActive()) && Boolean.TRUE.equals(combo.getAvailable()))
                 .toList();
 
         if (activeCombos.isEmpty()) {
@@ -112,7 +187,9 @@ public class MenuContextProvider {
         builder.append("\nCOMBO ĐANG BÁN:\n");
 
         activeCombos.forEach(combo -> {
-            builder.append("Combo ")
+            builder.append("  - [COMBO:")
+                    .append(combo.getId())
+                    .append("] Combo ")
                     .append(combo.getName())
                     .append(" | Giá combo: ")
                     .append(formatPrice(combo.getPrice()));
@@ -133,7 +210,7 @@ public class MenuContextProvider {
         }
 
         return comboItems.stream()
-                .filter(comboItem -> comboItem.getMenuItem() != null)
+                .filter(comboItem -> !comboItem.isDeleted() && comboItem.getMenuItem() != null)
                 .map(comboItem -> {
                     Integer quantity = comboItem.getQuantity() != null ? comboItem.getQuantity() : 1;
                     return quantity + " x " + comboItem.getMenuItem().getName();
@@ -147,5 +224,12 @@ public class MenuContextProvider {
         }
 
         return "%,.0fđ".formatted(price).replace(",", ".");
+    }
+
+    public record MenuCatalogSnapshot(Map<Long, MenuItem> menuItemsById, Map<Long, Combo> combosById) {
+        public MenuCatalogSnapshot {
+            menuItemsById = menuItemsById == null ? Map.of() : Map.copyOf(menuItemsById);
+            combosById = combosById == null ? Map.of() : Map.copyOf(combosById);
+        }
     }
 }

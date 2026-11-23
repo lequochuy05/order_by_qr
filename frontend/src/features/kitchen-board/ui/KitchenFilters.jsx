@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { AlertTriangle, Search, SlidersHorizontal, StickyNote } from 'lucide-react';
+import { AlertTriangle, Search, ShieldAlert, SlidersHorizontal, StickyNote } from 'lucide-react';
 import { useTranslation } from '@shared/lib/i18n';
 
 const FilterButton = ({ active, onClick, label, icon }) => (
@@ -79,6 +79,12 @@ const KitchenFilters = ({
           onClick={() => onAttentionChange('NOTES')}
           label={isEn ? 'Has notes' : 'Có ghi chú'}
           icon={StickyNote}
+        />
+        <FilterButton
+          active={attentionFilter === 'ALLERGEN'}
+          onClick={() => onAttentionChange('ALLERGEN')}
+          label={isEn ? 'Allergy' : 'Dị ứng'}
+          icon={ShieldAlert}
         />
         <span className="ml-1 font-mono text-xs text-slate-400">
           {lastUpdatedAt

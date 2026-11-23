@@ -1,4 +1,4 @@
-import { Boxes, ClipboardList, History, Loader2, RefreshCw } from 'lucide-react';
+import { Boxes, Camera, ClipboardList, History, Loader2, RefreshCw } from 'lucide-react';
 
 import TabButton from './TabButton.jsx';
 
@@ -10,6 +10,7 @@ const InventoryToolbar = ({
   onMenuItemFocus,
   menuItems,
   menuItemsLoading,
+  onOpenInvoiceOcr,
   onOpenRecipe,
   onRefresh,
 }) => (
@@ -48,6 +49,16 @@ const InventoryToolbar = ({
             </option>
           ))}
         </select>
+        {onOpenInvoiceOcr && (
+          <button
+            type="button"
+            onClick={onOpenInvoiceOcr}
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-indigo-200/90 bg-indigo-50 px-3.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-700/50 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white"
+          >
+            <Camera size={15} />
+            Nhập từ hóa đơn AI
+          </button>
+        )}
         <button
           type="button"
           onClick={onOpenRecipe}

@@ -1,3 +1,4 @@
+export { default as AiNoteTriageCard } from './AiNoteTriageCard.jsx';
 export { default as ConfirmModal } from './ConfirmModal.jsx';
 export { default as EmptyState } from './EmptyState.jsx';
 export { default as EditDeleteActions } from './EditDeleteActions.jsx';
@@ -13,6 +14,7 @@ export { default as TextField } from './form/TextField.jsx';
 export { default as ManagementHeader } from './ManagementHeader.jsx';
 export { default as ModalActions } from './modal/ModalActions.jsx';
 export { default as ModalHeader } from './modal/ModalHeader.jsx';
+export { default as NoteSafetyBadges } from './NoteSafetyBadges.jsx';
 export { default as OfflineIndicator } from './OfflineIndicator.jsx';
 export { default as PaginationControls } from './PaginationControls.jsx';
 export { default as PullToRefresh } from './PullToRefresh.jsx';

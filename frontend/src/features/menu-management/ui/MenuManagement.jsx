@@ -8,6 +8,7 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { useCategoriesPageQuery } from '@entities/category';
+import { comboService } from '@entities/combo';
 import { menuItemService, useMenuPageQuery } from '@entities/menu-item';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
@@ -96,7 +97,11 @@ const MenuManager = () => {
   const totalPages = pageData?.totalPages || 0;
   const totalElements = pageData?.totalElements || 0;
 
-  const invalidateMenu = () => queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+  const invalidateMenu = () => {
+    comboService.clearCache?.();
+    queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
+  };
 
   const clearObjectPreview = () => {
     if (objectPreviewUrlRef.current) {
@@ -255,6 +260,15 @@ const MenuManager = () => {
     }
   };
 
+  const handleToggleAvailable = async (id, version) => {
+    try {
+      await menuItemService.toggleAvailable(id, version);
+      invalidateMenu();
+    } catch (err) {
+      showErrorToast(err);
+    }
+  };
+
   return (
     <div className="w-full min-w-0 space-y-4 p-0 sm:p-3 lg:p-4">
       <ManagementHeader
@@ -289,6 +303,7 @@ const MenuManager = () => {
               key={it.id}
               item={it}
               onEdit={handleEditItem}
+              onToggleAvailable={handleToggleAvailable}
               onDelete={() => handleDelete(it.id, it.version)}
               isEditing={detailLoadingId === it.id}
             />

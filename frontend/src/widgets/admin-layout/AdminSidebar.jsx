@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@features/auth';
+import { useServiceRequestsQueueQuery } from '@entities/service-request';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { useSettingsQuery } from '@shared/api/settingsQueries.js';
 import {
@@ -21,6 +22,8 @@ import {
   ShoppingBag,
   KeyRound,
   ShieldAlert,
+  BadgePercent,
+  BellRing,
 } from 'lucide-react';
 
 const menuItems = [
@@ -41,6 +44,13 @@ const menuItems = [
     path: '/admin/tables',
     icon: <Table size={20} />,
     roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'],
+  },
+  {
+    title: 'Yêu cầu bàn',
+    path: '/admin/service-requests',
+    icon: <BellRing size={20} />,
+    roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'],
+    badgeKey: 'serviceRequests',
   },
   {
     title: 'Nhà bếp',
@@ -76,6 +86,12 @@ const menuItems = [
     title: 'Quản lý voucher',
     path: '/admin/voucher',
     icon: <TicketIcon size={20} />,
+    roles: ['ADMIN', 'MANAGER'],
+  },
+  {
+    title: 'Quản lý khuyến mãi',
+    path: '/admin/promotions',
+    icon: <BadgePercent size={20} />,
     roles: ['ADMIN', 'MANAGER'],
   },
   {
@@ -117,6 +133,18 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
   const { user } = useAuth();
   const [preferences] = useAdminPreferences();
   const { data: settings } = useSettingsQuery({ enabled: !!user, stateTime: 5 * 60 * 1000 });
+  const canSeeServiceRequests = Boolean(
+    user?.role &&
+      ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'].includes(user.role) &&
+      !user.mustChangePassword,
+  );
+  const { data: openServiceRequests } = useServiceRequestsQueueQuery(
+    { status: 'OPEN', mineOnly: false, tableId: null },
+    { enabled: canSeeServiceRequests },
+  );
+  const openServiceRequestCount = Array.isArray(openServiceRequests)
+    ? openServiceRequests.length
+    : 0;
   const restaurantName = settings?.restaurantName?.trim() || 'QROS';
   const initial = restaurantName.charAt(0).toUpperCase();
   const label = (text) => getMenuLabel(text, preferences.language);
@@ -215,6 +243,8 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
           const isActive = !hasChildren
             ? location.pathname === item.path
             : item.children.some((child) => child.path === location.pathname);
+          const itemBadgeCount =
+            item.badgeKey === 'serviceRequests' ? openServiceRequestCount : 0;
 
           return (
             <div key={index}>
@@ -276,9 +306,23 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
                   </div>
 
                   {isOpen && (
-                    <span className="whitespace-nowrap animate-in fade-in slide-in-from-left-2 text-xs font-semibold">
-                      {label(item.title)}
-                    </span>
+                    <>
+                      <span className="whitespace-nowrap animate-in fade-in slide-in-from-left-2 text-xs font-semibold">
+                        {label(item.title)}
+                      </span>
+                      {itemBadgeCount > 0 && (
+                        <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                          {itemBadgeCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+
+                  {!isOpen && itemBadgeCount > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[#0F172A]"
+                    />
                   )}
 
                   {!isOpen && (
@@ -327,12 +371,14 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
 const englishMenuLabels = {
   'Bảng điều khiển': 'Dashboard',
   'Quản lý bàn': 'Tables',
+  'Yêu cầu bàn': 'Service requests',
   'Nhà bếp': 'Kitchen',
   'Quản lý danh mục': 'Categories',
   'Quản lý món ăn': 'Menu items',
   'Quản lý combo': 'Combos',
   'Quản lý kho': 'Inventory',
   'Quản lý voucher': 'Vouchers',
+  'Quản lý khuyến mãi': 'Promotions',
   'Quản lý nhân viên': 'Staff',
   'Lịch sử đơn hàng': 'Order history',
   'Thống kê': 'Statistics',

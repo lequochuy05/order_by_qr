@@ -20,6 +20,10 @@ import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.order.service.OrderTableSyncService;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
+import com.qros.modules.promotion.dto.internal.DiscountResult;
+import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
+import com.qros.modules.promotion.model.Voucher;
+import com.qros.modules.promotion.model.enums.VoucherType;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.settings.model.SystemSettings;
 import com.qros.modules.settings.service.SystemSettingsService;
@@ -217,5 +221,87 @@ class OrderSettlementServiceTest {
         Order result = settlementService.prepareForPayment(22L, null, true);
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(22L);
+    }
+
+    @Test
+    void prepareForPaymentStacksActivePromotionWithVoucher() {
+        Order order = Order.builder()
+                .id(30L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .paymentStatus(PaymentStatus.PENDING)
+                .subtotalAmount(new BigDecimal("100000"))
+                .discountAmount(BigDecimal.ZERO)
+                .finalAmount(new BigDecimal("100000"))
+                .orderItems(new LinkedHashSet<>())
+                .build();
+
+        Voucher voucher = Voucher.builder()
+                .id(5L)
+                .code("SAVE10")
+                .type(VoucherType.FIXED_AMOUNT)
+                .discountAmount(new BigDecimal("10000"))
+                .build();
+        DiscountResult voucherDiscount = new DiscountResult(
+                5L,
+                "SAVE10",
+                VoucherType.FIXED_AMOUNT,
+                new BigDecimal("100000"),
+                new BigDecimal("10000"),
+                null,
+                new BigDecimal("10000"),
+                new BigDecimal("90000"));
+
+        when(orderRepository.findPaymentByIdForUpdate(30L)).thenReturn(Optional.of(order));
+        when(orderPricingService.calculatePromotionDiscount(new BigDecimal("100000")))
+                .thenReturn(new BigDecimal("15000.00"));
+        when(voucherCheckoutService.resolveForPayment("SAVE10", new BigDecimal("100000")))
+                .thenReturn(new VoucherPaymentResult(voucher, voucherDiscount));
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    Order target = invocation.getArgument(0);
+                    BigDecimal subtotal = invocation.getArgument(1);
+                    BigDecimal discount = invocation.getArgument(2);
+                    target.setSubtotalAmount(subtotal);
+                    target.setDiscountAmount(discount);
+                    target.setFinalAmount(subtotal.subtract(discount));
+                    return null;
+                })
+                .when(orderPricingService)
+                .setOrderMoney(any(Order.class), any(BigDecimal.class), any(BigDecimal.class));
+        when(orderRepository.save(order)).thenReturn(order);
+
+        Order result = settlementService.prepareForPayment(30L, "SAVE10", false);
+
+        assertThat(result.getVoucherCode()).isEqualTo("SAVE10");
+        assertThat(result.getDiscountAmount()).isEqualByComparingTo("25000.00");
+        assertThat(result.getFinalAmount()).isEqualByComparingTo("75000.00");
+    }
+
+    @Test
+    void resolveSessionOrderForSelfCheckoutAlwaysBlocksUnfinishedItems() {
+        com.qros.modules.table.model.TableSession session =
+                com.qros.modules.table.model.TableSession.builder().id(100L).build();
+        OrderItem cooking =
+                OrderItem.builder().id(1L).status(OrderItemStatus.COOKING).build();
+        Order order = Order.builder()
+                .id(40L)
+                .status(OrderStatus.SERVING)
+                .paymentStatus(PaymentStatus.PENDING)
+                .orderItems(new LinkedHashSet<>(Set.of(cooking)))
+                .build();
+
+        when(tableSessionService.requireOpenSessionForOrdering("BAN_05", "tok-1"))
+                .thenReturn(session);
+        when(orderRepository.findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(
+                        org.mockito.ArgumentMatchers.eq(100L), any()))
+                .thenReturn(Optional.of(order));
+        when(orderRepository.findPaymentByIdForUpdate(40L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> settlementService.resolveSessionOrderForSelfCheckout("BAN_05", "tok-1"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.SERVING);
+        verify(orderTableSyncService, never()).recalcTableStatus(any());
     }
 }

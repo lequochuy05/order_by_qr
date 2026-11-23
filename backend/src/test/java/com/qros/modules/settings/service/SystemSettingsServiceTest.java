@@ -120,6 +120,7 @@ class SystemSettingsServiceTest {
                 .paymentNotificationEnabled(true)
                 .kitchenOverdueNotificationEnabled(true)
                 .allowSettlementWithUnfinishedItems(true)
+                .customerSelfCheckoutEnabled(false)
                 .build();
     }
 
@@ -160,6 +161,7 @@ class SystemSettingsServiceTest {
                 true,
                 true,
                 true,
+                false,
                 version);
     }
 }

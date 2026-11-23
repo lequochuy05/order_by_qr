@@ -28,65 +28,76 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
 
   const loadPreview = useCallback(
     async (code, { persistDraft = false } = {}) => {
-      const normalizedCode = code.trim();
+      const normalizedCode = (code || '').trim();
+      const billableOrderItems = (order?.orderItems || []).filter(isBillableOrderItem);
 
-      // Đơn đã tồn tại — dùng số tiền từ order, không cần preview lại
       if (!normalizedCode) {
-        setPreviewData(null);
         setAppliedVoucherCode('');
         setError('');
         paymentDraft.clearPaymentDraft();
+      }
+
+      if (billableOrderItems.length === 0) {
+        setPreviewData(null);
         return null;
       }
 
       // Đơn mang về không có bàn (table.id rỗng) — vẫn preview bình thường với tableId = null
       const isTakeaway = !table?.id || order?.orderType === 'TAKEAWAY';
 
+      const items = billableOrderItems
+        .filter((item) => item.menuItem)
+        .map((item) => ({
+          menuItemId: item.menuItem.id,
+          quantity: item.quantity,
+          notes: item.notes,
+          selectedOptionValueIds:
+            item.options?.map((option) => option.valueId).filter((id) => id != null) || [],
+        }));
+      const combos = billableOrderItems
+        .filter((item) => item.combo)
+        .map((item) => ({
+          comboId: item.combo.id,
+          quantity: item.quantity,
+          notes: item.notes,
+        }));
+
+      if (items.length === 0 && combos.length === 0) {
+        setPreviewData(null);
+        return null;
+      }
+
       setLoading(true);
       try {
-        const billableOrderItems = order.orderItems.filter(isBillableOrderItem);
-        const items = billableOrderItems
-          .filter((item) => item.menuItem)
-          .map((item) => ({
-            menuItemId: item.menuItem.id,
-            quantity: item.quantity,
-            notes: item.notes,
-            selectedOptionValueIds:
-              item.options?.map((option) => option.valueId).filter((id) => id != null) || [],
-          }));
-        const combos = billableOrderItems
-          .filter((item) => item.combo)
-          .map((item) => ({
-            comboId: item.combo.id,
-            quantity: item.quantity,
-            notes: item.notes,
-          }));
-
         const response = await orderService.previewOrder({
           tableId: isTakeaway ? null : table.id,
           ...(isTakeaway ? { orderType: 'TAKEAWAY' } : {}),
           items,
           combos,
-          voucherCode: normalizedCode,
+          voucherCode: normalizedCode || null,
         });
         setPreviewData(response);
 
-        if (!response.voucherValid) {
-          setAppliedVoucherCode('');
-          paymentDraft.clearPaymentDraft();
-          setError(
-            response.voucherMessage
-              ? translateErrorMessage(response.voucherMessage)
-              : 'Voucher không hợp lệ',
-          );
-        } else {
-          setAppliedVoucherCode(normalizedCode);
-          setError('');
-          if (persistDraft) paymentDraft.savePaymentDraft(normalizedCode, response);
+        if (normalizedCode) {
+          if (!response.voucherValid) {
+            setAppliedVoucherCode('');
+            paymentDraft.clearPaymentDraft();
+            setError(
+              response.voucherMessage
+                ? translateErrorMessage(response.voucherMessage)
+                : 'Voucher không hợp lệ',
+            );
+          } else {
+            setAppliedVoucherCode(normalizedCode);
+            setError('');
+            if (persistDraft) paymentDraft.savePaymentDraft(normalizedCode, response);
+          }
         }
         return response;
       } catch {
-        setError('Lỗi kiểm tra voucher');
+        if (normalizedCode) {
+          setError('Lỗi kiểm tra voucher');
+        }
         return null;
       } finally {
         setLoading(false);
@@ -110,12 +121,9 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
       setAppliedVoucherCode('');
     }
     setError('');
-    // Không cần gọi preview cho đơn đã tồn tại — số tiền có sẵn trong order
-    if (initialVoucher) {
-      loadPreview(initialVoucher, {
-        persistDraft: Boolean(!order?.voucherCode),
-      });
-    }
+    loadPreview(initialVoucher, {
+      persistDraft: Boolean(initialVoucher && !order?.voucherCode),
+    });
   }, [loadPreview, order?.voucherCode, paymentDraft, setVoucher]);
 
   useEffect(() => {
@@ -133,7 +141,20 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
         value.trim() &&
         normalizeVoucherCode(value) !== normalizeVoucherCode(appliedVoucherCode)
       ) {
-        setPreviewData(null);
+        setPreviewData((prev) =>
+          prev
+            ? {
+                ...prev,
+                voucherValid: false,
+                voucherMessage: '',
+                discountAmount: prev.discountPromotion ?? 0,
+                finalAmount: Math.max(
+                  0,
+                  (prev.subtotalAmount ?? 0) - (prev.discountPromotion ?? 0),
+                ),
+              }
+            : null,
+        );
         paymentDraft.clearPaymentDraft();
         setError('');
       }
@@ -150,14 +171,23 @@ const usePaymentPreview = ({ isOpen, order, table, paymentDraft }) => {
   const amounts = useMemo(() => {
     const previewItemsSubtotal =
       (previewData?.subtotalItems || 0) + (previewData?.subtotalCombos || 0);
+    const subtotalAmount =
+      previewData?.subtotalAmount ??
+      (previewItemsSubtotal > 0 ? previewItemsSubtotal : null) ??
+      getOrderSubtotalAmount(order) ??
+      0;
+    const discountAmount = previewData?.discountAmount ?? getOrderDiscountAmount(order) ?? 0;
+    const discountPromotion =
+      previewData?.discountPromotion ??
+      (!order?.voucherCode ? (getOrderDiscountAmount(order) ?? 0) : 0);
+    const voucherDiscountAmount = Math.max(0, discountAmount - discountPromotion);
+    const finalAmount = previewData?.finalAmount ?? getOrderFinalAmount(order) ?? 0;
     return {
-      subtotalAmount:
-        previewData?.subtotalAmount ??
-        (previewItemsSubtotal > 0 ? previewItemsSubtotal : null) ??
-        getOrderSubtotalAmount(order) ??
-        0,
-      discountAmount: previewData?.discountAmount ?? getOrderDiscountAmount(order) ?? 0,
-      finalAmount: previewData?.finalAmount ?? getOrderFinalAmount(order) ?? 0,
+      subtotalAmount,
+      discountAmount,
+      discountPromotion,
+      voucherDiscountAmount,
+      finalAmount,
     };
   }, [order, previewData]);
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
 import { publicWsService } from '@shared/lib/websocket.js';
 
@@ -17,6 +18,13 @@ const useCustomerMenuRealtime = ({ tableCode, sessionToken }) => {
   useWebSocket(
     sessionToken ? '/topic/tables' : null,
     (message) => {
+      if (message?.event === 'SERVICE_REQUEST_UPDATED') {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.serviceRequests.customer(tableCode),
+        });
+        return;
+      }
+
       if (
         message !== 'UPDATED' &&
         message?.event !== 'UPDATED' &&
@@ -32,6 +40,24 @@ const useCustomerMenuRealtime = ({ tableCode, sessionToken }) => {
 
       if (queryState?.fetchStatus === 'fetching' || recentlyUpdated) return;
       queryClient.invalidateQueries({ queryKey, exact: true });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.serviceRequests.customer(tableCode),
+      });
+    },
+    { scope: 'public' },
+  );
+
+  useWebSocket(
+    '/topic/menu',
+    (message) => {
+      if (message !== 'UPDATED' && (typeof message !== 'object' || message === null)) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.menu.customer });
+      if (tableCode && sessionToken) {
+        queryClient.invalidateQueries({
+          queryKey: ['tableSession', tableCode, sessionToken],
+          exact: true,
+        });
+      }
     },
     { scope: 'public' },
   );

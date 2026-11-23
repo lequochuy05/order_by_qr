@@ -16,7 +16,9 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,8 +51,12 @@ public class CategoryService {
 
     @Cacheable(value = CacheNames.CATEGORIES, key = "'all_active'")
     public List<CategoryResponse> getAllActive() {
-        return categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc().stream()
-                .map(categoryMapper::toSummaryResponse)
+        List<Category> categories = categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc();
+        Map<Long, Long> itemCounts =
+                countItemsByCategoryIds(categories.stream().map(Category::getId).toList());
+        return categories.stream()
+                .map(category ->
+                        categoryMapper.toSummaryResponse(category, itemCounts.getOrDefault(category.getId(), 0L)))
                 .toList();
     }
 
@@ -66,7 +72,16 @@ public class CategoryService {
                 ? categoryRepo.findAll(pageable)
                 : categoryRepo.findByNameContainingIgnoreCase(q.trim(), pageable);
 
-        return page.map(categoryMapper::toSummaryResponse);
+        Map<Long, Long> itemCounts = countItemsByCategoryIds(
+                page.getContent().stream().map(Category::getId).toList());
+
+        return page.map(
+                category -> categoryMapper.toSummaryResponse(category, itemCounts.getOrDefault(category.getId(), 0L)));
+    }
+
+    public CategoryResponse getById(@NonNull Long id) {
+        Category category = getEntityById(id);
+        return categoryMapper.toSummaryResponse(category, menuItemRepository.countByCategoryId(id));
     }
 
     @Transactional
@@ -118,7 +133,7 @@ public class CategoryService {
         eventPublisher.publishEvent(new CategoryChangeEvent("updated", saved.getId()));
 
         // N+1 fix: toSummaryResponse avoids lazy-loading the full menuItems collection.
-        return categoryMapper.toSummaryResponse(saved);
+        return categoryMapper.toSummaryResponse(saved, menuItemRepository.countByCategoryId(saved.getId()));
     }
 
     @Transactional
@@ -180,6 +195,17 @@ public class CategoryService {
 
     private Category getEntityById(Long id) {
         return categoryRepo.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    private Map<Long, Long> countItemsByCategoryIds(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Long> counts = new HashMap<>();
+        for (Object[] row : menuItemRepository.countByCategoryIdIn(categoryIds)) {
+            counts.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        return counts;
     }
 
     private Category saveCategory(Category category) {

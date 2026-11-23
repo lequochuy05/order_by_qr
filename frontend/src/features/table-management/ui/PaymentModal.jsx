@@ -74,7 +74,7 @@ const PaymentModalContent = (props) => {
               error={payment.error}
               voucherValid={payment.previewData?.voucherValid}
               voucherRequiresApply={payment.voucherRequiresApply}
-              discountAmount={payment.amounts.discountAmount}
+              discountAmount={payment.amounts.voucherDiscountAmount ?? payment.amounts.discountAmount}
             />
             <CashTenderedPanel
               finalAmount={payment.amounts.finalAmount}

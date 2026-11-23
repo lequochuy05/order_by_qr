@@ -10,6 +10,7 @@ export const publicMenuService = {
   getCategories: () => api.get('/public/categories'),
   getAllMenuItems: () => api.get('/public/menu-items'),
   getCombos: () => api.get('/public/combos'),
+  getActivePromotions: () => api.get('/public/promotions/active'),
   getSettings: () => api.get('/public/settings'),
   getSessionState: (tableCode) => api.get(`/public/tables/${tableCode}/session-state`),
   startSession: (tableCode, sig) =>
@@ -24,6 +25,25 @@ export const publicMenuService = {
       { sessionToken },
       sessionHeaderConfig(sessionToken),
     ),
+  validateVoucher: (code, subtotal = 0) =>
+    api.get('/vouchers/validate', { params: { code, subtotal } }),
+  createSelfCheckout: (tableCode, payload, sessionToken) =>
+    api.post(
+      `/public/tables/${tableCode}/self-checkout`,
+      payload,
+      sessionHeaderConfig(sessionToken),
+    ),
+  cancelSelfCheckout: (tableCode, transactionId, payload, sessionToken) =>
+    api.post(
+      `/public/tables/${tableCode}/self-checkout/${transactionId}/cancel`,
+      payload,
+      sessionHeaderConfig(sessionToken),
+    ),
+  syncSelfCheckoutStatus: (tableCode, transactionId, sessionToken) =>
+    api.get(`/public/tables/${tableCode}/self-checkout/${transactionId}`, {
+      params: { sessionToken },
+      ...sessionHeaderConfig(sessionToken),
+    }),
   getCurrentOrderByTableCode: (tableCode, sessionToken) =>
     api.get(`/public/tables/code/${tableCode}/current-order`, { params: { sessionToken } }),
   createOrder: (orderData) =>

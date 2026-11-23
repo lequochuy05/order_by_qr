@@ -17,11 +17,13 @@ const MenuPage = lazy(() => import('@pages/admin/MenuPage.jsx'));
 const ComboPage = lazy(() => import('@pages/admin/ComboPage.jsx'));
 const InventoryPage = lazy(() => import('@pages/admin/InventoryPage.jsx'));
 const VoucherPage = lazy(() => import('@pages/admin/VoucherPage.jsx'));
+const PromotionPage = lazy(() => import('@pages/admin/PromotionPage.jsx'));
 const UserPage = lazy(() => import('@pages/admin/UserPage.jsx'));
 const RevenueStatsPage = lazy(() => import('@pages/admin/RevenueStatsPage.jsx'));
 const TopDishesStatsPage = lazy(() => import('@pages/admin/TopDishesStatsPage.jsx'));
 const StaffStatsPage = lazy(() => import('@pages/admin/StaffStatsPage.jsx'));
 const TableMapPage = lazy(() => import('@pages/admin/TableMapPage.jsx'));
+const ServiceRequestsPage = lazy(() => import('@pages/admin/ServiceRequestsPage.jsx'));
 const TakeawayPage = lazy(() => import('@pages/admin/TakeawayPage.jsx'));
 const OrderHistoryPage = lazy(() => import('@pages/admin/OrderHistoryPage.jsx'));
 const KitchenPage = lazy(() => import('@pages/admin/KitchenPage.jsx'));
@@ -90,6 +92,7 @@ const AppRouter = () => {
               <Route path="/admin/menu" element={<MenuPage />} />
               <Route path="/admin/combo" element={<ComboPage />} />
               <Route path="/admin/voucher" element={<VoucherPage />} />
+              <Route path="/admin/promotions" element={<PromotionPage />} />
               <Route path="/admin/staffs" element={<UserPage />} />
               <Route path="/admin/statistics/top-dishes" element={<TopDishesStatsPage />} />
               <Route path="/admin/statistics/staff" element={<StaffStatsPage />} />
@@ -101,6 +104,7 @@ const AppRouter = () => {
 
             <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER', 'CASHIER', 'STAFF']} />}>
               <Route path="/admin/tables" element={<TableMapPage />} />
+              <Route path="/admin/service-requests" element={<ServiceRequestsPage />} />
               <Route path="/admin/takeaway" element={<TakeawayPage />} />
             </Route>
 

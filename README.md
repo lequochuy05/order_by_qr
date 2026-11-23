@@ -68,19 +68,20 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 
 ```text
 .
-├── backend/                  # Spring Boot 4.1.2 (15 modules, Flyway V1–V1.21, 222 tests)
+├── .agents/                  # Workspace Rules & 6 Role/SDD Skills (PO → Design → BA → SE → SDD Coding/Sync)
+├── backend/                  # Spring Boot (15 domain modules, 4 infra modules, Flyway V1–V1.22)
 ├── frontend/                 # React 19 SPA/PWA + Capacitor 8 Android (`frontend/android/`)
 │   ├── vercel.json           # Cấu hình deploy Vercel (rewrites API/WS, CSP, cache headers)
 │   ├── nginx.conf            # Cấu hình Nginx cho Docker (SPA, proxy API/WS, CSP)
 │   └── Dockerfile            # Multi-stage Node 22 -> Nginx Alpine
-├── .github/workflows/ci.yml  # CI (Java 25, Node 22) & push Docker images lên GHCR
-├── docs/                     # Tài liệu thiết kế, PRD, audit, design-system
+├── .github/workflows/ci.yml  # CI & push Docker images lên GHCR
+├── docs/knowledge/           # Centralized Knowledge Hub (01-po → 02-design → 03-ba → 04-tech → 05-specs)
 ├── reports/                  # 8 báo cáo QA, Discovery, Feature/Role Matrix, Bug Report
 ├── scripts/                  # Playwright E2E/Android audit, backup/restore Postgres, run_checks
-├── Dockerfile                # Multi-stage Maven 3.9.16 (JDK 25) -> JRE 25 Alpine (`jarmode=tools`)
-├── docker-compose.yml        # Chạy cụm container backend + frontend (test đóng gói / VPS)
+├── Dockerfile                # Multi-stage build backend production
+├── docker-compose.yml        # Chạy cụm container backend + frontend (order-by-qr-backend/frontend:latest)
 ├── render.yaml               # Blueprint triển khai backend + Postgres + Redis lên Render
-├── .env.example              # Mẫu đầy đủ 40 biến môi trường cho Local & Production
+├── .env.example              # Mẫu biến môi trường cho Local & Production
 └── README.md                 # Tài liệu tổng quan, cài đặt và vận hành
 ```
 
@@ -89,8 +90,8 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 ## 5. YÊU CẦU MÔI TRƯỜNG & CHẠY LOCAL (`dev`)
 
 ### Yêu cầu hệ thống
-- **JDK:** `25` trở lên (Maven `3.9+`).
-- **Node.js:** `22+` (npm `10+`).
+- **JDK:** `21` trở lên (Maven `3.9+`).
+- **Node.js:** `20+` (khuyến nghị `22+`, npm `10+`).
 - **Docker:** chạy Redis (`redis:7-alpine`) hoặc build image.
 - **PostgreSQL:** `16+` (local hoặc Neon Cloud).
 
@@ -109,7 +110,7 @@ Cập nhật các biến bắt buộc trong `.env`:
 - Database: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`
 - Redis: `REDIS_HOST=localhost`, `REDIS_PORT=6379`, `REDIS_SSL_ENABLED=false`
 - Bảo mật (tạo 2 chuỗi 64 ký tự hex riêng biệt bằng `openssl rand -hex 32`): `JWT_SECRET`, `QR_SIGNING_SECRET`
-- Email (để nhận OTP 2FA Admin / reset password): `BREVO_API_KEY` + `MAIL_USERNAME` (hoặc SMTP `MAIL_USERNAME` + `MAIL_PASSWORD`)
+- Tích hợp ngoài (khi sử dụng): `BREVO_API_KEY` + `MAIL_USERNAME` (hoặc SMTP), `GEMINI_API_KEY`, `PAYOS_*`, `CLOUDINARY_*`
 
 ### Bước 3: Chạy Backend & Frontend
 - **Backend (bắt buộc truyền `-Dspring-boot.run.profiles=dev`):**
@@ -181,8 +182,17 @@ docker compose up -d
 
 ---
 
-## 8. TÀI LIỆU & BÁO CÁO NGHIỆM THU
+## 8. KNOWLEDGE HUB, WORKSPACE SKILLS & BÁO CÁO NGHIỆM THU
 
+### Trung tâm tri thức tập trung (`docs/knowledge/`) & Bộ Skills (`.agents/skills/`)
+Toàn bộ tài liệu sản phẩm và kỹ thuật được quản lý tập trung tại [docs/knowledge/KNOWLEDGE_HUB.md](docs/knowledge/KNOWLEDGE_HUB.md) với liên kết bắt buộc giữa 4 tầng (`PO → Design → BA → SE`):
+- **Tầng 1 — PO (`01-po/`):** [project-intake.md](docs/knowledge/01-po/project-intake.md), [vision.md](docs/knowledge/01-po/vision.md), [personas.md](docs/knowledge/01-po/personas.md), [journey-features.md](docs/knowledge/01-po/journey-features.md), [blueprint.md](docs/knowledge/01-po/blueprint.md)... · Skill: `po-product-discovery`
+- **Tầng 2 — Design (`02-design/`):** [DESIGN_SYSTEM.md](docs/knowledge/02-design/DESIGN_SYSTEM.md), [figma-tokens.json](docs/knowledge/02-design/figma-tokens.json), [PROTOTYPE_SCREEN_MAP.md](docs/knowledge/02-design/PROTOTYPE_SCREEN_MAP.md) · Skill: `design-system-prototype`
+- **Tầng 3 — BA (`03-ba/`):** [PRD_BY_USER_STAGE.md](docs/knowledge/03-ba/PRD_BY_USER_STAGE.md), [USER_STORIES.md](docs/knowledge/03-ba/USER_STORIES.md) · Skills: `ba-prd`, `ba-user-story`
+- **Tầng 4 — System Design (`04-tech/`):** [SYSTEM_DESIGN.md](docs/knowledge/04-tech/SYSTEM_DESIGN.md) · Skill: `se-system-design`
+- **Tầng 5 — SDD Coding & Sync (`05-specs/`):** [CONSTITUTION.md](docs/knowledge/05-specs/CONSTITUTION.md) & Baseline/Feature Specs · Skill: `sdd-coding-sync` *(phương pháp Spec-Driven Development, lấy cảm hứng từ Spec Kit, có Sync-Back duyệt thủ công)*
+
+### Báo cáo khảo sát & nghiệm thu (`reports/`)
 Toàn bộ báo cáo khảo sát, phân quyền và kiểm thử được lưu tại [reports/](reports/):
 1. [reports/PROJECT_DISCOVERY.md](reports/PROJECT_DISCOVERY.md) — Khảo sát route, modal, form và kiến trúc component.
 2. [reports/FEATURE_INVENTORY.md](reports/FEATURE_INVENTORY.md) — Danh mục chi tiết tính năng toàn hệ thống.

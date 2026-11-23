@@ -17,9 +17,11 @@ public class InventoryAvailabilityCacheInvalidationListener {
     private final CacheManager cacheManager;
     private final NotificationService notificationService;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onInventoryChange(InventoryChangeEvent event) {
         clear(CacheNames.INVENTORY);
+        clear(CacheNames.MENU);
+        clear(CacheNames.COMBOS);
         clear(CacheNames.MENU_AVAILABILITY);
         clear(CacheNames.PUBLIC_MENU);
         clear(CacheNames.RECOMMENDATIONS);

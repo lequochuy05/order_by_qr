@@ -5,6 +5,7 @@ import com.qros.modules.inventory.dto.response.RecipeItemResponse;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.RecipeItem;
 import com.qros.modules.menu.model.MenuItem;
+import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ public class RecipeMapper {
     public RecipeItemResponse toResponse(RecipeItem recipeItem) {
         MenuItem menuItem = recipeItem.getMenuItem();
         InventoryItem inventoryItem = recipeItem.getInventoryItem();
+        BigDecimal availableQuantity = inventoryItem != null ? inventoryItem.availableQuantity() : null;
 
         return new RecipeItemResponse(
                 recipeItem.getId(),
@@ -30,7 +32,10 @@ public class RecipeMapper {
                 inventoryItem != null ? inventoryItem.getId() : null,
                 inventoryItem != null ? inventoryItem.getName() : null,
                 inventoryItem != null ? inventoryItem.getUnit() : null,
-                recipeItem.getQuantityRequired());
+                recipeItem.getQuantityRequired(),
+                availableQuantity,
+                inventoryItem != null ? inventoryItem.isLowStock() : null,
+                availableQuantity != null ? availableQuantity.compareTo(BigDecimal.ZERO) <= 0 : null);
     }
 
     public List<RecipeItemResponse> toResponses(List<RecipeItem> recipeItems) {

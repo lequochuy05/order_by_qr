@@ -129,6 +129,43 @@ class WebSocketConfigTest {
     }
 
     @Test
+    void serviceRequestsTopicEnforcesStaffHierarchyAndBlocksChefAndAnonymous() {
+        org.springframework.security.access.hierarchicalroles.RoleHierarchy hierarchy =
+                org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl.fromHierarchy(
+                        "ROLE_ADMIN > ROLE_MANAGER \n"
+                                + "ROLE_MANAGER > ROLE_CASHIER \n"
+                                + "ROLE_MANAGER > ROLE_CHEF \n"
+                                + "ROLE_CASHIER > ROLE_STAFF");
+        WebSocketConfig hierarchicalConfig = new WebSocketConfig(
+                jwtService, userDetailsService, new AppProperties(), tokenBlacklistService, hierarchy);
+
+        Message<byte[]> anonMsg = subscribeMessage("/topic/service-requests", null);
+        assertThatThrownBy(() -> hierarchicalConfig
+                        .webSocketAuthInterceptor()
+                        .preSend(anonMsg, mock(org.springframework.messaging.MessageChannel.class)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        UsernamePasswordAuthenticationToken chefAuth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+        Message<byte[]> chefMsg = subscribeMessage("/topic/service-requests", chefAuth);
+        assertThatThrownBy(() -> hierarchicalConfig
+                        .webSocketAuthInterceptor()
+                        .preSend(chefMsg, mock(org.springframework.messaging.MessageChannel.class)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Insufficient role");
+
+        for (String role : java.util.List.of("ROLE_STAFF", "ROLE_CASHIER", "ROLE_MANAGER", "ROLE_ADMIN")) {
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    role.toLowerCase(), null, java.util.List.of(new SimpleGrantedAuthority(role)));
+            Message<byte[]> msg = subscribeMessage("/topic/service-requests", auth);
+            assertThatCode(() -> hierarchicalConfig
+                            .webSocketAuthInterceptor()
+                            .preSend(msg, mock(org.springframework.messaging.MessageChannel.class)))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
     void unknownTopicIsDeniedByDefault() {
         Message<byte[]> message = subscribeMessage("/topic/internal-new-feature", null);
 

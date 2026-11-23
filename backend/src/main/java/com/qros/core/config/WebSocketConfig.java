@@ -51,6 +51,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     /** Topics requiring authenticated subscriptions. Unknown topics are denied. */
     private static final Map<String, Set<String>> PROTECTED_TOPICS = Map.of(
             "/topic/orders", Set.of("ROLE_MANAGER", "ROLE_STAFF", "ROLE_CHEF"),
+            "/topic/service-requests", Set.of("ROLE_MANAGER", "ROLE_STAFF"),
             "/topic/kitchen", Set.of("ROLE_MANAGER", "ROLE_CHEF"),
             "/topic/users", Set.of("ROLE_MANAGER"),
             "/topic/vouchers", Set.of("ROLE_MANAGER", "ROLE_STAFF"),

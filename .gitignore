@@ -115,8 +115,6 @@ desktop.ini
 *~
 
 # === AI Agents & Local Tooling ===
-.agents/
-.agent/
 .codegraph/
 .claude/
 .cursor/

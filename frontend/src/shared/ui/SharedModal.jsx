@@ -5,7 +5,7 @@ const SharedModal = ({
   onClose,
   children,
   className = '',
-  backdropClassName = 'bg-black/60 backdrop-blur-sm',
+  backdropClassName = 'bg-slate-950/60 backdrop-blur-md transition-opacity',
   closeOnBackdrop = false,
   ariaLabel = 'Hộp thoại',
   placement = 'center',
@@ -71,7 +71,7 @@ const SharedModal = ({
     center: {
       backdrop: 'items-center justify-center p-2 sm:p-4',
       panel:
-        'max-h-[94dvh] w-[calc(100vw-1rem)] rounded-[1.5rem] p-4 animate-in zoom-in duration-300 sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:rounded-[2rem] sm:p-6',
+        'max-h-[94dvh] w-[calc(100vw-1rem)] rounded-3xl p-4 animate-pop-in sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:p-6',
       defaultWidth: 'max-w-lg',
     },
     right: {
@@ -103,7 +103,7 @@ const SharedModal = ({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        className={`flex min-w-0 flex-col rounded-3xl border border-[#1E293B] bg-white/95 text-slate-900 shadow-2xl backdrop-blur-md transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/95 dark:text-slate-100 ${resolvedMaxWidth} ${styles.panel} ${className}`}
+        className={`flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 text-slate-900 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.3)] ring-1 ring-slate-900/5 backdrop-blur-md transition-colors dark:border-slate-800/90 dark:bg-[#0F172A]/95 dark:text-slate-100 dark:shadow-[0_28px_70px_-12px_rgba(0,0,0,0.75)] dark:ring-white/10 ${resolvedMaxWidth} ${styles.panel} ${className}`}
         onMouseDown={(event) => event.stopPropagation()}
       >
         {children}

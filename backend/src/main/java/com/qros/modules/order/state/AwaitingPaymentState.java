@@ -25,6 +25,11 @@ public class AwaitingPaymentState implements OrderState {
      */
     @Override
     public void handleRequest(Order order) {
+        boolean hasBillableItems =
+                order.getOrderItems().stream().anyMatch(com.qros.modules.order.model.OrderItem::isBillable);
+        if (!hasBillableItems) {
+            throw new IllegalStateException("Cannot move to AWAITING_PAYMENT: order has no billable items");
+        }
         boolean anyNotDone = order.getOrderItems().stream()
                 .anyMatch(i -> i.getStatus() != OrderItemStatus.FINISHED && i.getStatus() != OrderItemStatus.CANCELLED);
         if (anyNotDone) {

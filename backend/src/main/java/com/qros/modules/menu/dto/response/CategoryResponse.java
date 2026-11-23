@@ -16,4 +16,5 @@ public record CategoryResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         Long version,
+        long itemCount,
         List<MenuItemResponse> menuItems) {}

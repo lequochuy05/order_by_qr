@@ -97,6 +97,23 @@ class DiningTableServiceTest {
     }
 
     @Test
+    void waitingForPaymentRejectsWhenKitchenStillHasUnfinishedItems() {
+        DiningTable table = table(TableStatus.OCCUPIED);
+        when(tableRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(table));
+        when(activeOrderChecker.hasActiveOrders(5L)).thenReturn(true);
+        when(activeOrderChecker.hasUnfinishedItems(5L)).thenReturn(true);
+
+        assertThatThrownBy(() ->
+                        tableService.updateStatus(5L, new UpdateTableStatusRequest(TableStatus.WAITING_FOR_PAYMENT)))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.ORDER_HAS_UNFINISHED_ITEMS));
+
+        verify(tableRepository, never()).save(table);
+    }
+
+    @Test
     void regenerateQrRejectsTableWithOpenSession() {
         DiningTable table = table(TableStatus.OCCUPIED);
         when(tableRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(table));

@@ -56,7 +56,9 @@ public class PaymentPersistenceService {
             }
         }
 
-        Order order = orderSettlementService.prepareForPayment(orderId, request.voucherCode());
+        Order order = Boolean.TRUE.equals(request.confirmUnfinishedItems())
+                ? orderSettlementService.prepareForPayment(orderId, request.voucherCode(), true)
+                : orderSettlementService.prepareForPayment(orderId, request.voucherCode());
         BigDecimal payableAmount = currentFinalAmount(order);
 
         PaymentTransaction active = transactionRepository

@@ -189,4 +189,30 @@ class OrderTableSyncServiceTest {
         verify(tableSessionService, never()).evictTableSessionCachesForTables(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
+
+    @Test
+    void recalcTableStatus_neverSetsWaitingForPaymentWhileUnfinishedItemsExist() {
+        DiningTable table = DiningTable.builder()
+                .id(1L)
+                .tableNumber("101")
+                .tableCode("TBL-101")
+                .status(TableStatus.WAITING_FOR_PAYMENT)
+                .build();
+
+        OrderItem cookingItem =
+                OrderItem.builder().id(10L).status(OrderItemStatus.COOKING).build();
+
+        Order order = Order.builder()
+                .id(100L)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .table(table)
+                .orderItems(Set.of(cookingItem))
+                .build();
+
+        syncService.recalcTableStatus(order);
+
+        assertThat(table.getStatus()).isEqualTo(TableStatus.OCCUPIED);
+        verify(tableRepository).saveAll(tableListCaptor.capture());
+        assertThat(tableListCaptor.getValue()).containsExactly(table);
+    }
 }

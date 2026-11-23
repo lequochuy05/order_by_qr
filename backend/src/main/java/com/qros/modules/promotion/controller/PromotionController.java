@@ -30,15 +30,20 @@ public class PromotionController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
-    public ApiResponse<Page<PromotionResponse>> search(@RequestParam(required = false) String q, Pageable pageable) {
-        return ApiResponse.success(promotionService.searchForManagement(q, pageable));
+    public ApiResponse<Page<PromotionResponse>> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ApiResponse.success(promotionService.searchForManagement(q, status, pageable));
     }
 
     @GetMapping("/management-summary")
     @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<Page<PromotionResponse>> managementSummary(
-            @RequestParam(required = false) String q, Pageable pageable) {
-        return ApiResponse.success(promotionService.searchForManagement(q, pageable));
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String status,
+            Pageable pageable) {
+        return ApiResponse.success(promotionService.searchForManagement(q, status, pageable));
     }
 
     @GetMapping("/active")

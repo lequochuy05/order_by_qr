@@ -50,7 +50,10 @@ public class OrderMapper {
         return new PublicOrderResponse(
                 order.getId(),
                 order.getStatus(),
+                order.getSubtotalAmount(),
+                order.getDiscountAmount(),
                 order.getFinalAmount(),
+                order.getVoucherCode(),
                 toPublicTable(order),
                 order.getOrderItems() == null
                         ? List.of()

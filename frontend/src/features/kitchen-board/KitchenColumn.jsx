@@ -2,6 +2,7 @@ import React from 'react';
 import { ChefHat } from 'lucide-react';
 import { useTranslation } from '@shared/lib/i18n';
 import KitchenCard from './KitchenCard';
+import { getAvailabilityTargetKey } from './model/useKitchenOrders.js';
 
 const toneClasses = {
   orange: {
@@ -30,7 +31,10 @@ const KitchenColumn = ({
   tone,
   onUpdateStatus,
   onCancelItem,
+  onOpenRecipe,
+  onToggleAvailability,
   processingItems,
+  togglingAvailabilityKeys = new Set(),
 }) => {
   const { isEn } = useTranslation('kitchen');
   const classes = toneClasses[tone];
@@ -79,16 +83,24 @@ const KitchenColumn = ({
             </p>
           </div>
         ) : (
-          items.map((item) => (
-            <KitchenCard
-              key={item.id}
-              item={item}
-              status={status}
-              onUpdateStatus={onUpdateStatus}
-              onCancelItem={onCancelItem}
-              isProcessing={processingItems.has(item.id)}
-            />
-          ))
+          items.map((item) => {
+            const availabilityKey = getAvailabilityTargetKey(item);
+            return (
+              <KitchenCard
+                key={item.id}
+                item={item}
+                status={status}
+                onUpdateStatus={onUpdateStatus}
+                onCancelItem={onCancelItem}
+                onOpenRecipe={onOpenRecipe}
+                onToggleAvailability={onToggleAvailability}
+                isProcessing={processingItems.has(item.id)}
+                isTogglingAvailability={Boolean(
+                  availabilityKey && togglingAvailabilityKeys.has(availabilityKey),
+                )}
+              />
+            );
+          })
         )}
       </div>
     </section>

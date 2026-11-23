@@ -78,6 +78,8 @@ public record SystemSettingsUpdateRequest(
 
         @NotNull(message = "Allow settlement with unfinished items setting is required") Boolean allowSettlementWithUnfinishedItems,
 
+        @NotNull(message = "Customer self-checkout setting is required") Boolean customerSelfCheckoutEnabled,
+
         Long version) {
 
     @AssertTrue(message = "Opening and closing time cannot be the same") public boolean isValidTimeRange() {

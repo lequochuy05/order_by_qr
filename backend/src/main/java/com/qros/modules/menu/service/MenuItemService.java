@@ -1,6 +1,7 @@
 package com.qros.modules.menu.service;
 
 import com.qros.infrastructure.storage.StorageService;
+import com.qros.modules.inventory.service.InventoryAvailabilityService;
 import com.qros.modules.menu.dto.publicmenu.PublicMenuItem;
 import com.qros.modules.menu.dto.request.MenuItemRequest;
 import com.qros.modules.menu.dto.response.MenuItemImageResponse;
@@ -19,6 +20,7 @@ import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,16 +55,29 @@ public class MenuItemService {
     private final ApplicationEventPublisher eventPublisher;
     private final MenuItemOptionService menuItemOptionService;
     private final ImageFileValidator imageFileValidator;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
 
     public Page<MenuItemResponse> searchSummaries(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return menuItemRepository
-                .searchSummaries(normalizedKeyword, categoryId, pageable)
-                .map(menuItemMapper::toSummaryResponse);
+        Page<MenuItem> page = menuItemRepository.searchSummaries(normalizedKeyword, categoryId, pageable);
+        List<Long> itemIds = page.getContent().stream().map(MenuItem::getId).toList();
+        Map<Long, Boolean> stockAvailability = inventoryAvailabilityService.getMenuItemAvailability(itemIds);
+
+        return page.map(item -> {
+            MenuItemResponse response = menuItemMapper.toSummaryResponse(item);
+            boolean effectiveAvailable =
+                    Boolean.TRUE.equals(item.getAvailable()) && stockAvailability.getOrDefault(item.getId(), true);
+            return applyAvailability(response, effectiveAvailable);
+        });
     }
 
     public MenuItemResponse getById(@NonNull Long id) {
-        return menuItemMapper.toResponse(getEntityById(id));
+        MenuItem item = getEntityById(id);
+        boolean hasStock = inventoryAvailabilityService
+                .getMenuItemAvailability(List.of(id))
+                .getOrDefault(id, true);
+        boolean effectiveAvailable = Boolean.TRUE.equals(item.getAvailable()) && hasStock;
+        return applyAvailability(menuItemMapper.toResponse(item), effectiveAvailable);
     }
 
     @Cacheable(value = CacheNames.MENU, key = "'public_items'")
@@ -159,6 +174,12 @@ public class MenuItemService {
         }
 
         if (req.available() != null) {
+            boolean hasStock = inventoryAvailabilityService
+                    .getMenuItemAvailability(List.of(id))
+                    .getOrDefault(id, true);
+            if (Boolean.TRUE.equals(req.available()) && !hasStock) {
+                throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
+            }
             item.setAvailable(req.available());
         }
 
@@ -169,9 +190,41 @@ public class MenuItemService {
         menuItemOptionService.syncOptions(item, req.itemOptions());
 
         MenuItem saved = saveMenuItem(item);
+        inventoryAvailabilityService.syncCombosForMenuItem(saved);
         eventPublisher.publishEvent(new MenuChangeEvent("updated", saved.getId()));
 
-        return menuItemMapper.toResponse(saved);
+        boolean hasStock = inventoryAvailabilityService
+                .getMenuItemAvailability(List.of(saved.getId()))
+                .getOrDefault(saved.getId(), true);
+        return applyAvailability(
+                menuItemMapper.toResponse(saved), Boolean.TRUE.equals(saved.getAvailable()) && hasStock);
+    }
+
+    @Transactional
+    public MenuItemResponse toggleAvailable(@NonNull Long id, Long expectedVersion) {
+        MenuItem item = getEntityById(id);
+        if (expectedVersion != null) {
+            assertVersionMatches(item.getVersion(), expectedVersion);
+        }
+
+        boolean hasStock = inventoryAvailabilityService
+                .getMenuItemAvailability(List.of(id))
+                .getOrDefault(id, true);
+        boolean currentlyAvailable = Boolean.TRUE.equals(item.getAvailable()) && hasStock;
+        boolean nextAvailable = !currentlyAvailable;
+
+        if (nextAvailable && !hasStock) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
+        }
+
+        item.setAvailable(nextAvailable);
+
+        MenuItem saved = saveMenuItem(item);
+        inventoryAvailabilityService.syncCombosForMenuItem(saved);
+        eventPublisher.publishEvent(new MenuChangeEvent("availability_updated", saved.getId()));
+
+        return applyAvailability(
+                menuItemMapper.toResponse(saved), Boolean.TRUE.equals(saved.getAvailable()) && hasStock);
     }
 
     @Transactional
@@ -270,5 +323,12 @@ public class MenuItemService {
 
     private boolean isCustomImage(String image) {
         return image != null && !image.isBlank() && !DEFAULT_MENU_ITEM_IMAGE.equals(image) && image.startsWith("http");
+    }
+
+    private MenuItemResponse applyAvailability(MenuItemResponse response, boolean effectiveAvailable) {
+        if (response == null || Objects.equals(response.available(), effectiveAvailable)) {
+            return response;
+        }
+        return menuItemMapper.withAvailability(response, effectiveAvailable);
     }
 }

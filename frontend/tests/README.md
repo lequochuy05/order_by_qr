@@ -15,6 +15,12 @@ Run the suite with:
 npm test
 ```
 
+Run with built-in Node coverage report:
+
+```bash
+npm run test:coverage
+```
+
 The current suite uses Node's built-in `node:test` module and focuses on deterministic business
 logic. Browser/component integration tests can be added later under `tests/integration/` when a DOM
 test environment is introduced.

@@ -19,6 +19,9 @@ test('restaurant settings provide safe defaults', () => {
     showRecommendations: true,
     showCombos: true,
     showUnavailableItems: false,
+    onlinePaymentEnabled: true,
+    customerSelfCheckoutEnabled: false,
+    allowSettlementWithUnfinishedItems: false,
   });
 });
 
@@ -34,10 +37,14 @@ test('restaurant settings preserve explicit disabled flags', () => {
     orderingEnabled: false,
     enableAiAssistant: false,
     maintenanceMode: true,
+    customerSelfCheckoutEnabled: true,
+    onlinePaymentEnabled: false,
   });
   assert.equal(settings.orderingEnabled, false);
   assert.equal(settings.enableAiAssistant, false);
   assert.equal(settings.maintenanceMode, true);
+  assert.equal(settings.customerSelfCheckoutEnabled, true);
+  assert.equal(settings.onlinePaymentEnabled, false);
 });
 
 test('recommendation reasons are translated', () => {

@@ -44,6 +44,7 @@ public class InventoryReservationService {
     private final OrderItemInventoryReservationRepository reservationRepository;
     private final InventoryReservationMapper reservationMapper;
     private final StockMovementService stockMovementService;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -169,6 +170,7 @@ public class InventoryReservationService {
             lockedItem.setReservedQuantity(reservedQuantity);
         }
         inventoryItemRepository.saveAll(lockedItemsById.values());
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(lockedItemsById.keySet(), false);
 
         // 8. Create and associate reservations for each order item
         for (Map.Entry<OrderItem, List<ReservationDraft>> entry : itemDraftsMap.entrySet()) {
@@ -254,6 +256,7 @@ public class InventoryReservationService {
             upsertReservation(orderItem, reservation);
         }
         inventoryItemRepository.saveAll(lockedItemsById.values());
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(lockedItemsById.keySet(), false);
 
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_reserved", orderItemId));
 
@@ -314,6 +317,7 @@ public class InventoryReservationService {
 
         inventoryItemRepository.saveAll(lockedItemsById.values());
         reservationRepository.saveAll(reservations);
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(lockedItemsById.keySet(), true);
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_released", orderItemId));
     }
 
@@ -369,6 +373,7 @@ public class InventoryReservationService {
 
         inventoryItemRepository.saveAll(lockedItemsById.values());
         reservationRepository.saveAll(reservations);
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(lockedItemsById.keySet(), false);
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_consumed", orderItemId));
     }
 

@@ -16,3 +16,8 @@ export const canSubscribeToMarketing = (user, pathname = '') =>
 export const canSubscribeToKitchen = (user, pathname = '') =>
   Boolean(user) && isAdminRoute(pathname) && ['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role);
 
+export const canSubscribeToServiceRequests = (user, pathname = '') =>
+  Boolean(user) &&
+  isAdminRoute(pathname) &&
+  ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'].includes(user?.role);
+

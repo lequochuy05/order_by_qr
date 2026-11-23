@@ -88,7 +88,8 @@ export const comboService = {
   // Without this, admins had to open the full edit modal just to toggle stock availability.
   toggleAvailable: async (id, version) => {
     clearComboCache();
-    const res = await api.patch(`/combos/${id}/toggle-available`, null, { params: { version } });
+    const config = version != null ? { params: { version } } : undefined;
+    const res = await api.patch(`/combos/${id}/toggle-available`, null, config);
     clearComboCache();
     return res;
   },

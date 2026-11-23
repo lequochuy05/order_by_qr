@@ -154,6 +154,16 @@ rate-limit:
       method: POST
       max-requests: 5
       window: 1m
+    - scope: public:service-requests
+      path: /api/v1/public/tables/*/service-requests
+      method: POST
+      max-requests: 6
+      window: 1m
+    - scope: public:self-checkout
+      path: /api/v1/public/tables/*/self-checkout/**
+      method: POST
+      max-requests: 15
+      window: 1m
     - scope: public:heartbeat
       path: /api/v1/public/sessions/heartbeat
       method: POST
@@ -258,6 +268,18 @@ ai:
       window: 1m
     menu-user-daily:
       max-requests: 100
+      window: 1d
+    insights-user:
+      max-requests: 10
+      window: 1m
+    insights-user-daily:
+      max-requests: 80
+      window: 1d
+    operations-user:
+      max-requests: 15
+      window: 1m
+    operations-user-daily:
+      max-requests: 150
       window: 1d
 
 logging:

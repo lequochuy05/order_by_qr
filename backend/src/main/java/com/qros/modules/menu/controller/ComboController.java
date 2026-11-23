@@ -76,7 +76,7 @@ public class ComboController {
 
     @PatchMapping("/{id}/toggle-available")
     public ApiResponse<ComboResponse> toggleAvailable(
-            @PathVariable @NonNull Long id, @RequestParam @NonNull Long version) {
+            @PathVariable @NonNull Long id, @RequestParam(required = false) Long version) {
         return ApiResponse.success(
                 "Combo availability toggled successfully", comboService.toggleAvailable(id, version));
     }

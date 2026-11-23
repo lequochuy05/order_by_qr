@@ -11,6 +11,10 @@ import {
   getInitialLauncherPosition,
   LAUNCHER_STORAGE_KEY,
 } from '../../src/features/ai-assistant/lib/launcherPosition.js';
+import {
+  getQuickAddableSuggestions,
+  normalizeChatSuggestions,
+} from '../../src/features/ai-assistant/lib/chatSuggestions.js';
 
 const originalDescriptors = {};
 
@@ -61,7 +65,7 @@ test('AI copy returns Vietnamese by default', () => {
 });
 
 test('AI copy returns English when requested', () => {
-  assert.equal(getAiCopy('en').title, 'Assistant');
+  assert.equal(getAiCopy('en').title, 'QROS Assistant');
 });
 
 test('welcome message detector recognizes supported languages', () => {
@@ -96,4 +100,40 @@ test('initial launcher position restores persisted coordinates', () => {
 test('initial launcher position ignores invalid persisted JSON', () => {
   localStorage.setItem(LAUNCHER_STORAGE_KEY, '{invalid');
   assert.deepEqual(getInitialLauncherPosition(), { x: 316, y: 632 });
+});
+
+test('normalizeChatSuggestions filters invalid entries, deduplicates, clamps quantities, and caps at 5', () => {
+  const normalized = normalizeChatSuggestions([
+    null,
+    { type: 'MENU_ITEM', id: -5, name: 'Bad ID', price: 10000 },
+    { type: 'MENU_ITEM', id: 10, name: 'Bún Chả', price: 55000, quantity: 2, reason: 'Đậm vị', hasOptions: false },
+    { type: 'MENU_ITEM', id: 10, name: 'Duplicate Bún Chả', price: 55000, quantity: 1 },
+    { type: 'combo', id: 2, name: 'Combo Gia Đình', price: 199000, quantity: 25, available: true },
+    { type: 'ITEM', id: 11, name: 'Trà Đào', price: 35000, hasOptions: true },
+    { type: 'MENU_ITEM', id: 12, name: 'Cơm Tấm', price: 60000 },
+    { type: 'MENU_ITEM', id: 13, name: 'Phở Bò', price: 65000 },
+    { type: 'MENU_ITEM', id: 14, name: 'Gỏi Cuốn', price: 40000 },
+  ]);
+
+  assert.equal(normalized.length, 5);
+  assert.equal(normalized[0].id, 10);
+  assert.equal(normalized[0].quantity, 2);
+  assert.equal(normalized[1].type, 'COMBO');
+  assert.equal(normalized[1].quantity, 10);
+  assert.equal(normalized[2].type, 'MENU_ITEM');
+  assert.equal(normalized[2].hasOptions, true);
+});
+
+test('getQuickAddableSuggestions excludes option-required and unavailable items', () => {
+  const items = normalizeChatSuggestions([
+    { type: 'MENU_ITEM', id: 1, name: 'Chả Giò', price: 45000, hasOptions: false, available: true },
+    { type: 'MENU_ITEM', id: 2, name: 'Trà Sữa', price: 39000, hasOptions: true, available: true },
+    { type: 'COMBO', id: 3, name: 'Combo Trưa', price: 120000, hasOptions: false, available: false },
+  ]);
+
+  const quick = getQuickAddableSuggestions(items);
+  assert.deepEqual(
+    quick.map((item) => item.id),
+    [1],
+  );
 });

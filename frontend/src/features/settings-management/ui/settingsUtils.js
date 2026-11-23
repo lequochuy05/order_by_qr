@@ -14,6 +14,7 @@ export const normalizeSettings = (data = {}) => ({
   maintenanceMode: data.maintenanceMode ?? false,
   wifiPassword: data.wifiPassword ?? '',
   allowSettlementWithUnfinishedItems: data.allowSettlementWithUnfinishedItems ?? false,
+  customerSelfCheckoutEnabled: data.customerSelfCheckoutEnabled ?? false,
 });
 
 export const toSettingsPayload = (settings) => ({
@@ -48,6 +49,7 @@ export const toSettingsPayload = (settings) => ({
   paymentNotificationEnabled: Boolean(settings.paymentNotificationEnabled),
   kitchenOverdueNotificationEnabled: Boolean(settings.kitchenOverdueNotificationEnabled),
   allowSettlementWithUnfinishedItems: Boolean(settings.allowSettlementWithUnfinishedItems),
+  customerSelfCheckoutEnabled: Boolean(settings.customerSelfCheckoutEnabled),
   version: settings.version,
 });
 

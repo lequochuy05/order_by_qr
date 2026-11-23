@@ -1,8 +1,11 @@
 package com.qros.modules.inventory.service;
 
+import com.qros.modules.inventory.dto.request.BatchStockInRequest;
+import com.qros.modules.inventory.dto.request.BatchStockInRequest.BatchStockInLine;
 import com.qros.modules.inventory.dto.request.InventoryItemRequest;
 import com.qros.modules.inventory.dto.request.StockAdjustmentRequest;
 import com.qros.modules.inventory.dto.request.StockInRequest;
+import com.qros.modules.inventory.dto.response.BatchStockInResponse;
 import com.qros.modules.inventory.dto.response.InventoryItemResponse;
 import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.mapper.InventoryItemMapper;
@@ -16,8 +19,14 @@ import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -38,6 +47,7 @@ public class InventoryItemService {
     private final RecipeItemRepository recipeItemRepository;
     private final InventoryItemMapper inventoryItemMapper;
     private final StockMovementService stockMovementService;
+    private final InventoryAvailabilityService inventoryAvailabilityService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
@@ -139,8 +149,9 @@ public class InventoryItemService {
 
         inventoryItemMapper.updateEntity(item, request, normalizedName, normalizedUnit);
 
-        InventoryItem saved = inventoryItemRepository.save(item);
+        InventoryItem saved = inventoryItemRepository.saveAndFlush(item);
 
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(List.of(saved.getId()), true);
         eventPublisher.publishEvent(new InventoryChangeEvent("inventory_item_updated", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
@@ -183,14 +194,114 @@ public class InventoryItemService {
 
         item.setQuantityOnHand(quantityAfter);
 
-        InventoryItem saved = inventoryItemRepository.save(item);
+        InventoryItem saved = inventoryItemRepository.saveAndFlush(item);
 
         stockMovementService.recordMovement(
                 saved, null, StockMovementType.STOCK_IN, quantity, quantityBefore, quantityAfter, request.note());
 
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(List.of(saved.getId()), true);
         eventPublisher.publishEvent(new InventoryChangeEvent("stock_in", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
+    }
+
+    @Transactional
+    @Caching(
+            evict = {
+                @CacheEvict(value = CacheNames.INVENTORY, allEntries = true),
+                @CacheEvict(value = CacheNames.PUBLIC_MENU, allEntries = true),
+                @CacheEvict(value = CacheNames.RECOMMENDATIONS, allEntries = true),
+                @CacheEvict(value = CacheNames.AI_MENU_CONTEXT, allEntries = true)
+            })
+    public BatchStockInResponse batchStockIn(@NonNull BatchStockInRequest request, boolean canUpdateUnitCost) {
+        if (request.items() == null || request.items().isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "At least one stock-in item is required");
+        }
+
+        if (!canUpdateUnitCost
+                && request.items().stream().anyMatch(line -> Boolean.TRUE.equals(line.updateUnitCost()))) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Only managers can update inventory unit cost");
+        }
+
+        List<Long> sortedIds = request.items().stream()
+                .map(BatchStockInLine::inventoryItemId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+
+        List<InventoryItem> lockedItems = inventoryItemRepository.findAllByIdInForUpdate(sortedIds);
+        Map<Long, InventoryItem> lockedById = lockedItems.stream()
+                .collect(Collectors.toMap(
+                        InventoryItem::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        if (lockedById.size() != sortedIds.size()) {
+            throw new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND);
+        }
+
+        for (InventoryItem locked : lockedItems) {
+            if (!Boolean.TRUE.equals(locked.getActive())) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Inactive inventory item cannot be stocked in");
+            }
+        }
+
+        BigDecimal totalEstimatedValue = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        Set<InventoryItem> updatedSet = new LinkedHashSet<>();
+
+        for (BatchStockInLine line : request.items()) {
+            InventoryItem item = lockedById.get(line.inventoryItemId());
+            if (item == null) {
+                throw new BusinessException(ErrorCode.INVENTORY_ITEM_NOT_FOUND);
+            }
+            BigDecimal quantity = normalizePositiveQuantity(line.quantity());
+            BigDecimal quantityBefore = normalizeQuantity(item.getQuantityOnHand());
+            BigDecimal quantityAfter = quantityBefore.add(quantity);
+            item.setQuantityOnHand(quantityAfter);
+
+            BigDecimal effectiveCost = item.getUnitCost() != null ? item.getUnitCost() : BigDecimal.ZERO;
+            if (canUpdateUnitCost && Boolean.TRUE.equals(line.updateUnitCost()) && line.unitCost() != null) {
+                effectiveCost = line.unitCost().setScale(2, RoundingMode.HALF_UP);
+                item.setUnitCost(effectiveCost);
+            } else if (line.unitCost() != null && effectiveCost.compareTo(BigDecimal.ZERO) <= 0) {
+                effectiveCost = line.unitCost().setScale(2, RoundingMode.HALF_UP);
+            }
+
+            totalEstimatedValue =
+                    totalEstimatedValue.add(effectiveCost.multiply(quantity).setScale(2, RoundingMode.HALF_UP));
+
+            String movementNote = buildBatchMovementNote(request, line);
+            stockMovementService.recordMovement(
+                    item, null, StockMovementType.STOCK_IN, quantity, quantityBefore, quantityAfter, movementNote);
+            updatedSet.add(item);
+        }
+
+        List<InventoryItem> savedItems = inventoryItemRepository.saveAllAndFlush(updatedSet);
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(sortedIds, true);
+        eventPublisher.publishEvent(new InventoryChangeEvent("batch_stock_in", "batch"));
+
+        return new BatchStockInResponse(
+                request.items().size(),
+                totalEstimatedValue.setScale(2, RoundingMode.HALF_UP),
+                inventoryItemMapper.toResponses(savedItems));
+    }
+
+    private String buildBatchMovementNote(BatchStockInRequest request, BatchStockInLine line) {
+        StringBuilder sb = new StringBuilder();
+        if (request.supplierName() != null && !request.supplierName().isBlank()) {
+            sb.append(request.supplierName().trim());
+        }
+        if (request.invoiceRef() != null && !request.invoiceRef().isBlank()) {
+            if (!sb.isEmpty()) sb.append(" · ");
+            sb.append('#').append(request.invoiceRef().trim());
+        }
+        String extra =
+                line.note() != null && !line.note().isBlank() ? line.note().trim() : request.note();
+        if (extra != null && !extra.isBlank()) {
+            if (!sb.isEmpty()) sb.append(": ");
+            sb.append(extra.trim());
+        }
+        String raw = sb.isEmpty() ? "Invoice OCR batch stock-in" : sb.toString();
+        return raw.length() <= 500 ? raw : raw.substring(0, 500);
     }
 
     @Transactional
@@ -223,7 +334,7 @@ public class InventoryItemService {
 
         item.setQuantityOnHand(quantityAfter);
 
-        InventoryItem saved = inventoryItemRepository.save(item);
+        InventoryItem saved = inventoryItemRepository.saveAndFlush(item);
 
         stockMovementService.recordMovement(
                 saved,
@@ -234,6 +345,8 @@ public class InventoryItemService {
                 quantityAfter,
                 request.note());
 
+        inventoryAvailabilityService.syncAvailabilityForInventoryItems(
+                List.of(saved.getId()), quantityDelta.compareTo(BigDecimal.ZERO) > 0);
         eventPublisher.publishEvent(new InventoryChangeEvent("stock_adjusted", saved.getId()));
 
         return inventoryItemMapper.toResponse(saved);
