@@ -20,7 +20,7 @@ const useAddItemsCart = ({ isOpen, table, onSubmit }) => {
     const loadCatalog = async () => {
       setCatalogLoading(true);
       try {
-        const catalog = await tableOrderCatalogService.getCatalog();
+        const catalog = await tableOrderCatalogService.getCatalog({ force: true });
         if (isCancelled) return;
         setMenuItems(Array.isArray(catalog?.menuItems) ? catalog.menuItems : []);
         setCombos(Array.isArray(catalog?.combos) ? catalog.combos : []);

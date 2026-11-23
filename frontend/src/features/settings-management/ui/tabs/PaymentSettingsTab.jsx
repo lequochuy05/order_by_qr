@@ -1,4 +1,4 @@
-import { Banknote, CheckCircle2, CreditCard, QrCode } from 'lucide-react';
+import { Banknote, CheckCircle2, CreditCard, QrCode, Smartphone } from 'lucide-react';
 import { SaveButton } from '@shared/ui';
 
 import {
@@ -47,15 +47,26 @@ const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSav
       </SettingsGroup>
 
       <SettingsGroup title={copy.payment.settlementTitle}>
-        <ToggleRow
-          icon={CheckCircle2}
-          title={copy.payment.allowSettlementWithUnfinishedItems}
-          description={copy.payment.allowSettlementWithUnfinishedItemsDesc}
-          checked={settings.allowSettlementWithUnfinishedItems}
-          onChange={(value) =>
-            setSettingsValue(setSettings, 'allowSettlementWithUnfinishedItems', value)
-          }
-        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ToggleRow
+            icon={CheckCircle2}
+            title={copy.payment.allowSettlementWithUnfinishedItems}
+            description={copy.payment.allowSettlementWithUnfinishedItemsDesc}
+            checked={settings.allowSettlementWithUnfinishedItems}
+            onChange={(value) =>
+              setSettingsValue(setSettings, 'allowSettlementWithUnfinishedItems', value)
+            }
+          />
+          <ToggleRow
+            icon={Smartphone}
+            title={copy.payment.customerSelfCheckoutEnabled}
+            description={copy.payment.customerSelfCheckoutEnabledDesc}
+            checked={settings.customerSelfCheckoutEnabled}
+            onChange={(value) =>
+              setSettingsValue(setSettings, 'customerSelfCheckoutEnabled', value)
+            }
+          />
+        </div>
       </SettingsGroup>
     </div>
 

@@ -110,6 +110,7 @@ const useDashboard = () => {
     : [];
 
   return {
+    businessToday,
     loading: isLoading,
     error,
     refetch,

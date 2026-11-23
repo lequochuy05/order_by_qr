@@ -4,7 +4,9 @@ import { orderService } from '@entities/order/api/orderService.js';
 import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
 import { useAuth } from '@features/auth';
 import { useWebSocket } from '@shared/hooks/useWebSocket.js';
+import { useTranslation } from '@shared/lib/i18n';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
+import { NoteSafetyBadges } from '@shared/ui';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 
 const nextWsSuppressUntil = () => Date.now() + 3_000;
@@ -25,6 +27,7 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
   const wsTimerRef = useRef(null);
 
   const { user } = useAuth();
+  const { language } = useTranslation('tables');
   const isStaff = user?.role === 'STAFF';
 
   useEffect(() => {
@@ -284,9 +287,12 @@ const OrderDetailModal = ({ isOpen, onClose, table, order, onOrderUpdate }) => {
                   </div>
                 ) : (
                   item.notes && (
-                    <p className="mt-1.5 inline-block rounded-xl bg-slate-100/80 px-2.5 py-1 text-xs italic text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
-                      Ghi chú: {item.notes}
-                    </p>
+                    <div className="mt-1.5 space-y-1.5">
+                      <p className="inline-block rounded-xl bg-slate-100/80 px-2.5 py-1 text-xs italic text-slate-600 dark:bg-slate-800/80 dark:text-slate-300">
+                        Ghi chú: {item.notes}
+                      </p>
+                      <NoteSafetyBadges note={item.notes} language={language} compact />
+                    </div>
                   )
                 )}
               </div>

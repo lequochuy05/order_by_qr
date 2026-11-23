@@ -8,6 +8,7 @@ import {
   canSubscribeToKitchen,
   canSubscribeToMarketing,
   canSubscribeToOperations,
+  canSubscribeToServiceRequests,
   canSubscribeToUsers,
   isCustomerMenuPath,
 } from '../../src/app/webSocketAccess.js';
@@ -47,6 +48,15 @@ test('role-specific WebSocket subscriptions enforce role permissions', () => {
   assert.equal(canSubscribeToKitchen(chef, '/admin/kitchen'), true);
   assert.equal(canSubscribeToKitchen(manager, '/admin/kitchen'), true);
   assert.equal(canSubscribeToKitchen(cashier, '/admin/tables'), false);
+
+  // Service requests: ADMIN, MANAGER, CASHIER, STAFF (not CHEF, not /menu, not anonymous)
+  assert.equal(canSubscribeToServiceRequests({ role: 'STAFF' }, '/admin/service-requests'), true);
+  assert.equal(canSubscribeToServiceRequests(cashier, '/admin/tables'), true);
+  assert.equal(canSubscribeToServiceRequests(manager, '/admin/tables'), true);
+  assert.equal(canSubscribeToServiceRequests({ role: 'ADMIN' }, '/admin/tables'), true);
+  assert.equal(canSubscribeToServiceRequests(chef, '/admin/kitchen'), false);
+  assert.equal(canSubscribeToServiceRequests({ role: 'STAFF' }, '/menu'), false);
+  assert.equal(canSubscribeToServiceRequests(null, '/admin/service-requests'), false);
 });
 
 test('staff role hides payment and prepared actions on management interfaces', () => {
@@ -155,4 +165,15 @@ test('SharedModal focus trap is stable across onClose callback rerenders', () =>
   assert.match(source, /const onCloseRef = useRef\(onClose\);/);
   assert.match(source, /useEffect\(\(\) => \{\n\s{4}onCloseRef\.current = onClose;/);
   assert.equal(focusEffectDependencies?.[1].trim(), 'isOpen');
+});
+
+test('customer realtime hook subscribes only to public WebSocket topics', () => {
+  const source = readFileSync(
+    resolve(testDir, '../../src/features/customer-menu/model/useCustomerMenuRealtime.js'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(source, /\/topic\/promotions/);
+  assert.match(source, /\/topic\/menu/);
+  assert.match(source, /\/topic\/tables/);
 });

@@ -17,18 +17,18 @@ const useStockAction = ({ onSaved }) => {
 
   const isStockSubmitting = isStockInSubmitting || isAdjustSubmitting;
 
-  const openStockAction = useCallback((item, type) => {
+  const openStockAction = useCallback((item, type, preset = {}) => {
     setStockAction({ item, type });
     setStockForm({
-      quantity: '',
+      quantity: preset?.quantity ?? '',
       quantityOnHand: item.quantityOnHand,
-      note: '',
+      note: preset?.note ?? '',
     });
   }, []);
 
   const openStockIn = useCallback(
-    (item) => {
-      openStockAction(item, 'stock-in');
+    (item, preset = {}) => {
+      openStockAction(item, 'stock-in', preset);
     },
     [openStockAction],
   );

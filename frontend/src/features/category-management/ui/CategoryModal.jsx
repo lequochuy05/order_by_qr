@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   CheckboxCard,
+  FormLabel,
   ImageUploadField,
   ModalActions,
   ModalHeader,
@@ -64,7 +65,7 @@ const CategoryModal = ({
       <form
         id="categoryForm"
         onSubmit={onSubmit}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
       >
         <TextField
           label="Tên danh mục"
@@ -96,9 +97,7 @@ const CategoryModal = ({
           />
 
           <div>
-            <p className="mb-2 ml-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-              Trạng thái
-            </p>
+            <FormLabel>Trạng thái</FormLabel>
             <CheckboxCard
               checked={formData.active ?? true}
               onChange={(checked) => updateField('active', checked)}

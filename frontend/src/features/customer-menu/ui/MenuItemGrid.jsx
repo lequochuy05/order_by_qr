@@ -4,7 +4,7 @@ const MenuItemGrid = ({ items, getCartItemQty, onAddToCart, onFly }) => (
   <>
     <div className="mb-4 mt-6 flex items-center justify-between">
       <h2 className="text-base font-black tracking-tight text-slate-900 transition-colors dark:text-white">
-        Danh sách món ngon
+        Danh sách món
       </h2>
       <span className="text-xs font-bold font-mono text-slate-400 dark:text-slate-500">
         {items.length} món

@@ -40,7 +40,8 @@ const useKitchenFilters = (orders, now, overdueMinutes) => {
         (categoryFilter === 'ALL' || item.category === categoryFilter) &&
         (attentionFilter === 'ALL' ||
           (attentionFilter === 'OVERDUE' && item.isOverdue) ||
-          (attentionFilter === 'NOTES' && item.hasNotes))
+          (attentionFilter === 'NOTES' && item.hasNotes) ||
+          (attentionFilter === 'ALLERGEN' && item.hasAllergenAlert))
       );
     });
   }, [attentionFilter, categoryFilter, kitchenItems, searchTerm]);

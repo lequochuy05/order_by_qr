@@ -1,4 +1,4 @@
-import { Layers, LayoutGrid, RefreshCw, Sun, Volume2, VolumeX } from 'lucide-react';
+import { Ban, Layers, LayoutGrid, RefreshCw, Sun, Volume2, VolumeX } from 'lucide-react';
 import { useTranslation } from '@shared/lib/i18n';
 
 const KitchenToolbar = ({
@@ -7,6 +7,7 @@ const KitchenToolbar = ({
   onToggleSound,
   refreshing,
   onRefresh,
+  onOpenQuick86,
   viewMode = 'kanban',
   onViewModeChange,
   batchCount = 0,
@@ -81,6 +82,17 @@ const KitchenToolbar = ({
     >
       {soundEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
     </button>
+    {onOpenQuick86 && (
+      <button
+        type="button"
+        onClick={onOpenQuick86}
+        className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25"
+        title={isEn ? 'Quickly toggle out-of-stock dishes and combos' : 'Khóa nhanh các món hoặc combo đã hết hàng'}
+      >
+        <Ban size={16} />
+        {isEn ? 'Out of Stock' : 'Báo hết món'}
+      </button>
+    )}
     <button
       type="button"
       onClick={onRefresh}

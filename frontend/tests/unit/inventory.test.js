@@ -48,6 +48,7 @@ test('default inventory form returns a fresh object', () => {
     unit: 'g',
     quantityOnHand: 0,
     lowStockThreshold: 0,
+    unitCost: 0,
     active: true,
   });
 });

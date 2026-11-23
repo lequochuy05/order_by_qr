@@ -233,4 +233,12 @@ export const analyticsService = {
     );
     return normalizeDashboardSummary(data || {});
   },
+  getAiExecutiveSummary: async ({ from, to, language = 'vi' } = {}) => {
+    const body = {
+      from: from ? formatBusinessDate(from) : null,
+      to: to ? formatBusinessDate(to) : null,
+      language: language === 'en' ? 'en' : 'vi',
+    };
+    return api.post('/ai/insights/summary', body);
+  },
 };

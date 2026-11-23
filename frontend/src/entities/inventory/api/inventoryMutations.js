@@ -43,6 +43,18 @@ export const useStockInMutation = (options = {}) =>
     },
   });
 
+export const useBatchStockInMutation = (options = {}) =>
+  useMutation({
+    mutationFn: (data) => inventoryService.batchStockIn(data),
+    onSuccess: (...args) => {
+      invalidateInventory();
+      options.onSuccess?.(...args);
+    },
+    onError: (...args) => {
+      options.onError?.(...args);
+    },
+  });
+
 export const useAdjustStockMutation = (options = {}) =>
   useMutation({
     mutationFn: ({ id, data }) => inventoryService.adjust(id, data),

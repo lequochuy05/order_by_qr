@@ -143,3 +143,48 @@ test('translates account locked error code and exact message', () => {
     'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.',
   );
 });
+
+test('translates table service request error codes and dynamic details', () => {
+  assert.equal(
+    buildErrorMessage(
+      {
+        code: 'SERVICE_REQUEST_COOLDOWN',
+        message: 'Please wait before sending another service request.',
+        details: { retryAfterSeconds: 45 },
+      },
+      { includeDetails: false },
+    ),
+    'Vui lòng chờ 45 giây trước khi gửi yêu cầu tiếp theo.',
+  );
+  assert.equal(
+    buildErrorMessage(
+      {
+        code: 'SERVICE_REQUEST_ALREADY_CLAIMED',
+        message: 'This service request has already been claimed by Nguyen Van A.',
+        details: { claimedByName: 'Nguyen Van A' },
+      },
+      { includeDetails: false },
+    ),
+    'Yêu cầu này đã được Nguyen Van A nhận xử lý.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'SERVICE_REQUEST_DUPLICATE_ACTIVE' }, { includeDetails: false }),
+    'Bàn của bạn đã có yêu cầu tương tự đang được xử lý.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'SERVICE_REQUEST_OPEN_LIMIT_REACHED' }, { includeDetails: false }),
+    'Bàn đã đạt tối đa 3 yêu cầu đang chờ xử lý.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'SERVICE_REQUEST_NOT_FOUND' }, { includeDetails: false }),
+    'Không tìm thấy yêu cầu hỗ trợ của bàn.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'SERVICE_REQUEST_INVALID_STATE' }, { includeDetails: false }),
+    'Trạng thái yêu cầu không còn phù hợp để thực hiện thao tác này.',
+  );
+  assert.equal(
+    buildErrorMessage({ code: 'SERVICE_REQUEST_NOT_ASSIGNED_TO_USER' }, { includeDetails: false }),
+    'Chỉ nhân viên đã nhận xử lý hoặc quản lý mới được thao tác trên yêu cầu này.',
+  );
+});

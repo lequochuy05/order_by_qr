@@ -99,7 +99,7 @@ const TableFormModal = ({
       <form
         id="tableForm"
         onSubmit={handleSave}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
       >
         <TextField
           label="Số bàn"
@@ -143,7 +143,7 @@ const TableFormModal = ({
         {formData.qrCodeUrl && (
           <div className="relative group mt-2">
             <FormLabel>QR Code của bàn</FormLabel>
-            <div className="flex flex-col items-center justify-center space-y-3 rounded-3xl border-2 border-dashed border-slate-200/80 bg-slate-50/50 p-6 transition-all group-hover:border-indigo-200 group-hover:bg-indigo-50/20 dark:border-slate-800 dark:bg-slate-950/50 dark:group-hover:border-indigo-500/40 dark:group-hover:bg-indigo-500/10">
+            <div className="flex flex-col items-center justify-center space-y-3 rounded-2xl border-2 border-dashed border-slate-200/80 bg-slate-50/50 p-6 transition-all group-hover:border-indigo-200 group-hover:bg-indigo-50/20 dark:border-slate-800 dark:bg-slate-950/50 dark:group-hover:border-indigo-500/40 dark:group-hover:bg-indigo-500/10">
               <button
                 type="button"
                 onClick={() => setIsQrPreviewOpen(true)}
@@ -195,7 +195,8 @@ const TableFormModal = ({
           isOpen={isQrPreviewOpen}
           onClose={() => setIsQrPreviewOpen(false)}
           closeOnBackdrop={true}
-          className="max-w-lg !p-0 !bg-transparent !shadow-none"
+          ariaLabel="Xem trước mã QR"
+          className="max-w-lg !border-0 !bg-transparent !p-0 !ring-0 !shadow-none"
           backdropClassName="bg-black/75 backdrop-blur-sm"
         >
           <img

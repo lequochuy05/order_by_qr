@@ -25,7 +25,8 @@ const ERROR_CODE_MESSAGES = {
   EMAIL_EXISTS: 'Email đã tồn tại trong hệ thống.',
   PHONE_EXISTS: 'Số điện thoại đã tồn tại trong hệ thống.',
   ACCOUNT_INACTIVE: 'Tài khoản đã bị khóa hoặc chưa được kích hoạt.',
-  ACCOUNT_LOCKED: 'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
+  ACCOUNT_LOCKED:
+    'Tài khoản tạm thời bị khóa do nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau.',
   INVALID_CREDENTIALS: 'Email hoặc mật khẩu không chính xác.',
   INVALID_REFRESH_TOKEN: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
   PASSWORD_INVALID: 'Mật khẩu hiện tại không chính xác.',
@@ -41,19 +42,31 @@ const ERROR_CODE_MESSAGES = {
   TABLE_NOT_FOUND: 'Không tìm thấy bàn.',
   TABLE_CODE_INVALID: 'Mã bàn không hợp lệ.',
   TABLE_NUMBER_EXISTS: 'Số bàn đã tồn tại.',
-  TABLE_IN_USE: 'Bàn đang có khách hoặc phiên phục vụ chưa kết thúc. Không thể thực hiện thao tác này.',
+  TABLE_IN_USE:
+    'Bàn đang có khách hoặc phiên phục vụ chưa kết thúc. Không thể thực hiện thao tác này.',
   TABLE_STATUS_TRANSITION_INVALID: 'Chuyển đổi trạng thái bàn không hợp lệ.',
   TABLE_QR_GENERATION_FAILED: 'Không thể tạo mã QR cho bàn.',
-  TABLE_QR_SIGNATURE_INVALID: 'Mã QR bàn không hợp lệ hoặc đã hết hạn. Vui lòng quét lại mã QR tại bàn.',
+  TABLE_QR_SIGNATURE_INVALID:
+    'Mã QR bàn không hợp lệ hoặc đã hết hạn. Vui lòng quét lại mã QR tại bàn.',
   TABLE_SESSION_NOT_FOUND: 'Không tìm thấy phiên sử dụng bàn.',
   TABLE_SESSION_INVALID: 'Phiên sử dụng bàn không hợp lệ.',
   TABLE_SESSION_EXPIRED: 'Phiên sử dụng bàn đã hết hạn.',
   TABLE_MERGE_REQUIRES_MULTIPLE_TABLES: 'Gộp bàn cần chọn ít nhất 2 bàn trở lên.',
   TABLE_ALREADY_IN_ANOTHER_SESSION: 'Bàn đã thuộc một phiên phục vụ hoặc nhóm gộp khác.',
-  TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS: 'Không thể gộp các bàn khi có nhiều hơn 1 bàn đang có đơn hàng mở.',
+  TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS:
+    'Không thể gộp các bàn khi có nhiều hơn 1 bàn đang có đơn hàng mở.',
   TABLE_MERGE_CAPACITY_EXCEEDED: 'Số lượng khách vượt quá tổng sức chứa của các bàn gộp.',
   TABLE_MERGE_PAYMENT_IN_PROGRESS: 'Không thể gộp bàn trong khi đang có giao dịch thanh toán.',
   TABLE_SESSION_MEMBERSHIP_NOT_FOUND: 'Không tìm thấy thông tin liên kết bàn trong nhóm gộp.',
+
+  SERVICE_REQUEST_NOT_FOUND: 'Không tìm thấy yêu cầu hỗ trợ của bàn.',
+  SERVICE_REQUEST_COOLDOWN: 'Bạn vừa gửi yêu cầu. Vui lòng chờ 60 giây trước khi gửi tiếp.',
+  SERVICE_REQUEST_DUPLICATE_ACTIVE: 'Bàn của bạn đã có yêu cầu tương tự đang được xử lý.',
+  SERVICE_REQUEST_OPEN_LIMIT_REACHED: 'Bàn đã đạt tối đa 3 yêu cầu đang chờ xử lý.',
+  SERVICE_REQUEST_ALREADY_CLAIMED: 'Yêu cầu này đã được nhân viên khác nhận xử lý.',
+  SERVICE_REQUEST_INVALID_STATE: 'Trạng thái yêu cầu không còn phù hợp để thực hiện thao tác này.',
+  SERVICE_REQUEST_NOT_ASSIGNED_TO_USER:
+    'Chỉ nhân viên đã nhận xử lý hoặc quản lý mới được thao tác trên yêu cầu này.',
 
   ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng.',
   ORDER_ITEM_NOT_FOUND: 'Không tìm thấy món trong đơn hàng.',
@@ -131,8 +144,8 @@ const EXACT_MESSAGE_TRANSLATIONS = {
   'Combo must contain at least two items': 'Combo phải có ít nhất hai món.',
   'Menu item ID is required': 'Vui lòng chọn món cho combo.',
   'Combo item quantity must be at least 1': 'Số lượng món trong combo phải ít nhất là 1.',
-  'Cannot delete category that still contains active menu items':
-    'Không thể xóa danh mục đang chứa món ăn hoạt động.',
+  'Cannot delete category that still contains menu items':
+    'Không thể xóa danh mục đang chứa món ăn.',
   'Cannot delete menu item that is part of an active combo':
     'Không thể xóa món ăn đang thuộc một combo hoạt động.',
   'Selected option value does not exist.': 'Giá trị tùy chọn đã chọn không tồn tại.',
@@ -153,6 +166,12 @@ const EXACT_MESSAGE_TRANSLATIONS = {
   'Voucher applied successfully': 'Áp dụng voucher thành công.',
   'Voucher is invalid or expired': 'Voucher không hợp lệ hoặc đã hết hạn.',
   'Order placed successfully': 'Đặt món thành công.',
+  'End time must be after start time': 'Giờ kết thúc phải sau giờ bắt đầu.',
+  'Promotion name already exists': 'Tên chương trình khuyến mãi đã tồn tại.',
+  'Promotion not found': 'Không tìm thấy chương trình khuyến mãi.',
+  'Customer self-checkout is currently disabled': 'Tính năng tự thanh toán tại bàn hiện đang tắt.',
+  'Online payment is disabled': 'Thanh toán trực tuyến hiện đang tắt.',
+  'No active order found for this table': 'Không tìm thấy đơn hàng đang hoạt động cho bàn này.',
 };
 
 const MESSAGE_PATTERNS = [
@@ -164,10 +183,26 @@ const MESSAGE_PATTERNS = [
   [/^Menu item not found:\s*(.+)$/i, 'Không tìm thấy món ăn: $1'],
   [/^Table number not found:\s*(.+)$/i, 'Không tìm thấy bàn số $1'],
   [/^Unsupported payment method:\s*(.+)$/i, 'Phương thức thanh toán không được hỗ trợ: $1'],
-  [/^Cannot regenerate QR code while the table is in use/i, 'Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.'],
-  [/^Cannot set table to .* while it has an open session or active order/i, 'Không thể đổi trạng thái bàn khi đang có phiên sử dụng hoặc đơn hàng chưa thanh toán.'],
-  [/^Cannot delete a table with an open session or active order/i, 'Không thể xóa bàn khi đang có phiên sử dụng hoặc đơn hàng hoạt động.'],
-  [/^A table can wait for payment only when it has an active order/i, 'Chỉ có thể chuyển bàn sang trạng thái chờ thanh toán khi có đơn hàng hoạt động.'],
+  [
+    /^Cannot regenerate QR code while the table is in use/i,
+    'Không thể tạo lại mã QR khi bàn đang có khách hoặc đang trong ca phục vụ.',
+  ],
+  [
+    /^Cannot set table to .* while it has an open session or active order/i,
+    'Không thể đổi trạng thái bàn khi đang có phiên sử dụng hoặc đơn hàng chưa thanh toán.',
+  ],
+  [
+    /^Cannot delete a table with an open session or active order/i,
+    'Không thể xóa bàn khi đang có phiên sử dụng hoặc đơn hàng hoạt động.',
+  ],
+  [
+    /^A table can wait for payment only when it has an active order/i,
+    'Chỉ có thể chuyển bàn sang trạng thái chờ thanh toán khi có đơn hàng hoạt động.',
+  ],
+  [
+    /^This service request has already been claimed by (.+)\.$/i,
+    'Yêu cầu này đã được $1 nhận xử lý.',
+  ],
 ];
 
 const FIELD_LABELS = {
@@ -221,6 +256,16 @@ const FIELD_LABELS = {
   content: 'Nội dung',
   token: 'Mã xác thực',
   otp: 'Mã OTP',
+  discountPercent: 'Phần trăm giảm giá',
+  discountAmount: 'Số tiền giảm',
+  startTime: 'Giờ bắt đầu',
+  endTime: 'Giờ kết thúc',
+  daysOfWeek: 'Ngày áp dụng trong tuần',
+  validTimeRange: 'Khung giờ áp dụng',
+  customerSelfCheckoutEnabled: 'Tự thanh toán tại bàn',
+  sessionToken: 'Phiên sử dụng bàn',
+  clientRequestId: 'Mã chống gửi trùng',
+  reason: 'Lý do',
 };
 
 const containsVietnamese = (value) =>
@@ -314,7 +359,14 @@ export const buildErrorMessage = (error, { includeDetails = true } = {}) => {
 
   if (data && typeof data === 'object') {
     const code = data.code || error?.code;
+    const rawDetails = data.details || error?.details || {};
     message = translateErrorMessage(data.message || error?.message, code) || message;
+
+    if (code === 'SERVICE_REQUEST_COOLDOWN' && Number(rawDetails.retryAfterSeconds) > 0) {
+      message = `Vui lòng chờ ${Math.ceil(Number(rawDetails.retryAfterSeconds))} giây trước khi gửi yêu cầu tiếp theo.`;
+    } else if (code === 'SERVICE_REQUEST_ALREADY_CLAIMED' && rawDetails.claimedByName) {
+      message = `Yêu cầu này đã được ${rawDetails.claimedByName} nhận xử lý.`;
+    }
 
     if (includeDetails) {
       Object.entries(getErrorDetails(error)).forEach(([field, detail]) => {

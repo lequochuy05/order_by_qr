@@ -206,7 +206,7 @@ const VoucherModal = ({
       <form
         id="voucherForm"
         onSubmit={handleSubmit}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
       >
         <div>
           <div className="flex items-start gap-2">
@@ -227,7 +227,7 @@ const VoucherModal = ({
             <button
               type="button"
               onClick={generateCode}
-              className="mt-[26px] rounded-2xl border border-indigo-200/60 bg-indigo-50 p-4 text-indigo-600 transition-all hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-800/40 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white"
+              className="mt-[26px] flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl border-2 border-indigo-200/70 bg-indigo-50 text-indigo-600 transition-all hover:border-indigo-500 hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-950/40 dark:text-indigo-400 dark:hover:bg-indigo-600 dark:hover:text-white"
               title="Tạo mã ngẫu nhiên"
               aria-label="Tạo mã voucher ngẫu nhiên"
             >
@@ -236,7 +236,7 @@ const VoucherModal = ({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800/80 dark:bg-slate-800/40">
+        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-5 dark:border-slate-800/80 dark:bg-slate-800/40">
           <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Hình thức giảm giá
           </p>

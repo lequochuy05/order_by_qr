@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check } from 'lucide-react';
 import {
   CheckboxCard,
   FormError,
@@ -33,7 +34,7 @@ const ComboModal = ({
   );
 
   const isChanged = React.useMemo(() => {
-    if (!initialData) return true;
+    if (!initialData?.id) return true;
 
     if (formData.name !== initialData.name) return true;
     if ((formData.description || '') !== (initialData.description || '')) return true;
@@ -149,7 +150,7 @@ const ComboModal = ({
       <form
         id="comboForm"
         onSubmit={handleFormSubmit}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
       >
         <TextField
           label="Tên Combo"
@@ -184,10 +185,10 @@ const ComboModal = ({
           </div>
 
           <div
-            className={`overflow-hidden rounded-[1.5rem] border-2 divide-y divide-slate-100 transition-all dark:divide-slate-800 ${
+            className={`overflow-hidden rounded-2xl border-2 divide-y divide-slate-100 transition-all dark:divide-slate-800 ${
               errors.items
                 ? 'border-rose-500 bg-rose-50/10 dark:bg-rose-500/10'
-                : 'border-slate-100 bg-slate-50/30 dark:border-slate-800 dark:bg-slate-950/40'
+                : 'border-slate-200/80 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-950/40'
             }`}
           >
             <div className="max-h-60 overflow-y-auto custom-scrollbar">
@@ -198,45 +199,44 @@ const ComboModal = ({
                     key={m.id}
                     className={`flex items-center justify-between p-3.5 transition-colors ${selected ? 'bg-indigo-50/60 dark:bg-indigo-950/30' : 'hover:bg-white dark:hover:bg-slate-900'}`}
                   >
-                    <label className="flex items-center gap-3 cursor-pointer flex-1 group">
-                      <div
-                        className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                          selected
-                            ? 'bg-gradient-to-r from-indigo-600 to-violet-600 border-indigo-600 shadow-sm'
-                            : 'border-slate-200 bg-white group-hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-900'
-                        }`}
-                      >
-                        {selected && (
-                          <div className="w-2 h-2 bg-white rounded-full animate-in zoom-in duration-200" />
-                        )}
-                      </div>
+                    <label className="group flex flex-1 cursor-pointer items-center gap-3">
                       <input
                         type="checkbox"
                         checked={!!selected}
                         onChange={() => handleToggleItem(m.id)}
-                        className="hidden"
+                        className="sr-only"
                       />
+                      <span
+                        aria-hidden="true"
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all ${
+                          selected
+                            ? 'border-indigo-600 bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-xs'
+                            : 'border-slate-300 bg-white group-hover:border-indigo-400 dark:border-slate-700 dark:bg-slate-900'
+                        }`}
+                      >
+                        {selected && <Check size={12} strokeWidth={3} />}
+                      </span>
                       <div>
                         <p
-                          className={`text-sm font-bold transition-colors ${selected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200'}`}
+                          className={`text-sm font-bold transition-colors ${selected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-600 group-hover:text-slate-800 dark:text-slate-400 dark:group-hover:text-slate-200'}`}
                         >
                           {m.name}
                         </p>
-                        <p className="text-[10px] font-medium font-mono text-slate-400 dark:text-slate-500">
+                        <p className="font-mono text-[11px] font-semibold text-slate-400 dark:text-slate-500">
                           {fmtVND(m.price)}
                         </p>
                       </div>
                     </label>
                     {selected && (
-                      <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
+                      <div className="flex items-center gap-2">
                         <input
                           type="number"
                           min="1"
-                          className="w-14 rounded-xl border border-indigo-200 bg-white px-2 py-2 text-center font-mono text-xs font-black text-indigo-600 shadow-sm outline-none dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400"
+                          className="w-14 rounded-xl border border-indigo-200 bg-white px-2 py-2 text-center font-mono text-xs font-black text-indigo-600 shadow-xs outline-none focus:border-indigo-500 dark:border-indigo-500/30 dark:bg-slate-900 dark:text-indigo-400"
                           value={selected.quantity}
                           onChange={(e) => handleUpdateQty(m.id, e.target.value)}
                         />
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
                           món
                         </span>
                       </div>

@@ -3,7 +3,7 @@ import { ChevronRight, Clock3, ReceiptText } from 'lucide-react';
 
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
-import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import { calculateSelfCheckoutBreakdown } from '../lib/selfCheckoutHelpers.js';
 
 const countItems = (order) =>
   (order?.items || order?.orderItems || []).reduce(
@@ -11,11 +11,12 @@ const countItems = (order) =>
     0,
   );
 
-const CurrentOrderBanner = ({ order, onClick }) => {
+const CurrentOrderBanner = ({ order, activePromotion = null, onClick }) => {
   if (!order) return null;
 
   const status = getOrderStatusMeta(order.status);
   const itemCount = countItems(order);
+  const breakdown = calculateSelfCheckoutBreakdown(order, null, activePromotion);
 
   return (
     <button
@@ -49,8 +50,13 @@ const CurrentOrderBanner = ({ order, onClick }) => {
 
         <div className="shrink-0 text-right">
           <p className="text-xs font-black font-mono text-indigo-600 dark:text-indigo-400">
-            {fmtVND(getOrderFinalAmount(order))}
+            {fmtVND(breakdown.finalAmount)}
           </p>
+          {breakdown.discountAmount > 0 && (
+            <p className="mt-0.5 font-mono text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+              KM -{fmtVND(breakdown.discountAmount)}
+            </p>
+          )}
           <ChevronRight className="ml-auto mt-0.5 text-slate-400 dark:text-slate-500" size={15} />
         </div>
       </div>

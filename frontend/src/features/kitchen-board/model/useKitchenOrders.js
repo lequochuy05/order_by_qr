@@ -1,17 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@features/auth';
+import { comboService } from '@entities/combo';
+import { menuItemService } from '@entities/menu-item';
 import { orderService } from '@entities/order/api/orderService.js';
+import { queryClient } from '@shared/api/queryClient.js';
+import { queryKeys } from '@shared/api/queryKeys.js';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
+import { useTranslation } from '@shared/lib/i18n';
+import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
+
+export const getAvailabilityTargetKey = (target) => {
+  if (!target) return null;
+  if (target.comboId) return `combo-${target.comboId}`;
+  if (target.menuItemId) return `menu-${target.menuItemId}`;
+  return null;
+};
 
 const useKitchenOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set());
+  const [togglingAvailabilityKeys, setTogglingAvailabilityKeys] = useState(new Set());
   const [now, setNow] = useState(() => Date.now());
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const { user } = useAuth();
+  const { isEn } = useTranslation('kitchen');
   const { showError } = useStatusModal();
   const isMountedRef = useRef(true);
   const fetchSeqRef = useRef(0);
@@ -171,17 +186,89 @@ const useKitchenOrders = () => {
     [fetchKitchenOrders, processingItems, showError],
   );
 
+  const handleToggleAvailability = useCallback(
+    async (target) => {
+      if (!target) return null;
+      const { menuItemId, comboId, itemName, isAvailable, version } = target;
+      const targetKey = getAvailabilityTargetKey({ menuItemId, comboId });
+      if (!targetKey || togglingAvailabilityKeys.has(targetKey)) return null;
+
+      setTogglingAvailabilityKeys((current) => new Set(current).add(targetKey));
+
+      try {
+        const res = comboId
+          ? await comboService.toggleAvailable(comboId, version)
+          : await menuItemService.toggleAvailable(menuItemId, version);
+        const nextAvailable = res?.available ?? !isAvailable;
+
+        if (isMountedRef.current) {
+          setOrders((current) =>
+            current.map((order) => ({
+              ...order,
+              orderItems: (order.orderItems || []).map((orderItem) => {
+                if (comboId && orderItem.combo?.id === comboId) {
+                  return {
+                    ...orderItem,
+                    combo: { ...orderItem.combo, available: nextAvailable },
+                  };
+                }
+                if (menuItemId && orderItem.menuItem?.id === menuItemId) {
+                  return {
+                    ...orderItem,
+                    menuItem: { ...orderItem.menuItem, available: nextAvailable },
+                  };
+                }
+                return orderItem;
+              }),
+            })),
+          );
+        }
+
+        queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
+        fetchKitchenOrders({ silent: true });
+
+        const displayName = itemName || (isEn ? 'Item' : 'Món');
+        showSuccessToast(
+          nextAvailable
+            ? isEn
+              ? `Re-enabled "${displayName}" on the menu.`
+              : `Đã mở bán lại "${displayName}".`
+            : isEn
+              ? `Marked "${displayName}" as out of stock.`
+              : `Đã báo tạm hết món: "${displayName}".`,
+        );
+
+        return nextAvailable;
+      } catch (error) {
+        showErrorToast(error);
+        return null;
+      } finally {
+        if (isMountedRef.current) {
+          setTogglingAvailabilityKeys((current) => {
+            const next = new Set(current);
+            next.delete(targetKey);
+            return next;
+          });
+        }
+      }
+    },
+    [fetchKitchenOrders, isEn, togglingAvailabilityKeys],
+  );
+
   return {
     orders,
     loading,
     refreshing,
     processingItems,
+    togglingAvailabilityKeys,
     now,
     lastUpdatedAt,
     fetchKitchenOrders,
     updateStatus,
     batchUpdateStatus,
     cancelItem,
+    handleToggleAvailability,
   };
 };
 

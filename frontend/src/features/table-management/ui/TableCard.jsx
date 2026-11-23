@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, FileText, PlusCircle, CreditCard, Edit, Trash2, Clock, Link2 } from 'lucide-react';
+import {
+  BellRing,
+  Users,
+  FileText,
+  PlusCircle,
+  CreditCard,
+  Edit,
+  Trash2,
+  Clock,
+  Link2,
+} from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
 import { getTableStatusMeta, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
@@ -15,8 +25,10 @@ const TableCard = ({
   onDelete,
   onMerge,
   userRole,
+  serviceRequestSummary = null,
+  onOpenServiceRequests,
 }) => {
-  const { language, isEn } = useTranslation('tables');
+  const { language, isEn, copy } = useTranslation('tables');
   const finalAmount = getOrderFinalAmount(order);
   const hasOrder = order && finalAmount > 0;
   const isManager = userRole === 'ADMIN' || userRole === 'MANAGER';
@@ -150,6 +162,22 @@ const TableCard = ({
           <div className="flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 font-bold text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40">
             <Clock size={13} /> <span>{timeElapsed}</span>
           </div>
+        )}
+        {serviceRequestSummary?.openCount > 0 && (
+          <button
+            type="button"
+            onClick={onOpenServiceRequests}
+            className={`flex items-center gap-1 rounded-lg border px-2 py-0.5 font-bold transition active:scale-95 ${
+              serviceRequestSummary.hasOverdue
+                ? 'animate-pulse border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-950/50 dark:text-rose-300'
+                : 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-300'
+            }`}
+          >
+            <BellRing size={12} />
+            <span>
+              {serviceRequestSummary.openCount} {copy.serviceRequestBadge}
+            </span>
+          </button>
         )}
       </div>
 

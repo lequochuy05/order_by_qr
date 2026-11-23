@@ -42,6 +42,7 @@ import {
 } from '@shared/lib/analytics/forecastUtils.js';
 import { useTranslation } from '@shared/lib/i18n';
 import useDashboard from '../model/useDashboard.js';
+import AiExecutiveSummaryCard from './AiExecutiveSummaryCard.jsx';
 
 // Modern, vibrant Evondev-style color palette for donut chart
 const PIE_COLORS = [
@@ -113,6 +114,7 @@ const CustomPieTooltip = ({ active, payload }) => {
 
 const DashboardOverview = () => {
   const {
+    businessToday,
     loading,
     error,
     refetch,
@@ -329,7 +331,12 @@ const DashboardOverview = () => {
       </div>
 
       {/* =========================================================================
-          2. AI FORECASTING & SMART KITCHEN PREP (2/3 + 1/3)
+          2. AI EXECUTIVE SUMMARY & SHIFT BRIEFING CARD (PER-05 / PER-06)
+          ========================================================================= */}
+      <AiExecutiveSummaryCard businessToday={businessToday} />
+
+      {/* =========================================================================
+          3. AI FORECASTING & SMART KITCHEN PREP (2/3 + 1/3)
           ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: AI Revenue Forecast Chart */}

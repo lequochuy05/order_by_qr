@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BellRing, ChevronRight, Loader2 } from 'lucide-react';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useAuth } from '@features/auth';
 
 import { orderService } from '@entities/order/api/orderService.js';
+import {
+  isServiceRequestOverdue,
+  useServiceRequestsQueueQuery,
+} from '@entities/service-request';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
@@ -33,6 +38,7 @@ import { useTranslation } from '@shared/lib/i18n';
 
 const TableManager = () => {
   const { isEn, copy } = useTranslation('tables');
+  const navigate = useNavigate();
   const [filter, setFilter] = useState('ALL');
 
   const tableStatusFilterOptions = React.useMemo(() => {
@@ -69,6 +75,46 @@ const TableManager = () => {
   };
 
   const { data: board, isLoading: loading } = useTableBoardQuery();
+  const canSeeServiceRequests = ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'].includes(userRole);
+  const { data: openServiceRequests } = useServiceRequestsQueueQuery(
+    { status: 'OPEN', mineOnly: false, tableId: null },
+    { enabled: canSeeServiceRequests },
+  );
+  const [serviceNowMs, setServiceNowMs] = useState(() => Date.now());
+
+  React.useEffect(() => {
+    if (!canSeeServiceRequests) return undefined;
+    const timer = window.setInterval(() => {
+      setServiceNowMs(Date.now());
+    }, 15 * 1000);
+    return () => window.clearInterval(timer);
+  }, [canSeeServiceRequests]);
+
+  const serviceRequestStats = React.useMemo(() => {
+    const byTable = {};
+    const list = Array.isArray(openServiceRequests) ? openServiceRequests : [];
+    let totalOverdue = 0;
+
+    list.forEach((req) => {
+      if (!req?.tableId) return;
+      const key = String(req.tableId);
+      if (!byTable[key]) {
+        byTable[key] = { openCount: 0, pendingCount: 0, hasOverdue: false };
+      }
+      byTable[key].openCount += 1;
+      if (req.status === 'PENDING') byTable[key].pendingCount += 1;
+      if (isServiceRequestOverdue(req, serviceNowMs)) {
+        byTable[key].hasOverdue = true;
+        totalOverdue += 1;
+      }
+    });
+
+    return {
+      byTable,
+      totalOpen: list.length,
+      totalOverdue,
+    };
+  }, [openServiceRequests, serviceNowMs]);
 
   React.useEffect(() => {
     if (loading) return undefined;
@@ -284,7 +330,37 @@ const TableManager = () => {
         addButtonText={copy.addTable}
         hideAddButton={!canManageTables}
       />
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
+        {serviceRequestStats.totalOpen > 0 && (
+          <div
+            className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs font-bold shadow-xs ${
+              serviceRequestStats.totalOverdue > 0
+                ? 'border-rose-300 bg-rose-50/90 text-rose-800 dark:border-rose-500/40 dark:bg-rose-950/30 dark:text-rose-200'
+                : 'border-amber-300 bg-amber-50/90 text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BellRing size={16} className="shrink-0 animate-bounce" />
+              <span>
+                {copy.openServiceRequests}: {serviceRequestStats.totalOpen}
+                {serviceRequestStats.totalOverdue > 0
+                  ? isEn
+                    ? ` (${serviceRequestStats.totalOverdue} overdue > 5m)`
+                    : ` (${serviceRequestStats.totalOverdue} quá hạn > 5 phút)`
+                  : ''}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/service-requests')}
+              className="inline-flex items-center gap-1 rounded-xl bg-white/90 px-3 py-1.5 text-xs font-black text-slate-900 shadow-xs transition hover:bg-white dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+            >
+              <span>{copy.viewServiceQueue}</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center p-20">
             <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
@@ -295,6 +371,10 @@ const TableManager = () => {
             orders={orders}
             onAction={handleAction}
             userRole={userRole}
+            serviceRequestsByTable={serviceRequestStats.byTable}
+            onOpenServiceRequests={(tableId) =>
+              navigate(`/admin/service-requests?tableId=${tableId}`)
+            }
           />
         )}
       </div>

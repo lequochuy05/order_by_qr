@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { useAuth } from '@features/auth';
-import { ErrorBoundary } from '@shared/ui';
+import { AiNoteTriageCard, ErrorBoundary } from '@shared/ui';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
 import { playLoudSound, playNotificationSound } from '@shared/lib/notificationSound.js';
 import useSettingsStore from '@shared/model/settingsStore.js';
@@ -11,10 +11,12 @@ import { aggregateBatchCookingItems, KITCHEN_COLUMNS } from './lib/kitchenItems.
 import { useTranslation } from '@shared/lib/i18n';
 import useKitchenFilters from './model/useKitchenFilters.js';
 import useKitchenNotifications from './model/useKitchenNotifications.js';
-import useKitchenOrders from './model/useKitchenOrders.js';
+import useKitchenOrders, { getAvailabilityTargetKey } from './model/useKitchenOrders.js';
 import AiStaffPanel from './ui/AiStaffPanel.jsx';
 import BatchCookingView from './ui/BatchCookingView.jsx';
 import KitchenFilters from './ui/KitchenFilters.jsx';
+import KitchenQuick86Modal from './ui/KitchenQuick86Modal.jsx';
+import KitchenRecipeModal from './ui/KitchenRecipeModal.jsx';
 import KitchenSummaryCards from './ui/KitchenSummaryCards.jsx';
 import KitchenToolbar from './ui/KitchenToolbar.jsx';
 
@@ -22,6 +24,9 @@ const KitchenBoardContent = () => {
   const { user } = useAuth();
   const { isEn } = useTranslation('kitchen');
   const [viewMode, setViewMode] = useState('kanban');
+  const [recipeTarget, setRecipeTarget] = useState(null);
+  const [isQuick86Open, setIsQuick86Open] = useState(false);
+  const [lastAvailabilityUpdate, setLastAvailabilityUpdate] = useState(null);
   const settings = useSettingsStore((state) => state.settings);
   const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
   const kitchen = useKitchenOrders();
@@ -31,6 +36,28 @@ const KitchenBoardContent = () => {
     settings.newOrderNotificationEnabled !== false,
   );
   const previousOverdueCountRef = useRef(null);
+
+  const handleToggleDishAvailability = async (target) => {
+    const nextAvailable = await kitchen.handleToggleAvailability(target);
+    if (nextAvailable !== null) {
+      const targetKey = getAvailabilityTargetKey(target);
+      if (targetKey) {
+        setLastAvailabilityUpdate({ key: targetKey, isAvailable: nextAvailable, seq: Date.now() });
+      }
+      setRecipeTarget((current) => {
+        if (!current) return current;
+        const matchesCombo = target.comboId && current.comboId === target.comboId;
+        const matchesMenu =
+          !target.comboId && target.menuItemId && current.menuItemId === target.menuItemId;
+        return matchesCombo || matchesMenu
+          ? { ...current, isAvailable: nextAvailable }
+          : current;
+      });
+    }
+    return nextAvailable;
+  };
+
+  const recipeAvailabilityKey = getAvailabilityTargetKey(recipeTarget);
 
   const localizedColumns = useMemo(
     () =>
@@ -96,6 +123,7 @@ const KitchenBoardContent = () => {
             onToggleSound={notifications.toggleSound}
             refreshing={kitchen.refreshing}
             onRefresh={() => kitchen.fetchKitchenOrders()}
+            onOpenQuick86={() => setIsQuick86Open(true)}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             batchCount={batchCount}
@@ -104,7 +132,12 @@ const KitchenBoardContent = () => {
         <KitchenSummaryCards summary={filters.summary} overdueMinutes={overdueMinutes} />
       </section>
 
-      {['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role) && <AiStaffPanel />}
+      {['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role) && (
+        <div className="space-y-4">
+          <AiStaffPanel />
+          <AiNoteTriageCard namespace="kitchen" />
+        </div>
+      )}
 
       <KitchenFilters
         searchTerm={filters.searchTerm}
@@ -127,7 +160,10 @@ const KitchenBoardContent = () => {
           onBatchUpdateStatus={kitchen.batchUpdateStatus}
           onUpdateStatus={kitchen.updateStatus}
           onCancelItem={kitchen.cancelItem}
+          onOpenRecipe={setRecipeTarget}
+          onToggleAvailability={handleToggleDishAvailability}
           processingItems={kitchen.processingItems}
+          togglingAvailabilityKeys={kitchen.togglingAvailabilityKeys}
         />
       ) : (
         <div className="mt-5 grid gap-5 xl:grid-cols-3">
@@ -138,11 +174,33 @@ const KitchenBoardContent = () => {
               items={filters.itemsByStatus[column.status]}
               onUpdateStatus={kitchen.updateStatus}
               onCancelItem={kitchen.cancelItem}
+              onOpenRecipe={setRecipeTarget}
+              onToggleAvailability={handleToggleDishAvailability}
               processingItems={kitchen.processingItems}
+              togglingAvailabilityKeys={kitchen.togglingAvailabilityKeys}
             />
           ))}
         </div>
       )}
+
+      <KitchenQuick86Modal
+        isOpen={isQuick86Open}
+        onClose={() => setIsQuick86Open(false)}
+        onToggleAvailability={handleToggleDishAvailability}
+        onOpenRecipe={setRecipeTarget}
+        togglingAvailabilityKeys={kitchen.togglingAvailabilityKeys}
+        lastAvailabilityUpdate={lastAvailabilityUpdate}
+      />
+
+      <KitchenRecipeModal
+        isOpen={Boolean(recipeTarget)}
+        onClose={() => setRecipeTarget(null)}
+        target={recipeTarget}
+        onToggleAvailability={handleToggleDishAvailability}
+        isTogglingAvailability={Boolean(
+          recipeAvailabilityKey && kitchen.togglingAvailabilityKeys.has(recipeAvailabilityKey),
+        )}
+      />
     </div>
   );
 };

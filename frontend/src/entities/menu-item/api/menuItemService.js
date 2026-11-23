@@ -111,6 +111,13 @@ export const menuItemService = {
     clearMenuCache();
     return res;
   },
+  toggleAvailable: async (id, version) => {
+    clearMenuCache();
+    const config = version != null ? { params: { version } } : undefined;
+    const res = await api.patch(`/menu-items/${id}/toggle-available`, null, config);
+    clearMenuCache();
+    return res;
+  },
   uploadImage: async (id, version, file) => {
     clearMenuCache();
     const formData = new FormData();

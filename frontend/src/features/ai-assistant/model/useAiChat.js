@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import api from '@shared/api/httpClient.js';
 import { getAiCopy, isWelcomeMessage } from '../lib/aiCopy.js';
+import { normalizeChatSuggestions } from '../lib/chatSuggestions.js';
 
 const useAiChat = (language) => {
   const copy = useMemo(() => getAiCopy(language), [language]);
@@ -72,7 +73,11 @@ const useAiChat = (language) => {
         if (isMountedRef.current) {
           setMessages((current) => [
             ...current,
-            { role: 'assistant', content: response?.reply || copy.fallbackReply },
+            {
+              role: 'assistant',
+              content: response?.reply || copy.fallbackReply,
+              suggestions: normalizeChatSuggestions(response?.suggestions),
+            },
           ]);
         }
       } catch {
