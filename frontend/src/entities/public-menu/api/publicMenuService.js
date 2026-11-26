@@ -1,7 +1,5 @@
 import api from '@shared/api/httpClient.js';
-
-const sessionHeaderConfig = (sessionToken) =>
-  sessionToken ? { headers: { 'X-Session-Token': sessionToken } } : undefined;
+import { sessionHeaderConfig } from '@shared/api/sessionHeaders.js';
 
 const recommendationItems = (response) =>
   Array.isArray(response?.items) ? response.items : Array.isArray(response) ? response : [];
@@ -12,11 +10,6 @@ export const publicMenuService = {
   getCombos: () => api.get('/public/combos'),
   getActivePromotions: () => api.get('/public/promotions/active'),
   getSettings: () => api.get('/public/settings'),
-  getSessionState: (tableCode) => api.get(`/public/tables/${tableCode}/session-state`),
-  startSession: (tableCode, sig) =>
-    api.post(`/public/tables/${tableCode}/start-session`, null, {
-      params: sig ? { sig } : undefined,
-    }),
   heartbeatSession: (sessionToken) =>
     api.post('/public/sessions/heartbeat', { sessionToken }, sessionHeaderConfig(sessionToken)),
   requestPayment: (tableCode, sessionToken) =>
@@ -44,14 +37,9 @@ export const publicMenuService = {
       params: { sessionToken },
       ...sessionHeaderConfig(sessionToken),
     }),
-  getCurrentOrderByTableCode: (tableCode, sessionToken) =>
-    api.get(`/public/tables/code/${tableCode}/current-order`, { params: { sessionToken } }),
-  createOrder: (orderData) =>
-    api.post('/public/orders', orderData, sessionHeaderConfig(orderData?.sessionToken)),
   getPopularItems: () => api.get('/recommendations/popular').then(recommendationItems),
   getPersonalizedRecommendations: (context) =>
     api.get('/recommendations/personalized', { params: { context } }).then(recommendationItems),
   getCrossSellRecommendations: (itemId) =>
     api.get(`/recommendations/cross-sell/${itemId}`).then(recommendationItems),
-  sendAiChat: (message, history = []) => api.post('/public/ai/chat', { message, history }),
 };

@@ -1,14 +1,6 @@
 import api from '@shared/api/httpClient.js';
 
 export const tableService = {
-  getAll: async () => {
-    const res = await api.get('/tables');
-    return res;
-  },
-  getById: async (id) => {
-    const res = await api.get(`/tables/${id}`);
-    return res;
-  },
   create: async (data) => {
     const res = await api.post('/tables', data);
     return res;
@@ -29,11 +21,19 @@ export const tableService = {
     const res = await api.post('/table-sessions/merge', data);
     return res;
   },
-  cancelMerge: async (sessionId) => {
-    const res = await api.post(`/table-sessions/${sessionId}/cancel-merge`);
+  closeEmptySession: async (sessionId) => {
+    const res = await api.post(`/table-sessions/${sessionId}/close-empty`);
     return res;
   },
   delete: async (id) => {
     await api.delete(`/tables/${id}`);
   },
+  getTableBoard: () => api.get('/orders/table-board'),
+  getSessionState: (tableCode) => api.get(`/public/tables/${tableCode}/session-state`),
+  startSession: (tableCode, sig) =>
+    api.post(`/public/tables/${tableCode}/start-session`, null, {
+      params: sig ? { sig } : undefined,
+    }),
+  getCurrentOrderByTableCode: (tableCode, sessionToken) =>
+    api.get(`/public/tables/code/${tableCode}/current-order`, { params: { sessionToken } }),
 };

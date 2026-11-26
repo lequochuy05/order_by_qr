@@ -31,6 +31,8 @@ const ERROR_CODE_MESSAGES = {
   INVALID_REFRESH_TOKEN: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.',
   PASSWORD_INVALID: 'Mật khẩu hiện tại không chính xác.',
   PASSWORD_RESET_TOKEN_INVALID: 'Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.',
+  LAST_ACTIVE_ADMIN_REQUIRED:
+    'Không thể hạ quyền hoặc vô hiệu hóa quản trị viên cuối cùng của hệ thống.',
 
   CATEGORY_NOT_FOUND: 'Không tìm thấy danh mục.',
   CATEGORY_NAME_EXISTS: 'Tên danh mục đã tồn tại.',
@@ -52,7 +54,6 @@ const ERROR_CODE_MESSAGES = {
   TABLE_SESSION_INVALID: 'Phiên sử dụng bàn không hợp lệ.',
   TABLE_SESSION_EXPIRED: 'Phiên sử dụng bàn đã hết hạn.',
   TABLE_MERGE_REQUIRES_MULTIPLE_TABLES: 'Gộp bàn cần chọn ít nhất 2 bàn trở lên.',
-  TABLE_ALREADY_IN_ANOTHER_SESSION: 'Bàn đã thuộc một phiên phục vụ hoặc nhóm gộp khác.',
   TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS:
     'Không thể gộp các bàn khi có nhiều hơn 1 bàn đang có đơn hàng mở.',
   TABLE_MERGE_CAPACITY_EXCEEDED: 'Số lượng khách vượt quá tổng sức chứa của các bàn gộp.',
@@ -71,14 +72,12 @@ const ERROR_CODE_MESSAGES = {
   ORDER_NOT_FOUND: 'Không tìm thấy đơn hàng.',
   ORDER_ITEM_NOT_FOUND: 'Không tìm thấy món trong đơn hàng.',
   ORDER_CONTENT_EMPTY: 'Giỏ hàng đang trống. Hãy chọn món trước khi đặt.',
-  ORDER_INVALID_STATUS: 'Trạng thái đơn hàng không hợp lệ.',
   ORDER_INVALID_ITEM_STATUS: 'Trạng thái món không hợp lệ.',
   ORDER_INVALID_STATE: 'Đơn hàng không ở trạng thái phù hợp để thực hiện thao tác này.',
   ORDER_ALREADY_PAID: 'Đơn hàng đã được thanh toán.',
   ORDER_PAYMENT_INVALID: 'Thông tin thanh toán của đơn hàng không hợp lệ.',
   ORDER_PAYMENT_IN_PROGRESS: 'Đơn hàng đang trong quá trình thanh toán.',
   ORDER_HAS_UNFINISHED_ITEMS: 'Đơn hàng còn món đang được chế biến trong bếp.',
-  ORDER_IDEMPOTENCY_CONFLICT: 'Yêu cầu đặt món này đã được gửi trước đó.',
 
   VOUCHER_NOT_FOUND: 'Không tìm thấy voucher.',
   VOUCHER_CODE_EXISTS: 'Mã voucher đã tồn tại.',
@@ -86,12 +85,10 @@ const ERROR_CODE_MESSAGES = {
   VOUCHER_NOT_YET_ACTIVE: 'Voucher chưa đến thời gian sử dụng.',
   VOUCHER_EXPIRED: 'Voucher đã hết hạn.',
   VOUCHER_USAGE_LIMIT_REACHED: 'Voucher đã hết lượt sử dụng.',
-  VOUCHER_INVALID: 'Voucher không hợp lệ.',
+  VOUCHER_IN_USE: 'Voucher đang được sử dụng trong đơn hàng hoặc giao dịch đang chờ thanh toán.',
 
   PROMOTION_NOT_FOUND: 'Không tìm thấy chương trình khuyến mãi.',
   PROMOTION_NAME_EXISTS: 'Tên chương trình khuyến mãi đã tồn tại.',
-  PROMOTION_INACTIVE: 'Chương trình khuyến mãi đang bị vô hiệu hóa.',
-  PROMOTION_INVALID: 'Chương trình khuyến mãi không hợp lệ.',
 
   INVENTORY_ITEM_NOT_FOUND: 'Không tìm thấy nguyên liệu.',
   INVENTORY_ITEM_NAME_EXISTS: 'Tên nguyên liệu đã tồn tại.',

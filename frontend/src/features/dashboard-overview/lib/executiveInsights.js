@@ -1,5 +1,3 @@
-export const INSIGHTS_PRESETS = ['today', '7d', '30d'];
-
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const shiftIsoDate = (isoDate, deltaDays) => {

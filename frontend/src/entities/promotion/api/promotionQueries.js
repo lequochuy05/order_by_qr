@@ -10,10 +10,3 @@ export const usePromotionPageQuery = (params = {}, options = {}) =>
     placeholderData: keepPreviousData,
     ...options,
   });
-
-export const useActivePromotionsQuery = (options = {}) =>
-  useQuery({
-    queryKey: [...queryKeys.promotions.all, 'active'],
-    queryFn: () => promotionService.getActive(),
-    ...options,
-  });

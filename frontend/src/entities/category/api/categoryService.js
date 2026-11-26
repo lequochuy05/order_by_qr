@@ -1,6 +1,8 @@
 import api from '@shared/api/httpClient.js';
 
 export const categoryService = {
+  getActive: () => api.get('/categories/active'),
+
   getPage: (params = {}) => api.get('/categories', { params }),
 
   // getById fix: needed so CategoryManagement can load a fresh version before edit modal opens.

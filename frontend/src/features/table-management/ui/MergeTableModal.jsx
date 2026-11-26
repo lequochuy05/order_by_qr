@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { UsersRound } from 'lucide-react';
 
-import { TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUSES } from '@entities/table';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import ModalHeader from '@shared/ui/modal/ModalHeader.jsx';
 import ModalActions from '@shared/ui/modal/ModalActions.jsx';

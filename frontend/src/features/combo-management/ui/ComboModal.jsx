@@ -75,7 +75,9 @@ const ComboModal = ({
       newErrors.name = 'Tên combo không được vượt quá 100 ký tự';
     }
 
-    if (!Number.isFinite(price) || price < 0) newErrors.price = 'Giá không hợp lệ';
+    if (!Number.isFinite(price) || price < 1000) {
+      newErrors.price = 'Giá combo phải tối thiểu 1.000đ';
+    }
     if (Number(formData.displayOrder) < 0) {
       newErrors.displayOrder = 'Thứ tự hiển thị không được âm';
     }
@@ -254,7 +256,7 @@ const ComboModal = ({
             label="Giá Combo (Khuyến mãi)"
             required
             type="number"
-            min="0"
+            min="1000"
             suffix="VNĐ"
             inputClassName="font-mono font-black text-indigo-600 dark:text-indigo-400"
             value={formData.price}

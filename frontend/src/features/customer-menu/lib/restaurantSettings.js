@@ -1,4 +1,4 @@
-export const RECOMMENDATION_REASON_LABELS = {
+const RECOMMENDATION_REASON_LABELS = {
   'Popular items': 'Món đang được gọi nhiều',
   'Frequently ordered together': 'Thường được gọi cùng món này',
   'Similar items in the same category': 'Cùng danh mục với món bạn đang xem',
@@ -22,6 +22,9 @@ const DEFAULT_RESTAURANT_SETTINGS = {
   onlinePaymentEnabled: true,
   customerSelfCheckoutEnabled: false,
   allowSettlementWithUnfinishedItems: false,
+  currency: 'VND',
+  taxPercent: 0,
+  serviceChargePercent: 0,
 };
 
 export const translateRecommendationReason = (reason) =>
@@ -40,6 +43,9 @@ export const normalizeRestaurantSettings = (settings = {}) => ({
   onlinePaymentEnabled: settings.onlinePaymentEnabled ?? true,
   customerSelfCheckoutEnabled: settings.customerSelfCheckoutEnabled ?? false,
   allowSettlementWithUnfinishedItems: settings.allowSettlementWithUnfinishedItems ?? false,
+  currency: settings.currency ?? 'VND',
+  taxPercent: Number(settings.taxPercent ?? 0) || 0,
+  serviceChargePercent: Number(settings.serviceChargePercent ?? 0) || 0,
 });
 
 export const getTimeContext = (date = new Date()) => {

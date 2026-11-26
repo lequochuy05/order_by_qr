@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Loader2, Ticket } from 'lucide-react';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useCrudModal } from '@shared/hooks/useCrudModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import {
   useCreateVoucherMutation,
@@ -8,7 +9,7 @@ import {
   useUpdateVoucherMutation,
   useVoucherPageQuery,
 } from '@entities/voucher';
-import { VOUCHER_STATUSES } from '@entities/voucher/lib/voucherStatus.js';
+import { VOUCHER_STATUSES } from '@entities/voucher';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
 import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';
@@ -43,15 +44,10 @@ const voucherStatusFilterOptions = Object.entries(VOUCHER_STATUS).map(([id, meta
 const VoucherManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingVoucher, setEditingVoucher] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [formErrors, setFormErrors] = useState({});
-  const isMountedRef = useRef(true);
   const pageSize = 24;
 
+  const crud = useCrudModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const queryParams = {
@@ -67,6 +63,16 @@ const VoucherManager = () => {
   const { mutateAsync: createVoucher } = useCreateVoucherMutation();
   const { mutateAsync: updateVoucher } = useUpdateVoucherMutation();
   const { mutateAsync: deleteVoucher } = useDeleteVoucherMutation();
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(0);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
 
   const getStatusInfo = (v) => {
     const now = new Date();
@@ -85,22 +91,8 @@ const VoucherManager = () => {
     return { value, ...VOUCHER_STATUS[value] };
   };
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // Duplicate WebSocket fix: removed local subscription to /topic/vouchers.
-  // WebSocketInvalidator already handles /topic/vouchers centrally.
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [debouncedSearchTerm, statusFilter]);
-
   const handleSubmit = async (data) => {
-    setIsSaving(true);
+    crud.setSubmitting(true);
     const safeValidFrom =
       data.validFrom && !data.validFrom.includes('T')
         ? `${data.validFrom}T00:00:00`
@@ -125,39 +117,38 @@ const VoucherManager = () => {
     };
 
     try {
-      if (editingVoucher?.id) {
-        await updateVoucher({ id: editingVoucher.id, data: payload });
+      if (crud.editingItem?.id) {
+        await updateVoucher({ id: crud.editingItem.id, data: payload });
         showSuccessToast(`Đã cập nhật voucher`);
       } else {
         await createVoucher(payload);
         showSuccessToast(`Đã thêm voucher`);
       }
-      setFormErrors({});
-      setIsModalOpen(false);
+      crud.close();
     } catch (err) {
       const errorMsg = err.message || '';
       if (err?.code === 'VOUCHER_CODE_EXISTS' || errorMsg.includes('Voucher code already exists')) {
-        setFormErrors({ code: 'Mã voucher này đã tồn tại trên hệ thống' });
+        crud.setFormErrors({ code: 'Mã voucher này đã tồn tại trên hệ thống' });
       } else {
         showErrorToast(err);
       }
     } finally {
-      setIsSaving(false);
+      crud.setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (deletingId) return;
+    if (crud.deletingId) return;
     const confirmed = await confirm('Xóa voucher', 'Bạn chắc chắn muốn xóa voucher này?');
     if (!confirmed) return;
-    setDeletingId(id);
+    crud.setDeletingId(id);
     try {
       await deleteVoucher(id);
       showSuccessToast('Đã xóa voucher thành công');
     } catch (err) {
       showErrorToast(err);
     } finally {
-      setDeletingId(null);
+      crud.setDeletingId(null);
     }
   };
 
@@ -166,17 +157,13 @@ const VoucherManager = () => {
       <ManagementHeader
         searchPlaceholder="Tìm mã voucher..."
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        onAddClick={() => {
-          setEditingVoucher(null);
-          setFormErrors({});
-          setIsModalOpen(true);
-        }}
+        setSearchTerm={handleSearchChange}
+        onAddClick={() => crud.openCreate()}
         addButtonText="Thêm Voucher"
         showFilter
         filterAllLabel="Tất cả trạng thái"
         filterValue={statusFilter}
-        setFilterValue={setStatusFilter}
+        setFilterValue={handleStatusFilterChange}
         filterOptions={voucherStatusFilterOptions}
       />
 
@@ -233,11 +220,7 @@ const VoucherManager = () => {
                 </div>
 
                 <EditDeleteActions
-                  onEdit={() => {
-                    setEditingVoucher(v);
-                    setFormErrors({});
-                    setIsModalOpen(true);
-                  }}
+                  onEdit={() => crud.openEdit(v)}
                   onDelete={() => handleDelete(v.id)}
                 />
               </div>
@@ -264,17 +247,14 @@ const VoucherManager = () => {
 
       {/* Modal Nhập liệu */}
       <VoucherModal
-        key={isModalOpen ? editingVoucher?.id || 'new' : 'closed'}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setFormErrors({});
-          setIsModalOpen(false);
-        }}
-        initialData={editingVoucher}
+        key={crud.isOpen ? crud.editingItem?.id || 'new' : 'closed'}
+        isOpen={crud.isOpen}
+        onClose={crud.close}
+        initialData={crud.editingItem}
         onSubmit={handleSubmit}
-        isSubmitting={isSaving}
-        serverErrors={formErrors}
-        onClearServerError={(field) => setFormErrors((current) => ({ ...current, [field]: null }))}
+        isSubmitting={crud.isSubmitting}
+        serverErrors={crud.formErrors}
+        onClearServerError={crud.clearFormError}
       />
     </div>
   );

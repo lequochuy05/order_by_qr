@@ -1,6 +1,6 @@
 import { Calendar, Filter, Hash, RefreshCcw, Search } from 'lucide-react';
 
-import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { ORDER_STATUS, getOrderStatusMeta } from '@entities/order';
 import { getDatePresets } from '@features/order-management/lib/orderHistoryDates.js';
 import { useTranslation } from '@shared/lib/i18n';
 

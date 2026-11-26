@@ -22,9 +22,9 @@ import {
   SERVICE_REQUEST_STATUSES,
 } from '@entities/service-request';
 import { fmtDateTime } from '@shared/lib/formatters.js';
-import { analyzeCustomerNote, RISK_LEVELS } from '@shared/lib/noteSafety.js';
+import { analyzeCustomerNote, RISK_LEVELS } from '@entities/ai';
 import { getStatusClasses } from '@shared/lib/statusClasses.js';
-import { NoteSafetyBadges } from '@shared/ui';
+import { NoteSafetyBadges } from '@entities/ai';
 
 const REASON_ICONS = {
   Droplets,

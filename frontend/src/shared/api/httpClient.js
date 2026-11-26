@@ -2,6 +2,7 @@ import axios from 'axios';
 
 let accessToken = null;
 let refreshPromise = null;
+const authFailureListeners = new Set();
 const API_PREFIX = '/api/v1';
 const configuredApiUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 const API_BASE_URL = configuredApiUrl.endsWith(API_PREFIX)
@@ -29,6 +30,48 @@ export const setAccessToken = (token) => {
 };
 
 export const getAccessToken = () => accessToken;
+
+const decodeJwtExpMs = (token) => {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const json =
+      typeof globalThis.atob === 'function'
+        ? globalThis.atob(padded)
+        : null;
+    if (!json) return null;
+    const payload = JSON.parse(json);
+    return typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+export const isAccessTokenExpiringSoon = (bufferMs = 60_000, nowMs = Date.now()) => {
+  if (!accessToken) return true;
+  const expMs = decodeJwtExpMs(accessToken);
+  if (expMs == null) return false;
+  return expMs - nowMs <= bufferMs;
+};
+
+export const registerAuthFailureListener = (listener) => {
+  if (typeof listener !== 'function') return () => {};
+  authFailureListeners.add(listener);
+  return () => authFailureListeners.delete(listener);
+};
+
+const notifyAuthFailure = () => {
+  authFailureListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      // Ignore errors in auth failure cleanup callbacks
+    }
+  });
+};
 
 api.interceptors.request.use((config) => {
   if (config.skipAuth) {
@@ -131,6 +174,7 @@ api.interceptors.response.use(unwrapApiResponse, async (error) => {
       return api(originalRequest);
     } catch {
       setAccessToken(null);
+      notifyAuthFailure();
     }
   }
 

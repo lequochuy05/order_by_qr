@@ -65,10 +65,10 @@ test('staff role hides payment and prepared actions on management interfaces', (
     'utf-8',
   );
   assert.match(tableCardSource, /canPay/);
-  assert.match(tableCardSource, /hasOrder\s*&&\s*canPay/);
+  assert.match(tableCardSource, /hasOrder\s*&&\s*!isOrderPaid\s*&&\s*canPay/);
 
   const orderDetailModalSource = readFileSync(
-    resolve(testDir, '../../src/features/table-management/ui/OrderDetailModal.jsx'),
+    resolve(testDir, '../../src/widgets/order-modals/ui/OrderDetailModal.jsx'),
     'utf-8',
   );
   assert.match(orderDetailModalSource, /isStaff/);
@@ -176,4 +176,81 @@ test('customer realtime hook subscribes only to public WebSocket topics', () => 
   assert.doesNotMatch(source, /\/topic\/promotions/);
   assert.match(source, /\/topic\/menu/);
   assert.match(source, /\/topic\/tables/);
+});
+
+test('SystemErrorPage falls back to anchor tag when rendered outside a Router context', () => {
+  const source = readFileSync(
+    resolve(testDir, '../../src/shared/ui/SystemErrorPage.jsx'),
+    'utf8',
+  );
+
+  assert.match(source, /useInRouterContext/);
+  assert.match(source, /if \(!inRouter\)/);
+  assert.match(source, /<a href=\{action\.to\}/);
+});
+
+test('core session and public catalog services retain required runtime methods', () => {
+  const authSource = readFileSync(
+    resolve(testDir, '../../src/entities/session/api/authService.js'),
+    'utf8',
+  );
+  const publicMenuSource = readFileSync(
+    resolve(testDir, '../../src/entities/public-menu/api/publicMenuService.js'),
+    'utf8',
+  );
+
+  assert.match(authSource, /\brefresh\s*:/);
+  assert.match(publicMenuSource, /\bgetCrossSellRecommendations\s*:/);
+});
+
+test('audit hardening regressions stay enforced across auth, inventory, POS, and customer checkout', () => {
+  const authContextSource = readFileSync(
+    resolve(testDir, '../../src/entities/session/model/AuthContext.jsx'),
+    'utf8',
+  );
+  assert.match(authContextSource, /getAccessToken\(\)/);
+  assert.match(authContextSource, /authService\.logout\(activeToken\)/);
+
+  const inventoryFormSource = readFileSync(
+    resolve(testDir, '../../src/features/inventory-management/model/useInventoryItemForm.js'),
+    'utf8',
+  );
+  assert.doesNotMatch(inventoryFormSource, /inventoryService\.stockIn/);
+
+  const paymentModalSource = readFileSync(
+    resolve(testDir, '../../src/widgets/order-modals/ui/PaymentModal.jsx'),
+    'utf8',
+  );
+  assert.ok(
+    paymentModalSource.indexOf('<VoucherBox') <
+      paymentModalSource.indexOf('payment.paymentMethod === PAYMENT_METHODS.PAYOS'),
+    'VoucherBox must render above Cash/PayOS tab branch',
+  );
+
+  const customerMenuSource = readFileSync(
+    resolve(testDir, '../../src/features/customer-menu/ui/CustomerMenu.jsx'),
+    'utf8',
+  );
+  assert.match(customerMenuSource, /useCustomerSelfCheckout\(/);
+
+  const sidebarSource = readFileSync(
+    resolve(testDir, '../../src/widgets/admin-layout/ui/AdminSidebar.jsx'),
+    'utf8',
+  );
+  assert.match(sidebarSource, /\/admin\/statistics\/revenue.*'MANAGER'/);
+  assert.match(sidebarSource, /!user\.mustChangePassword/);
+  assert.match(sidebarSource, /staleTime:/);
+
+  const queryKeysSource = readFileSync(
+    resolve(testDir, '../../src/shared/api/queryKeys.js'),
+    'utf8',
+  );
+  assert.match(queryKeysSource, /filters\.orderId/);
+
+  const invoiceSource = readFileSync(
+    resolve(testDir, '../../src/entities/order/lib/invoiceGenerator.js'),
+    'utf8',
+  );
+  assert.doesNotMatch(invoiceSource, /window\.open\(/);
+  assert.match(invoiceSource, /createElement\('iframe'\)/);
 });

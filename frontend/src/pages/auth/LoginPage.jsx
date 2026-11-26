@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@features/auth';
-import { authService } from '@shared/api/authService.js';
+import { useAuth } from '@entities/session';
+import { authService } from '@entities/session';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { showSuccessToast } from '@shared/lib/toast.js';
 import {
@@ -15,7 +15,7 @@ import {
   KeyRound,
   UtensilsCrossed,
 } from 'lucide-react';
-import { AuthRainBackground } from '@shared/ui';
+import { AuthRainBackground } from '@features/auth';
 
 
 const LoginPage = () => {

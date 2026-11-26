@@ -1,5 +1,7 @@
 import { BUSINESS_TIME_ZONE } from './businessTime.js';
 
+export const toNumber = (value) => Number(value || 0);
+
 /**
  * Định dạng số thành tiền Việt Nam (VND)
  */

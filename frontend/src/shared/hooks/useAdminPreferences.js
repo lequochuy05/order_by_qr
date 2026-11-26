@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 
-export const adminPreferencesStorageKey = 'admin_preferences';
-export const adminPreferencesEventName = 'admin-preferences-change';
+const adminPreferencesStorageKey = 'admin_preferences';
 
-export const defaultAdminPreferences = {
+const defaultAdminPreferences = {
   notificationSound: true,
   loudSound: false,
   darkMode: false,
@@ -22,7 +21,7 @@ export const readAdminPreferences = () => {
   }
 };
 
-export const useAdminPreferencesStore = create((set) => ({
+const useAdminPreferencesStore = create((set) => ({
   preferences: readAdminPreferences(),
   setPreferences: (updater) => {
     set((state) => {

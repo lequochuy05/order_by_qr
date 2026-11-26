@@ -9,6 +9,7 @@ const ProfileAvatarCard = ({
   uploadingAvatar,
   fileInputRef,
   onAvatarChange,
+  disabled = false,
 }) => (
   <section className="min-w-0 rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 hover:shadow-md dark:border-[#1E293B] dark:bg-[#0F172A]/90">
     <div className="flex flex-col items-center text-center">
@@ -25,7 +26,7 @@ const ProfileAvatarCard = ({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploadingAvatar}
+          disabled={uploadingAvatar || disabled}
           className="absolute bottom-1 right-1 flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30 transition-all hover:scale-105 hover:shadow-indigo-600/40 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
           title="Đổi ảnh đại diện"
         >
@@ -52,7 +53,7 @@ const ProfileAvatarCard = ({
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        disabled={uploadingAvatar}
+        disabled={uploadingAvatar || disabled}
         className="mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-200/80 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
       >
         <Upload size={16} />

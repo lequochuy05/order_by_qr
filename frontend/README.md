@@ -18,57 +18,77 @@ Frontend QROS là React/Vite SPA (hỗ trợ PWA và đóng gói Android bằng 
 | Realtime | `@stomp/stompjs`, SockJS |
 | Chart | Recharts 3 |
 | QR | qrcode.react |
-| PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core` & `@capacitor/android` (`^8.4.0`) |
-| Testing | Node.js `node:test` (`npm test`, `npm run test:coverage`) |
-| Tooling | ESLint 9, Prettier, Vite manual chunks |
+| PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core` & `@capacitor/android` (`^8.6.2`) |
+| Testing | Node.js `node:test` (`npm test`, `npm run test:coverage` — 20 suites / 144 tests) |
+| Tooling | ESLint 9 (FSD layer, cross-slice & Public API barrel rules), Prettier, Vite manual chunks |
 
-## Cấu trúc
+## Cấu trúc (Feature-Sliced Design — 19 Features, 16 Entities, 2 Widgets)
 
 ```text
 src/
-├── app/                      # App shell, providers, router, i18n, theme, global styles
+├── app/                      # App shell, providers, router (28 named routes + *), i18n, theme, global styles
 ├── pages/
-│   ├── admin/                # Admin route pages
+│   ├── admin/                # Admin route pages (bao gồm compose order-modals cho TableMapPage & TakeawayPage)
 │   ├── auth/                 # Login, forgot-password, reset-password pages
 │   ├── customer/             # Customer menu & ordering pages
 │   ├── landing/              # Landing page hướng dẫn quét QR
 │   └── system/               # System pages (unauthorized, not-found, offline, error)
-├── features/
+├── widgets/
+│   ├── admin-layout/         # Layout quản trị (sidebar, header, navigation, mobile bottom nav)
+│   └── order-modals/         # Cụm modal dùng chung (AddItemModal, OrderDetailModal, PaymentModal & hooks)
+├── features/                 # 19 feature slices độc lập (0 cross-feature imports)
 │   ├── ai-assistant/         # Trợ lý AI Gemini (khách hàng & nhân sự)
 │   ├── analytics/            # Revenue, top dishes, staff stats & forecast UI/API
-│   ├── auth/                 # Auth API, context, 2FA, protected route
+│   ├── auth/                 # Login, 2FA, forgot/reset password, protected route
 │   ├── category-management/
 │   ├── combo-management/
-│   ├── customer-menu/        # Menu khách, giỏ hàng (cartStore.js), tạo đơn, đơn hiện tại
+│   ├── customer-menu/        # Menu khách, giỏ hàng (cartStore.js), tạo đơn, tự thanh toán, gọi phục vụ
 │   ├── dashboard-overview/
 │   ├── inventory-management/
 │   ├── kitchen-board/        # KDS Bếp realtime (Kanban & Batch Cooking)
 │   ├── menu-management/
 │   ├── order-management/
 │   ├── profile-management/
+│   ├── promotion-management/ # Quản lý chương trình khuyến mãi
+│   ├── service-requests/     # Hàng đợi tiếp nhận & xử lý yêu cầu hỗ trợ tại bàn
 │   ├── settings-management/
 │   ├── table-management/
 │   ├── takeaway-management/  # Quản lý đơn mang về (Takeaway)
 │   ├── user-management/
 │   └── voucher-management/
-├── entities/                 # UI/model nhỏ theo domain
-├── shared/                   # API client, hooks, lib, stores, shared UI
-└── widgets/
-    └── admin-layout/         # Layout quản trị (sidebar, header, navigation)
+├── entities/                 # 16 domain entities (0 cross-entity imports, bắt buộc qua index.js)
+│   ├── ai/                   # AI service, merchandising drafts, note safety triage UI/lib
+│   ├── analytics/
+│   ├── category/
+│   ├── combo/
+│   ├── inventory/
+│   ├── menu-item/            # Bao gồm ItemOptionsModal
+│   ├── order/
+│   ├── payment/
+│   ├── promotion/
+│   ├── public-menu/
+│   ├── service-request/
+│   ├── session/              # AuthContext & authService
+│   ├── settings/             # settingsStore, settingsService, React Query hooks
+│   ├── table/
+│   ├── user/
+│   └── voucher/
+└── shared/                   # Hạ tầng thuần không rò rỉ domain (API client, hooks, lib, stores, shared UI)
 ```
 
 Alias trong `vite.config.js`:
 
 ```text
-@        -> src
-@app     -> src/app
-@pages   -> src/pages
-@widgets -> src/widgets
+@         -> src
+@app      -> src/app
+@pages    -> src/pages
+@widgets  -> src/widgets
 @features -> src/features
-@modules -> src/features (legacy alias)
-@entities-> src/entities
-@shared  -> src/shared
+@entities -> src/entities
+@shared   -> src/shared
 ```
+
+> **Kiểm soát ranh giới FSD tự động (`eslint.config.js`):** ESLint tự động chặn mọi import ngược chiều layer, mọi cross-entity/cross-feature import, và mọi deep import bỏ qua `index.js` barrel của slice bên ngoài.
 
 ## Biến môi trường
 
@@ -170,16 +190,18 @@ Routes chính được định nghĩa tại `src/app/router.jsx`:
 | `/admin/combo` | `ADMIN`, `MANAGER` | Quản trị gói combo |
 | `/admin/inventory` | `ADMIN`, `MANAGER`, `CHEF` | Quản lý kho & nguyên liệu |
 | `/admin/voucher` | `ADMIN`, `MANAGER` | Quản trị mã giảm giá |
+| `/admin/promotions` | `ADMIN`, `MANAGER` | Quản trị chương trình khuyến mãi |
 | `/admin/staffs` | `ADMIN`, `MANAGER` | Quản lý tài khoản nhân sự |
 | `/admin/statistics/revenue` | **Chỉ `ADMIN`** | Phân tích doanh thu chuyên sâu |
 | `/admin/statistics/top-dishes` | `ADMIN`, `MANAGER` | Thống kê món bán chạy |
 | `/admin/statistics/staff` | `ADMIN`, `MANAGER` | Thống kê hiệu suất nhân viên |
 | `/admin/tables` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Sơ đồ bàn, gọi món, gộp bàn |
+| `/admin/service-requests` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Hàng đợi tiếp nhận & xử lý yêu cầu hỗ trợ tại bàn |
 | `/admin/takeaway` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Quản lý đơn mang về |
 | `/admin/history` | `ADMIN`, `MANAGER`, `CASHIER` | Lịch sử & tra soát hóa đơn |
 | `/admin/kitchen` | `ADMIN`, `MANAGER`, `CHEF` | KDS Bếp realtime (Kanban/Gom món) |
 
-`ProtectedRoute` kiểm tra role trong `AuthContext`. Nếu không đủ quyền, user được chuyển hướng tới trang `/unauthorized`.
+`ProtectedRoute` kiểm tra role trong `AuthContext` (`@entities/session`). Nếu không đủ quyền, user được chuyển hướng tới trang `/unauthorized`.
 
 ## Auth và API client
 
@@ -201,7 +223,7 @@ src/shared/api/httpClient.js
 Auth context nằm ở:
 
 ```text
-src/features/auth/model/AuthContext.jsx
+src/entities/session/model/AuthContext.jsx   (export qua @entities/session)
 ```
 
 Ghi chú:
@@ -231,7 +253,7 @@ Cấu hình chung:
 - STOMP reconnect delay: 5 giây.
 - Heartbeat incoming/outgoing: 10 giây.
 
-Topics frontend đang dùng:
+Topics frontend đang dùng (12 topics):
 
 | Topic | Service | Nơi dùng |
 | --- | --- | --- |
@@ -241,6 +263,7 @@ Topics frontend đang dùng:
 | `/topic/combos` | `publicWsService` / `adminWsService` | Quản lý combo, menu khách |
 | `/topic/settings` | `publicWsService` / `adminWsService` | Settings và menu khách |
 | `/topic/orders` | `adminWsService` (Admin-only) | Quản lý đơn hàng & lịch sử/vận hành nội bộ (menu khách dùng `/topic/tables`) |
+| `/topic/service-requests` | `adminWsService` | Hàng đợi yêu cầu hỗ trợ tại bàn |
 | `/topic/kitchen` | `adminWsService` | Bảng bếp KDS |
 | `/topic/vouchers` | `adminWsService` | Quản lý voucher |
 | `/topic/promotions` | `adminWsService` | Quản lý khuyến mãi |
@@ -252,29 +275,32 @@ Topics frontend đang dùng:
 Zustand đang được dùng cho:
 
 - `src/features/customer-menu/model/cartStore.js`: giỏ hàng khách.
-- `src/shared/model/settingsStore.js`: settings nhà hàng và cache client-side.
+- `src/entities/settings/model/settingsStore.js` (export qua `@entities/settings`): settings nhà hàng và cache client-side.
+- `src/shared/stores/useAdminPreferences.js`: ngôn ngữ, giao diện sáng/tối và tùy chọn cá nhân.
 
-Auth user state dùng React Context thay vì Zustand.
+Auth user state dùng React Context (`@entities/session`) thay vì Zustand.
 
-## Các feature chức năng
+## Các feature chức năng (19 Features)
 
 | Module | Mô tả |
 | --- | --- |
-| `customer-menu` | Menu khách, cart (`cartStore.js`), tạo đơn, theo dõi đơn hiện tại |
+| `customer-menu` | Menu khách, cart (`cartStore.js`), tạo đơn, tự thanh toán VietQR, gọi phục vụ, theo dõi đơn hiện tại |
 | `ai-assistant` | Trợ lý AI Gemini qua backend cho khách hàng và nhân sự |
-| `auth` | Login, Admin 2FA OTP, refresh session, quên/đặt lại mật khẩu, protected route |
-| `dashboard-overview` | Tổng quan vận hành cho dashboard |
-| `table-management` | Sơ đồ bàn, gộp bàn, modal thanh toán, in hóa đơn, QR |
+| `auth` | Login, Admin 2FA OTP, quên/đặt lại mật khẩu, protected route |
+| `dashboard-overview` | Tổng quan vận hành, dự báo & tóm tắt AI cho dashboard |
+| `table-management` | Sơ đồ bàn, gộp/tách bàn, QR (kết hợp `@widgets/order-modals` tại page layer) |
+| `service-requests` | Hàng đợi tiếp nhận, xử lý và hủy yêu cầu hỗ trợ tại bàn realtime |
 | `takeaway-management` | Quản lý đơn mang về (Takeaway) |
-| `kitchen-board` | Bảng bếp KDS realtime (Kanban & Batch Cooking) |
-| `menu-management` | CRUD món và upload ảnh |
+| `kitchen-board` | Bảng bếp KDS realtime (Kanban, Batch Cooking & phân tích ghi chú AI) |
+| `menu-management` | CRUD món, sinh mô tả AI và upload ảnh |
 | `category-management` | CRUD/search danh mục và upload ảnh |
-| `combo-management` | CRUD combo |
-| `inventory-management` | Quản lý nguyên liệu, tồn kho, công thức và nhập/xuất kho |
+| `combo-management` | CRUD combo và gợi ý combo AI |
+| `inventory-management` | Quản lý nguyên liệu, tồn kho, công thức, nhập kho theo lô, OCR hóa đơn & trợ lý kho AI |
 | `voucher-management` | CRUD voucher |
+| `promotion-management` | CRUD chương trình khuyến mãi và gợi ý khuyến mãi AI |
 | `user-management` | CRUD nhân viên và avatar |
 | `profile-management` | Hồ sơ cá nhân, đổi mật khẩu, avatar |
-| `settings-management` | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt PayOS/cash/AI và tùy chọn cá nhân |
+| `settings-management` | Cấu hình nhà hàng, Wi-Fi, VAT, bật/tắt tự thanh toán/PayOS/cash/AI và tùy chọn cá nhân |
 | `analytics` | Doanh thu, top món, hiệu suất nhân viên, forecast |
 | `order-management` | Lịch sử đơn và chi tiết đơn |
 
@@ -297,7 +323,7 @@ Auth user state dùng React Context thay vì Zustand.
 
 ### Đóng gói Android (Capacitor 8)
 
-- Sử dụng `@capacitor/core` và `@capacitor/android` (`^8.4.0`) để đóng gói bản web SPA thành ứng dụng Android gốc cho thiết bị POS/Tablet/Bếp.
+- Sử dụng `@capacitor/core` và `@capacitor/android` (`^8.6.2`) để đóng gói bản web SPA thành ứng dụng Android gốc cho thiết bị POS/Tablet/Bếp.
 - Quy trình build nhanh:
 
 ```bash

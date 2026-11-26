@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { aiMerchandisingService } from '@shared/api/aiService.js';
+import { aiMerchandisingService } from '@entities/ai';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';

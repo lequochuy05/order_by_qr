@@ -32,7 +32,7 @@ test('invoice escapes user-controlled values before generating printable HTML', 
   t.after(() => vite.close());
 
   const { generateInvoice } = await vite.ssrLoadModule('/src/entities/order/lib/invoiceGenerator.js');
-  const { default: useSettingsStore } = await vite.ssrLoadModule('/src/shared/model/settingsStore.js');
+  const { useSettingsStore } = await vite.ssrLoadModule('/src/entities/settings/index.js');
   const previousSettings = useSettingsStore.getState().settings;
   t.after(() => useSettingsStore.setState({ settings: previousSettings }));
   useSettingsStore.setState({
@@ -56,18 +56,25 @@ test('invoice escapes user-controlled values before generating printable HTML', 
           lineTotal: 1000,
         },
       ],
-      subtotalAmount: 1000,
-      discountAmount: 0,
-      finalAmount: 1000,
+      subtotalAmount: 100000,
+      discountAmount: 20000,
+      serviceChargePercent: 5,
+      serviceChargeAmount: 4000,
+      taxPercent: 10,
+      taxAmount: 8400,
+      finalAmount: 92400,
     },
     table: { tableNumber: '<iframe src=javascript:alert(1)>' },
     paidBy: '<script>alert(1)</script>',
+    settings: useSettingsStore.getState().settings,
   });
 
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /&lt;svg onload=alert\(1\)&gt;/);
   assert.match(html, /&lt;iframe src=javascript:alert\(1\)&gt;/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /Phí dịch vụ \(5%\):/);
+  assert.match(html, /Thuế VAT \(10%\):/);
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
   assert.doesNotMatch(html, /<img src=x onerror=alert\(1\)>/);
 });

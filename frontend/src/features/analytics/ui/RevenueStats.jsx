@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   BarChart,
   Bar,
@@ -11,85 +12,50 @@ import {
   Tooltip,
 } from 'recharts';
 import { DollarSign, Loader2, Receipt, ShoppingBag, TrendingUp } from 'lucide-react';
-import { analyticsService } from '@entities/analytics/api/analyticsService.js';
+import { analyticsService } from '@entities/analytics';
+import { queryKeys } from '@shared/api/queryKeys.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 import { fmtVND, fmtDate, fmtDateTime } from '@shared/lib/formatters.js';
-import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import { getOrderFinalAmount } from '@entities/order';
 import useDateRangeFilter from '../model/useDateRangeFilter.js';
 
 const ITEMS_PER_PAGE = 10;
+const EMPTY_LIST = [];
 
 const RevenueStats = () => {
   const { dateRange, setDateRange, appliedDateRange, handleApplyFilters: applyFilters } =
     useDateRangeFilter();
-  const [revenueData, setRevenueData] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const [loadingRevenue, setLoadingRevenue] = useState(false);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const isMountedRef = useRef(true);
-  const revenueFetchSeqRef = useRef(0);
-  const ordersFetchSeqRef = useRef(0);
+  const [page, setCurrentPage] = useState(0);
 
   const handleApplyFilters = () => applyFilters(() => setCurrentPage(0));
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const { data: revenueData = EMPTY_LIST, isPending: loadingRevenue } = useQuery({
+    queryKey: queryKeys.analytics.revenue(appliedDateRange.from, appliedDateRange.to),
+    queryFn: () => analyticsService.getRevenue(appliedDateRange.from, appliedDateRange.to),
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+  });
 
-  // Gọi API tổng hợp khi áp dụng khoảng ngày
-  useEffect(() => {
-    const fetchSeq = ++revenueFetchSeqRef.current;
-    const loadRevenue = async () => {
-      setLoadingRevenue(true);
-      try {
-        const rev = await analyticsService.getRevenue(appliedDateRange.from, appliedDateRange.to);
-        if (!isMountedRef.current || fetchSeq !== revenueFetchSeqRef.current) return;
-        setRevenueData(rev);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (isMountedRef.current && fetchSeq === revenueFetchSeqRef.current) {
-          setLoadingRevenue(false);
-        }
-      }
-    };
-    loadRevenue();
-  }, [appliedDateRange]);
+  const { data: orderPage, isPending: loadingOrders } = useQuery({
+    queryKey: queryKeys.analytics.orders(
+      appliedDateRange.from,
+      appliedDateRange.to,
+      page,
+      ITEMS_PER_PAGE,
+    ),
+    queryFn: () =>
+      analyticsService.getOrders(appliedDateRange.from, appliedDateRange.to, {
+        page,
+        size: ITEMS_PER_PAGE,
+      }),
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+  });
 
-  // Gọi API danh sách giao dịch theo trang
-  useEffect(() => {
-    const fetchSeq = ++ordersFetchSeqRef.current;
-    const loadOrders = async () => {
-      setLoadingOrders(true);
-      try {
-        const orderPage = await analyticsService.getOrders(
-          appliedDateRange.from,
-          appliedDateRange.to,
-          {
-            page: currentPage,
-            size: ITEMS_PER_PAGE,
-          },
-        );
-        if (!isMountedRef.current || fetchSeq !== ordersFetchSeqRef.current) return;
-        setOrders(orderPage.content || []);
-        setTotalPages(orderPage.totalPages || 0);
-        setTotalElements(orderPage.totalElements || 0);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (isMountedRef.current && fetchSeq === ordersFetchSeqRef.current) {
-          setLoadingOrders(false);
-        }
-      }
-    };
-    loadOrders();
-  }, [appliedDateRange, currentPage]);
+  const orders = orderPage?.content || EMPTY_LIST;
+  const totalPages = orderPage?.totalPages || 0;
+  const totalElements = orderPage?.totalElements || 0;
+  const currentPage = totalPages > 0 ? Math.min(page, totalPages - 1) : 0;
 
   // Format dữ liệu biểu đồ
   const chartData = useMemo(() => {
@@ -111,14 +77,6 @@ const RevenueStats = () => {
     const avg = totalOrd ? Math.round(totalRev / totalOrd) : 0;
     return { totalRev, totalOrd, avg };
   }, [revenueData]);
-
-  useEffect(() => {
-    if (totalPages > 0 && currentPage >= totalPages) {
-      setCurrentPage(totalPages - 1);
-    } else if (totalPages === 0 && currentPage !== 0) {
-      setCurrentPage(0);
-    }
-  }, [currentPage, totalPages]);
 
   const initialLoading =
     (loadingRevenue || loadingOrders) && revenueData.length === 0 && orders.length === 0;
@@ -340,7 +298,7 @@ const RevenueStats = () => {
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage === 0}
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
+                    onClick={() => setCurrentPage(Math.max(currentPage - 1, 0))}
                     className="px-4 py-2 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                   >
                     Trước
@@ -354,7 +312,7 @@ const RevenueStats = () => {
                   <button
                     type="button"
                     disabled={loadingOrders || currentPage >= totalPages - 1}
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages - 1))}
+                    onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages - 1))}
                     className="px-4 py-2 rounded-xl border border-slate-200/80 bg-white text-xs font-bold text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/50 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm active:scale-95 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                   >
                     Sau

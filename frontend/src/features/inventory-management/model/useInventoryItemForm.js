@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { inventoryService } from '@entities/inventory/api/inventoryService.js';
+import { inventoryService } from '@entities/inventory';
 import {
   defaultInventoryForm,
   INVENTORY_UNITS,
@@ -110,18 +110,7 @@ const useInventoryItemForm = ({ onSaved }) => {
         }
         showSuccessToast('Đã cập nhật nguyên liệu');
       } else {
-        const created = await inventoryService.createItem(payload);
-        const initialQty = Number(inventoryForm.quantityOnHand || 0);
-        if (initialQty > 0 && created?.id) {
-          try {
-            await inventoryService.stockIn(created.id, {
-              quantity: initialQty,
-              note: 'Khởi tạo tồn kho ban đầu',
-            });
-          } catch (stockError) {
-            console.error('Failed to set initial stock:', stockError);
-          }
-        }
+        await inventoryService.createItem(payload);
         showSuccessToast('Đã thêm nguyên liệu');
       }
 

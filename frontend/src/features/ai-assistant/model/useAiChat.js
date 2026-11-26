@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import api from '@shared/api/httpClient.js';
+import { aiCustomerService } from '@entities/ai';
 import { getAiCopy, isWelcomeMessage } from '../lib/aiCopy.js';
 import { normalizeChatSuggestions } from '../lib/chatSuggestions.js';
 
@@ -69,7 +69,7 @@ const useAiChat = (language) => {
       setInput('');
       setIsLoading(true);
       try {
-        const response = await api.post('/public/ai/chat', { message: trimmed, history: buildHistory() });
+        const response = await aiCustomerService.chat(trimmed, buildHistory());
         if (isMountedRef.current) {
           setMessages((current) => [
             ...current,

@@ -15,14 +15,6 @@ export const useMenuPageQuery = ({ q, page = 0, size = 24, categoryId } = {}, op
     ...options,
   });
 
-export const useMenuDetailQuery = (id, options = {}) =>
-  useQuery({
-    queryKey: queryKeys.menu.detail(id),
-    queryFn: () => menuItemService.getById(id),
-    enabled: !!id,
-    ...options,
-  });
-
 /**
  * A-fix: Fetch ALL active menu items for combo composition.
  * Uses React Query with staleTime=60s so ComboModal always gets fresh data

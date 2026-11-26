@@ -22,6 +22,9 @@ test('restaurant settings provide safe defaults', () => {
     onlinePaymentEnabled: true,
     customerSelfCheckoutEnabled: false,
     allowSettlementWithUnfinishedItems: false,
+    currency: 'VND',
+    taxPercent: 0,
+    serviceChargePercent: 0,
   });
 });
 

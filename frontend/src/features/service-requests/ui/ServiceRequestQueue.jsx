@@ -1,7 +1,7 @@
 import { AlertCircle, BellRing, WifiOff } from 'lucide-react';
 
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
-import { AiNoteTriageCard } from '@shared/ui';
+import { AiNoteTriageCard } from '@entities/ai';
 import EmptyState from '@shared/ui/EmptyState.jsx';
 import useServiceRequestsQueue from '../model/useServiceRequestsQueue.js';
 import ServiceRequestCard from './ServiceRequestCard.jsx';

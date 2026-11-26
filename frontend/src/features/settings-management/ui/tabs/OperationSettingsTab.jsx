@@ -7,9 +7,18 @@ import {
   TextField,
   ToggleRow,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
-const OperationSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, copy }) => (
+const OperationSettingsTab = ({
+  settings,
+  setSettings,
+  saving,
+  saveDisabled,
+  onSave,
+  copy,
+  errors = {},
+  onClearError,
+}) => (
   <section className="min-w-0">
     <SectionHeader
       icon={Settings}
@@ -24,14 +33,22 @@ const OperationSettingsTab = ({ settings, setSettings, saving, saveDisabled, onS
             // description={copy.operation.openingTimeHelp}
             type="time"
             value={settings.openingTime}
-            onChange={(value) => setSettingsValue(setSettings, 'openingTime', value)}
+            error={errors?.openingTime || errors?.validTimeRange}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'openingTime', value);
+              onClearError?.('openingTime');
+            }}
           />
           <TextField
             label={copy.operation.closingTime}
             // description={copy.operation.closingTimeHelp}
             type="time"
             value={settings.closingTime}
-            onChange={(value) => setSettingsValue(setSettings, 'closingTime', value)}
+            error={errors?.closingTime || errors?.validTimeRange}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'closingTime', value);
+              onClearError?.('closingTime');
+            }}
           />
         </div>
       </SettingsGroup>
@@ -71,9 +88,11 @@ const OperationSettingsTab = ({ settings, setSettings, saving, saveDisabled, onS
             min="1"
             max="240"
             value={settings.kitchenOverdueThresholdMinutes}
-            onChange={(value) =>
-              setSettingsValue(setSettings, 'kitchenOverdueThresholdMinutes', value)
-            }
+            error={errors?.kitchenOverdueThresholdMinutes}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'kitchenOverdueThresholdMinutes', value);
+              onClearError?.('kitchenOverdueThresholdMinutes');
+            }}
           />
         </div>
       </SettingsGroup>

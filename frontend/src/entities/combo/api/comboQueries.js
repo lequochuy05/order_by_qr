@@ -10,11 +10,3 @@ export const useComboPageQuery = (params = {}, options = {}) =>
     placeholderData: keepPreviousData,
     ...options,
   });
-
-export const useComboDetailQuery = (id, options = {}) =>
-  useQuery({
-    queryKey: [...queryKeys.combos.all, 'detail', id],
-    queryFn: () => comboService.getById(id),
-    enabled: !!id,
-    ...options,
-  });

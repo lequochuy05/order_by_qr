@@ -1,7 +1,5 @@
 import api from '@shared/api/httpClient.js';
-
-const sessionHeaderConfig = (sessionToken) =>
-  sessionToken ? { headers: { 'X-Session-Token': sessionToken } } : undefined;
+import { sessionHeaderConfig } from '@shared/api/sessionHeaders.js';
 
 export const serviceRequestService = {
   getCustomerRequests: (tableCode, sessionToken) =>

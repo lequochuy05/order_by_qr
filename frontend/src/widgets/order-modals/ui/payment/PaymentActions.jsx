@@ -1,0 +1,50 @@
+import { CreditCard, Loader2 } from 'lucide-react';
+
+import { PAYMENT_METHODS } from '@entities/payment';
+
+const PaymentActions = ({
+  paymentMethod,
+  loading,
+  cashDisabled = false,
+  cashDisabledReason = '',
+  onCashPay,
+  onClose,
+}) => (
+  <div className="shrink-0 border-t border-slate-100 bg-white px-6 py-5 transition-colors dark:border-slate-800 dark:bg-slate-900">
+    {paymentMethod === PAYMENT_METHODS.CASH ? (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={onCashPay}
+          disabled={loading || cashDisabled}
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 py-4 text-base font-black uppercase tracking-wider text-white shadow-lg shadow-emerald-600/25 transition-all hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-60 disabled:shadow-none dark:shadow-none dark:disabled:from-slate-700 dark:disabled:to-slate-700"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={24} />
+              <span>ĐANG XỬ LÝ THANH TOÁN...</span>
+            </>
+          ) : (
+            <>
+              <CreditCard size={24} />
+              <span>XÁC NHẬN THANH TOÁN</span>
+            </>
+          )}
+        </button>
+        {cashDisabled && cashDisabledReason && (
+          <p className="text-center text-xs font-semibold text-amber-600">{cashDisabledReason}</p>
+        )}
+      </div>
+    ) : (
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-full rounded-xl py-3 font-bold text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        Quay lại
+      </button>
+    )}
+  </div>
+);
+
+export default PaymentActions;

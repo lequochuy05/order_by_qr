@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Loader2, Users } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { useAuth } from '@features/auth';
+import { useCrudModal } from '@shared/hooks/useCrudModal.js';
+import { useAuth } from '@entities/session';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 
 import {
@@ -29,16 +30,10 @@ const staffStatusFilterOptions = Object.entries(USER_STATUS).map(([id, meta]) =>
 const StaffManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStaff, setEditingStaff] = useState(null);
-  const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [deletingId, setDeletingId] = useState(null);
-  const isMountedRef = useRef(true);
   const pageSize = 24;
 
+  const crud = useCrudModal();
   const { confirm } = useConfirmModal();
   const { user, updateUser } = useAuth();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
@@ -57,19 +52,15 @@ const StaffManager = () => {
   const { mutateAsync: uploadAvatar } = useUploadUserAvatarMutation();
   const { mutateAsync: deleteUser } = useDeleteUserMutation();
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // Duplicate WebSocket fix: removed local subscription to /topic/users.
-  // WebSocketInvalidator already handles /topic/users centrally.
-
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(0);
-  }, [debouncedSearchTerm, statusFilter]);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
 
   // Submit
   const handleSubmit = async (formData, selectedFile) => {
@@ -109,7 +100,7 @@ const StaffManager = () => {
           avatarResult = await uploadAvatar({ id: result.id, file: selectedFile });
         } catch (avatarError) {
           console.error('Error uploading avatar:', avatarError);
-          setEditingStaff(result);
+          crud.setEditingItem(result);
           showErrorToast('Đã lưu thông tin nhân viên, nhưng chưa tải được avatar. Vui lòng thử lại.');
           return;
         }
@@ -124,7 +115,7 @@ const StaffManager = () => {
         });
       }
 
-      setIsModalOpen(false);
+      crud.close();
       showSuccessToast(`${actionType} nhân viên "${savedStaff.fullName}" thành công!`);
     } catch (err) {
       console.error('Error saving staff:', err);
@@ -138,7 +129,7 @@ const StaffManager = () => {
       }
 
       if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
+        crud.setFormErrors(newErrors);
       } else {
         showErrorToast(err);
       }
@@ -147,17 +138,17 @@ const StaffManager = () => {
 
   //  Xóa
   const handleDelete = async (id) => {
-    if (deletingId) return;
+    if (crud.deletingId) return;
     const confirmed = await confirm('Xóa nhân viên', 'Bạn có chắc chắn muốn xóa nhân viên này?');
     if (!confirmed) return;
-    setDeletingId(id);
+    crud.setDeletingId(id);
     try {
       await deleteUser(id);
       showSuccessToast('Đã xóa nhân viên thành công!');
     } catch (err) {
       showErrorToast(err);
     } finally {
-      setDeletingId(null);
+      crud.setDeletingId(null);
     }
   };
 
@@ -166,17 +157,13 @@ const StaffManager = () => {
       <ManagementHeader
         searchPlaceholder="Tìm tên, email, sđt..."
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        onAddClick={() => {
-          setEditingStaff(null);
-          setErrors({});
-          setIsModalOpen(true);
-        }}
+        setSearchTerm={handleSearchChange}
+        onAddClick={() => crud.openCreate()}
         addButtonText="Thêm Nhân viên"
         showFilter
         filterAllLabel="Tất cả trạng thái"
         filterValue={statusFilter}
-        setFilterValue={setStatusFilter}
+        setFilterValue={handleStatusFilterChange}
         filterOptions={staffStatusFilterOptions}
       />
 
@@ -190,10 +177,7 @@ const StaffManager = () => {
             <UserCard
               key={staff.id}
               staff={staff}
-              onEdit={() => {
-                setEditingStaff(staff);
-                setIsModalOpen(true);
-              }}
+              onEdit={() => crud.openEdit(staff)}
               onDelete={() => handleDelete(staff.id)}
             />
           ))}
@@ -215,13 +199,13 @@ const StaffManager = () => {
 
       {/* Modal Thêm/Sửa */}
       <UserModal
-        key={isModalOpen ? editingStaff?.id || 'new' : 'closed'}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        data={editingStaff}
+        key={crud.isOpen ? crud.editingItem?.id || 'new' : 'closed'}
+        isOpen={crud.isOpen}
+        onClose={crud.close}
+        data={crud.editingItem}
         onSubmit={handleSubmit}
-        errors={errors}
-        setErrors={setErrors}
+        errors={crud.formErrors}
+        setErrors={crud.setFormErrors}
       />
     </div>
   );

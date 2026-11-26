@@ -9,7 +9,7 @@ import {
   UserRound,
 } from 'lucide-react';
 
-import { aiStaffService } from '@shared/api/aiService.js';
+import { aiStaffService } from '@entities/ai';
 
 
 const WELCOME_MESSAGE =

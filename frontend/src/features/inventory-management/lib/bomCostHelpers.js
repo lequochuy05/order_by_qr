@@ -1,4 +1,4 @@
-export const MARGIN_STATUS_META = {
+const MARGIN_STATUS_META = {
   NO_RECIPE: {
     vi: 'Chưa có công thức',
     en: 'No BOM recipe',

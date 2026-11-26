@@ -6,7 +6,7 @@ import {
   SettingsGroup,
   TextField,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
 const RestaurantSettingsTab = ({
   settings,
@@ -45,20 +45,32 @@ const RestaurantSettingsTab = ({
               label={copy.restaurant.hotline}
               // description={copy.restaurant.hotlineHelp}
               value={settings.restaurantPhone}
-              onChange={(value) => setSettingsValue(setSettings, 'restaurantPhone', value)}
+              error={errors?.restaurantPhone}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'restaurantPhone', value);
+                onClearError?.('restaurantPhone');
+              }}
             />
             <TextField
               label={copy.restaurant.email}
               // description={copy.restaurant.emailHelp}
               type="email"
               value={settings.restaurantEmail}
-              onChange={(value) => setSettingsValue(setSettings, 'restaurantEmail', value)}
+              error={errors?.restaurantEmail}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'restaurantEmail', value);
+                onClearError?.('restaurantEmail');
+              }}
             />
             <TextField
               label={copy.restaurant.address}
               // description={copy.restaurant.addressHelp}
               value={settings.restaurantAddress}
-              onChange={(value) => setSettingsValue(setSettings, 'restaurantAddress', value)}
+              error={errors?.restaurantAddress}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'restaurantAddress', value);
+                onClearError?.('restaurantAddress');
+              }}
             />
           </div>
         </SettingsGroup>
@@ -70,7 +82,11 @@ const RestaurantSettingsTab = ({
               // description={copy.restaurant.currencyHelp}
               maxLength="10"
               value={settings.currency}
-              onChange={(value) => setSettingsValue(setSettings, 'currency', value)}
+              error={errors?.currency}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'currency', value);
+                onClearError?.('currency');
+              }}
             />
             <TextField
               label={copy.restaurant.taxPercent}
@@ -80,7 +96,11 @@ const RestaurantSettingsTab = ({
               max="100"
               step="0.01"
               value={settings.taxPercent}
-              onChange={(value) => setSettingsValue(setSettings, 'taxPercent', value)}
+              error={errors?.taxPercent}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'taxPercent', value);
+                onClearError?.('taxPercent');
+              }}
             />
             <TextField
               label={copy.restaurant.serviceChargePercent}
@@ -90,7 +110,11 @@ const RestaurantSettingsTab = ({
               max="100"
               step="0.01"
               value={settings.serviceChargePercent}
-              onChange={(value) => setSettingsValue(setSettings, 'serviceChargePercent', value)}
+              error={errors?.serviceChargePercent}
+              onChange={(value) => {
+                setSettingsValue(setSettings, 'serviceChargePercent', value);
+                onClearError?.('serviceChargePercent');
+              }}
             />
           </div>
         </SettingsGroup>

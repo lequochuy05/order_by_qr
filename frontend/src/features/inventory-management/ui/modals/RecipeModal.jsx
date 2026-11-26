@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { aiInventoryService } from '@shared/api/aiService.js';
+import { aiInventoryService } from '@entities/ai';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';

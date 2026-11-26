@@ -1,6 +1,6 @@
 export const FORECAST_DAY_OPTIONS = [3, 7, 14];
 
-export const RESTOCK_URGENCY_META = {
+const RESTOCK_URGENCY_META = {
   CRITICAL: {
     vi: 'Khẩn cấp',
     en: 'Critical',

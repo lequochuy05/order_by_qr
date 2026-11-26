@@ -1,3 +1,15 @@
+export const stableStringify = (value) => {
+  if (value === undefined || value === null) return 'all';
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${stableStringify(value[k])}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+};
+
 export const createCachedRequest = (fetchFn, cacheMs = 0) => {
   let pendingRequest = null;
   let cache = { data: null, expiresAt: 0 };

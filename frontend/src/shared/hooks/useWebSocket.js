@@ -24,7 +24,11 @@ export const useWebSocket = (topic, onMessage, options = {}) => {
 
     const doSubscribe = () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
+        try {
+          subscriptionRef.current.unsubscribe();
+        } catch {
+          // Socket may already be closed during reconnect
+        }
       }
       subscriptionRef.current = service.subscribe(topic, (msg) => {
         if (onMessageRef.current) {
@@ -43,7 +47,11 @@ export const useWebSocket = (topic, onMessage, options = {}) => {
 
     return () => {
       if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
+        try {
+          subscriptionRef.current.unsubscribe();
+        } catch {
+          // Socket may already be closed during teardown
+        }
         subscriptionRef.current = null;
       }
       removeConnectListener();

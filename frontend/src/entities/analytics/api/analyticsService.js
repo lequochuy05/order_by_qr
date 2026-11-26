@@ -1,42 +1,25 @@
 import api from '@shared/api/httpClient.js';
 import { formatBusinessDate } from '@shared/lib/businessTime.js';
+import { stableStringify } from '@shared/lib/cacheUtils.js';
+import { toNumber } from '@shared/lib/formatters.js';
+import { emptyPage } from '@shared/lib/pagination.js';
 
-const ANALYTICS_CACHE_MS = 5_000;
-
+// In-flight deduplication only; React Query owns caching and WebSocket invalidation.
 const analyticsRequests = new Map();
-const analyticsCache = new Map();
-
-const stableStringify = (value) => {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(',')}]`;
-  }
-  if (value && typeof value === 'object') {
-    return `{${Object.keys(value)
-      .sort()
-      .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-};
 
 export const clearAnalyticsCache = () => {
   analyticsRequests.clear();
-  analyticsCache.clear();
 };
 
-const getCachedAnalytics = async (key, requestFactory, fallback, { force = false, cacheMs = ANALYTICS_CACHE_MS } = {}) => {
-  const cached = analyticsCache.get(key);
-  if (!force && cached && cached.expiresAt > Date.now()) return cached.data;
+const getDedupedAnalytics = async (key, requestFactory, fallback) => {
   if (!analyticsRequests.has(key)) {
     analyticsRequests.set(
       key,
       requestFactory()
-        .then((res) => {
-          const data = res ?? fallback;
-          analyticsCache.set(key, { data, expiresAt: Date.now() + cacheMs });
-          return data;
-        })
-        .finally(() => { analyticsRequests.delete(key); }),
+        .then((res) => res ?? fallback)
+        .finally(() => {
+          analyticsRequests.delete(key);
+        }),
     );
   }
   return analyticsRequests.get(key);
@@ -47,11 +30,7 @@ const rangeParams = (from, to) => ({
   to: formatBusinessDate(to),
 });
 
-const pagedFallback = (page, size) => ({
-  content: [], number: page, size, totalElements: 0, totalPages: 0,
-});
-
-const toNumber = (value) => Number(value ?? 0);
+const pagedFallback = (page, size) => emptyPage(page, size);
 
 const translateApiLabel = (value) =>
   ({ Staff: 'Nhân viên', Uncategorized: 'Chưa phân loại' })[value] || value;
@@ -150,23 +129,21 @@ const normalizeDashboardSummary = (dashboard = {}) => {
 
 export const analyticsService = {
   clearCache: clearAnalyticsCache,
-  getRevenue: async (from, to, options = {}) => {
+  getRevenue: async (from, to) => {
     const params = rangeParams(from, to);
-    const data = await getCachedAnalytics(
+    const data = await getDedupedAnalytics(
       `revenue:${stableStringify(params)}`,
       () => api.get('/analytics/revenue', { params }),
       [],
-      options,
     );
     return data.map(normalizeRevenuePoint);
   },
-  getUsers: async (from, to, options = {}) => {
+  getUsers: async (from, to) => {
     const params = rangeParams(from, to);
-    const data = await getCachedAnalytics(
+    const data = await getDedupedAnalytics(
       `users:${stableStringify(params)}`,
       () => api.get('/analytics/users', { params }),
       [],
-      options,
     );
     return data.map(normalizeUser);
   },
@@ -174,62 +151,56 @@ export const analyticsService = {
     const page = Number.isInteger(options.page) && options.page >= 0 ? options.page : 0;
     const size = Number.isInteger(options.size) && options.size > 0 ? options.size : 10;
     const params = { ...rangeParams(from, to), page, size };
-    const pageData = await getCachedAnalytics(
+    const pageData = await getDedupedAnalytics(
       `orders:${stableStringify(params)}`,
       () => api.get('/analytics/orders', { params }),
       pagedFallback(page, size),
-      options,
     );
     return {
       ...pageData,
       content: Array.isArray(pageData.content) ? pageData.content.map(normalizeOrderDetail) : [],
     };
   },
-  getTopDishes: async (from, to, options = {}) => {
+  getTopDishes: async (from, to) => {
     const params = rangeParams(from, to);
-    const data = await getCachedAnalytics(
+    const data = await getDedupedAnalytics(
       `top-dishes:${stableStringify(params)}`,
       () => api.get('/analytics/top-items', { params }),
       [],
-      options,
     );
     return data.map(normalizeTopItem);
   },
-  getDishTrend: async (from, to, options = {}) => {
+  getDishTrend: async (from, to) => {
     const params = rangeParams(from, to);
-    const data = await getCachedAnalytics(
+    const data = await getDedupedAnalytics(
       `dish-trend:${stableStringify(params)}`,
       () => api.get('/analytics/sales-trend', { params }),
       [],
-      options,
     );
     return data.map(normalizeSalesTrendPoint);
   },
-  getRevenueForecast: async (options = {}) => {
-    const data = await getCachedAnalytics(
+  getRevenueForecast: async () => {
+    const data = await getDedupedAnalytics(
       'forecast:revenue',
       () => api.get('/analytics/forecast/revenue'),
       [],
-      options,
     );
     return data.map(normalizeRevenueForecastPoint);
   },
-  getPopularDishesForecast: async (options = {}) => {
-    const data = await getCachedAnalytics(
+  getPopularDishesForecast: async () => {
+    const data = await getDedupedAnalytics(
       'forecast:popular-dishes',
       () => api.get('/analytics/forecast/popular-items'),
       [],
-      options,
     );
     return data.map(normalizePopularForecastItem);
   },
   getDashboardSummary: async (from, to, options = {}) => {
     const params = rangeParams(from, to);
-    const data = await getCachedAnalytics(
+    const data = await getDedupedAnalytics(
       `dashboard:${stableStringify(params)}`,
       () => api.get('/analytics/dashboard', { params, signal: options.signal }),
       {},
-      options,
     );
     return normalizeDashboardSummary(data || {});
   },
