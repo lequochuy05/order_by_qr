@@ -19,7 +19,7 @@ Frontend QROS là React/Vite SPA (hỗ trợ PWA và đóng gói Android bằng 
 | Chart | Recharts 3 |
 | QR | qrcode.react |
 | PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core` & `@capacitor/android` (`^8.6.2`) |
-| Testing | Node.js `node:test` (`npm test`, `npm run test:coverage` — 20 suites / 144 tests) |
+| Testing | Node.js `node:test` (`npm test`, `npm run test:coverage` — 22 suites / 160 tests) |
 | Tooling | ESLint 9 (FSD layer, cross-slice & Public API barrel rules), Prettier, Vite manual chunks |
 
 ## Cấu trúc (Feature-Sliced Design — 19 Features, 16 Entities, 2 Widgets)
@@ -108,7 +108,14 @@ VITE_API_URL=http://localhost:8080
 VITE_WS_URL=http://localhost:8080/ws
 ```
 
-Production hiện trỏ:
+Production Web (`frontend/.env.production` — đi qua Vercel/Nginx reverse proxy same-origin):
+
+```text
+VITE_API_URL=
+VITE_WS_URL=
+```
+
+Mobile Capacitor (`frontend/.env.capacitor` — dùng qua `npm run build:capacitor` / `npm run build:android`):
 
 ```text
 VITE_API_URL=https://order-by-qr.onrender.com
@@ -155,14 +162,15 @@ Trang thường dùng:
 | Lệnh | Mô tả |
 | --- | --- |
 | `npm run dev` | Chạy Vite dev server |
-| `npm run build` | Build production vào `dist/` |
+| `npm run build` | Build production Web/PWA vào `dist/` (Workbox precache `1.47 MB`) |
+| `npm run build:capacitor` | Build production chế độ Capacitor (`--mode capacitor`, đọc `.env.capacitor`) |
 | `npm run preview` | Preview bản build |
-| `npm run lint` | Chạy ESLint |
-| `npm test` | Chạy unit test bằng Node.js `node:test` (`tests/run-tests.js`) |
+| `npm run lint` | Chạy ESLint (FSD strict rules) |
+| `npm test` | Chạy 22 bộ unit test (160 tests) bằng Node.js `node:test` (`tests/run-tests.js`) |
 | `npm run test:coverage` | Chạy unit test kèm báo cáo coverage (`--experimental-test-coverage`) |
 | `npm run cap:sync` | Đồng bộ web build sang project Capacitor Android (`cap sync android`) |
 | `npm run cap:open` | Mở project Android trong Android Studio (`cap open android`) |
-| `npm run build:android` | Build web production rồi đồng bộ sang Android (`npm run build && cap sync android`) |
+| `npm run build:android` | Build chế độ Capacitor rồi đồng bộ sang Android (`npm run build:capacitor && cap sync android`) |
 | `npm run format` | Định dạng mã nguồn bằng Prettier (`src/**/*.{js,jsx,css,json}`) |
 | `npm run format:check` | Kiểm tra định dạng Prettier không ghi đè file |
 
@@ -192,7 +200,7 @@ Routes chính được định nghĩa tại `src/app/router.jsx`:
 | `/admin/voucher` | `ADMIN`, `MANAGER` | Quản trị mã giảm giá |
 | `/admin/promotions` | `ADMIN`, `MANAGER` | Quản trị chương trình khuyến mãi |
 | `/admin/staffs` | `ADMIN`, `MANAGER` | Quản lý tài khoản nhân sự |
-| `/admin/statistics/revenue` | **Chỉ `ADMIN`** | Phân tích doanh thu chuyên sâu |
+| `/admin/statistics/revenue` | `ADMIN`, `MANAGER` | Phân tích doanh thu chuyên sâu & dự báo AI |
 | `/admin/statistics/top-dishes` | `ADMIN`, `MANAGER` | Thống kê món bán chạy |
 | `/admin/statistics/staff` | `ADMIN`, `MANAGER` | Thống kê hiệu suất nhân viên |
 | `/admin/tables` | `ADMIN`, `MANAGER`, `CASHIER`, `STAFF` | Sơ đồ bàn, gọi món, gộp bàn |
@@ -228,9 +236,9 @@ src/entities/session/model/AuthContext.jsx   (export qua @entities/session)
 
 Ghi chú:
 
-- Trang khách `/menu` không tự gọi refresh token.
-- Admin session tự logout sau 20 phút không hoạt động.
-- Logout sẽ disconnect WebSocket và xóa access token trong memory.
+- Trang khách `/menu` và các route công khai không bị chặn điều hướng khi khởi tạo phiên và không tự gọi refresh token.
+- Admin session tự logout sau 20 phút không hoạt động; riêng màn hình Bếp KDS (`/admin/kitchen`) được **miễn tự động đăng xuất** để vận hành treo tường liên tục.
+- Trước khi STOMP reconnect, `AuthContext` tự làm mới access token bất đồng bộ để không đứt kênh realtime; khi logout sẽ ngắt WebSocket và xóa access token trong memory.
 
 ## Realtime
 
@@ -318,7 +326,7 @@ Auth user state dùng React Context (`@entities/session`) thay vì Zustand.
 
 ### Progressive Web App (PWA)
 
-- Tích hợp `vite-plugin-pwa` để đăng ký Service Worker, manifest và hỗ trợ cài đặt trực tiếp lên màn hình chính (Home Screen) trên điện thoại/tablet.
+- Tích hợp `vite-plugin-pwa` để đăng ký Service Worker, manifest và hỗ trợ cài đặt trực tiếp lên màn hình chính (Home Screen) trên điện thoại/tablet; Workbox áp dụng `globIgnores` loại trừ chunk admin/chart giúp giảm dung lượng precache ban đầu xuống **`1.47 MB`** (`69` entries).
 - Có sẵn trang `/offline` khi thiết bị mất kết nối mạng.
 
 ### Đóng gói Android (Capacitor 8)
@@ -353,12 +361,12 @@ docker build -t order-by-qr-frontend:latest \
   .
 ```
 
-Runtime dùng Nginx:
+Runtime dùng **`nginxinc/nginx-unprivileged:stable-alpine`** (chạy non-root trên cổng **`8080`** kèm `HEALTHCHECK`):
 
 - Serve SPA từ `/usr/share/nginx/html`.
 - Rewrite route về `index.html`.
 - Proxy `/api/v1` và `/ws` sang service `backend:8080`.
-- Bật cache static asset và gzip.
+- Bật cache static asset, CSP headers và gzip.
 
 Nếu build từ root dự án:
 

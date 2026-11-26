@@ -11,14 +11,14 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 ### Backend — 15 Module nghiệp vụ (38 REST Controllers, 3 Infrastructure Adapters, chuẩn ArchUnit 11 rules)
 | Module | Tính năng cốt lõi |
 |---|---|
-| `auth` | JWT Access Token + HttpOnly Refresh Token rotation, **Admin 2FA OTP** (cooldown, giới hạn lần thử), khóa tài khoản chống brute-force, bắt buộc đổi mật khẩu lần đầu, quên/đặt lại mật khẩu qua Email (Brevo HTTPS API / SMTP) & SMS (Twilio), thu hồi token trên Redis. |
-| `user` | Quản lý nhân sự theo RBAC 6 vai trò, cập nhật hồ sơ cá nhân & avatar (Cloudinary). |
-| `table` | Sơ đồ bàn, sinh mã QR ký **HMAC-SHA256** (`QR_SIGNING_SECRET`), vòng đời phiên bàn (heartbeat, idle/max timeout, giới hạn thiết bị), **gộp bàn / hủy gộp bàn** có audit trail, và hàng đợi **yêu cầu hỗ trợ tại bàn (`TableServiceRequest`)**. |
-| `menu` | Quản lý Danh mục, Thực đơn, nhóm tùy chọn/topping (`ItemOption`), Combo và hình ảnh. |
-| `order` | Đặt món tại bàn (khách & nhân viên), đơn mang về (`TAKEAWAY`), xem trước tính tiền & voucher (`preview`), cập nhật/hủy món có lý do, chống trùng lặp yêu cầu (`IdempotencyService`). |
-| `kitchen` | Màn hình bếp KDS realtime: lọc theo trạng thái, chế độ **Kanban** & **Nấu gom món (`BatchCookingView`)**, cập nhật trạng thái đơn lẻ và hàng loạt (`batch-status`). |
-| `inventory` | Quản lý nguyên liệu (kèm đơn giá nhập `unit_cost`), định mức công thức món (`Recipe`), nhập kho đơn lẻ & **nhập kho theo lô (`batch-stock-in`)**, điều chỉnh tồn kho (`StockMovement`), tự động giữ chỗ/khấu trừ tồn kho (Optimistic Locking `@Version`) và kiểm tra khả dụng theo thời gian thực. |
-| `payment` | Thanh toán tiền mặt (tiền khách đưa, tiền thối, xác nhận món chưa hoàn tất), **VietQR PayOS** (tạo mã thanh toán, đếm ngược hết hạn, webhook xác nhận tự động) và **khách tự thanh toán tại bàn (`PublicSelfCheckoutController`)**. |
+| `auth` | JWT Access Token + HttpOnly Refresh Token rotation **đa thiết bị** (tối đa 10 thiết bị/user; đăng xuất thu hồi thiết bị hiện tại, đổi/reset mật khẩu hoặc khóa tài khoản thu hồi toàn bộ), **Admin 2FA OTP** (cooldown 60s nguyên tử bảo toàn `attempts`, giới hạn lần thử), khóa tài khoản chống brute-force, bắt buộc đổi mật khẩu lần đầu, quên/đặt lại mật khẩu qua Email (Brevo HTTPS API / SMTP) & SMS (Twilio, chặn tài khoản `INACTIVE`/`BANNED`). |
+| `user` | Quản lý nhân sự theo RBAC 6 vai trò, bảo vệ tối thiểu 1 `ADMIN` đang hoạt động, cập nhật hồ sơ cá nhân & avatar (Cloudinary). |
+| `table` | Sơ đồ bàn, sinh mã QR ký **HMAC-SHA256** (`QR_SIGNING_SECRET`, tách upload Cloudinary ra ngoài DB transaction), vòng đời phiên bàn (heartbeat, idle/max timeout, trả bàn trống), **gộp bàn / hủy gộp bàn** tự đóng yêu cầu mở của phiên phụ, và hàng đợi **yêu cầu hỗ trợ tại bàn (`TableServiceRequest`)**. |
+| `menu` | Quản lý Danh mục, Thực đơn, nhóm tùy chọn/topping (`ItemOption`), Combo (sàn giá `>= 1,000 VND`), cờ tạm ngừng thủ công tách biệt hết kho và hình ảnh. |
+| `order` | Đặt món tại bàn (áp dụng kiểm tra giờ mở cửa `openingTime`–`closingTime` gồm ca qua đêm cho đơn QR công khai) & nhân viên, đơn mang về (`TAKEAWAY`), snapshot thuế VAT/phí dịch vụ & **tỷ lệ Giờ vàng (`applied_promotion_percent`)**, xem trước tính tiền & voucher (`preview`), cập nhật/hủy món có lý do, chống trùng lặp yêu cầu (`IdempotencyService` tái chiếm nguyên tử). |
+| `kitchen` | Màn hình bếp KDS realtime: lọc theo trạng thái, chế độ **Kanban** & **Nấu gom món (`BatchCookingView`)**, chuyển trạng thái một chiều (`PENDING → COOKING → FINISHED`, không hoàn tác từ `FINISHED`), cập nhật hàng loạt gộp 1 sự kiện (`batch-status`) và miễn tự động đăng xuất 20 phút cho màn hình treo tường. |
+| `inventory` | Quản lý nguyên liệu (kèm đơn giá nhập `unit_cost`), định mức công thức món (`Recipe`), khóa đổi đơn vị khi còn BOM/reservation & chặn nhập/điều chỉnh nguyên liệu ngưng hoạt động, nhập kho đơn lẻ & **nhập kho theo lô (`batch-stock-in`)**, điều chỉnh tồn kho (`StockMovement`), tự động giữ chỗ/khấu trừ tồn kho (Optimistic Locking `@Version`). |
+| `payment` | Thanh toán tiền mặt (kiểm tra `cashReceived >= finalAmount`, server tự tính tiền thối, chốt đơn 0đ nội bộ), **VietQR PayOS** (tự hết hạn giao dịch quá hạn, hủy/thay thế QR cũ, giữ chỗ lượt voucher nguyên tử, webhook xác nhận tự động) và **khách tự thanh toán tại bàn (`PublicSelfCheckoutController`)**. |
 | `promotion` | Quản lý Voucher & Chương trình khuyến mãi, kiểm tra điều kiện áp dụng và giới hạn lượt dùng an toàn concurrency. |
 | `analytics` | Dashboard kinh doanh, chuỗi doanh thu, món bán chạy, hiệu suất nhân viên, lịch sử hóa đơn, **dự báo nhu cầu & tồn kho (`Forecast`)**, tổng hợp dữ liệu định kỳ (`@Scheduled`). |
 | `ai` | 6 bộ controller **Google Gemini AI** có quota theo IP/tài khoản/ngày và tự chuyển model dự phòng: (1) Tư vấn thực đơn cho khách, (2) Trợ lý vận hành & **phân loại ghi chú dị ứng/ưu tiên cho bếp/phục vụ (`analyze-notes`)**, (3) Sinh mô tả món ăn, (4) **Executive Insights** tóm tắt kinh doanh, (5) **Inventory AI** (gợi ý nhập hàng, trợ lý công thức, **OCR hóa đơn nhập kho**), (6) **Merchandising AI** (đề xuất Combo & Khuyến mãi). |
@@ -43,8 +43,8 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 | **Staff** | Tài khoản nội bộ | Sơ đồ bàn (`/admin/tables`), **hàng đợi yêu cầu hỗ trợ bàn (`/admin/service-requests`)**, mở bàn, gọi món tại bàn, gộp/tách bàn, đơn mang về (`/admin/takeaway`), trợ lý AI nội bộ, hồ sơ cá nhân (`/admin/profile`). *(Ẩn thao tác thanh toán & báo bếp xong).* |
 | **Chef** | Tài khoản nội bộ | Màn hình bếp KDS (`/admin/kitchen`) chế độ Kanban & Nấu gom món, cập nhật trạng thái món, quản lý & điều chỉnh tồn kho nguyên liệu (`/admin/inventory`), trợ lý AI bếp & phân tích ghi chú. |
 | **Cashier** | Tài khoản nội bộ | Sơ đồ bàn thu ngân (`/admin/tables`), **hàng đợi yêu cầu bàn (`/admin/service-requests`)**, đơn mang về (`/admin/takeaway`), thanh toán Tiền mặt & PayOS (`PaymentModal`), áp voucher, in hóa đơn, tra cứu lịch sử hóa đơn (`/admin/history`). |
-| **Manager** | Tài khoản nội bộ | Dashboard (`/admin/dashboard`), quản trị Danh mục (`/admin/categories`), Thực đơn (`/admin/menu`), Combo (`/admin/combo`), Voucher (`/admin/voucher`), **Khuyến mãi (`/admin/promotions`)**, Nhân sự (`/admin/staffs`), Kho (`/admin/inventory`), Báo cáo món bán chạy (`/admin/statistics/top-dishes`) & hiệu suất nhân viên (`/admin/statistics/staff`), cùng toàn bộ trợ lý AI vận hành/kho/merchandising. |
-| **Admin** | Tài khoản nội bộ + **2FA OTP Email** | Toàn quyền hệ thống + **độc quyền Báo cáo Doanh thu chi tiết (`/admin/statistics/revenue`)**, Cấu hình hệ thống (`/admin/settings`), và Prometheus metrics (`/actuator/prometheus`). |
+| **Manager** | Tài khoản nội bộ | Dashboard (`/admin/dashboard`), quản trị Danh mục (`/admin/categories`), Thực đơn (`/admin/menu`), Combo (`/admin/combo`), Voucher (`/admin/voucher`), **Khuyến mãi (`/admin/promotions`)**, Nhân sự (`/admin/staffs`), Kho (`/admin/inventory`), **Báo cáo Doanh thu chi tiết (`/admin/statistics/revenue`) & Dự báo AI**, Món bán chạy (`/admin/statistics/top-dishes`) & Hiệu suất nhân viên (`/admin/statistics/staff`), cùng toàn bộ trợ lý AI vận hành/kho/merchandising. |
+| **Admin** | Tài khoản nội bộ + **2FA OTP Email** | Toàn quyền hệ thống + **độc quyền 7 tab Cấu hình hệ thống (`/admin/settings`)**, xóa sâu dữ liệu nhạy cảm (hóa đơn/nguyên liệu) và Prometheus metrics (`/actuator/prometheus`). |
 
 > **Lưu ý tạo tài khoản Admin local:** Mặc định ứng dụng **không tự tạo tài khoản mẫu**. Ở môi trường local (`dev`), có thể bật tạo admin tùy chọn bằng cách đặt `DEV_ADMIN_BOOTSTRAP_ENABLED=true`, `DEV_ADMIN_EMAIL` và `DEV_ADMIN_PASSWORD` trong `.env`. Mã OTP 2FA được gửi qua email (Brevo API hoặc SMTP), không ghi ra log backend.
 
@@ -54,13 +54,13 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 
 | Phân hệ | Công nghệ sử dụng | Chi tiết kỹ thuật |
 |---|---|---|
-| **Backend** | Java **25 LTS**, Spring Boot **4.1.2** | Spring Security 7, Jackson 3 (`tools.jackson`), Hibernate **7.4**, MapStruct 1.6, Lombok 1.18, Spotless **3.11** |
-| **Database** | PostgreSQL **16+**, Flyway **12.4** | `spring-boot-starter-flyway` (**25 migrations** `V1` -> `V1.24`, **35 bảng**), `ddl-auto: validate`, `baseline-on-migrate: false` |
-| **Cache & Security** | Caffeine (Dev) & Redis 7 (Prod) | Redis JSON serializer Jackson 3 (`qros:v4:`), Lua rate limiter, Token Blacklist, 2FA & Refresh Token Store |
+| **Backend** | Java **25 LTS** (Virtual Threads + `G1GC`), Spring Boot **4.1.2** | Spring Security 7, Jackson 3 (`tools.jackson`), Hibernate **7.4**, MapStruct 1.6, Lombok 1.18, Spotless **3.11** |
+| **Database** | PostgreSQL **16+**, Flyway **12.4** | `spring-boot-starter-flyway` (**27 migrations** `V1` -> `V1.26`, **35 bảng**), `ddl-auto: validate`, `baseline-on-migrate: false` |
+| **Cache & Security** | Caffeine (Dev) & Redis 7 (Prod) | Redis JSON serializer Jackson 3 (`qros:v4:`), Lua rate limiter, Token Blacklist, 2FA & Multi-device Refresh Token Store |
 | **Realtime** | Spring STOMP over WebSocket, SockJS | 12 topics (gồm `/topic/service-requests`), phân quyền subscribe theo Role Hierarchy, tự động invalidate cache React Query |
-| **Frontend** | React **19.2**, Vite **7.2.4** (7.3 runtime), Tailwind CSS **4** | TanStack React Query v5, Zustand v5, React Router v7, Recharts v3, Lucide Icons, `vite-plugin-pwa` |
-| **Mobile** | Capacitor **8.6.2** | Android (`frontend/android/`, Gradle 8.14 / SDK 36, `androidScheme: https`) & hỗ trợ iOS (`capacitor://localhost`) |
-| **Testing & CI** | JUnit 5, ArchUnit 1.5.1 (11 rules), Node Test, ESLint 9 (FSD strict), Playwright | **319** backend tests (**69** suites), **144** frontend unit tests (**20** suites), GitHub Actions CI/CD (**Java 25 + Node 22** + GHCR) |
+| **Frontend** | React **19.2**, Vite **7.2.4** (7.3 runtime), Tailwind CSS **4** | TanStack React Query v5, Zustand v5, React Router v7, Recharts v3, Lucide Icons, `vite-plugin-pwa` (Workbox precache `1.47 MB`) |
+| **Mobile** | Capacitor **8.6.2** | Android (`frontend/android/`, `build:capacitor`, Gradle 8.14 / SDK 36, `androidScheme: https`) & hỗ trợ iOS (`capacitor://localhost`) |
+| **Testing & CI** | JUnit 5, **Testcontainers (PG16 + Redis 7)**, ArchUnit 1.5.1 (11 rules), Node Test, ESLint 9 (FSD strict), Playwright | **364** backend tests (**80** suites: 357 unit/MVC + 7 Testcontainers `*IT`), **160** frontend unit tests (**22** suites), GitHub Actions CI/CD (**Java 25 + Node 22** + GHCR) |
 | **Tích hợp ngoài** | PayOS, Google Gemini AI, Cloudinary, Brevo, Twilio | Thanh toán VietQR webhook, 6 luồng AI Gemini, ảnh cloud, email HTTPS API, SMS OTP |
 
 ---
@@ -70,11 +70,11 @@ Hệ thống bao phủ trọn vẹn quy trình vận hành nhà hàng: đặt m�
 ```text
 .
 ├── .agents/                  # Workspace Rules & 6 Role/SDD Skills (PO → Design → BA → SE → SDD Coding/Sync)
-├── backend/                  # Spring Boot (15 domain modules, 3 infra adapters, Flyway V1–V1.24 / 35 bảng)
+├── backend/                  # Spring Boot (15 domain modules, 3 infra adapters, Flyway V1–V1.26 / 35 bảng)
 ├── frontend/                 # React 19 FSD (19 features, 16 entities, 2 widgets) + Capacitor 8 Android (`frontend/android/`)
 │   ├── vercel.json           # Cấu hình deploy Vercel (rewrites API/WS, CSP, cache headers)
-│   ├── nginx.conf            # Cấu hình Nginx cho Docker (SPA, proxy API/WS, CSP)
-│   └── Dockerfile            # Multi-stage Node 22 -> Nginx Alpine
+│   ├── nginx.conf            # Cấu hình Nginx cho Docker (SPA, proxy API/WS, CSP, cổng 8080 non-root)
+│   └── Dockerfile            # Multi-stage Node 22 -> nginxinc/nginx-unprivileged:stable-alpine (port 8080 + HEALTHCHECK)
 ├── .github/workflows/ci.yml  # CI & push Docker images lên GHCR
 ├── docs/knowledge/           # Centralized Knowledge Hub (01-po → 02-design → 03-ba → 04-tech → 05-specs)
 ├── reports/                  # 8 báo cáo QA, Discovery, Feature/Role Matrix, Bug Report
@@ -149,12 +149,12 @@ npm run cap:open        # Mở dự án trong Android Studio
 npm run check
 # hoặc: bash scripts/run_checks.sh
 
-# Backend: Spotless 3.11 + Compile + 319 tests (69 suites: Unit/Slice/ArchUnit 11 rules) + Package JAR
+# Backend: Spotless 3.11 + Compile + 364 tests (80 suites: 357 Unit/MVC/ArchUnit/Hibernate + 7 Testcontainers PG16 & Redis 7 ITs) + Package JAR
 mvn -f backend/pom.xml --batch-mode verify
 mvn -f backend/pom.xml spotless:apply   # Tự động format Java & pom.xml
 
-# Frontend: 144 unit tests (20 suites) + ESLint FSD strict + Vite production build
-npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build
+# Frontend: 160 unit tests (22 suites) + ESLint FSD strict + Vite production build & Capacitor build
+npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build && npm --prefix frontend run build:capacitor
 
 # E2E Playwright Audit (6 vai trò x 3 kích thước màn hình; đặt AUDIT_ADMIN_EMAIL / AUDIT_ADMIN_PASSWORD)
 node scripts/phase4_full_ui_audit.js
@@ -170,7 +170,7 @@ node scripts/phase4_full_ui_audit.js
 
 ### Checklist biến môi trường trên Render (`prod`)
 - `SPRING_PROFILES_ACTIVE=prod`
-- `DB_URL` (**không** bọc dấu nháy kép), `DB_USERNAME`, `DB_PASSWORD` (DB đã có bảng `flyway_schema_history` khớp `V1`–`V1.24`)
+- `DB_URL` (**không** bọc dấu nháy kép), `DB_USERNAME`, `DB_PASSWORD` (DB đã có bảng `flyway_schema_history` khớp `V1`–`V1.26`)
 - `REDIS_HOST`, `REDIS_PORT=6379`, `REDIS_SSL_ENABLED=false` *(đặt `true` nếu dùng Redis TLS ngoài)*
 - `JWT_SECRET` và `QR_SIGNING_SECRET` *(2 chuỗi 64 ký tự hex riêng biệt sinh bằng `openssl rand -hex 32`)*
 - `APP_BASE_URL=https://order-by-qr.onrender.com`
