@@ -89,4 +89,14 @@ public interface NotificationService {
      * @param publicSettings Settings payload safe for guest/customer clients
      */
     void notifySettingsChange(Object publicSettings);
+
+    /**
+     * Notifies staff and customer views when a table service request is created, claimed,
+     * resolved, or cancelled.
+     *
+     * @param action    Lifecycle action (e.g., CREATED, CLAIMED, RESOLVED, CANCELLED, AUTO_CLOSED)
+     * @param requestId Service request identifier (nullable for batch session closures)
+     * @param tableId   Affected table identifier (nullable for batch session expirations)
+     */
+    void notifyServiceRequestChange(String action, Long requestId, Long tableId);
 }

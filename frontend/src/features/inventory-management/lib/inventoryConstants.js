@@ -19,5 +19,6 @@ export const defaultInventoryForm = () => ({
   unit: INVENTORY_UNITS[0],
   quantityOnHand: 0,
   lowStockThreshold: 0,
+  unitCost: 0,
   active: true,
 });

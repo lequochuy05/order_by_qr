@@ -80,8 +80,9 @@ public class UserAdminController {
 
     @PostMapping("/{id}/avatar")
     public ApiResponse<UserResponse> uploadAvatar(
-            @PathVariable @NonNull Long id, @RequestParam("file") @NonNull MultipartFile file) {
-        UserResponse updated = userAvatarService.uploadAvatar(id, file);
+            @PathVariable @NonNull Long id, @RequestParam("file") @NonNull MultipartFile file, Principal principal) {
+        String actor = principal != null ? principal.getName() : null;
+        UserResponse updated = userAvatarService.uploadAvatar(id, file, actor);
         return ApiResponse.success("Avatar updated successfully", updated);
     }
 }

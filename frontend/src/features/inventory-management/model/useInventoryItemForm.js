@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 
-import { inventoryService } from '@entities/inventory/api/inventoryService.js';
+import { inventoryService } from '@entities/inventory';
 import {
   defaultInventoryForm,
   INVENTORY_UNITS,
@@ -26,6 +26,8 @@ const useInventoryItemForm = ({ onSaved }) => {
     const unit = inventoryForm.unit?.trim() || '';
     const quantityOnHand = Number(inventoryForm.quantityOnHand);
     const lowStockThreshold = Number(inventoryForm.lowStockThreshold);
+    const unitCostRaw = String(inventoryForm.unitCost ?? '').trim();
+    const unitCost = unitCostRaw === '' ? 0 : Number(inventoryForm.unitCost);
 
     if (!name) {
       nextErrors.name = 'Tên nguyên liệu không được để trống';
@@ -47,6 +49,10 @@ const useInventoryItemForm = ({ onSaved }) => {
       nextErrors.lowStockThreshold = 'Ngưỡng cảnh báo không hợp lệ';
     }
 
+    if (!Number.isFinite(unitCost) || unitCost < 0) {
+      nextErrors.unitCost = 'Đơn giá nhập không hợp lệ';
+    }
+
     setInventoryErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }, [inventoryForm]);
@@ -63,6 +69,7 @@ const useInventoryItemForm = ({ onSaved }) => {
       unit: item.unit || INVENTORY_UNITS[0],
       quantityOnHand: item.quantityOnHand,
       lowStockThreshold: item.lowStockThreshold,
+      unitCost: item.unitCost ?? 0,
       active: item.active !== false,
     });
     setInventoryErrors({});
@@ -84,6 +91,7 @@ const useInventoryItemForm = ({ onSaved }) => {
       unit: inventoryForm.unit.trim(),
       quantityOnHand: Number(inventoryForm.quantityOnHand),
       lowStockThreshold: Number(inventoryForm.lowStockThreshold),
+      unitCost: Number(inventoryForm.unitCost || 0),
       active: inventoryForm.active,
       version: editingItem?.version ?? null,
     };
@@ -102,18 +110,7 @@ const useInventoryItemForm = ({ onSaved }) => {
         }
         showSuccessToast('Đã cập nhật nguyên liệu');
       } else {
-        const created = await inventoryService.createItem(payload);
-        const initialQty = Number(inventoryForm.quantityOnHand || 0);
-        if (initialQty > 0 && created?.id) {
-          try {
-            await inventoryService.stockIn(created.id, {
-              quantity: initialQty,
-              note: 'Khởi tạo tồn kho ban đầu',
-            });
-          } catch (stockError) {
-            console.error('Failed to set initial stock:', stockError);
-          }
-        }
+        await inventoryService.createItem(payload);
         showSuccessToast('Đã thêm nguyên liệu');
       }
 

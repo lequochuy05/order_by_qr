@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Layers } from 'lucide-react';
 
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useCrudModal } from '@shared/hooks/useCrudModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
@@ -46,22 +47,24 @@ const CategoryManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // State cho Modal nhập liệu
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editId, setEditId] = useState(null);
   const [formData, setFormData] = useState(emptyCategoryForm);
   const [initialFormData, setInitialFormData] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState('');
-  const [errors, setErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
   const [detailLoadingId, setDetailLoadingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null); // C-fix: guard against double-click delete
   const objectPreviewUrlRef = useRef(null);
   const pageSize = 24;
 
+  const crud = useCrudModal();
+  const editId = crud.editingItem;
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(0);
+  };
 
   // === React Query: Tải dữ liệu ===
   const { data: pageData, isLoading: loading } = useCategoriesPageQuery({
@@ -77,18 +80,12 @@ const CategoryManager = () => {
   const invalidateCategories = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
 
-  // Realtime Update đã được chuyển sang WebSocketInvalidator (Sprint 3D)
-
   const clearObjectPreview = () => {
     if (objectPreviewUrlRef.current) {
       URL.revokeObjectURL(objectPreviewUrlRef.current);
       objectPreviewUrlRef.current = null;
     }
   };
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [debouncedSearchTerm]);
 
   useEffect(
     () => () => {
@@ -107,8 +104,6 @@ const CategoryManager = () => {
     } else if (formData.name.trim().length < 2) {
       newErrors.name = 'Tên danh mục phải có ít nhất 2 ký tự';
     } else if (formData.name.trim().length > 50) {
-      // Validation fix: added maxLength check to match backend @Size(max=50) constraint.
-      // The old /^\d/ regex blocking digit-starting names was arbitrary and incorrect.
       newErrors.name = 'Tên danh mục không được vượt quá 50 ký tự';
     }
 
@@ -120,7 +115,7 @@ const CategoryManager = () => {
       newErrors.displayOrder = 'Thứ tự hiển thị không được âm';
     }
 
-    setErrors(newErrors);
+    crud.setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -128,8 +123,8 @@ const CategoryManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    if (isSubmitting) return;
-    setIsSubmitting(true);
+    if (crud.isSubmitting) return;
+    crud.setSubmitting(true);
     try {
       const payload = {
         ...formData,
@@ -148,17 +143,22 @@ const CategoryManager = () => {
       }
 
       if (selectedFile) {
-        // M-fix: pass version of the saved result so the server can guard against concurrent image overwrites.
         const uploadVersion = result?.version ?? formData.version;
         try {
-          await categoryService.uploadImage(result?.id || editId, uploadVersion, toImageFormData(selectedFile));
+          await categoryService.uploadImage(
+            result?.id || editId,
+            uploadVersion,
+            toImageFormData(selectedFile),
+          );
         } catch {
-          // G-fix already applied: keep modal open with updated ID/version so user can retry upload.
           setFormData((prev) => ({
             ...prev,
             id: result?.id || editId,
             version: result?.version ?? prev.version,
           }));
+          if (!editId && result?.id) {
+            crud.setEditingItem(result.id);
+          }
           invalidateCategories();
           showErrorToast('Đã lưu danh mục, nhưng chưa tải được ảnh. Vui lòng cập nhật ảnh lại.');
           return;
@@ -174,33 +174,33 @@ const CategoryManager = () => {
         err?.code === 'CATEGORY_NAME_EXISTS' ||
         errorMsg.toLowerCase().includes('category name already exists')
       ) {
-        setErrors({ ...errors, name: 'Tên danh mục này đã tồn tại' });
+        crud.setFormErrors((current) => ({ ...current, name: 'Tên danh mục này đã tồn tại' }));
       } else {
         showErrorToast(err);
       }
     } finally {
-      setIsSubmitting(false);
+      crud.setSubmitting(false);
     }
   };
 
   // === Xóa ===
   const handleDelete = async (id, version) => {
-    if (deletingId) return; // C-fix: guard against concurrent deletes
+    if (crud.deletingId) return;
     const confirmed = await confirm(
       'Xóa danh mục',
       'Bạn có chắc chắn muốn xóa danh mục này? Hành động này không thể hoàn tác.',
     );
     if (!confirmed) return;
 
-    setDeletingId(id);
+    crud.setDeletingId(id);
     try {
-      await categoryService.delete(id, version); // L-fix: pass version for optimistic lock check
+      await categoryService.delete(id, version);
       showSuccessToast('Đã xóa danh mục thành công!');
       invalidateCategories();
     } catch (err) {
       showErrorToast(err);
     } finally {
-      setDeletingId(null);
+      crud.setDeletingId(null);
     }
   };
 
@@ -208,39 +208,32 @@ const CategoryManager = () => {
   const openModal = async (cat = null) => {
     clearObjectPreview();
     if (cat) {
-      // Stale-version fix: always fetch a fresh copy from the server so the version
-      // field is current. Using stale list data causes CONCURRENT_MODIFICATION 409s
-      // when anyone else has updated the category since the page was loaded.
       setDetailLoadingId(cat.id);
       try {
         const freshCat = await categoryService.getById(cat.id);
         const categoryFormData = toCategoryFormData(freshCat);
-        setEditId(freshCat.id);
         setFormData(categoryFormData);
         setInitialFormData(categoryFormData);
         setPreview(freshCat.img || '');
         setSelectedFile(null);
-        setErrors({});
-        setIsModalOpen(true);
+        crud.openEdit(freshCat.id);
       } catch (err) {
         showErrorToast(err);
       } finally {
         setDetailLoadingId(null);
       }
     } else {
-      setEditId(null);
       setFormData(emptyCategoryForm);
       setInitialFormData(null);
       setPreview('');
       setSelectedFile(null);
-      setErrors({});
-      setIsModalOpen(true);
+      crud.openCreate();
     }
   };
 
   const closeModal = () => {
     clearObjectPreview();
-    setIsModalOpen(false);
+    crud.close();
     setSelectedFile(null);
   };
 
@@ -249,7 +242,7 @@ const CategoryManager = () => {
       <ManagementHeader
         searchPlaceholder="Tìm danh mục..."
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        setSearchTerm={handleSearchChange}
         onAddClick={() => openModal()}
         addButtonText="Thêm mới"
       />
@@ -267,6 +260,7 @@ const CategoryManager = () => {
               onEdit={() => openModal(cat)}
               onDelete={() => handleDelete(cat.id, cat.version)}
               isEditing={detailLoadingId === cat.id}
+              isDeleting={crud.deletingId === cat.id}
             />
           ))}
         </div>
@@ -290,18 +284,18 @@ const CategoryManager = () => {
 
       {/* Modal Nhập liệu */}
       <CategoryModal
-        isOpen={isModalOpen}
+        isOpen={crud.isOpen}
         onClose={closeModal}
         onSubmit={handleSubmit}
         editId={editId}
         formData={formData}
         setFormData={setFormData}
         preview={preview}
-        isSubmitting={isSubmitting}
+        isSubmitting={crud.isSubmitting}
         initialFormData={initialFormData}
         selectedFile={selectedFile}
-        errors={errors}
-        setErrors={setErrors}
+        errors={crud.formErrors}
+        setErrors={crud.setFormErrors}
         handleFileChange={(e) => {
           const f = e.target.files[0];
           if (f) {

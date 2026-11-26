@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
+import { ORDER_STATUSES } from '@entities/order';
+import { publicMenuService } from '@entities/public-menu';
 import { isTerminalSessionError, useTableSessionQuery, useStartTableSessionMutation } from '@entities/table';
 import { getSessionStorageKey } from '../lib/restaurantSettings.js';
 
@@ -37,7 +37,6 @@ const useCustomerMenuSession = (tableCode, { onSessionEnded, sig } = {}) => {
   const clearSessionToken = useCallback(() => {
     if (tableCode) {
       sessionStorage.removeItem(getSessionStorageKey(tableCode));
-      sessionStorage.removeItem(getSigStorageKey(tableCode));
     }
     setSessionToken('');
   }, [tableCode]);

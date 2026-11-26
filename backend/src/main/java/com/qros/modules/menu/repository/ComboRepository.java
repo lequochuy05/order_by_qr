@@ -14,8 +14,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    @Query(
-            """
+    @Query("""
         SELECT c
         FROM Combo c
         WHERE (CAST(:keyword AS string) IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -24,8 +23,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     Page<Combo> searchSummaries(@Param("keyword") String keyword, @Param("active") Boolean active, Pageable pageable);
 
-    @Query(
-            """
+    @Query("""
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -35,8 +33,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     Optional<Combo> findByIdWithItems(@Param("id") Long id);
 
-    @Query(
-            """
+    @Query("""
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -46,8 +43,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     List<Combo> findAllByIdInWithItems(@Param("ids") List<Long> ids);
 
-    @Query(
-            """
+    @Query("""
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -59,8 +55,7 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
     """)
     List<Combo> findAllActiveWithItems();
 
-    @Query(
-            """
+    @Query("""
         SELECT DISTINCT c
         FROM Combo c
         LEFT JOIN FETCH c.items ci
@@ -70,4 +65,19 @@ public interface ComboRepository extends JpaRepository<Combo, Long> {
         ORDER BY c.displayOrder ASC, c.name ASC
     """)
     List<Combo> findAllPublicWithItems();
+
+    @Query("""
+        SELECT DISTINCT c
+        FROM Combo c
+        LEFT JOIN FETCH c.items ci
+        LEFT JOIN FETCH ci.menuItem mi
+        LEFT JOIN FETCH mi.category
+        WHERE c.id IN (
+            SELECT ci2.combo.id
+            FROM ComboItem ci2
+            WHERE ci2.menuItem.id IN :menuItemIds
+              AND ci2.isDeleted = false
+        )
+    """)
+    List<Combo> findAllByMenuItemIdsWithItems(@Param("menuItemIds") java.util.Collection<Long> menuItemIds);
 }

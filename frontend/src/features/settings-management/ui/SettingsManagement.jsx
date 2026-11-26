@@ -11,12 +11,12 @@ import {
   Wifi,
 } from 'lucide-react';
 
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { getErrorDetails } from '@shared/lib/errorMessages.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
-import { useUpdateSettingsMutation, useUploadLogoMutation } from '@shared/api/settingsMutations.js';
-import { useSettingsQuery } from '@shared/api/settingsQueries.js';
+import { useUpdateSettingsMutation, useUploadLogoMutation } from '@entities/settings';
+import { useSettingsQuery } from '@entities/settings';
 import SettingsLayout from './components/SettingsLayout.jsx';
 import BillSettingsTab from './tabs/BillSettingsTab.jsx';
 import CustomerMenuSettingsTab from './tabs/CustomerMenuSettingsTab.jsx';
@@ -26,13 +26,17 @@ import RestaurantSettingsTab from './tabs/RestaurantSettingsTab.jsx';
 import WifiSettingsTab from './tabs/WifiSettingsTab.jsx';
 import OperationSettingsTab from './tabs/OperationSettingsTab.jsx';
 import PreferencesTab from './tabs/PreferencesTab.jsx';
-import { defaultSettings, settingsCopy } from './settingsConstants.js';
+import {
+  defaultSettings,
+  resolveFirstSettingsErrorTab,
+  settingsCopy,
+} from '../lib/settingsConstants.js';
 import {
   escapeWifi,
   hasSettingsChanges,
   normalizeSettings,
   toSettingsPayload,
-} from './settingsUtils.js';
+} from '../lib/settingsUtils.js';
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -84,6 +88,17 @@ const SettingsPage = () => {
   }, [copy, isAdmin]);
   const activeTabId = tabs.some((tab) => tab.id === activeTab) ? activeTab : tabs[0].id;
 
+  const clearSettingsError = useCallback((field) => {
+    setSettingsErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current, [field]: null };
+      if (field === 'openingTime' || field === 'closingTime') {
+        next.validTimeRange = null;
+      }
+      return next;
+    });
+  }, []);
+
   const updateMutation = useUpdateSettingsMutation({
     onSuccess: (updated) => {
       setSettingsDraft(normalizeSettings(updated));
@@ -92,12 +107,15 @@ const SettingsPage = () => {
     },
     onError: (err) => {
       const details = getErrorDetails(err);
-      if (details.restaurantName) {
-        setSettingsErrors({ restaurantName: details.restaurantName });
-        setActiveTab('restaurant');
-      } else {
-        showErrorToast(err);
+      const errorKeys = Object.keys(details).filter((key) => Boolean(details[key]));
+      if (errorKeys.length > 0) {
+        setSettingsErrors(details);
+        const firstTab = resolveFirstSettingsErrorTab(details);
+        if (firstTab) {
+          setActiveTab(firstTab);
+        }
       }
+      showErrorToast(err);
     },
   });
 
@@ -160,7 +178,7 @@ const SettingsPage = () => {
           onSave={handleSaveSettings}
           copy={copy}
           errors={settingsErrors}
-          onClearError={(field) => setSettingsErrors((current) => ({ ...current, [field]: null }))}
+          onClearError={clearSettingsError}
           onUploadLogo={(file) => uploadLogoMutation.mutate(file)}
           uploadingLogo={uploadLogoMutation.isPending}
         />
@@ -174,6 +192,8 @@ const SettingsPage = () => {
           saveDisabled={!hasChanges}
           onSave={handleSaveSettings}
           copy={copy}
+          errors={settingsErrors}
+          onClearError={clearSettingsError}
         />
       )}
 
@@ -197,6 +217,8 @@ const SettingsPage = () => {
           onSave={handleSaveSettings}
           wifiQrValue={wifiQrValue}
           copy={copy}
+          errors={settingsErrors}
+          onClearError={clearSettingsError}
         />
       )}
 
@@ -208,6 +230,8 @@ const SettingsPage = () => {
           saveDisabled={!hasChanges}
           onSave={handleSaveSettings}
           copy={copy}
+          errors={settingsErrors}
+          onClearError={clearSettingsError}
         />
       )}
 
@@ -219,6 +243,8 @@ const SettingsPage = () => {
           saveDisabled={!hasChanges}
           onSave={handleSaveSettings}
           copy={copy}
+          errors={settingsErrors}
+          onClearError={clearSettingsError}
         />
       )}
 

@@ -14,8 +14,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "auth.lockout")
 public class AuthLockoutProperties {
 
-    @Min(1)
-    private int maxFailedAttempts = 5;
+    @Min(1) private int maxFailedAttempts = 5;
 
     @NotNull private Duration duration = Duration.ofMinutes(15);
 }

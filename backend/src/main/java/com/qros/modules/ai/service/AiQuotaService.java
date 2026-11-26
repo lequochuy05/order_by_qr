@@ -2,8 +2,8 @@ package com.qros.modules.ai.service;
 
 import com.qros.modules.ai.config.AiQuotaProperties;
 import com.qros.modules.ai.config.AiQuotaProperties.Policy;
-import com.qros.shared.rate_limit.ClientAddressResolver;
-import com.qros.shared.rate_limit.RedisRateLimiter;
+import com.qros.shared.ratelimit.ClientAddressResolver;
+import com.qros.shared.ratelimit.RedisRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
@@ -33,6 +33,18 @@ public class AiQuotaService {
         String subject = normalize(username);
         requireAllowed("ai:menu-description:user", subject, properties.getMenuUser());
         requireAllowed("ai:menu-description:user:daily", subject, properties.getMenuUserDaily());
+    }
+
+    public void checkExecutiveInsights(@NonNull String username) {
+        String subject = normalize(username);
+        requireAllowed("ai:insights:user", subject, properties.getInsightsUser());
+        requireAllowed("ai:insights:user:daily", subject, properties.getInsightsUserDaily());
+    }
+
+    public void checkOperationsAi(@NonNull String username) {
+        String subject = normalize(username);
+        requireAllowed("ai:operations:user", subject, properties.getOperationsUser());
+        requireAllowed("ai:operations:user:daily", subject, properties.getOperationsUserDaily());
     }
 
     private void requireAllowed(String scope, String subject, Policy policy) {

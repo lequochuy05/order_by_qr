@@ -1,5 +1,6 @@
 package com.qros.modules.settings.dto.response;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 public record PublicSettingsResponse(
@@ -28,4 +29,70 @@ public record PublicSettingsResponse(
         Boolean newOrderNotificationEnabled,
         Boolean paymentNotificationEnabled,
         Boolean kitchenOverdueNotificationEnabled,
-        Boolean allowSettlementWithUnfinishedItems) {}
+        Boolean allowSettlementWithUnfinishedItems,
+        Boolean customerSelfCheckoutEnabled,
+        String currency,
+        BigDecimal taxPercent,
+        BigDecimal serviceChargePercent) {
+
+    public PublicSettingsResponse(
+            String restaurantName,
+            String restaurantPhone,
+            String restaurantAddress,
+            String logoUrl,
+            String wifiName,
+            LocalTime openingTime,
+            LocalTime closingTime,
+            Boolean orderingEnabled,
+            Boolean maintenanceMode,
+            Boolean cashPaymentEnabled,
+            Boolean onlinePaymentEnabled,
+            Integer paymentQrExpiresInMinutes,
+            Boolean autoConfirmOrders,
+            Integer kitchenOverdueThresholdMinutes,
+            Boolean showUnavailableItems,
+            Boolean showRecommendations,
+            Boolean showCombos,
+            String billTitle,
+            String billFooterMessage,
+            String billPaperSize,
+            Boolean showWifiOnBill,
+            Boolean autoPrintBill,
+            Boolean newOrderNotificationEnabled,
+            Boolean paymentNotificationEnabled,
+            Boolean kitchenOverdueNotificationEnabled,
+            Boolean allowSettlementWithUnfinishedItems,
+            Boolean customerSelfCheckoutEnabled) {
+        this(
+                restaurantName,
+                restaurantPhone,
+                restaurantAddress,
+                logoUrl,
+                wifiName,
+                openingTime,
+                closingTime,
+                orderingEnabled,
+                maintenanceMode,
+                cashPaymentEnabled,
+                onlinePaymentEnabled,
+                paymentQrExpiresInMinutes,
+                autoConfirmOrders,
+                kitchenOverdueThresholdMinutes,
+                showUnavailableItems,
+                showRecommendations,
+                showCombos,
+                billTitle,
+                billFooterMessage,
+                billPaperSize,
+                showWifiOnBill,
+                autoPrintBill,
+                newOrderNotificationEnabled,
+                paymentNotificationEnabled,
+                kitchenOverdueNotificationEnabled,
+                allowSettlementWithUnfinishedItems,
+                customerSelfCheckoutEnabled,
+                "VND",
+                BigDecimal.ZERO,
+                BigDecimal.ZERO);
+    }
+}

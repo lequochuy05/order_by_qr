@@ -4,7 +4,7 @@ import static com.qros.core.config.security.SecurityRoutes.*;
 
 import com.qros.shared.security.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
+import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -88,6 +88,12 @@ public class SecurityConfig {
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, ADMIN_PUT)
                         .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)
+                        .hasAnyRole("MANAGER", "STAFF", "CHEF")
+                        .requestMatchers(HttpMethod.DELETE, KITCHEN_DELETE)
+                        .hasAnyRole("MANAGER", "CHEF")
+                        .requestMatchers(HttpMethod.DELETE, MANAGER_DELETE)
+                        .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.DELETE, ADMIN_DELETE)
                         .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, MANAGER_GET)
@@ -100,11 +106,13 @@ public class SecurityConfig {
                         .hasAnyRole("MANAGER", "CHEF", "STAFF")
                         .requestMatchers(HttpMethod.GET, OPERATION_GET)
                         .hasAnyRole("MANAGER", "STAFF", "CHEF")
+                        .requestMatchers(HttpMethod.GET, INVENTORY_READ_GET)
+                        .hasAnyRole("MANAGER", "CHEF")
+                        .requestMatchers(HttpMethod.GET, STAFF_SERVICE_REQUEST_GET)
+                        .hasAnyRole("MANAGER", "STAFF")
                         .requestMatchers(HttpMethod.GET, KITCHEN_GET)
                         .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.PATCH, KITCHEN_PATCH)
-                        .hasAnyRole("MANAGER", "CHEF")
-                        .requestMatchers(HttpMethod.DELETE, KITCHEN_DELETE)
                         .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.POST, STAFF_AI_POST)
                         .hasAnyRole("MANAGER", "STAFF", "CHEF")
@@ -112,19 +120,17 @@ public class SecurityConfig {
                         .hasAnyRole("MANAGER", "STAFF")
                         .requestMatchers(HttpMethod.PATCH, STAFF_OPERATION_PATCH)
                         .hasAnyRole("MANAGER", "STAFF")
-                        .requestMatchers(HttpMethod.DELETE, STAFF_OPERATION_DELETE)
-                        .hasAnyRole("MANAGER", "STAFF", "CHEF")
                         .requestMatchers(PAYMENT_ROUTES)
                         .hasAnyRole("ADMIN", "MANAGER", "CASHIER")
                         .requestMatchers(HttpMethod.POST, INVENTORY_OPERATION_POST)
+                        .hasAnyRole("MANAGER", "CHEF")
+                        .requestMatchers(HttpMethod.POST, INVENTORY_AI_POST)
                         .hasAnyRole("MANAGER", "CHEF")
                         .requestMatchers(HttpMethod.POST, MANAGER_POST)
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PUT, MANAGER_PUT)
                         .hasRole("MANAGER")
                         .requestMatchers(HttpMethod.PATCH, MANAGER_PATCH)
-                        .hasRole("MANAGER")
-                        .requestMatchers(HttpMethod.DELETE, MANAGER_DELETE)
                         .hasRole("MANAGER")
                         .anyRequest()
                         .authenticated())

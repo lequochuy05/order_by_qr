@@ -1,6 +1,5 @@
 package com.qros.shared.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.response.ApiResponse;
@@ -9,8 +8,6 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
@@ -23,6 +20,8 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * JwtAuthFilter - Security filter that intercepts each HTTP request to validate
@@ -39,7 +38,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     public JwtAuthFilter(
             JwtService jwtService, UserDetailsService userDetailsService, TokenBlacklistService tokenBlacklistService) {
-        this(jwtService, userDetailsService, tokenBlacklistService, new ObjectMapper());
+        this(
+                jwtService,
+                userDetailsService,
+                tokenBlacklistService,
+                JsonMapper.builder().build());
     }
 
     @Autowired
@@ -51,7 +54,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.tokenBlacklistService = tokenBlacklistService;
-        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+        this.objectMapper =
+                objectMapper != null ? objectMapper : JsonMapper.builder().build();
     }
 
     /**
@@ -127,6 +131,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String method = request.getMethod();
+        boolean isPublicOrAuthRoute = isPathPrefix(path, servletPath, ApiRoutes.PUBLIC)
+                || isPathPrefix(path, servletPath, ApiRoutes.AUTH)
+                || isPathPrefix(path, servletPath, ApiRoutes.RECOMMENDATIONS)
+                || isPathPrefix(path, servletPath, "/actuator/health")
+                || (HttpMethod.GET.matches(method)
+                        && ((ApiRoutes.VOUCHERS + "/validate").equals(path)
+                                || (ApiRoutes.VOUCHERS + "/validate").equals(servletPath)));
         boolean isMeProfile = HttpMethod.GET.matches(method)
                 && ((ApiRoutes.USERS + "/me").equals(path) || (ApiRoutes.USERS + "/me").equals(servletPath));
         boolean isChangePassword = HttpMethod.PATCH.matches(method)
@@ -135,7 +146,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         boolean isLogout = HttpMethod.POST.matches(method)
                 && ((ApiRoutes.AUTH + "/logout").equals(path) || (ApiRoutes.AUTH + "/logout").equals(servletPath));
 
-        return !(isMeProfile || isChangePassword || isLogout);
+        return !(isPublicOrAuthRoute || isMeProfile || isChangePassword || isLogout);
+    }
+
+    private boolean isPathPrefix(String path, String servletPath, String prefix) {
+        return matchesPrefix(path, prefix) || matchesPrefix(servletPath, prefix);
+    }
+
+    private boolean matchesPrefix(String candidate, String prefix) {
+        return candidate != null && (candidate.equals(prefix) || candidate.startsWith(prefix + "/"));
     }
 
     private void writePasswordChangeRequiredResponse(HttpServletResponse response) throws IOException {
@@ -154,30 +173,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     private boolean isUsableAccount(UserDetails userDetails) {
-        return userDetails.isEnabled()
-                && userDetails.isAccountNonLocked()
-                && userDetails.isAccountNonExpired()
-                && userDetails.isCredentialsNonExpired();
+        return UserAccountValidator.isUsableAccount(userDetails);
     }
 
     private boolean isFreshForPasswordVersion(String token, UserDetails userDetails) {
-        if (!(userDetails instanceof PasswordVersionedUserDetails passwordVersionedUser)) {
-            return true;
-        }
-
-        LocalDateTime passwordChangedAt = passwordVersionedUser.getPasswordChangedAt();
-        if (passwordChangedAt == null) {
-            return true;
-        }
-
-        Date issuedAt = jwtService.extractIssuedAt(token);
-        if (issuedAt == null) {
-            return false;
-        }
-
-        long issuedAtSec = issuedAt.getTime() / 1000;
-        long passwordChangedAtSec =
-                passwordChangedAt.atZone(com.qros.shared.time.AppTime.ZONE).toEpochSecond();
-        return issuedAtSec >= passwordChangedAtSec;
+        return UserAccountValidator.isFreshForPasswordVersion(token, userDetails, jwtService);
     }
 }

@@ -10,6 +10,7 @@ public record ItemOptionRequest(
         Long id,
         @NotBlank(message = "Option name cannot be empty") String name,
         Boolean required,
+
         @Min(value = 1, message = "Max selection must be at least 1") Integer maxSelection,
-        @Valid @NotEmpty(message = "Option must contain at least one value")
-                List<ItemOptionValueRequest> optionValues) {}
+
+        @Valid @NotEmpty(message = "Option must contain at least one value") List<ItemOptionValueRequest> optionValues) {}

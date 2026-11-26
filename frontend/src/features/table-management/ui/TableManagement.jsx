@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BellRing, ChevronRight, Loader2 } from 'lucide-react';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 
-import { orderService } from '@entities/order/api/orderService.js';
+import { orderService } from '@entities/order';
+import {
+  isServiceRequestOverdue,
+  useServiceRequestsQueueQuery,
+} from '@entities/service-request';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
@@ -16,23 +21,23 @@ import {
   useDeleteTableMutation,
   useRegenerateQrMutation,
   useMergeTablesMutation,
+  useCloseEmptySessionMutation,
   useTableBoardQuery,
 } from '@entities/table';
+import { useSettingsStore } from '@entities/settings';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import TableFormModal from './TableFormModal.jsx';
 import TableGrid from './TableGrid.jsx';
-import OrderDetailModal from './OrderDetailModal.jsx';
-import AddItemModal from './AddItemModal.jsx';
-import PaymentModal from './PaymentModal.jsx';
 import MergeTableModal from './MergeTableModal.jsx';
-import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { TABLE_STATUS, TABLE_STATUS_EN, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { ORDER_STATUSES } from '@entities/order';
+import { TABLE_STATUS, TABLE_STATUS_EN } from '@entities/table';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { useTranslation } from '@shared/lib/i18n';
 
-const TableManager = () => {
+const TableManager = ({ AddItemModal, OrderDetailModal, PaymentModal } = {}) => {
   const { isEn, copy } = useTranslation('tables');
+  const navigate = useNavigate();
   const [filter, setFilter] = useState('ALL');
 
   const tableStatusFilterOptions = React.useMemo(() => {
@@ -57,6 +62,7 @@ const TableManager = () => {
   const { confirm } = useConfirmModal();
 
   const { user } = useAuth();
+  const settings = useSettingsStore((state) => state.settings);
   const userRole = user?.role || 'STAFF';
   const canManageTables = userRole === 'ADMIN' || userRole === 'MANAGER';
 
@@ -69,6 +75,46 @@ const TableManager = () => {
   };
 
   const { data: board, isLoading: loading } = useTableBoardQuery();
+  const canSeeServiceRequests = ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF'].includes(userRole);
+  const { data: openServiceRequests } = useServiceRequestsQueueQuery(
+    { status: 'OPEN', mineOnly: false, tableId: null },
+    { enabled: canSeeServiceRequests },
+  );
+  const [serviceNowMs, setServiceNowMs] = useState(() => Date.now());
+
+  // Shared 15s clock tick used by both service-request SLA indicators and all TableCard timers.
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      setServiceNowMs(Date.now());
+    }, 15 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const serviceRequestStats = React.useMemo(() => {
+    const byTable = {};
+    const list = Array.isArray(openServiceRequests) ? openServiceRequests : [];
+    let totalOverdue = 0;
+
+    list.forEach((req) => {
+      if (!req?.tableId) return;
+      const key = String(req.tableId);
+      if (!byTable[key]) {
+        byTable[key] = { openCount: 0, pendingCount: 0, hasOverdue: false };
+      }
+      byTable[key].openCount += 1;
+      if (req.status === 'PENDING') byTable[key].pendingCount += 1;
+      if (isServiceRequestOverdue(req, serviceNowMs)) {
+        byTable[key].hasOverdue = true;
+        totalOverdue += 1;
+      }
+    });
+
+    return {
+      byTable,
+      totalOpen: list.length,
+      totalOverdue,
+    };
+  }, [openServiceRequests, serviceNowMs]);
 
   React.useEffect(() => {
     if (loading) return undefined;
@@ -93,6 +139,7 @@ const TableManager = () => {
         newOrdersMap[ord.tableId] = {
           id: ord.id,
           status: ord.status,
+          paymentStatus: ord.paymentStatus,
           finalAmount: ord.finalAmount,
           createdAt: ord.createdAt,
           table: {
@@ -111,6 +158,7 @@ const TableManager = () => {
   const deleteMutation = useDeleteTableMutation();
   const regenerateQrMutation = useRegenerateQrMutation();
   const mergeMutation = useMergeTablesMutation();
+  const closeEmptySessionMutation = useCloseEmptySessionMutation();
 
   // 3. Handlers
   const handleAction = async ({ type, table, order }) => {
@@ -124,13 +172,24 @@ const TableManager = () => {
         break;
       }
       case 'PAY':
+        if (userRole === 'STAFF') {
+          showError(isEn ? 'Staff is not authorized to process payment' : 'Nhân viên không có quyền thực hiện thanh toán');
+          break;
+        }
         try {
           if (!order) {
             showError(isEn ? 'No active order found for this table' : 'Không tìm thấy đơn đang hoạt động của bàn này');
             queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
             break;
           }
-          if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
+          if (order.paymentStatus === 'PAID') {
+            showError(isEn ? 'This order has already been paid' : 'Đơn hàng này đã được thanh toán');
+            break;
+          }
+          if (
+            order.status !== ORDER_STATUSES.AWAITING_PAYMENT &&
+            !settings.allowSettlementWithUnfinishedItems
+          ) {
             showError(isEn ? 'Please finish preparation before payment' : 'Vui lòng hoàn thành các món trước khi thanh toán');
             break;
           }
@@ -138,6 +197,23 @@ const TableManager = () => {
           setPayModal({ open: true, table, order: fullOrder || order });
         } catch (error) {
           showError(error);
+        }
+        break;
+      case 'CLOSE_EMPTY':
+        if (table?.sessionId) {
+          const confirmed = await confirm(
+            isEn ? 'Release empty table?' : 'Trả bàn trống?',
+            isEn
+              ? `Close the active session for ${table.displayName || `Table ${table.tableNumber}`} and mark it available?`
+              : `Đóng phiên hiện tại của ${table.displayName || `Bàn ${table.tableNumber}`} và chuyển bàn về trạng thái trống?`,
+          );
+          if (!confirmed) break;
+          try {
+            await closeEmptySessionMutation.mutateAsync(table.sessionId);
+            showSuccessToast(isEn ? 'Empty table released' : 'Đã trả bàn trống thành công');
+          } catch (error) {
+            showErrorToast(error);
+          }
         }
         break;
       case 'MERGE':
@@ -280,7 +356,37 @@ const TableManager = () => {
         addButtonText={copy.addTable}
         hideAddButton={!canManageTables}
       />
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
+        {serviceRequestStats.totalOpen > 0 && (
+          <div
+            className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-xs font-bold shadow-xs ${
+              serviceRequestStats.totalOverdue > 0
+                ? 'border-rose-300 bg-rose-50/90 text-rose-800 dark:border-rose-500/40 dark:bg-rose-950/30 dark:text-rose-200'
+                : 'border-amber-300 bg-amber-50/90 text-amber-800 dark:border-amber-500/40 dark:bg-amber-950/30 dark:text-amber-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BellRing size={16} className="shrink-0 animate-bounce" />
+              <span>
+                {copy.openServiceRequests}: {serviceRequestStats.totalOpen}
+                {serviceRequestStats.totalOverdue > 0
+                  ? isEn
+                    ? ` (${serviceRequestStats.totalOverdue} overdue > 5m)`
+                    : ` (${serviceRequestStats.totalOverdue} quá hạn > 5 phút)`
+                  : ''}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/admin/service-requests')}
+              className="inline-flex items-center gap-1 rounded-xl bg-white/90 px-3 py-1.5 text-xs font-black text-slate-900 shadow-xs transition hover:bg-white dark:bg-slate-900 dark:text-white dark:hover:bg-slate-800"
+            >
+              <span>{copy.viewServiceQueue}</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center p-20">
             <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={40} />
@@ -289,8 +395,13 @@ const TableManager = () => {
           <TableGrid
             tables={tables.filter((t) => filter === 'ALL' || t.status === filter)}
             orders={orders}
+            nowMs={serviceNowMs}
             onAction={handleAction}
             userRole={userRole}
+            serviceRequestsByTable={serviceRequestStats.byTable}
+            onOpenServiceRequests={(tableId) =>
+              navigate(`/admin/service-requests?tableId=${tableId}`)
+            }
           />
         )}
       </div>
@@ -347,33 +458,8 @@ const TableManager = () => {
         order={payModal.order}
         currentUser={user}
         onPaymentSuccess={() => {
-          showSuccessToast('Thanh toán thành công');
-          const paidOrderId = payModal.order?.id;
-          const paidTableIds = new Set(
-            [
-              payModal.table?.id,
-              payModal.table?.primaryTableId,
-              ...(payModal.table?.memberTableIds || []),
-            ]
-              .filter((id) => id != null)
-              .map(String),
-          );
-          queryClient.setQueryData(queryKeys.tables.board, (current) => {
-            if (!current) return current;
-            return {
-              ...current,
-              activeOrders: Array.isArray(current.activeOrders)
-                ? current.activeOrders.filter((ord) => String(ord.id) !== String(paidOrderId))
-                : current.activeOrders,
-              tables: Array.isArray(current.tables)
-                ? current.tables.map((currentTable) =>
-                    paidTableIds.has(String(currentTable.id))
-                      ? { ...currentTable, status: TABLE_STATUSES.AVAILABLE }
-                      : currentTable,
-                  )
-                : current.tables,
-            };
-          });
+          showSuccessToast(isEn ? 'Payment successful' : 'Thanh toán thành công');
+          queryClient.invalidateQueries({ queryKey: queryKeys.tables.board });
         }}
       />
 

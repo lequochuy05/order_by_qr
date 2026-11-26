@@ -1,7 +1,6 @@
 package com.qros.modules.table.repository;
 
 import com.qros.modules.table.model.DiningTable;
-import com.qros.modules.table.model.enums.TableStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -18,8 +17,6 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
 
     boolean existsByTableCode(String tableCode);
 
-    Optional<DiningTable> findByTableNumberIgnoreCase(String tableNumber);
-
     Optional<DiningTable> findByTableCode(String tableCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -33,8 +30,6 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM DiningTable t WHERE t.tableCode = :tableCode")
     Optional<DiningTable> findByTableCodeForUpdate(@Param("tableCode") String tableCode);
-
-    List<DiningTable> findByStatusOrderByTableNumberAsc(TableStatus status);
 
     List<DiningTable> findAllByOrderByTableNumberAsc();
 }

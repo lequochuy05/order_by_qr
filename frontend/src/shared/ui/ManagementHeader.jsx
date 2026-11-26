@@ -64,7 +64,7 @@ const ManagementHeader = ({
     </div>
 
     {/* 3. Nút Thêm mới */}
-    {!hideAddButton && (
+    {!hideAddButton && Boolean(onAddClick) && (
     <button
       onClick={onAddClick}
       className="flex min-w-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-indigo-600/25 transition-all hover:from-indigo-500 hover:to-violet-500 active:scale-98 sm:w-auto"

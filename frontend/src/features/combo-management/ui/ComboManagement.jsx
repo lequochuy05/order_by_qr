@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Package } from 'lucide-react';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useCrudModal } from '@shared/hooks/useCrudModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { comboService, useComboPageQuery } from '@entities/combo';
@@ -9,9 +10,10 @@ import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
 import PaginationControls from '@shared/ui/PaginationControls.jsx';
+import { comboProposalToDraft } from '@entities/ai';
+import AiComboSuggestionsPanel from './AiComboSuggestionsPanel.jsx';
 import ComboCard from './ComboCard';
 import ComboModal from './ComboModal';
-import ConfirmToggleModal from './ConfirmToggleModal';
 
 const normalizeComboPayload = (data) => ({
   name: data.name.trim(),
@@ -31,22 +33,13 @@ const normalizeComboPayload = (data) => ({
 const ComboManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCombo, setEditingCombo] = useState(null);
-  const [toggleConfirm, setToggleConfirm] = useState({
-    isOpen: false,
-    id: null,
-    active: false,
-    version: null,
-  });
-  const [errors, setErrors] = useState({});
   const [detailLoadingId, setDetailLoadingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null); // C-fix: guard against double-click delete
   const [currentPage, setCurrentPage] = useState(0);
+  const [isToggling, setIsToggling] = useState(false);
   const isMountedRef = useRef(true);
   const pageSize = 24;
 
+  const crud = useCrudModal();
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
   const queryParams = {
@@ -61,9 +54,6 @@ const ComboManager = () => {
   const totalPages = comboData?.totalPages || 0;
   const totalElements = comboData?.totalElements || 0;
 
-  // A-fix: use React Query for menuItems so ComboModal always gets fresh data.
-  // Previously a plain useState + ensureMenuItems() only fetched once per mount,
-  // meaning newly added/removed menu items were invisible until a full page reload.
   const { data: menuItems = [] } = useMenuAllQuery();
 
   const invalidateCombos = () => {
@@ -78,15 +68,15 @@ const ComboManager = () => {
     };
   }, []);
 
-  const [isToggling, setIsToggling] = useState(false);
-
-  // Duplicate WebSocket fix: removed the local useWebSocket('/topic/combos') subscription.
-  // WebSocketInvalidator already handles /topic/combos centrally with cache-clear + invalidation.
-  // The duplicate caused double invalidation and spurious notification sounds on every combo update.
-
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(0);
-  }, [debouncedSearchTerm, statusFilter]);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
 
   const handleSubmit = async (data) => {
     try {
@@ -99,8 +89,7 @@ const ComboManager = () => {
         await comboService.create(payload);
         showSuccessToast('Thêm mới Combo thành công!');
       }
-      setErrors({});
-      setIsModalOpen(false);
+      crud.close();
       invalidateCombos();
     } catch (err) {
       console.error('Error saving combo:', err);
@@ -109,7 +98,7 @@ const ComboManager = () => {
         err?.code === 'COMBO_NAME_EXISTS' ||
         errorMsg.toLowerCase().includes('combo name already exists')
       ) {
-        setErrors({ ...errors, name: 'Tên Combo này đã tồn tại' });
+        crud.setFormErrors((current) => ({ ...current, name: 'Tên Combo này đã tồn tại' }));
       } else {
         showErrorToast(err);
       }
@@ -117,38 +106,36 @@ const ComboManager = () => {
   };
 
   const handleDelete = async (id, version) => {
-    if (deletingId) return; // C-fix: guard against concurrent deletes
+    if (crud.deletingId) return;
     const confirmed = await confirm('Xóa combo', 'Bạn có chắc chắn muốn xóa combo này?');
     if (!confirmed) return;
-    setDeletingId(id);
+    crud.setDeletingId(id);
     try {
-      await comboService.delete(id, version); // L-fix: pass version for optimistic lock check
+      await comboService.delete(id, version);
       showSuccessToast('Đã xóa Combo thành công!');
       invalidateCombos();
     } catch (err) {
       showErrorToast(err);
     } finally {
-      setDeletingId(null);
+      crud.setDeletingId(null);
     }
   };
 
-  const handleRequestToggle = (id, currentActive, version) => {
-    setToggleConfirm({ isOpen: true, id, active: currentActive, version });
-  };
-
-  const handleConfirmToggle = async () => {
-    // isToggling guard: prevents race condition when user double-clicks the confirm button.
-    // The first click would succeed (version V→V+1); the second click sending V would trigger
-    // a CONCURRENT_MODIFICATION error that confuses the user.
+  const handleRequestToggle = async (id, currentActive, version) => {
     if (isToggling) return;
-    const { id, version } = toggleConfirm;
+    const confirmed = await confirm(
+      currentActive ? 'Xác nhận ngưng bán?' : 'Xác nhận mở bán?',
+      currentActive
+        ? 'Combo này sẽ ẩn khỏi thực đơn khách hàng ngay lập tức. Bạn có chắc chắn muốn thực hiện?'
+        : 'Combo này sẽ xuất hiện lại trên thực đơn để khách hàng có thể đặt món.',
+    );
+    if (!confirmed) return;
+
     setIsToggling(true);
     try {
       await comboService.toggleActive(id, version);
-      setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
       invalidateCombos();
     } catch (err) {
-      setToggleConfirm({ isOpen: false, id: null, active: false, version: null });
       showErrorToast(err);
     } finally {
       setIsToggling(false);
@@ -170,9 +157,7 @@ const ComboManager = () => {
           }))
           .filter((i) => i.menuItemId),
       };
-      setEditingCombo(formatted);
-      setErrors({});
-      setIsModalOpen(true);
+      crud.openEdit(formatted);
     } catch (err) {
       showErrorToast(err);
     } finally {
@@ -183,12 +168,13 @@ const ComboManager = () => {
   };
 
   const handleOpenCreate = () => {
-    setEditingCombo(null);
-    setErrors({});
-    setIsModalOpen(true);
+    crud.openCreate();
   };
 
-  // K-fix: handler for quick available toggle directly from ComboCard.
+  const handleUseComboDraft = (proposal, index) => {
+    crud.openCreate(comboProposalToDraft(proposal, index));
+  };
+
   const handleToggleAvailable = async (id, version) => {
     try {
       await comboService.toggleAvailable(id, version);
@@ -203,18 +189,20 @@ const ComboManager = () => {
       <ManagementHeader
         searchPlaceholder="Tìm kiếm combo..."
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
+        setSearchTerm={handleSearchChange}
         onAddClick={handleOpenCreate}
         addButtonText="Thêm mới"
         showFilter
         filterAllLabel="Tất cả trạng thái"
         filterValue={statusFilter}
-        setFilterValue={setStatusFilter}
+        setFilterValue={handleStatusFilterChange}
         filterOptions={[
           { id: 'ACTIVE', name: 'Đang kinh doanh' },
           { id: 'INACTIVE', name: 'Tạm ngưng' },
         ]}
       />
+
+      <AiComboSuggestionsPanel onUseDraft={handleUseComboDraft} />
 
       {loading ? (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
@@ -252,23 +240,17 @@ const ComboManager = () => {
         onPageChange={setCurrentPage}
       />
 
-      <ConfirmToggleModal
-        isOpen={toggleConfirm.isOpen}
-        currentActive={toggleConfirm.active}
-        onConfirm={handleConfirmToggle}
-        onCancel={() => setToggleConfirm({ isOpen: false, id: null, active: false, version: null })}
-        isSubmitting={isToggling}
-      />
-
       <ComboModal
-        key={isModalOpen ? editingCombo?.id || 'new' : 'closed'}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        key={
+          crud.isOpen ? crud.editingItem?.id || crud.editingItem?._draftKey || 'new' : 'closed'
+        }
+        isOpen={crud.isOpen}
+        onClose={crud.close}
         menuItems={menuItems}
-        initialData={editingCombo}
+        initialData={crud.editingItem}
         onSubmit={handleSubmit}
-        errors={errors}
-        setErrors={setErrors}
+        errors={crud.formErrors}
+        setErrors={crud.setFormErrors}
       />
     </div>
   );

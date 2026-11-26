@@ -27,6 +27,7 @@ const InventoryModal = ({
     if ((form.unit || '') !== (item.unit || '')) return true;
     if (Number(form.quantityOnHand || 0) !== Number(item.quantityOnHand || 0)) return true;
     if (Number(form.lowStockThreshold || 0) !== Number(item.lowStockThreshold || 0)) return true;
+    if (Number(form.unitCost || 0) !== Number(item.unitCost || 0)) return true;
     return (form.active !== false) !== (item.active !== false);
   }, [form, item]);
 
@@ -38,9 +39,15 @@ const InventoryModal = ({
   };
 
   return (
-    <SharedModal isOpen onClose={onClose} className="max-w-xl !p-0">
+    <SharedModal
+      isOpen
+      onClose={onClose}
+      className="max-w-xl !p-0"
+      ariaLabel={item?.id ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'}
+    >
       <ModalHeader
         title={item?.id ? 'Sửa nguyên liệu' : 'Thêm nguyên liệu'}
+        subtitle="Thông tin & định mức tồn kho"
         onClose={onClose}
         disabled={isSubmitting}
       />
@@ -48,7 +55,7 @@ const InventoryModal = ({
       <form
         id="inventoryForm"
         onSubmit={onSubmit}
-        className="space-y-6 overflow-y-auto p-8 custom-scrollbar"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
       >
         <TextField
           label="Tên nguyên liệu"
@@ -90,6 +97,17 @@ const InventoryModal = ({
             required
           />
         </div>
+
+        <TextField
+          type="number"
+          min="0"
+          step="100"
+          label={`Đơn giá nhập (đ / ${form.unit || 'đơn vị'})`}
+          value={form.unitCost ?? 0}
+          onChange={(value) => updateField('unitCost', value)}
+          error={errors.unitCost}
+          suffix="đ"
+        />
 
         <CheckboxCard
           checked={form.active}

@@ -8,6 +8,8 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
+import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,28 @@ public class OrderValidator {
         }
     }
 
+    public void validateCustomerOperatingHours() {
+        SystemSettings settings = systemSettingsService.getSettingsEntity();
+        if (settings == null) {
+            return;
+        }
+        LocalTime open = settings.getOpeningTime();
+        LocalTime close = settings.getClosingTime();
+        if (open == null || close == null || open.equals(close)) {
+            return;
+        }
+
+        LocalTime now = AppTime.now().toLocalTime();
+        boolean withinHours = open.isBefore(close)
+                ? (!now.isBefore(open) && !now.isAfter(close))
+                : (!now.isBefore(open) || !now.isAfter(close));
+
+        if (!withinHours) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_INVALID_STATE, "Restaurant is currently outside operating hours");
+        }
+    }
+
     public void validateTableAcceptsOrders(@NonNull DiningTable table) {
         validateSystemAcceptsOrders();
 
@@ -44,6 +68,15 @@ public class OrderValidator {
     }
 
     public void validateComboOrderable(@NonNull Combo combo) {
+        validateComboOrderable(combo, false);
+    }
+
+    public void validateComboOrderable(@NonNull Combo combo, boolean isCustomerOrder) {
+        if (isCustomerOrder
+                && Boolean.FALSE.equals(
+                        systemSettingsService.getSettingsEntity().getShowCombos())) {
+            throw new BusinessException(ErrorCode.COMBO_NOT_FOUND, "Combos are currently disabled");
+        }
         if (!Boolean.TRUE.equals(combo.getActive()) || !Boolean.TRUE.equals(combo.getAvailable())) {
             throw new BusinessException(ErrorCode.COMBO_NOT_FOUND, "Combo is not available for ordering");
         }

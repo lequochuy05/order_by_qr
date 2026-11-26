@@ -1,4 +1,5 @@
 import { Moon, Sun, Wifi, WifiOff } from 'lucide-react';
+import CallStaffButton from './CallStaffButton.jsx';
 
 const CustomerMenuHeader = ({
   restaurantSettings,
@@ -8,6 +9,9 @@ const CustomerMenuHeader = ({
   wsConnected,
   weatherLine,
   loadingWeather,
+  onCallStaff,
+  openServiceRequestCount = 0,
+  canCallStaff = false,
 }) => (
   <div
     className="rounded-b-3xl bg-slate-900 px-5 pb-5 pt-3 text-white shadow-xl border-b border-slate-800/80"
@@ -53,22 +57,30 @@ const CustomerMenuHeader = ({
     </div>
 
     {/* Greeting + table number row */}
-    <div className="mt-3 flex items-center gap-2 text-sm text-slate-300">
-      <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-0.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25">
-        Bàn {tableNumber || '?'}
-      </span>
-      {loadingWeather ? (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
-          <span className="inline-block h-3 w-8 animate-pulse rounded-full bg-white/30" />
+    <div className="mt-3 flex items-center justify-between gap-2 text-sm text-slate-300">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-0.5 text-xs font-bold text-white shadow-md shadow-indigo-600/25">
+          Bàn {tableNumber || '?'}
         </span>
-      ) : weatherLine ? (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
-          {weatherLine}
-        </span>
-      ) : (
-        <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
-          Hôm nay bạn muốn thưởng thức món gì?
-        </span>
+        {loadingWeather ? (
+          <span className="inline-flex min-h-[22px] items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold backdrop-blur-sm">
+            <span className="inline-block h-3 w-8 animate-pulse rounded-full bg-white/30" />
+          </span>
+        ) : weatherLine ? (
+          <span className="inline-flex min-h-[22px] truncate items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
+            {weatherLine}
+          </span>
+        ) : (
+          <span className="inline-flex min-h-[22px] truncate items-center gap-1 rounded-full bg-slate-800/80 border border-slate-700/60 px-2.5 py-0.5 text-xs font-semibold text-slate-300 backdrop-blur-sm">
+            Hôm nay bạn muốn thưởng thức món gì?
+          </span>
+        )}
+      </div>
+
+      {canCallStaff && onCallStaff && (
+        <div className="shrink-0">
+          <CallStaffButton openCount={openServiceRequestCount} onClick={onCallStaff} />
+        </div>
       )}
     </div>
   </div>

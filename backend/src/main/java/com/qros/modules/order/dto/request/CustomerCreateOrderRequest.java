@@ -8,8 +8,9 @@ import java.util.List;
 public record CustomerCreateOrderRequest(
         @NotBlank(message = "Table code is required") String tableCode,
         @NotBlank(message = "Session token is required") String sessionToken,
-        @NotBlank(message = "Client request ID is required")
-                @Size(max = 100, message = "Client request ID must not exceed 100 characters")
-                String clientRequestId,
-        @Valid List<OrderComboRequest> combos,
-        @Valid List<OrderItemRequest> items) {}
+
+        @NotBlank(message = "Client request ID is required") @Size(max = 100, message = "Client request ID must not exceed 100 characters") String clientRequestId,
+
+        @Valid @Size(max = 50, message = "Maximum 50 combos per order") List<OrderComboRequest> combos,
+
+        @Valid @Size(max = 50, message = "Maximum 50 items per order") List<OrderItemRequest> items) {}

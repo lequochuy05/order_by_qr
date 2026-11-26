@@ -2,8 +2,8 @@ package com.qros.modules.recommendation.service;
 
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.MenuItemRepository;
-import com.qros.modules.order.repository.OrderItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
+import com.qros.modules.order.service.OrderLookupService;
 import com.qros.modules.recommendation.dto.response.RecommendationResponse;
 import com.qros.modules.recommendation.mapper.RecommendationMapper;
 import com.qros.modules.recommendation.model.enums.RecommendationContext;
@@ -31,8 +31,8 @@ public class RecommendationService {
     private static final int DEFAULT_LIMIT = 5;
     private static final int MAX_LIMIT = 20;
 
-    private final MenuItemRepository menuItemRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final MenuCatalogLookupService menuCatalogLookupService;
+    private final OrderLookupService orderLookupService;
     private final RecommendationMapper recommendationMapper;
 
     @Transactional(readOnly = true)
@@ -55,7 +55,7 @@ public class RecommendationService {
     public RecommendationResponse getPopularItems(int limit) {
         int safeLimit = sanitizeLimit(limit);
 
-        List<MenuItem> items = orderItemRepository.findPopularAvailableMenuItems(PageRequest.of(0, safeLimit));
+        List<MenuItem> items = orderLookupService.findPopularAvailableMenuItems(PageRequest.of(0, safeLimit));
 
         if (items.isEmpty()) {
             items = findLatestAvailableItems(safeLimit);
@@ -72,7 +72,7 @@ public class RecommendationService {
         MenuItem sourceItem = getPublicAvailableMenuItem(itemId);
 
         List<MenuItem> candidates =
-                orderItemRepository.findCrossSellAvailableMenuItems(itemId, PageRequest.of(0, safeLimit));
+                orderLookupService.findCrossSellAvailableMenuItems(itemId, PageRequest.of(0, safeLimit));
 
         List<MenuItem> items = fillWithSimilarAndPopularItems(candidates, sourceItem, safeLimit);
 
@@ -102,18 +102,18 @@ public class RecommendationService {
     }
 
     private MenuItem getPublicAvailableMenuItem(Long itemId) {
-        return menuItemRepository
-                .findById(itemId)
+        return menuCatalogLookupService
+                .findMenuItemById(itemId)
                 .filter(this::isPublicAvailable)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
     }
 
     private List<MenuItem> findByContext(RecommendationContext context, int limit) {
         if (context == RecommendationContext.ANY) {
-            return orderItemRepository.findPopularAvailableMenuItems(PageRequest.of(0, limit));
+            return orderLookupService.findPopularAvailableMenuItems(PageRequest.of(0, limit));
         }
 
-        List<MenuItem> activeItems = menuItemRepository.findAllByActiveTrueOrderByDisplayOrderAscNameAsc();
+        List<MenuItem> activeItems = menuCatalogLookupService.findAllActiveMenuItems();
 
         return activeItems.stream()
                 .filter(this::isPublicAvailable)
@@ -129,7 +129,7 @@ public class RecommendationService {
             return List.of();
         }
 
-        return menuItemRepository.findSimilarAvailableItems(
+        return menuCatalogLookupService.findSimilarAvailableMenuItems(
                 category.getId(), sourceItem.getId(), PageRequest.of(0, limit));
     }
 
@@ -141,7 +141,7 @@ public class RecommendationService {
         }
 
         if (merged.size() < limit) {
-            merged.addAll(orderItemRepository.findPopularAvailableMenuItems(PageRequest.of(0, limit)));
+            merged.addAll(orderLookupService.findPopularAvailableMenuItems(PageRequest.of(0, limit)));
         }
 
         if (merged.size() < limit) {
@@ -159,7 +159,7 @@ public class RecommendationService {
         List<MenuItem> merged = new ArrayList<>(candidates);
 
         if (merged.size() < limit) {
-            merged.addAll(orderItemRepository.findPopularAvailableMenuItems(PageRequest.of(0, limit)));
+            merged.addAll(orderLookupService.findPopularAvailableMenuItems(PageRequest.of(0, limit)));
         }
 
         if (merged.size() < limit) {
@@ -170,7 +170,7 @@ public class RecommendationService {
     }
 
     private List<MenuItem> findLatestAvailableItems(int limit) {
-        return menuItemRepository.findByActiveTrueAndAvailableTrueOrderByIdDesc(PageRequest.of(0, limit));
+        return menuCatalogLookupService.findAvailableMenuItemsNewest(PageRequest.of(0, limit));
     }
 
     private List<MenuItem> distinctLimitExcluding(List<MenuItem> items, Long excludedItemId, int limit) {
@@ -225,8 +225,8 @@ public class RecommendationService {
 
             case AFTERNOON -> containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay");
 
-            case DINNER -> containsAny(
-                    itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay", "giai khat");
+            case DINNER ->
+                containsAny(itemName, categoryName, "tra sua", "an vat", "soda", "nuoc", "my cay", "giai khat");
 
             case ANY -> true;
         };

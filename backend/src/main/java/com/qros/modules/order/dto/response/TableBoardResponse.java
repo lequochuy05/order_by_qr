@@ -31,6 +31,7 @@ public record TableBoardResponse(List<TableItem> tables, List<ActiveOrder> activ
     public record ActiveOrder(
             Long id,
             String status,
+            String paymentStatus,
             BigDecimal finalAmount,
             Long tableId,
             String tableNumber,
@@ -39,5 +40,33 @@ public record TableBoardResponse(List<TableItem> tables, List<ActiveOrder> activ
             List<Long> memberTableIds,
             List<String> memberTableNumbers,
             String displayName,
-            LocalDateTime createdAt) {}
+            LocalDateTime createdAt) {
+
+        public ActiveOrder(
+                Long id,
+                String status,
+                BigDecimal finalAmount,
+                Long tableId,
+                String tableNumber,
+                Long sessionId,
+                Long primaryTableId,
+                List<Long> memberTableIds,
+                List<String> memberTableNumbers,
+                String displayName,
+                LocalDateTime createdAt) {
+            this(
+                    id,
+                    status,
+                    "PENDING",
+                    finalAmount,
+                    tableId,
+                    tableNumber,
+                    sessionId,
+                    primaryTableId,
+                    memberTableIds,
+                    memberTableNumbers,
+                    displayName,
+                    createdAt);
+        }
+    }
 }

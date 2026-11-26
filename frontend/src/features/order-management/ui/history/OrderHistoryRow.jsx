@@ -1,7 +1,7 @@
 import { Eye, Printer, RotateCw, ShoppingBag } from 'lucide-react';
 
-import { getOrderStatusMeta, ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
+import { getOrderStatusMeta, ORDER_STATUSES } from '@entities/order';
+import { getOrderFinalAmount } from '@entities/order';
 import { fmtDateTime, fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
 

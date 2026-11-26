@@ -29,6 +29,10 @@ public class OrderMapper {
                 order.getVoucherCode(),
                 order.getSubtotalAmount(),
                 order.getDiscountAmount(),
+                order.getServiceChargePercentSnapshot(),
+                order.getServiceChargeAmount(),
+                order.getTaxPercentSnapshot(),
+                order.getTaxAmount(),
                 order.getFinalAmount(),
                 order.getPaidAmount(),
                 order.getBusinessDate(),
@@ -50,7 +54,14 @@ public class OrderMapper {
         return new PublicOrderResponse(
                 order.getId(),
                 order.getStatus(),
+                order.getSubtotalAmount(),
+                order.getDiscountAmount(),
+                order.getServiceChargePercentSnapshot(),
+                order.getServiceChargeAmount(),
+                order.getTaxPercentSnapshot(),
+                order.getTaxAmount(),
                 order.getFinalAmount(),
+                order.getVoucherCode(),
                 toPublicTable(order),
                 order.getOrderItems() == null
                         ? List.of()

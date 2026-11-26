@@ -1,8 +1,8 @@
 package com.qros.modules.table.service;
 
-import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.table.dto.internal.TableQrMedia;
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.Map;
@@ -65,7 +65,7 @@ public class TableQrService {
 
     private String buildOrderingUrl(String tableCode) {
         String signature = tableQrSecurityService.generateSignature(tableCode);
-        return UriComponentsBuilder.fromHttpUrl(appProperties.getFrontend().getBaseUrl())
+        return UriComponentsBuilder.fromUriString(appProperties.getFrontend().getBaseUrl())
                 .path("/menu")
                 .queryParam("tableCode", tableCode)
                 .queryParam("sig", signature)

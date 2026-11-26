@@ -1,11 +1,12 @@
 app:
   security:
-    enable-default-admin: true
-    default-admin-email: admin@gmail.com
-    default-admin-password: admin123
+    enable-default-admin: ${DEV_ADMIN_BOOTSTRAP_ENABLED:false}
+    default-admin-email: ${DEV_ADMIN_EMAIL:}
+    default-admin-password: ${DEV_ADMIN_PASSWORD:}
     trust-proxy-headers: false
+    qr-secret: ${QR_SIGNING_SECRET:}
   cors:
-    allowed-origins: http://localhost:5173
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,https://localhost,capacitor://localhost}
 
 spring:
   jpa:
@@ -16,6 +17,7 @@ spring:
 
   data:
     redis:
+      host: ${REDIS_HOST:localhost}
       ssl:
         enabled: false
 

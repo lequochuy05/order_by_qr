@@ -3,7 +3,9 @@
 **Hệ thống: QROS - Nền tảng Đặt món qua mã QR (QR Ordering Platform)**  
 **Đơn vị thực hiện:** Senior QA Engineer, Performance Engineer & Software Architect  
 **Ngày thực hiện:** 2026-10-31  
-**Môi trường kiểm định:** Java 21 LTS | Spring Boot 3.5.14 | React 19.2.0 | PostgreSQL 17.11 (AWS Neon Pooler) | Redis 7 Alpine  
+**Môi trường kiểm định tại thời điểm chạy (2026-10-31):** Java 21 LTS | Spring Boot 3.5.14 | React 19.2.0 | PostgreSQL 17.11 (AWS Neon Pooler) | Redis 7 Alpine  
+
+> **Historical QA Snapshot (`2026-10-31`, mốc trước nâng cấp Java 25 / Spring Boot 4.1.2 và các migration `V1.22`–`V1.24`):** Báo cáo này giữ nguyên số liệu benchmark/kiểm thử lịch sử tại ngày thực hiện. Hệ thống hiện tại đã nâng cấp lên **Java 25 LTS / Spring Boot 4.1.2**, 25 Flyway migrations (`V1`–`V1.24`), ArchUnit 10 rules, 318 backend tests và 144 frontend unit tests — xem nguồn chân lý hiện hành tại [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
 
 ---
 
@@ -27,7 +29,7 @@
 ### 1. Kết quả tổng thể
 Hệ thống QROS đã trải qua đợt đánh giá chất lượng toàn diện theo quy trình 12 giai đoạn nghiêm ngặt, kết hợp phân tích mã nguồn tĩnh (Static AST Code Analysis qua CodeGraph), kiểm thử đơn vị tự động (Unit Tests), kiểm thử tích hợp container (Integration & Regression Tests), kiểm định luồng bảo mật (Security Penetration Probing) và đo lường hiệu năng thực tế (Empirical Nano-benchmarks).
 
-* **Điểm chất lượng hệ thống (Quality Score):** **93.5 / 100**
+* **Điểm chất lượng hệ thống (Quality Score):** **91.8 / 100** *(tính theo trọng số: 0.25×96 + 0.20×88 + 0.20×88 + 0.20×94 + 0.15×92)*
 * **Kết luận triển khai (Production Readiness Verdict):** **READY FOR PRODUCTION (ĐỦ ĐIỀU KIỆN LÊN PRODUCTION)**
   * *Thành tựu:* Đã khắc phục triệt để các lỗ hổng rò rỉ thông tin người dùng (Account Enumeration tại forgot-password, Timing Attack tại login và Session Invalidation khi Admin khóa/xóa user); triển khai toàn diện cơ chế khóa tài khoản tự động (Account Lockout) và bắt buộc đổi mật khẩu lần đầu (Force Password Reset); cần tối ưu cấu hình HikariCP Connection Pool trước khi phục vụ lưu lượng thực tế.
 
@@ -37,7 +39,7 @@ Hệ thống QROS đã trải qua đợt đánh giá chất lượng toàn diệ
 |---|---|---|---|---|
 | **Chức năng (Functional Stability)** | 25% | **96 / 100** | Xuất sắc (Excellent) | 100% test suites (112 Backend tests + 95 Frontend tests) pass; luồng nghiệp vụ gộp bàn, tách bàn, trừ kho phân đoạn mượt mà. |
 | **Hiệu năng & Độ trễ (Performance)** | 20% | **88 / 100** | Tốt (Good) | Các endpoint đọc catalog (Categories, Menu Items) đạt 3.000 - 8.000 RPS với P99 < 12ms. Tắc nghẽn xuất hiện khi nhiều request đồng thời chọc DB xuyên WAN. |
-| **Cơ sở dữ liệu (Database Architecture)** | 20% | **88 / 100** | Xuất sắc (Excellent) | Flyway migration chuẩn mực (V1.0 - V1.19); ràng buộc toàn vẹn và Partial Unique Indexes được thiết kế rất thông minh. |
+| **Cơ sở dữ liệu (Database Architecture)** | 20% | **88 / 100** | Xuất sắc (Excellent) | Flyway migration chuẩn mực (20 migrations `V1`–`V1.19` tại thời điểm kiểm thử 2026-10-31; sau đó mở rộng lên 22 migrations `V1`–`V1.21` với 6-role RBAC); ràng buộc toàn vẹn và Partial Unique Indexes được thiết kế rất thông minh. |
 | **Bảo mật (Security & RBAC)** | 20% | **94 / 100** | Xuất sắc (Excellent) | Enterprise Auth Hardening hoàn chỉnh: Triệt tiêu Timing Attack, Account Lockout 15p trên Redis, Force Password Reset, Token Revocation tức thì. |
 | **Độ tin cậy & Chống Race Condition** | 15% | **92 / 100** | Xuất sắc (Excellent) | Sắp xếp ID chống Deadlock khi gộp bàn; Optimistic Locking (@Version) ngăn chặn 100% Lost Updates trên kho hàng. |
 
@@ -45,20 +47,23 @@ Hệ thống QROS đã trải qua đợt đánh giá chất lượng toàn diệ
 
 ## II. BẢNG MA TRẬN KHẢO SÁT CHỨC NĂNG (FEATURE AUDIT MATRIX)
 
-Toàn bộ 133 endpoint trên 18 module nghiệp vụ đã được bóc tách và tài liệu hóa chi tiết tại `reports/FEATURE_INVENTORY.md`. Dưới đây là bảng phân bổ chức năng và mức độ tin cậy:
+Toàn bộ 133 endpoint tại thời điểm khảo sát (sau đó mở rộng lên 135 endpoint khi bổ sung 2FA) trên 18 module nghiệp vụ đã được bóc tách và tài liệu hóa chi tiết tại `reports/FEATURE_INVENTORY.md`. Dưới đây là bảng phân bổ chức năng và mức độ tin cậy:
 
 | Phân hệ chức năng | Số lượng Endpoint | Phạm vi xác thực (RBAC) | Tình trạng kiểm thử | Độ tin cậy |
-|---|---|---|---|---|
+|---|:---:|---|---|---|
 | **Auth & Session** | 7 | Public / Origin Check / Rate Limited | Đã test 100% (Login, Refresh, Logout, Reset, Lockout) | ✅ An toàn cấp Enterprise (Hardened) |
-| **Dining Tables & Sessions** | 13 | Public QR / Staff / Manager | Đã test tích hợp (Start, Heartbeat, Merge, Cancel) | ✅ Tuyệt đối an toàn (No-split brain) |
-| **Menu Catalog (Category, Items, Combo)** | 23 | Public Read / Manager Mutation | Đã benchmark tải nặng & kiểm định phân trang | ✅ Cực nhanh nhờ Local Cache |
-| **Order Engine & Batch Processing** | 18 | Public QR / Staff / Manager / Kitchen | Đã test preview, create, status lifecycle | ✅ Bọc Pessimistic Lock an toàn |
-| **Inventory & Recipe Stock** | 12 | Staff / Manager | Đã kiểm định Optimistic Lock & Reservation | ✅ Ngăn chặn over-selling |
-| **Payment & PayOS Integration** | 6 | Staff Cash / PayOS VietQR Webhook | Đã kiểm định Checksum HMAC & Idempotency | ✅ Bảo vệ chống thanh toán trùng |
-| **Promotions & Vouchers** | 8 | Public Validate / Manager CRUD | Đã test Unique Discount Index | ✅ Chống lạm dụng voucher |
-| **Kitchen Display System (KDS)** | 3 | Chef / Kitchen Board WebSocket | Đã kiểm định cập nhật trạng thái món | ✅ Realtime STOMP đồng bộ tức thì |
-| **AI Smart Assistant & Quota** | 8 | Public Rate Limit / Staff AI | Đã test Fallback & Redis Quota Limiter | ✅ Ngăn ngừa cạn kiệt Quota API |
-| **System Settings & Analytics** | 15 | Manager / System Cron Reconcile | Đã test Invalidation Listener & Prometheus | ✅ Tích hợp Spring Actuator |
+| **Profile & User Management** | 11 | Authenticated / Admin & Manager | Đã test CRUD, đổi mật khẩu, thu hồi session Redis | ✅ An toàn cấp Enterprise |
+| **Dining Tables & Sessions** | 13 | Public QR / Staff / Cashier / Manager | Đã test tích hợp (Start, Heartbeat, Merge, Cancel) | ✅ Tuyệt đối an toàn (No-split brain) |
+| **Menu Catalog (Category, Items, Combo, Public)** | 25 | Public Read / Manager & Admin Mutation | Đã benchmark tải nặng & kiểm định phân trang | ✅ Cực nhanh nhờ Local Cache |
+| **Order Engine, Table Board & Order Items** | 17 | Public QR / Staff / Cashier / Manager / Chef | Đã test preview, create, status lifecycle | ✅ Bọc Pessimistic Lock an toàn |
+| **Kitchen Display System (KDS)** | 3 | Chef / Manager / Admin (WebSocket) | Đã kiểm định cập nhật trạng thái món | ✅ Realtime STOMP đồng bộ tức thì |
+| **Payment & PayOS Integration** | 5 | Cashier / Manager / Admin & PayOS Webhook | Đã kiểm định Checksum HMAC & Idempotency | ✅ Bảo vệ chống thanh toán trùng |
+| **Inventory, Stock Movements & Recipes** | 14 | Chef / Manager / Admin | Đã kiểm định Optimistic Lock & Reservation | ✅ Ngăn chặn over-selling |
+| **Promotions & Vouchers** | 13 | Public Validate / Manager & Admin CRUD | Đã test Unique Discount Index | ✅ Chống lạm dụng voucher |
+| **Analytics & Forecast** | 10 | Cashier (History) / Manager / Admin | Đã test tổng hợp doanh thu & dự báo | ✅ Chính xác & phân quyền rõ |
+| **AI Smart Assistant & Recommendations** | 7 | Public Rate Limit / Staff AI | Đã test Fallback & Redis Quota Limiter | ✅ Ngăn ngừa cạn kiệt Quota API |
+| **System Settings, Actuator, WS & Fallback** | 8 | Public Health / Admin Settings & Metrics | Đã test Invalidation Listener & Prometheus | ✅ Tích hợp Spring Actuator |
+| **Tổng cộng (Snapshot 2026-10-31)** | **133** | — | — | **100% đã kiểm kê** |
 
 ---
 
@@ -95,13 +100,11 @@ Toàn bộ các phép đo dưới đây được đo đạc trực tiếp trên 
 | | 10 | 100 | **4,816.7** | **1.95 ms** | 1.31 ms | 3.73 ms | 1.79 ms | 2.71 ms | 2.91 ms | 3.73 ms | **0.00%** |
 | | 50 | 150 | **5,243.2** | **2.54 ms** | 1.26 ms | 8.81 ms | 1.79 ms | 4.73 ms | 6.33 ms | 8.41 ms | **0.00%** |
 | | 100 | 200 | **4,960.4** | **1.87 ms** | 1.16 ms | 6.52 ms | 1.53 ms | 3.21 ms | 4.01 ms | 5.52 ms | **0.00%** |
-|---|---|---|---|---|---|---|---|---|---|---|---|
 | **`/api/v1/public/menu-items`** | 1 | 20 | **1,348.3** | **0.73 ms** | 0.67 ms | 0.95 ms | 0.72 ms | 0.83 ms | 0.95 ms | 0.95 ms | **0.00%** |
 | | 5 | 50 | **4,557.3** | **1.03 ms** | 0.71 ms | 1.74 ms | 1.02 ms | 1.25 ms | 1.36 ms | 1.74 ms | **0.00%** |
 | | 10 | 100 | **7,981.0** | **1.17 ms** | 0.92 ms | 2.36 ms | 1.08 ms | 1.55 ms | 1.81 ms | 2.36 ms | **0.00%** |
 | | 50 | 150 | **3,831.0** | **3.11 ms** | 0.92 ms | 12.74 ms | 1.34 ms | 9.43 ms | 10.93 ms | 12.27 ms | **0.00%** |
 | | 100 | 200 | **6,073.8** | **1.13 ms** | 0.60 ms | 4.20 ms | 0.96 ms | 1.74 ms | 2.36 ms | 3.05 ms | **0.00%** |
-|---|---|---|---|---|---|---|---|---|---|---|---|
 | **`/actuator/health` (Live DB Pool)** | 1 | 20 | **4.0** | **251.56 ms** | 231.85 ms | 473.54 ms | 235.30 ms | 278.13 ms | 473.54 ms | 473.54 ms | **0.00%** |
 | | 5 | 50 | **14.2** | **346.05 ms** | 230.34 ms | 694.09 ms | 302.64 ms | 463.04 ms | 463.64 ms | 694.09 ms | **0.00%** |
 | | 10 | 100 | **22.7** | **420.46 ms** | 230.38 ms | 976.51 ms | 454.10 ms | 504.31 ms | 680.42 ms | 976.51 ms | **0.00%** |
@@ -152,7 +155,7 @@ Latency (ms)
 ## V. ĐÁNH GIÁ CƠ SỞ DỮ LIỆU & GIAO DỊCH (DATABASE & TRANSACTION INTEGRITY)
 
 ### 1. Phân tích lược đồ và chỉ mục (Schema & Migration Analysis)
-Cơ sở dữ liệu được quản lý qua 20 phiên bản Flyway migration (V1.0 đến V1.19), hiện đang ở version V1.19:
+Cơ sở dữ liệu được quản lý qua **20 phiên bản Flyway migration (`V1`–`V1.19`)** tại thời điểm snapshot `2026-10-31` *(sau đó đã mở rộng lên **22 migrations `V1`–`V1.21`** để bổ sung hệ thống phân quyền 6 vai trò RBAC)*:
 * **Các chỉ mục một phần (Partial Unique Indexes) xuất sắc:**
   * `ux_orders_one_active_per_table` (`ON orders (table_id) WHERE is_deleted = false AND status IN ('PENDING', 'SERVING', ...)`): Đảm bảo ở tầng cơ sở dữ liệu không bao giờ xảy ra tình trạng 1 bàn mở 2 hóa đơn active cùng lúc.
   * `ux_table_session_tables_one_active_per_table` (`ON table_session_tables (table_id) WHERE is_deleted = false AND status = 'ACTIVE'`): Đảm bảo 1 bàn vật lý chỉ thuộc về duy nhất 1 phiên khách hoạt động.
@@ -266,7 +269,7 @@ LỘ TRÌNH PHÁT TRIỂN & TỐI ƯU HÓA KIẾN TRÚC QROS
 ==================================================================================================
 
 Giai đoạn 1: Khắc phục Khẩn cấp & Củng cố (1 - 3 Tháng)
-├── [Bảo mật] Vá lỗi Account Enumeration tại AuthController (/forgot-password-email)
+├── [Bảo mật — ĐÃ HOÀN THÀNH] Vá lỗi Account Enumeration tại AuthController (/forgot-password-email) — BUG-SEC-01
 ├── [Hạ tầng] Di chuyển Database về vùng Đông Nam Á (AWS ap-southeast-1) để giảm ping xuống 30ms
 ├── [Hiệu năng] Tinh chỉnh HikariCP: maximum-pool-size=25, minimum-idle=5, connection-timeout=30s
 └── [Log & Giám sát] Khắc phục cảnh báo TaskScheduler, bổ sung Dashboard Prometheus/Grafana

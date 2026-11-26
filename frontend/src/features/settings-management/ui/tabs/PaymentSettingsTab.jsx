@@ -1,4 +1,4 @@
-import { Banknote, CheckCircle2, CreditCard, QrCode } from 'lucide-react';
+import { Banknote, CheckCircle2, CreditCard, QrCode, Smartphone } from 'lucide-react';
 import { SaveButton } from '@shared/ui';
 
 import {
@@ -7,9 +7,18 @@ import {
   TextField,
   ToggleRow,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
-const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, copy }) => (
+const PaymentSettingsTab = ({
+  settings,
+  setSettings,
+  saving,
+  saveDisabled,
+  onSave,
+  copy,
+  errors = {},
+  onClearError,
+}) => (
   <section className="min-w-0">
     <SectionHeader icon={CreditCard} title={copy.payment.title} subtitle={copy.payment.subtitle} />
 
@@ -41,21 +50,36 @@ const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSav
           min="1"
           max="120"
           value={settings.paymentQrExpiresInMinutes}
-          onChange={(value) => setSettingsValue(setSettings, 'paymentQrExpiresInMinutes', value)}
+          error={errors?.paymentQrExpiresInMinutes}
+          onChange={(value) => {
+            setSettingsValue(setSettings, 'paymentQrExpiresInMinutes', value);
+            onClearError?.('paymentQrExpiresInMinutes');
+          }}
           className="max-w-md"
         />
       </SettingsGroup>
 
       <SettingsGroup title={copy.payment.settlementTitle}>
-        <ToggleRow
-          icon={CheckCircle2}
-          title={copy.payment.allowSettlementWithUnfinishedItems}
-          description={copy.payment.allowSettlementWithUnfinishedItemsDesc}
-          checked={settings.allowSettlementWithUnfinishedItems}
-          onChange={(value) =>
-            setSettingsValue(setSettings, 'allowSettlementWithUnfinishedItems', value)
-          }
-        />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ToggleRow
+            icon={CheckCircle2}
+            title={copy.payment.allowSettlementWithUnfinishedItems}
+            description={copy.payment.allowSettlementWithUnfinishedItemsDesc}
+            checked={settings.allowSettlementWithUnfinishedItems}
+            onChange={(value) =>
+              setSettingsValue(setSettings, 'allowSettlementWithUnfinishedItems', value)
+            }
+          />
+          <ToggleRow
+            icon={Smartphone}
+            title={copy.payment.customerSelfCheckoutEnabled}
+            description={copy.payment.customerSelfCheckoutEnabledDesc}
+            checked={settings.customerSelfCheckoutEnabled}
+            onChange={(value) =>
+              setSettingsValue(setSettings, 'customerSelfCheckoutEnabled', value)
+            }
+          />
+        </div>
       </SettingsGroup>
     </div>
 

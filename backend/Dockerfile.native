@@ -1,31 +1,31 @@
-# Stage 1: Build native image với GraalVM
-FROM ghcr.io/graalbuilds/graalvm-community:21 AS builder
+# Stage 1: Build native image with GraalVM 25 (build context: repository root `.`)
+FROM ghcr.io/graalvm/native-image-community:25 AS builder
 WORKDIR /app
 
-# Cài đặt native-image
-RUN gu install native-image
+# Install Maven (wrapper-free reproducible build)
+RUN microdnf install -y maven && microdnf clean all
 
-# Copy pom.xml và cache dependencies
-COPY pom.xml ./
-RUN mvn dependency:go-offline -B
+# Copy pom.xml and cache dependencies
+COPY backend/pom.xml ./backend/
+RUN mvn -f backend/pom.xml dependency:go-offline -B
 
-# Copy source và build native image
-COPY src ./src
-RUN mvn -Pnative native:compile -DskipTests -B
+# Copy source and compile native binary
+COPY backend/src ./backend/src
+RUN mvn -f backend/pom.xml -Pnative native:compile -DskipTests -Dspotless.check.skip=true -B
 
-# Stage 2: Runtime siêu nhẹ — chỉ cần glibc
+# Stage 2: Minimal runtime image
 FROM alpine:3.20
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl tzdata curl && \
+    addgroup -S spring && adduser -S spring -G spring
 
-# Timezone
-RUN apk add --no-cache tzdata
 ENV TZ="Asia/Ho_Chi_Minh"
-
-# Tạo user không root
-RUN addgroup -S spring && adduser -S spring -G spring
 USER spring
+WORKDIR /app
 
-COPY --chown=spring:spring --from=builder /app/target/qros-backend /app/
+COPY --chown=spring:spring --from=builder /app/backend/target/qros-backend /app/qros-backend
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f "http://localhost:${PORT:-8080}/actuator/health/liveness" || exit 1
 
 EXPOSE 8080
 ENTRYPOINT ["/app/qros-backend"]

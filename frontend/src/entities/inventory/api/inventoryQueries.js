@@ -11,13 +11,6 @@ export const useInventoryPageQuery = ({ keyword, stockFilter, page, size } = {},
     ...options,
   });
 
-export const useInventoryItemsQuery = (params = {}, options = {}) =>
-  useQuery({
-    queryKey: [...queryKeys.inventory.all, 'items', params],
-    queryFn: () => inventoryService.getItems(params),
-    ...options,
-  });
-
 export const useInventorySummaryQuery = (options = {}) =>
   useQuery({
     queryKey: [...queryKeys.inventory.all, 'summary'],
@@ -29,13 +22,5 @@ export const useStockMovementsQuery = (params = {}, options = {}) =>
   useQuery({
     queryKey: [...queryKeys.inventory.all, 'movements', params],
     queryFn: () => inventoryService.getMovements(params),
-    ...options,
-  });
-
-export const useRecipeQuery = (menuItemId, options = {}) =>
-  useQuery({
-    queryKey: [...queryKeys.inventory.all, 'recipe', menuItemId],
-    queryFn: () => inventoryService.getRecipe(menuItemId),
-    enabled: !!menuItemId,
     ...options,
   });

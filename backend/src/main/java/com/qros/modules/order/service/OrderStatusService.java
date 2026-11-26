@@ -1,8 +1,7 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.order.dto.response.OrderResponse;
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import com.qros.modules.order.listener.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
@@ -15,10 +14,11 @@ import com.qros.modules.order.state.OrderStateFactory;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.model.User;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,11 +36,12 @@ public class OrderStatusService {
     private final OrderAuditService orderAuditService;
     private final OrderTableSyncService orderTableSyncService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final InventoryReservationService inventoryReservationService;
+    private final OrderInventoryReservationPort inventoryReservationService;
     private final ApplicationEventPublisher eventPublisher;
     private final OrderMapper orderMapper;
     private final TableSessionService tableSessionService;
-    private final UserRepository userRepository;
+    private final UserLookupService userRepository;
+    private final OrderPaymentPort orderPaymentPort;
 
     public OrderStatusService(
             OrderRepository orderRepository,
@@ -48,7 +49,7 @@ public class OrderStatusService {
             OrderAuditService orderAuditService,
             OrderTableSyncService orderTableSyncService,
             OrderCacheInvalidationService orderCacheInvalidationService,
-            InventoryReservationService inventoryReservationService,
+            OrderInventoryReservationPort inventoryReservationService,
             ApplicationEventPublisher eventPublisher,
             OrderMapper orderMapper,
             TableSessionService tableSessionService) {
@@ -62,6 +63,32 @@ public class OrderStatusService {
                 eventPublisher,
                 orderMapper,
                 tableSessionService,
+                null,
+                null);
+    }
+
+    public OrderStatusService(
+            OrderRepository orderRepository,
+            OrderStateFactory orderStateFactory,
+            OrderAuditService orderAuditService,
+            OrderTableSyncService orderTableSyncService,
+            OrderCacheInvalidationService orderCacheInvalidationService,
+            OrderInventoryReservationPort inventoryReservationService,
+            ApplicationEventPublisher eventPublisher,
+            OrderMapper orderMapper,
+            TableSessionService tableSessionService,
+            UserLookupService userRepository) {
+        this(
+                orderRepository,
+                orderStateFactory,
+                orderAuditService,
+                orderTableSyncService,
+                orderCacheInvalidationService,
+                inventoryReservationService,
+                eventPublisher,
+                orderMapper,
+                tableSessionService,
+                userRepository,
                 null);
     }
 
@@ -72,11 +99,12 @@ public class OrderStatusService {
             OrderAuditService orderAuditService,
             OrderTableSyncService orderTableSyncService,
             OrderCacheInvalidationService orderCacheInvalidationService,
-            InventoryReservationService inventoryReservationService,
+            OrderInventoryReservationPort inventoryReservationService,
             ApplicationEventPublisher eventPublisher,
             OrderMapper orderMapper,
             TableSessionService tableSessionService,
-            UserRepository userRepository) {
+            UserLookupService userRepository,
+            OrderPaymentPort orderPaymentPort) {
         this.orderRepository = orderRepository;
         this.orderStateFactory = orderStateFactory;
         this.orderAuditService = orderAuditService;
@@ -87,6 +115,7 @@ public class OrderStatusService {
         this.orderMapper = orderMapper;
         this.tableSessionService = tableSessionService;
         this.userRepository = userRepository;
+        this.orderPaymentPort = orderPaymentPort;
     }
 
     private User resolveUserByEmail(String email) {
@@ -123,7 +152,15 @@ public class OrderStatusService {
         OrderStatus fromStatus = order.getStatus();
 
         OrderState state = orderStateFactory.getState(targetStatus);
-        state.handleRequest(order);
+        try {
+            state.handleRequest(order);
+        } catch (IllegalStateException e) {
+            throw new BusinessException(
+                    targetStatus == OrderStatus.AWAITING_PAYMENT
+                            ? ErrorCode.ORDER_HAS_UNFINISHED_ITEMS
+                            : ErrorCode.ORDER_INVALID_STATE,
+                    e.getMessage());
+        }
 
         orderAuditService.recordOrderStatus(order, fromStatus, order.getStatus(), null, "manual-status-update");
 
@@ -150,6 +187,10 @@ public class OrderStatusService {
         if (!order.canBeCancelled()) {
             throw new BusinessException(ErrorCode.ORDER_INVALID_STATE, "Cannot cancel this order in current state");
         }
+
+        ensureNoPendingPayment(order, "Cannot cancel an order while an online payment is in progress");
+
+        List<String> tableCodes = orderCacheInvalidationService.resolveTableCodes(order);
 
         OrderStatus fromStatus = order.getStatus();
         User changedBy = resolveUserByEmail(actorEmail);
@@ -180,7 +221,7 @@ public class OrderStatusService {
             tableSessionService.closeSession(
                     saved.getTableSession().getId(), TableSessionStatus.CANCELLED, auditReason);
         }
-        orderCacheInvalidationService.evictAfterOrderMutation(saved);
+        orderCacheInvalidationService.evictAfterOrderMutation(saved, tableCodes);
         eventPublisher.publishEvent(new OrderChangeEvent());
 
         return orderMapper.toResponse(saved);
@@ -196,6 +237,10 @@ public class OrderStatusService {
             throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "Cannot delete a paid or completed order");
         }
 
+        ensureNoPendingPayment(order, "Cannot delete an order while an online payment is in progress");
+
+        List<String> tableCodes = orderCacheInvalidationService.resolveTableCodes(order);
+
         restoreReservableItems(order);
 
         orderTableSyncService.releaseTable(order);
@@ -206,7 +251,7 @@ public class OrderStatusService {
 
         orderRepository.delete(order);
 
-        orderCacheInvalidationService.evictAfterOrderMutation(order);
+        orderCacheInvalidationService.evictAfterOrderMutation(order, tableCodes);
         eventPublisher.publishEvent(new OrderChangeEvent());
     }
 
@@ -235,12 +280,32 @@ public class OrderStatusService {
                 .anyMatch(item ->
                         item.getStatus() == OrderItemStatus.COOKING || item.getStatus() == OrderItemStatus.FINISHED);
 
-        if (allDone && order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+        if (allDone && order.isPaid()) {
+            List<String> tableCodes = orderCacheInvalidationService.resolveTableCodes(order);
+            applyAutoTransition(order, OrderStatus.COMPLETED, changedBy, "auto-paid-all-items-done");
+            if (order.getTableSession() != null) {
+                tableSessionService.closeSession(
+                        order.getTableSession().getId(), TableSessionStatus.CLOSED, "Order settled");
+            } else {
+                orderTableSyncService.recalcTableStatus(order);
+            }
+            orderCacheInvalidationService.evictAfterOrderMutation(order, tableCodes);
+            eventPublisher.publishEvent(new OrderSettledEvent(
+                    order.getId(), order.getBusinessDate() != null ? order.getBusinessDate() : AppTime.today()));
+        } else if (allDone && order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
             applyAutoTransition(order, OrderStatus.AWAITING_PAYMENT, changedBy, "auto-all-items-done");
         } else if (!allDone && order.getStatus() == OrderStatus.AWAITING_PAYMENT) {
             applyAutoTransition(order, OrderStatus.SERVING, changedBy, "auto-items-reopened");
         } else if (anyCookingOrFinished && order.getStatus() == OrderStatus.PENDING) {
             applyAutoTransition(order, OrderStatus.SERVING, changedBy, "auto-kitchen-started");
+        }
+    }
+
+    private void ensureNoPendingPayment(Order order, String message) {
+        if (orderPaymentPort != null
+                && order.getId() != null
+                && orderPaymentPort.hasPendingPaymentForOrder(order.getId())) {
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_IN_PROGRESS, message);
         }
     }
 

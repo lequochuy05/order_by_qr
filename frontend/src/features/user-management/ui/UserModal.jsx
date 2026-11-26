@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, Mail, Phone, Power, Shield, User } from 'lucide-react';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { USER_STATUS } from '@shared/lib/formatters.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 import {
@@ -175,7 +175,7 @@ const UserModal = ({ isOpen, onClose, data: incomingData, initialData, onSubmit,
       <form
         id="staffForm"
         onSubmit={handleSubmit}
-        className="custom-scrollbar space-y-6 overflow-y-auto p-6 sm:p-8"
+        className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 sm:p-8"
         noValidate
       >
         <ImageUploadField

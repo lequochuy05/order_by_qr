@@ -1,7 +1,7 @@
 import { Bell, Moon, Sun, Volume2 } from 'lucide-react';
 
 import { SectionHeader, ToggleRow } from '../components/FormControls.jsx';
-import { setPreferenceValue } from '../settingsUtils.js';
+import { setPreferenceValue } from '@features/settings-management/lib/settingsUtils.js';
 
 const PreferencesTab = ({ preferences, setPreferences, copy }) => (
   <section className="min-w-0">

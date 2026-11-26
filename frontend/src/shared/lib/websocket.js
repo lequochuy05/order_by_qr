@@ -1,6 +1,10 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { getAccessToken } from '@shared/api/httpClient.js';
+import {
+  getAccessToken,
+  isAccessTokenExpiringSoon,
+  refreshAccessToken,
+} from '@shared/api/httpClient.js';
 
 class WebSocketService {
   constructor({ name = 'websocket', authenticated = false } = {}) {
@@ -30,7 +34,16 @@ class WebSocketService {
     const client = new Client({
       webSocketFactory: () => new SockJS(wsUrl),
       connectHeaders: this.getConnectHeaders(),
-      beforeConnect: (stompClient) => {
+      beforeConnect: async (stompClient) => {
+        if (this.authenticated && isAccessTokenExpiringSoon()) {
+          try {
+            await refreshAccessToken();
+          } catch (refreshError) {
+            throw new Error(
+              `${this.name} WebSocket token refresh failed: ${refreshError?.message || 'unauthorized'}`,
+            );
+          }
+        }
         if (!this.canConnect()) {
           throw new Error(`${this.name} WebSocket requires an access token`);
         }

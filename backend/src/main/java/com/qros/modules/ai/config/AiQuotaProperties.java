@@ -16,30 +16,31 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "ai.quota")
 public class AiQuotaProperties {
 
-    @Valid
-    private Policy publicIp = new Policy(10, Duration.ofMinutes(1));
+    @Valid private Policy publicIp = new Policy(10, Duration.ofMinutes(1));
 
-    @Valid
-    private Policy publicIpDaily = new Policy(100, Duration.ofDays(1));
+    @Valid private Policy publicIpDaily = new Policy(100, Duration.ofDays(1));
 
-    @Valid
-    private Policy staffUser = new Policy(20, Duration.ofMinutes(1));
+    @Valid private Policy staffUser = new Policy(20, Duration.ofMinutes(1));
 
-    @Valid
-    private Policy staffUserDaily = new Policy(300, Duration.ofDays(1));
+    @Valid private Policy staffUserDaily = new Policy(300, Duration.ofDays(1));
 
-    @Valid
-    private Policy menuUser = new Policy(10, Duration.ofMinutes(1));
+    @Valid private Policy menuUser = new Policy(10, Duration.ofMinutes(1));
 
-    @Valid
-    private Policy menuUserDaily = new Policy(100, Duration.ofDays(1));
+    @Valid private Policy menuUserDaily = new Policy(100, Duration.ofDays(1));
+
+    @Valid private Policy insightsUser = new Policy(10, Duration.ofMinutes(1));
+
+    @Valid private Policy insightsUserDaily = new Policy(80, Duration.ofDays(1));
+
+    @Valid private Policy operationsUser = new Policy(15, Duration.ofMinutes(1));
+
+    @Valid private Policy operationsUserDaily = new Policy(150, Duration.ofDays(1));
 
     @Getter
     @Setter
     @NoArgsConstructor
     public static class Policy {
-        @Min(1)
-        private int maxRequests;
+        @Min(1) private int maxRequests;
 
         @NotNull private Duration window;
 

@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { Boxes, PackagePlus, Pencil, SlidersHorizontal } from 'lucide-react';
 
 import { fmtQty, numberValue } from '@features/inventory-management/lib/inventoryFormat.js';
+import { fmtVND } from '@shared/lib/formatters.js';
 import StockBadge from './StockBadge.jsx';
 
 const ActionButton = ({ icon, label, onClick, tone }) => {
@@ -61,6 +62,14 @@ const InventoryCard = ({ item, onEdit, onStockIn, onAdjust, isManager = true }) 
       </div>
 
       <div className="mb-6 flex-grow relative z-10">
+        {numberValue(item.unitCost) > 0 && (
+          <div className="mb-2 flex items-center justify-between text-xs font-semibold">
+            <span className="text-slate-400 dark:text-slate-500">Đơn giá nhập</span>
+            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+              {fmtVND(item.unitCost)} / {item.unit}
+            </span>
+          </div>
+        )}
         <div className="mb-2 flex items-center justify-between text-xs font-semibold">
           <span className="text-slate-400 dark:text-slate-500">Ngưỡng cảnh báo</span>
           <span className="font-mono text-slate-700 dark:text-slate-300">

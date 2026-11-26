@@ -3,10 +3,6 @@ package com.qros.modules.auth.service;
 import com.qros.modules.auth.config.AuthLockoutProperties;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,8 +22,7 @@ public class AccountLockoutService {
     private static final String LOCKOUT_ATTEMPTS_PREFIX = "auth:lockout:failed:";
     private static final String LOCKOUT_LOCKED_PREFIX = "auth:lockout:locked:";
 
-    private static final DefaultRedisScript<Long> RECORD_FAILED_SCRIPT = new DefaultRedisScript<>(
-            """
+    private static final DefaultRedisScript<Long> RECORD_FAILED_SCRIPT = new DefaultRedisScript<>("""
             local current = redis.call('INCR', KEYS[1])
             if current == 1 then
                 redis.call('EXPIRE', KEYS[1], ARGV[1])
@@ -37,8 +32,7 @@ public class AccountLockoutService {
                 redis.call('DEL', KEYS[1])
             end
             return current
-            """,
-            Long.class);
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final AuthLockoutProperties properties;
@@ -137,11 +131,6 @@ public class AccountLockoutService {
     }
 
     private String digest(String value) {
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("SHA-256 algorithm unavailable", ex);
-        }
+        return com.qros.shared.security.HashUtils.sha256Hex(value);
     }
 }

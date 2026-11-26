@@ -7,7 +7,7 @@ import {
   SettingsGroup,
   TextField,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
 const WifiSettingsTab = ({
   settings,
@@ -17,6 +17,8 @@ const WifiSettingsTab = ({
   onSave,
   wifiQrValue,
   copy,
+  errors = {},
+  onClearError,
 }) => (
   <section className="min-w-0">
     <SectionHeader icon={Wifi} title={copy.wifi.title} subtitle={copy.wifi.subtitle} />
@@ -27,13 +29,21 @@ const WifiSettingsTab = ({
             label={copy.wifi.ssid}
             description={copy.wifi.ssidHelp}
             value={settings.wifiName}
-            onChange={(value) => setSettingsValue(setSettings, 'wifiName', value)}
+            error={errors?.wifiName}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'wifiName', value);
+              onClearError?.('wifiName');
+            }}
           />
           <TextField
             label={copy.wifi.password}
             description={copy.wifi.passwordHelp}
             value={settings.wifiPassword}
-            onChange={(value) => setSettingsValue(setSettings, 'wifiPassword', value)}
+            error={errors?.wifiPassword}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'wifiPassword', value);
+              onClearError?.('wifiPassword');
+            }}
           />
         </div>
       </SettingsGroup>

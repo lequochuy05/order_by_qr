@@ -17,9 +17,12 @@ public interface TableSessionTokenRepository extends JpaRepository<TableSessionT
     @EntityGraph(attributePaths = {"session", "session.table"})
     Optional<TableSessionToken> findFirstByTokenHashAndRevokedAtIsNull(String tokenHash);
 
+    boolean existsBySession_IdAndTokenHash(Long sessionId, String tokenHash);
+
+    boolean existsBySession_Id(Long sessionId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT t FROM TableSessionToken t
             WHERE t.session.id = :sessionId
               AND t.revokedAt IS NULL
@@ -28,8 +31,7 @@ public interface TableSessionTokenRepository extends JpaRepository<TableSessionT
     List<TableSessionToken> findActiveBySessionIdForUpdate(@Param("sessionId") Long sessionId);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE TableSessionToken t
             SET t.revokedAt = :now
             WHERE t.session.id = :sessionId

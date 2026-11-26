@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useInRouterContext } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -97,12 +97,22 @@ const runClientAction = (action) => {
 };
 
 const ErrorAction = ({ action, variant = 'primary' }) => {
+  const inRouter = useInRouterContext();
+
   if (!action) return null;
 
   const Icon = actionIcons[action.icon] || actionIcons.home;
   const className = `${actionBaseClass} ${actionVariants[variant]}`;
 
   if (action.type === 'link' && action.to) {
+    if (!inRouter) {
+      return (
+        <a href={action.to} className={className}>
+          <Icon size={17} aria-hidden="true" />
+          {action.label}
+        </a>
+      );
+    }
     return (
       <Link to={action.to} className={className}>
         <Icon size={17} aria-hidden="true" />

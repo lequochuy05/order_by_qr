@@ -30,7 +30,6 @@ public final class Admin2faTemplateBuilder {
                   <p style="margin: 0;">&copy; %s. Tất cả các quyền được bảo lưu.</p>
               </div>
             </div>
-            """
-                .formatted(brandName, otp, copyright);
+            """.formatted(brandName, otp, copyright);
     }
 }

@@ -2,7 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '@features/auth';
+import { AuthProvider } from '@entities/session';
 import { queryClient } from '@shared/api/queryClient.js';
 import { useRegisterSW } from '@shared/lib/pwa.js';
 import { WebSocketInvalidator } from './WebSocketInvalidator.jsx';

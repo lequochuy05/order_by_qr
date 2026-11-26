@@ -7,10 +7,15 @@ import java.util.List;
 
 public record StaffCreateOrderRequest(
         Long tableId,
-        @Valid List<OrderComboRequest> combos,
-        @Valid List<OrderItemRequest> items,
+
+        @Valid @Size(max = 50, message = "Maximum 50 combos per order") List<OrderComboRequest> combos,
+
+        @Valid @Size(max = 50, message = "Maximum 50 items per order") List<OrderItemRequest> items,
+
         @Size(max = 50, message = "Voucher code must not exceed 50 characters") String voucherCode,
+
         OrderType orderType,
+
         @Size(max = 100, message = "Client request ID must not exceed 100 characters") String clientRequestId) {
 
     public StaffCreateOrderRequest(

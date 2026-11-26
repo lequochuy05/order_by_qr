@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { authService } from '@shared/api/authService.js';
-import { AuthRainBackground } from '@shared/ui';
+import { authService } from '@entities/session';
+import { AuthRainBackground } from '@features/auth';
 import { Lock, Loader2, AlertCircle, CheckCircle, Eye, EyeOff, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 

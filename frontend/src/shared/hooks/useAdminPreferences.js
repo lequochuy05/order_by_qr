@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { create } from 'zustand';
 
-export const adminPreferencesStorageKey = 'admin_preferences';
-export const adminPreferencesEventName = 'admin-preferences-change';
+const adminPreferencesStorageKey = 'admin_preferences';
 
-export const defaultAdminPreferences = {
+const defaultAdminPreferences = {
   notificationSound: true,
   loudSound: false,
   darkMode: false,
@@ -21,43 +21,38 @@ export const readAdminPreferences = () => {
   }
 };
 
-const persistAdminPreferences = (preferences) => {
-  localStorage.setItem(adminPreferencesStorageKey, JSON.stringify(preferences));
-  window.dispatchEvent(new CustomEvent(adminPreferencesEventName, { detail: preferences }));
-};
+const useAdminPreferencesStore = create((set) => ({
+  preferences: readAdminPreferences(),
+  setPreferences: (updater) => {
+    set((state) => {
+      const next = typeof updater === 'function' ? updater(state.preferences) : updater;
+      try {
+        localStorage.setItem(adminPreferencesStorageKey, JSON.stringify(next));
+      } catch {
+        // Storage not available
+      }
+      return { preferences: next };
+    });
+  },
+  syncPreferences: () => set({ preferences: readAdminPreferences() }),
+}));
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === adminPreferencesStorageKey) {
+      useAdminPreferencesStore.getState().syncPreferences();
+    }
+  });
+}
 
 export const useAdminPreferences = () => {
-  const [preferences, setPreferenceState] = useState(() => readAdminPreferences());
-
-  const setPreferences = useCallback((updater) => {
-    setPreferenceState((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistAdminPreferences(next);
-      return next;
-    });
-  }, []);
+  const preferences = useAdminPreferencesStore((state) => state.preferences);
+  const setPreferences = useAdminPreferencesStore((state) => state.setPreferences);
 
   useEffect(() => {
-    const handlePreferenceChange = (event) => {
-      setPreferenceState(event.detail || readAdminPreferences());
-    };
-    const handleStorageChange = (event) => {
-      if (event.key === adminPreferencesStorageKey) {
-        setPreferenceState(readAdminPreferences());
-      }
-    };
-
-    window.addEventListener(adminPreferencesEventName, handlePreferenceChange);
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener(adminPreferencesEventName, handlePreferenceChange);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', Boolean(preferences.darkMode));
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.toggle('dark', Boolean(preferences.darkMode));
+    }
   }, [preferences.darkMode]);
 
   return [preferences, setPreferences];

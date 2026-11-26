@@ -50,6 +50,11 @@ public class CategoryController {
         return ApiResponse.success(categoryService.search(q, pageable));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<CategoryResponse> getById(@PathVariable @NonNull Long id) {
+        return ApiResponse.success(categoryService.getById(id));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<CategoryResponse>> create(@Valid @RequestBody @NonNull CategoryRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)

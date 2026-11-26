@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.TokenBlacklistService;
 import com.qros.shared.time.AppTime;
@@ -85,6 +86,33 @@ class WebSocketConfigTest {
     }
 
     @Test
+    void chefCanSubscribeToKitchenOrdersAndInventory() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+
+        for (String topic : java.util.List.of("/topic/kitchen", "/topic/orders", "/topic/inventory")) {
+            Message<byte[]> message = subscribeMessage(topic, auth);
+            assertThatCode(() -> config.webSocketAuthInterceptor()
+                            .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Test
+    void chefCannotSubscribeToUsersOrVouchersTopic() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+
+        for (String topic : java.util.List.of("/topic/users", "/topic/vouchers", "/topic/promotions")) {
+            Message<byte[]> message = subscribeMessage(topic, auth);
+            assertThatThrownBy(() -> config.webSocketAuthInterceptor()
+                            .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Insufficient role");
+        }
+    }
+
+    @Test
     void adminCanSubscribeToKitchenTopicWithRoleHierarchy() {
         org.springframework.security.access.hierarchicalroles.RoleHierarchy hierarchy =
                 org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl.fromHierarchy(
@@ -99,6 +127,43 @@ class WebSocketConfigTest {
                         .webSocketAuthInterceptor()
                         .preSend(message, mock(org.springframework.messaging.MessageChannel.class)))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void serviceRequestsTopicEnforcesStaffHierarchyAndBlocksChefAndAnonymous() {
+        org.springframework.security.access.hierarchicalroles.RoleHierarchy hierarchy =
+                org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl.fromHierarchy(
+                        "ROLE_ADMIN > ROLE_MANAGER \n"
+                                + "ROLE_MANAGER > ROLE_CASHIER \n"
+                                + "ROLE_MANAGER > ROLE_CHEF \n"
+                                + "ROLE_CASHIER > ROLE_STAFF");
+        WebSocketConfig hierarchicalConfig = new WebSocketConfig(
+                jwtService, userDetailsService, new AppProperties(), tokenBlacklistService, hierarchy);
+
+        Message<byte[]> anonMsg = subscribeMessage("/topic/service-requests", null);
+        assertThatThrownBy(() -> hierarchicalConfig
+                        .webSocketAuthInterceptor()
+                        .preSend(anonMsg, mock(org.springframework.messaging.MessageChannel.class)))
+                .isInstanceOf(AccessDeniedException.class);
+
+        UsernamePasswordAuthenticationToken chefAuth = new UsernamePasswordAuthenticationToken(
+                "chef", null, java.util.List.of(new SimpleGrantedAuthority("ROLE_CHEF")));
+        Message<byte[]> chefMsg = subscribeMessage("/topic/service-requests", chefAuth);
+        assertThatThrownBy(() -> hierarchicalConfig
+                        .webSocketAuthInterceptor()
+                        .preSend(chefMsg, mock(org.springframework.messaging.MessageChannel.class)))
+                .isInstanceOf(AccessDeniedException.class)
+                .hasMessageContaining("Insufficient role");
+
+        for (String role : java.util.List.of("ROLE_STAFF", "ROLE_CASHIER", "ROLE_MANAGER", "ROLE_ADMIN")) {
+            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                    role.toLowerCase(), null, java.util.List.of(new SimpleGrantedAuthority(role)));
+            Message<byte[]> msg = subscribeMessage("/topic/service-requests", auth);
+            assertThatCode(() -> hierarchicalConfig
+                            .webSocketAuthInterceptor()
+                            .preSend(msg, mock(org.springframework.messaging.MessageChannel.class)))
+                    .doesNotThrowAnyException();
+        }
     }
 
     @Test

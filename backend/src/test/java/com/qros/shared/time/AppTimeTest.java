@@ -1,0 +1,47 @@
+package com.qros.shared.time;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.ZoneId;
+import java.util.TimeZone;
+import org.junit.jupiter.api.Test;
+
+class AppTimeTest {
+
+    @Test
+    void applicationTimeUsesHoChiMinhZone() {
+        assertThat(AppTime.ZONE_ID).isEqualTo("Asia/Ho_Chi_Minh");
+        assertThat(AppTime.ZONE).isEqualTo(ZoneId.of("Asia/Ho_Chi_Minh"));
+    }
+
+    @Test
+    void configureSystemDefaultTimeZoneUsesApplicationZone() {
+        TimeZone previous = TimeZone.getDefault();
+        String previousProperty = System.getProperty("user.timezone");
+
+        try {
+            AppTime.configureSystemDefaultTimeZone();
+
+            assertThat(TimeZone.getDefault().toZoneId()).isEqualTo(AppTime.ZONE);
+            assertThat(System.getProperty("user.timezone")).isEqualTo(AppTime.ZONE_ID);
+        } finally {
+            TimeZone.setDefault(previous);
+            if (previousProperty == null) {
+                System.clearProperty("user.timezone");
+            } else {
+                System.setProperty("user.timezone", previousProperty);
+            }
+        }
+    }
+
+    @Test
+    void applicationYamlConfiguresSerializationAndJdbcTimeZonesWithoutConnectionInitSql() throws Exception {
+        String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
+
+        assertThat(yaml).contains("time-zone: Asia/Ho_Chi_Minh");
+        assertThat(yaml).contains("time_zone: Asia/Ho_Chi_Minh");
+        assertThat(yaml).doesNotContain("connection-init-sql");
+    }
+}

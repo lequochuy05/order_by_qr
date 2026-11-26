@@ -1,27 +1,24 @@
 package com.qros.modules.ai.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.dto.request.AiMenuDescriptionRequest;
 import com.qros.modules.ai.dto.response.AiMenuDescriptionResponse;
 import com.qros.modules.ai.gateway.AiChatGateway;
+import com.qros.modules.ai.support.AiJsonExtractor;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
 public class AiMenuDescriptionService {
-
-    private static final String FALLBACK_PREFIX = "Xin lỗi";
-    private static final String ERROR_PREFIX = "Tính năng trợ lý";
 
     private final AiChatGateway aiChatGateway;
     private final AiPromptBuilder promptBuilder;
@@ -54,7 +51,7 @@ public class AiMenuDescriptionService {
 
         aiRequestsCounter.increment();
 
-        if (reply == null || reply.isBlank() || reply.startsWith(FALLBACK_PREFIX) || reply.startsWith(ERROR_PREFIX)) {
+        if (!AiJsonExtractor.isUsableModelOutput(reply)) {
             log.warn("AI description generation failed: {}", reply);
             throw new BusinessException(
                     ErrorCode.APP_ERROR, "AI không thể tạo mô tả ngay lúc này. Vui lòng thử lại sau.");
@@ -65,35 +62,18 @@ public class AiMenuDescriptionService {
 
     private AiMenuDescriptionResponse parseResponse(String reply) {
         try {
-            String json = reply;
-            if (json.contains("```json")) {
-                json = json.substring(json.indexOf("```json") + 7, json.lastIndexOf("```"));
-            } else if (json.contains("```")) {
-                json = json.substring(json.indexOf("```") + 3, json.lastIndexOf("```"));
-            }
-            json = json.trim();
-
-            int firstBrace = json.indexOf('{');
-            int lastBrace = json.lastIndexOf('}');
-            if (firstBrace >= 0 && lastBrace > firstBrace) {
-                json = json.substring(firstBrace, lastBrace + 1);
-            } else {
+            JsonNode root = AiJsonExtractor.parseJsonObject(objectMapper, reply);
+            if (root == null) {
                 log.warn("AI response is not JSON (missing braces): {}", reply);
                 throw new BusinessException(
                         ErrorCode.APP_ERROR, "AI không thể tạo mô tả ngay lúc này. Vui lòng thử lại sau.");
             }
 
-            JsonNode root = objectMapper.readTree(json);
-
-            List<String> tasteTags = new ArrayList<>();
-            JsonNode tagsNode = root.path("tasteTags");
-            if (tagsNode.isArray()) {
-                tagsNode.forEach(tag -> tasteTags.add(tag.asText()));
-            }
+            List<String> tasteTags = AiJsonExtractor.readStringList(root.path("tasteTags"), 20);
 
             return new AiMenuDescriptionResponse(
-                    root.path("shortDescription").asText(""),
-                    root.path("engagingDescription").asText(""),
+                    root.path("shortDescription").asString(""),
+                    root.path("engagingDescription").asString(""),
                     tasteTags);
         } catch (BusinessException e) {
             throw e;

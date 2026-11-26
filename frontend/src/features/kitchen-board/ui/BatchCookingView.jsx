@@ -1,7 +1,10 @@
 import React, { useMemo } from 'react';
 import {
   AlertTriangle,
+  Ban,
+  BookOpen,
   Check,
+  CheckCircle2,
   ChefHat,
   Clock3,
   Flame,
@@ -10,20 +13,27 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { ORDER_ITEM_STATUSES } from '@entities/order';
+import { useConfirm } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
+import { useTranslation } from '@shared/lib/i18n';
+import { NoteSafetyBadges } from '@entities/ai';
 import { aggregateBatchCookingItems } from '../lib/kitchenItems.js';
+import { getAvailabilityTargetKey } from '../model/useKitchenOrders.js';
 
 const BatchCookingView = ({
   items,
   onBatchUpdateStatus,
   onUpdateStatus,
   onCancelItem,
+  onOpenRecipe,
+  onToggleAvailability,
   processingItems,
+  togglingAvailabilityKeys = new Set(),
 }) => {
+  const { language, isEn } = useTranslation('kitchen');
   const groups = useMemo(() => aggregateBatchCookingItems(items), [items]);
-  const { confirm } = useConfirmModal();
+  const confirm = useConfirm();
 
   const handleCancelItem = async (item) => {
     if (!onCancelItem || processingItems.has(item.id)) return;
@@ -62,6 +72,12 @@ const BatchCookingView = ({
           const cookingIds = group.cookingItems.map((i) => i.id);
           const hasPendingProcessing = pendingIds.some((id) => processingItems.has(id));
           const hasCookingProcessing = cookingIds.some((id) => processingItems.has(id));
+          const isAvailable = group.isAvailable !== false;
+          const hasCatalogLink = Boolean(group.menuItemId || group.comboId);
+          const availabilityKey = getAvailabilityTargetKey(group);
+          const isTogglingAvailability = Boolean(
+            availabilityKey && togglingAvailabilityKeys.has(availabilityKey),
+          );
 
           return (
             <article
@@ -86,10 +102,18 @@ const BatchCookingView = ({
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-slate-400">
-                      <Tag size={12} />
-                      {group.category}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider text-slate-400">
+                        <Tag size={12} />
+                        {group.category}
+                      </span>
+                      {!isAvailable && (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-black uppercase text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300">
+                          <Ban size={10} />
+                          {isEn ? 'Out of stock' : 'Tạm hết món'}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
                       {group.itemName}
                     </h3>
@@ -103,26 +127,89 @@ const BatchCookingView = ({
                     }`}
                   >
                     {group.isOverdue ? <AlertTriangle size={13} /> : <Clock3 size={13} />}
-                    {group.maxWaitMinutes} phút
+                    {group.maxWaitMinutes} {isEn ? 'mins' : 'phút'}
                   </span>
                 </div>
 
                 {/* Aggregate count badges */}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span className="rounded-xl bg-slate-900 px-3 py-1 font-mono text-sm font-black text-white dark:bg-slate-700">
-                    Tổng: x{group.totalQuantity}
+                    {isEn ? `Total: x${group.totalQuantity}` : `Tổng: x${group.totalQuantity}`}
                   </span>
                   {group.pendingQuantity > 0 && (
                     <span className="rounded-xl bg-amber-100 px-2.5 py-1 font-mono text-xs font-black text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                      Chờ: x{group.pendingQuantity}
+                      {isEn ? `Wait: x${group.pendingQuantity}` : `Chờ: x${group.pendingQuantity}`}
                     </span>
                   )}
                   {group.cookingQuantity > 0 && (
                     <span className="rounded-xl bg-indigo-100 px-2.5 py-1 font-mono text-xs font-black text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
-                      Đang nấu: x{group.cookingQuantity}
+                      {isEn
+                        ? `Cooking: x${group.cookingQuantity}`
+                        : `Đang nấu: x${group.cookingQuantity}`}
                     </span>
                   )}
                 </div>
+
+                {hasCatalogLink && (onOpenRecipe || onToggleAvailability) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {onOpenRecipe && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onOpenRecipe({
+                            menuItemId: group.menuItemId,
+                            comboId: group.comboId,
+                            isCombo: group.isCombo,
+                            itemName: group.itemName,
+                            category: group.category,
+                            quantity: group.totalQuantity,
+                            isAvailable,
+                          })
+                        }
+                        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-indigo-500/30 dark:hover:bg-indigo-500/15 dark:hover:text-indigo-300"
+                      >
+                        <BookOpen size={14} />
+                        {isEn
+                          ? `Recipe (x${group.totalQuantity})`
+                          : `Công thức (x${group.totalQuantity})`}
+                      </button>
+                    )}
+                    {onToggleAvailability && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onToggleAvailability({
+                            menuItemId: group.menuItemId,
+                            comboId: group.comboId,
+                            itemName: group.itemName,
+                            isAvailable,
+                          })
+                        }
+                        disabled={isTogglingAvailability}
+                        className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isAvailable
+                            ? 'border-rose-200 bg-rose-50/70 text-rose-700 hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {isTogglingAvailability ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : isAvailable ? (
+                          <Ban size={14} />
+                        ) : (
+                          <CheckCircle2 size={14} />
+                        )}
+                        {isAvailable
+                          ? isEn
+                            ? 'Mark out of stock'
+                            : 'Báo hết món'
+                          : isEn
+                            ? 'Re-enable'
+                            : 'Mở bán lại'}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Table details list */}
                 <div className="mt-4 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800">
@@ -170,9 +257,17 @@ const BatchCookingView = ({
                             </div>
 
                             {item.hasNotes && (
-                              <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                                <StickyNote size={12} className="shrink-0" />
-                                <span className="truncate">{item.notes}</span>
+                              <div className="mt-1 space-y-1">
+                                <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                                  <StickyNote size={12} className="shrink-0" />
+                                  <span className="truncate">{item.notes}</span>
+                                </div>
+                                <NoteSafetyBadges
+                                  note={item.notes}
+                                  safety={item.noteSafety}
+                                  language={language}
+                                  compact
+                                />
                               </div>
                             )}
 

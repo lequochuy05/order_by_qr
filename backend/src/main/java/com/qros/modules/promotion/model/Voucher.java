@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -28,13 +29,18 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@SQLDelete(sql = "UPDATE vouchers SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE vouchers SET is_deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @SQLRestriction("is_deleted = false")
 public class Voucher extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
 
     @Column(nullable = false, length = 50)
     private String code;
@@ -54,6 +60,10 @@ public class Voucher extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Integer usedCount = 0;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer reservedCount = 0;
 
     @Column(nullable = false)
     private LocalDateTime validFrom;

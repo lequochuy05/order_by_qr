@@ -1,7 +1,7 @@
 services:
   - type: web
     name: qros-backend
-    runtime: image
+    runtime: docker
     repo: https://github.com/lequochuy05/order-by-qr
     branch: master
     dockerfilePath: Dockerfile
@@ -11,10 +11,18 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DB_URL
+      - key: DB_HOST
         fromDatabase:
           name: qros-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: qros-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: qros-db
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: qros-db
@@ -33,8 +41,14 @@ services:
           type: redis
           name: qros-redis
           property: port
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL_ENABLED
+        value: false
       - key: JWT_SECRET
         generateValue: true
+      - key: QR_SIGNING_SECRET
+        sync: false
       - key: JWT_EXPIRATION_MS
         value: 900000
       - key: JWT_REFRESH_EXPIRATION_MS
@@ -47,6 +61,8 @@ services:
         sync: false
       - key: MAIL_PASSWORD
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY
@@ -58,7 +74,7 @@ services:
       - key: APP_FRONTEND_BASE_URL
         value: https://wqros.vercel.app
       - key: APP_CORS_ALLOWED_ORIGINS
-        value: https://wqros.vercel.app
+        value: https://wqros.vercel.app,https://localhost,capacitor://localhost
       - key: APP_TRUST_PROXY_HEADERS
         value: true
       - key: PAYOS_CLIENT_ID

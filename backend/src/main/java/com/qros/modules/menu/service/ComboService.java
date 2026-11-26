@@ -43,10 +43,16 @@ public class ComboService {
     private final PublicMenuMapper publicMenuMapper;
 
     private final ApplicationEventPublisher eventPublisher;
+    private final MenuInventoryAvailabilityPort inventoryAvailabilityService;
+    private final MenuCatalogOrderUsagePort orderUsagePort;
 
     @Cacheable(value = CacheNames.COMBOS, key = "'all_active'")
     public List<ComboResponse> getAllActive() {
-        return comboRepo.findAllActiveWithItems().stream()
+        List<Combo> combos = comboRepo.findAllActiveWithItems();
+        List<Long> comboIds = combos.stream().map(Combo::getId).toList();
+        Map<Long, Boolean> availability = inventoryAvailabilityService.getComboAvailabilityByIds(comboIds);
+        return combos.stream()
+                .filter(combo -> availability.getOrDefault(combo.getId(), true))
                 .map(comboMapper::toResponse)
                 .toList();
     }
@@ -65,12 +71,26 @@ public class ComboService {
 
     public Page<ComboResponse> searchSummaries(String keyword, Boolean active, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return comboRepo.searchSummaries(normalizedKeyword, active, pageable).map(comboMapper::toSummaryResponse);
+        Page<Combo> page = comboRepo.searchSummaries(normalizedKeyword, active, pageable);
+        List<Long> comboIds = page.getContent().stream().map(Combo::getId).toList();
+        Map<Long, Boolean> availability = inventoryAvailabilityService.getComboAvailabilityByIds(comboIds);
+
+        return page.map(combo -> {
+            ComboResponse response = comboMapper.toSummaryResponse(combo);
+            boolean effectiveAvailable =
+                    Boolean.TRUE.equals(combo.getAvailable()) && availability.getOrDefault(combo.getId(), true);
+            return applyAvailability(response, effectiveAvailable);
+        });
     }
 
     @Cacheable(value = CacheNames.COMBOS, key = "'item_' + #id", unless = "#result == null")
     public ComboResponse getById(@NonNull Long id) {
-        return comboMapper.toResponse(getEntityByIdWithItems(id));
+        Combo combo = getEntityByIdWithItems(id);
+        boolean canPrepare = inventoryAvailabilityService
+                .getComboAvailabilityByIds(List.of(id))
+                .getOrDefault(id, true);
+        boolean effectiveAvailable = Boolean.TRUE.equals(combo.getAvailable()) && canPrepare;
+        return applyAvailability(comboMapper.toResponse(combo), effectiveAvailable);
     }
 
     @Transactional
@@ -83,12 +103,14 @@ public class ComboService {
 
         validateItems(req.items());
 
+        boolean initialAvailable = req.available() != null ? req.available() : true;
         Combo combo = Combo.builder()
                 .name(name)
                 .description(normalizeBlank(req.description()))
                 .price(req.price())
                 .active(req.active() != null ? req.active() : true)
-                .available(req.available() != null ? req.available() : true)
+                .available(initialAvailable)
+                .manuallyPaused(!initialAvailable)
                 .displayOrder(req.displayOrder() != null ? req.displayOrder() : 0)
                 .items(new LinkedHashSet<>())
                 .build();
@@ -111,10 +133,17 @@ public class ComboService {
                             .build());
         }
 
+        boolean hasStock = inventoryAvailabilityService.hasSufficientInventoryForCombo(combo);
+        boolean allItemsAvailable = inventoryAvailabilityService.areAllComboItemsOrderable(combo);
+        if (!allItemsAvailable || !hasStock) {
+            combo.setAvailable(false);
+        }
+
         Combo saved = saveCombo(combo);
         eventPublisher.publishEvent(new ComboChangeEvent("created", saved.getId()));
 
-        return comboMapper.toResponse(saved);
+        boolean effectiveAvailable = Boolean.TRUE.equals(saved.getAvailable()) && allItemsAvailable && hasStock;
+        return applyAvailability(comboMapper.toResponse(saved), effectiveAvailable);
     }
 
     @Transactional
@@ -140,6 +169,7 @@ public class ComboService {
 
         if (req.available() != null) {
             combo.setAvailable(req.available());
+            combo.setManuallyPaused(!Boolean.TRUE.equals(req.available()));
         }
 
         if (req.displayOrder() != null) {
@@ -148,10 +178,20 @@ public class ComboService {
 
         syncComboItems(combo, req.items());
 
+        boolean hasStock = inventoryAvailabilityService.hasSufficientInventoryForCombo(combo);
+        boolean allItemsAvailable = inventoryAvailabilityService.areAllComboItemsOrderable(combo);
+        if (Boolean.TRUE.equals(req.available()) && !hasStock) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
+        }
+        if (!allItemsAvailable || !hasStock) {
+            combo.setAvailable(false);
+        }
+
         Combo saved = saveCombo(combo);
         eventPublisher.publishEvent(new ComboChangeEvent("updated", saved.getId()));
 
-        return comboMapper.toResponse(saved);
+        boolean effectiveAvailable = Boolean.TRUE.equals(saved.getAvailable()) && allItemsAvailable && hasStock;
+        return applyAvailability(comboMapper.toResponse(saved), effectiveAvailable);
     }
 
     @Transactional
@@ -159,6 +199,12 @@ public class ComboService {
         Combo combo = getEntityByIdWithItems(id);
         // L-fix: assert version to prevent concurrent delete race condition.
         assertVersionMatches(combo.getVersion(), version);
+
+        if (orderUsagePort.isComboUsedInActiveOrders(id)) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT,
+                    "Cannot delete combo that is referenced by active orders. Complete or cancel those orders first.");
+        }
 
         // Redundant-bulk-delete fix: removed comboItemRepo.softDeleteByComboId(id).
         // The CascadeType.ALL + orphanRemoval + @SQLDelete("UPDATE combo_items SET is_deleted = true WHERE id = ?")
@@ -183,16 +229,35 @@ public class ComboService {
     }
 
     @Transactional
-    public ComboResponse toggleAvailable(@NonNull Long id, @NonNull Long expectedVersion) {
+    public ComboResponse toggleAvailable(@NonNull Long id, Long expectedVersion) {
         Combo combo = getEntityByIdWithItems(id);
-        assertVersionMatches(combo.getVersion(), expectedVersion);
+        if (expectedVersion != null) {
+            assertVersionMatches(combo.getVersion(), expectedVersion);
+        }
 
-        combo.setAvailable(!Boolean.TRUE.equals(combo.getAvailable()));
+        boolean hasStock = inventoryAvailabilityService.hasSufficientInventoryForCombo(combo);
+        boolean allItemsAvailable = inventoryAvailabilityService.areAllComboItemsOrderable(combo);
+        boolean currentlyAvailable = Boolean.TRUE.equals(combo.getAvailable()) && allItemsAvailable && hasStock;
+        boolean nextAvailable = !currentlyAvailable;
 
-        Combo saved = comboRepo.save(combo);
+        if (nextAvailable) {
+            validateAllComboItemsActive(combo);
+            if (!hasStock) {
+                throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
+            }
+            enableUnavailableConstituentItems(combo);
+        }
+
+        combo.setAvailable(nextAvailable);
+        combo.setManuallyPaused(!nextAvailable);
+
+        Combo saved = comboRepo.saveAndFlush(combo);
         eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", saved.getId()));
 
-        return comboMapper.toResponse(saved);
+        boolean effectiveAvailable = Boolean.TRUE.equals(saved.getAvailable())
+                && inventoryAvailabilityService.areAllComboItemsOrderable(saved)
+                && hasStock;
+        return applyAvailability(comboMapper.toResponse(saved), effectiveAvailable);
     }
 
     private Combo getEntityByIdWithItems(Long id) {
@@ -303,16 +368,8 @@ public class ComboService {
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "Combo version is required. Please refresh and try again.");
-        }
-
-        if (!Objects.equals(currentVersion, expectedVersion)) {
-            throw new BusinessException(
-                    ErrorCode.CONCURRENT_MODIFICATION,
-                    "This combo was changed by another request. Please refresh and try again.");
-        }
+        com.qros.shared.validation.OptimisticVersionGuard.requireMatch(
+                currentVersion, expectedVersion, "Combo", "combo");
     }
 
     private Combo saveCombo(Combo combo) {
@@ -324,14 +381,71 @@ public class ComboService {
     }
 
     private String normalizeRequired(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
-        }
-
-        return value.trim();
+        return MenuTextSupport.normalizeRequired(value, message);
     }
 
     private String normalizeBlank(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        return MenuTextSupport.normalizeBlank(value);
+    }
+
+    private void validateAllComboItemsActive(Combo combo) {
+        if (combo.getItems() == null) {
+            return;
+        }
+        boolean anyInactive = combo.getItems().stream()
+                .filter(item -> item != null && !item.isDeleted())
+                .anyMatch(item -> item.getMenuItem() == null
+                        || item.getMenuItem().isDeleted()
+                        || !Boolean.TRUE.equals(item.getMenuItem().getActive())
+                        || (item.getMenuItem().getCategory() != null
+                                && (item.getMenuItem().getCategory().isDeleted()
+                                        || !Boolean.TRUE.equals(
+                                                item.getMenuItem().getCategory().getActive()))));
+        if (anyInactive) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_ERROR,
+                    "Cannot enable combo because one or more constituent menu items or categories are inactive");
+        }
+
+        boolean anyManuallyPaused = combo.getItems().stream()
+                .filter(item -> item != null && !item.isDeleted() && item.getMenuItem() != null)
+                .anyMatch(item -> Boolean.TRUE.equals(item.getMenuItem().getManuallyPaused()));
+        if (anyManuallyPaused) {
+            throw new BusinessException(
+                    ErrorCode.BUSINESS_ERROR,
+                    "Cannot enable combo because one or more constituent menu items are manually paused");
+        }
+    }
+
+    private void enableUnavailableConstituentItems(Combo combo) {
+        if (combo.getItems() == null) {
+            return;
+        }
+        List<MenuItem> itemsToReEnable = new ArrayList<>();
+        for (ComboItem comboItem : combo.getItems()) {
+            if (comboItem == null || comboItem.isDeleted() || comboItem.getMenuItem() == null) {
+                continue;
+            }
+            MenuItem menuItem = comboItem.getMenuItem();
+            if (!Boolean.TRUE.equals(menuItem.getAvailable()) && !Boolean.TRUE.equals(menuItem.getManuallyPaused())) {
+                menuItem.setAvailable(true);
+                itemsToReEnable.add(menuItem);
+            }
+        }
+        if (itemsToReEnable.isEmpty()) {
+            return;
+        }
+
+        List<MenuItem> savedMenuItems = menuItemRepo.saveAllAndFlush(itemsToReEnable);
+        Object eventId = savedMenuItems.size() == 1 ? savedMenuItems.get(0).getId() : "batch";
+        eventPublisher.publishEvent(new MenuChangeEvent("availability_updated", eventId));
+        inventoryAvailabilityService.syncCombosForMenuItems(savedMenuItems);
+    }
+
+    private ComboResponse applyAvailability(ComboResponse response, boolean effectiveAvailable) {
+        if (response == null || Objects.equals(response.available(), effectiveAvailable)) {
+            return response;
+        }
+        return comboMapper.withAvailability(response, effectiveAvailable);
     }
 }

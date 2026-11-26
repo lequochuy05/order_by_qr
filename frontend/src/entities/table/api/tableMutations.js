@@ -82,9 +82,9 @@ export const useMergeTablesMutation = (options = {}) =>
     },
   });
 
-export const useCancelMergeMutation = (options = {}) =>
+export const useCloseEmptySessionMutation = (options = {}) =>
   useMutation({
-    mutationFn: (sessionId) => tableService.cancelMerge(sessionId),
+    mutationFn: (sessionId) => tableService.closeEmptySession(sessionId),
     onSuccess: (...args) => {
       invalidateTables();
       options.onSuccess?.(...args);

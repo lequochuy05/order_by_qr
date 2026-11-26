@@ -18,40 +18,32 @@ import org.springframework.lang.NonNull;
 
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
 
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderById(@Param("id") @NonNull Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderByIdForUpdate(@Param("id") @NonNull Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.gatewayOrderCode = :gatewayOrderCode")
     Optional<PaymentTransaction> findWithOrderByGatewayOrderCodeForUpdate(
             @Param("gatewayOrderCode") @NonNull Long gatewayOrderCode);
 
     Optional<PaymentTransaction> findFirstByIdempotencyKey(String idempotencyKey);
 
-    Optional<PaymentTransaction> findByExternalReference(String externalReference);
-
-    Optional<PaymentTransaction> findFirstByOrderIdAndStatusOrderByCreatedAtDesc(
-            Long orderId, PaymentTransactionStatus status);
-
-    Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-            Long orderId, PaymentMethod paymentMethod, PaymentTransactionStatus status);
-
     Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
             Long orderId, PaymentMethod paymentMethod, Collection<PaymentTransactionStatus> statuses);
 
-    boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
-
     boolean existsByOrderIdAndStatusIn(Long orderId, Collection<PaymentTransactionStatus> statuses);
 
-    @Query(
-            """
+    boolean existsByVoucherCodeSnapshotIgnoreCaseAndStatusIn(
+            String voucherCodeSnapshot, Collection<PaymentTransactionStatus> statuses);
+
+    @Query("""
             SELECT COUNT(t) > 0
             FROM PaymentTransaction t
             WHERE t.order.tableSession.id = :sessionId
@@ -60,8 +52,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     boolean existsByOrderTableSessionIdAndStatusIn(
             @Param("sessionId") Long sessionId, @Param("statuses") Collection<PaymentTransactionStatus> statuses);
 
-    @Query(
-            """
+    @Query("""
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId
@@ -73,8 +64,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
                         """)
     List<PaymentTransaction> findPendingOnlineTransactionsByOrderId(@Param("orderId") Long orderId);
 
-    @Query(
-            """
+    @Query("""
                         SELECT COALESCE(SUM(t.amount), 0)
                         FROM PaymentTransaction t
                         WHERE t.order.id = :orderId
@@ -87,19 +77,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
         return sumAmountByOrderIdAndStatus(orderId, PaymentTransactionStatus.PAID);
     }
 
-    @Query(
-            """
-                        SELECT t
-                        FROM PaymentTransaction t
-                        WHERE t.status = :status
-                          AND t.expiresAt IS NOT NULL
-                          AND t.expiresAt < :now
-                        """)
-    List<PaymentTransaction> findByStatusAndExpiresAtBefore(
-            @Param("status") PaymentTransactionStatus status, @Param("now") LocalDateTime now);
-
-    @Query(
-            """
+    @EntityGraph(attributePaths = {"order", "createdBy"})
+    @Query("""
                         SELECT t
                         FROM PaymentTransaction t
                         WHERE t.status IN :statuses

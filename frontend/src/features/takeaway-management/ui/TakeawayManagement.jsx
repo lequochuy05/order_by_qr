@@ -1,22 +1,20 @@
 import React, { useState } from 'react';
 import { ShoppingBag, Plus, Loader2, Clock, AlertCircle, RefreshCw } from 'lucide-react';
-import { useAuth } from '@features/auth';
-import { orderService } from '@entities/order/api/orderService.js';
+import { useAuth } from '@entities/session';
+import { orderService } from '@entities/order';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
-import { getOrderStatusMeta, ORDER_STATUSES, ORDER_TYPES } from '@entities/order/lib/orderStatus.js';
+import { getOrderFinalAmount } from '@entities/order';
+import { getOrderStatusMeta, ORDER_TYPES } from '@entities/order';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import { useTranslation } from '@shared/lib/i18n';
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
-import AddItemModal from '@features/table-management/ui/AddItemModal.jsx';
-import OrderDetailModal from '@features/table-management/ui/OrderDetailModal.jsx';
-import PaymentModal from '@features/table-management/ui/PaymentModal.jsx';
 import { useTakeawayOrders } from '../model/useTakeawayOrders.js';
 
-const TakeawayManagement = () => {
+const TakeawayManagement = ({ AddItemModal, OrderDetailModal, PaymentModal } = {}) => {
   const { user } = useAuth();
+  const canPay = ['ADMIN', 'MANAGER', 'CASHIER'].includes(user?.role);
   const { language, isEn, copy } = useTranslation('takeaway');
   const [addItemModal, setAddItemModal] = useState({ open: false });
   const [detailModal, setDetailModal] = useState({ open: false, order: null });
@@ -57,13 +55,10 @@ const TakeawayManagement = () => {
   };
 
   const handlePay = async (order) => {
+    if (!canPay || order?.paymentStatus === 'PAID') return;
     try {
-      let currentOrder = order;
-      if (order.status !== ORDER_STATUSES.AWAITING_PAYMENT) {
-        currentOrder = await orderService.updateOrderStatus(order.id, ORDER_STATUSES.AWAITING_PAYMENT);
-      }
-      const fullOrder = currentOrder?.id ? await orderService.getOrderById(currentOrder.id) : currentOrder;
-      setPayModal({ open: true, order: fullOrder || currentOrder });
+      const fullOrder = order?.id ? await orderService.getOrderById(order.id) : order;
+      setPayModal({ open: true, order: fullOrder || order });
     } catch (e) {
       showErrorToast(e);
     }
@@ -165,20 +160,28 @@ const TakeawayManagement = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div
+                    className={`grid gap-2 ${order.paymentStatus !== 'PAID' && canPay ? 'grid-cols-2' : 'grid-cols-1'}`}
+                  >
                     <button
                       onClick={() => handleDetail(order)}
                       className="flex items-center justify-center gap-1 rounded-xl border border-slate-200/80 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 active:scale-95 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                     >
                       {isEn ? 'Details' : 'Chi tiết'}
                     </button>
-                    {finalAmount > 0 && (
-                      <button
-                        onClick={() => handlePay(order)}
-                        className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
-                      >
-                        {isEn ? 'Payment' : 'Thanh toán'}
-                      </button>
+                    {order.paymentStatus === 'PAID' ? (
+                      <div className="flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+                        {isEn ? 'Paid • Preparing' : 'Đã thanh toán • Đang ra món'}
+                      </div>
+                    ) : (
+                      canPay && (
+                        <button
+                          onClick={() => handlePay(order)}
+                          className="flex items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 transition-all"
+                        >
+                          {isEn ? 'Payment' : 'Thanh toán'}
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

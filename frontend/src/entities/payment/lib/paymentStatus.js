@@ -1,3 +1,6 @@
+// eslint-disable-next-line no-restricted-imports -- relative path required for Node ESM unit tests
+export { PAYMENT_METHODS } from '../../../shared/lib/paymentConstants.js';
+
 export const PAYMENT_TRANSACTION_STATUSES = Object.freeze({
   CREATING: 'CREATING',
   PENDING: 'PENDING',
@@ -5,9 +8,4 @@ export const PAYMENT_TRANSACTION_STATUSES = Object.freeze({
   CANCELLED: 'CANCELLED',
   EXPIRED: 'EXPIRED',
   FAILED: 'FAILED',
-});
-
-export const PAYMENT_METHODS = Object.freeze({
-  CASH: 'CASH',
-  PAYOS: 'PAYOS',
 });

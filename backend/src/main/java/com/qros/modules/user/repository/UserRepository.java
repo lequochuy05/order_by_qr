@@ -39,12 +39,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
             + "(CAST(:status AS string) IS NULL OR u.status = :status)")
     Page<User> searchUsers(@Param("keyword") String keyword, @Param("status") UserStatus status, Pageable pageable);
 
-    List<User> findByRoleAndStatus(UserRole role, UserStatus status);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT u FROM User u WHERE u.role = :role AND u.status = :status ORDER BY u.id")
-    List<User> findByRoleAndStatusForUpdate(@Param("role") UserRole role, @Param("status") UserStatus status);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.role IN :roles AND u.status = :status ORDER BY u.id")
     List<User> findByRoleInAndStatusForUpdate(@Param("roles") List<UserRole> roles, @Param("status") UserStatus status);

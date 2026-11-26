@@ -1,7 +1,5 @@
 package com.qros.modules.user.service;
 
-import com.qros.modules.auth.service.AccountLockoutService;
-import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -28,22 +26,19 @@ public class CurrentUserService {
     private final UserMapper userMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PasswordEncoder passwordEncoder;
-    private final RefreshTokenService refreshTokenService;
-    private final AccountLockoutService accountLockoutService;
+    private final UserAuthSessionPort userAuthSessionPort;
 
     public CurrentUserService(
             UserRepository userRepository,
             UserMapper userMapper,
             ApplicationEventPublisher eventPublisher,
             PasswordEncoder passwordEncoder,
-            RefreshTokenService refreshTokenService,
-            AccountLockoutService accountLockoutService) {
+            UserAuthSessionPort userAuthSessionPort) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.eventPublisher = eventPublisher;
         this.passwordEncoder = passwordEncoder;
-        this.refreshTokenService = refreshTokenService;
-        this.accountLockoutService = accountLockoutService;
+        this.userAuthSessionPort = userAuthSessionPort;
     }
 
     public UserResponse getCurrentProfile(@NonNull String email) {
@@ -90,7 +85,13 @@ public class CurrentUserService {
                 .findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        if (!passwordEncoder.matches(req.currentPassword(), u.getPassword())) {
+        boolean matches;
+        try {
+            matches = passwordEncoder.matches(req.currentPassword(), u.getPassword());
+        } catch (IllegalArgumentException ex) {
+            matches = false;
+        }
+        if (!matches) {
             throw new BusinessException(ErrorCode.PASSWORD_INVALID);
         }
 
@@ -98,8 +99,9 @@ public class CurrentUserService {
         u.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
         u.setMustChangePassword(false);
         userRepository.save(u);
-        refreshTokenService.revokeUserTokens(u.getId());
-        accountLockoutService.unlock(u.getEmail());
+        userAuthSessionPort.revokeUserTokens(u.getId());
+        userAuthSessionPort.unlockAccount(u.getEmail());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(u.getEmail(), null));
         // log.info("User changed own password: {}", u.getEmail());
     }
 }

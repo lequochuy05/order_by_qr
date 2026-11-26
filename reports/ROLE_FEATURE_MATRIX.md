@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày kiểm tra: 2026-11-14*
 *Cơ sở pháp lý & Kỹ thuật: Bóc tách trực tiếp từ `frontend/src/app/router.jsx`, `AdminSidebar.jsx` và `backend/.../UserRole.java`*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Ma trận dưới đây phản ánh đợt kiểm tra ngày `2026-11-14`. Phiên bản hiện hành đã bổ sung thêm `/admin/promotions` (`ADMIN`/`MANAGER`), `/admin/service-requests` (`ADMIN`/`MANAGER`/`CASHIER`/`STAFF`), khách tự thanh toán VietQR và bộ AI mở rộng — xem ma trận phân quyền hiện hành tại [SYSTEM_DESIGN.md §7](../docs/knowledge/04-tech/SYSTEM_DESIGN.md) và [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md).
+
 ---
 
 ## 1. ĐỊNH NGHĨA 6 VAI TRÒ NGƯỜI DÙNG (6 SYSTEM ROLES)
@@ -32,12 +34,14 @@
 | Tính năng chi tiết | Route URL liên quan | Customer | Staff | Chef | Cashier | Manager | Admin | Ghi chú kỹ thuật |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|---|
 | **Xem Thực đơn công khai** | `/menu` | `✓` | `✓` | `✓` | `✓` | `✓` | `✓` | Public API, cache HTTP NetworkFirst |
-| **Khởi tạo Session bàn qua QR** | `/:tableCode/menu` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Yêu cầu mã bàn hợp lệ (`T01`, `T02`...) |
-| **Xem chi tiết & Tùy chọn món** | Modal `ItemOptionsModal` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Chọn Topping, độ ngọt/cay, ghi chú |
-| **Quản lý Giỏ hàng của bàn** | Modal `CartModal` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Lưu trữ Client-side kết hợp Session |
-| **Gửi đơn đặt món (Submit Order)**| API `/api/v1/public/orders` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Tự động bắn thông báo STOMP xuống Bếp |
-| **Theo dõi tiến độ món ăn** | Sheet `CurrentOrderSheet` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Cập nhật Realtime trạng thái món |
-| **Chat tư vấn với Trợ lý AI** | Widget `AiChatAssistant` | `✓` | `✓` | - | `✓` | `✓` | `✓` | Tích hợp Google Gemini Flash AI |
+| **Khởi tạo Session bàn qua QR** | `/:tableCode/menu` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Yêu cầu mã bàn hợp lệ (`T01`, `T02`...) |
+| **Xem chi tiết & Tùy chọn món** | Modal `ItemOptionsModal` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Chọn Topping, độ ngọt/cay, ghi chú |
+| **Quản lý Giỏ hàng của bàn** | Modal `CartModal` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Lưu trữ Client-side kết hợp Session |
+| **Gửi đơn đặt món (Submit Order)**| API `/api/v1/public/orders` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Tự động bắn thông báo STOMP xuống Bếp |
+| **Theo dõi tiến độ món ăn** | Sheet `CurrentOrderSheet` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Cập nhật Realtime trạng thái món |
+| **Chat tư vấn với Trợ lý AI** | Widget `AiChatAssistant` | `✓` | `✓` | `✓`\* | `✓` | `✓` | `✓` | Tích hợp Google Gemini Flash AI |
+
+*\*Lưu ý: Các tuyến đường đặt món QR và API `/api/v1/public/**` là tuyến đường công khai (unauthenticated), không bị chặn đối với bất kỳ vai trò nào (kể cả `CHEF` khi truy cập với tư cách khách).*
 
 ---
 
@@ -66,7 +70,7 @@
 | **Xem tồn kho nguyên liệu** | `/admin/inventory` | - | - | `✓` | - | `✓` | `✓` | Bảng theo dõi nguyên liệu & cảnh báo thiếu |
 | **Thêm mới / Sửa nguyên liệu** | Modal `InventoryModal` | - | - | - | - | `✓` | `✓` | Cấu hình đơn vị tính và định mức |
 | **Nhập kho / Xuất kho** | Modal `StockModal` | - | - | `✓` | - | `✓` | `✓` | Bếp & Quản lý được phép ghi nhận số lượng |
-| **Cấu hình Định lượng món** | Modal `RecipeModal` | - | - | - | - | `✓` | `✓` | Liên kết món ăn với nguyên liệu trừ kho |
+| **Cấu hình Định lượng món** | Modal `RecipeModal` | - | - | - | - | `✓` | `✓` | **Chỉ `MANAGER` & `ADMIN`** — liên kết món ăn với nguyên liệu trừ kho |
 
 ---
 

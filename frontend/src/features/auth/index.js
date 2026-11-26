@@ -1,2 +1,2 @@
-export { AuthProvider, useAuth } from './model/AuthContext.jsx';
 export { default as ProtectedRoute } from './ui/ProtectedRoute.jsx';
+export { default as AuthRainBackground } from './ui/AuthRainBackground.jsx';

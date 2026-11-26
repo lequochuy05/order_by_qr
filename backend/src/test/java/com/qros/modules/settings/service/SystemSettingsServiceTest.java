@@ -17,6 +17,7 @@ import com.qros.modules.settings.repository.SystemSettingsRepository;
 import com.qros.shared.event.DomainEvents.SettingsChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.math.BigDecimal;
@@ -44,7 +45,8 @@ class SystemSettingsServiceTest {
                 eventPublisher,
                 sideEffects,
                 mock(StorageService.class),
-                new ImageFileValidator());
+                new ImageFileValidator(),
+                TransactionExecutor.direct());
     }
 
     @Test
@@ -52,8 +54,9 @@ class SystemSettingsServiceTest {
         when(settingsRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(settingsService::getSettingsEntity)
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.SETTINGS_NOT_FOUND));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.SETTINGS_NOT_FOUND));
 
         verify(settingsRepository, never()).saveAndFlush(any());
     }
@@ -85,8 +88,9 @@ class SystemSettingsServiceTest {
         SystemSettingsUpdateRequest staleRequest = request("Updated Restaurant", "VND", 9L);
 
         assertThatThrownBy(() -> settingsService.updateSettings(staleRequest, "manager@example.com"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.CONCURRENT_MODIFICATION));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CONCURRENT_MODIFICATION));
 
         verify(settingsRepository, never()).saveAndFlush(any());
     }
@@ -118,6 +122,7 @@ class SystemSettingsServiceTest {
                 .paymentNotificationEnabled(true)
                 .kitchenOverdueNotificationEnabled(true)
                 .allowSettlementWithUnfinishedItems(true)
+                .customerSelfCheckoutEnabled(false)
                 .build();
     }
 
@@ -158,6 +163,7 @@ class SystemSettingsServiceTest {
                 true,
                 true,
                 true,
+                false,
                 version);
     }
 }

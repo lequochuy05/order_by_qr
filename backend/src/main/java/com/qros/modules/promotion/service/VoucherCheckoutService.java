@@ -70,24 +70,6 @@ public class VoucherCheckoutService {
         return discountCalculator.calculate(voucher, subtotal);
     }
 
-    @Transactional(readOnly = true)
-    public Voucher getActiveVoucherForPayment(String code) {
-        String normalizedCode = normalizeNullableCode(code);
-
-        if (normalizedCode == null) {
-            return null;
-        }
-
-        Voucher voucher = voucherRepository
-                .findByCodeIgnoreCase(normalizedCode)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
-
-        VoucherValidationStatus status = resolveStatus(voucher);
-        throwIfVoucherNotActiveForPayment(status);
-
-        return voucher;
-    }
-
     // C5 fix: use a read-write @Transactional (not readOnly) so the pessimistic lock
     // acquired by findByCodeIgnoreCaseForUpdate is held until the caller's transaction
     // commits, preventing concurrent checkouts from both passing the usage-limit check.
@@ -121,17 +103,28 @@ public class VoucherCheckoutService {
 
         Voucher voucher = voucherRepository
                 .findByCodeIgnoreCase(normalizedCode)
+                .or(() -> voucherRepository.findAnyByCodeIgnoreCaseIncludingDeleted(normalizedCode))
                 .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
+
+        BigDecimal safeSubtotal = subtotal != null ? subtotal : BigDecimal.ZERO;
+        BigDecimal computedVoucherDiscount =
+                discountCalculator.calculate(voucher, safeSubtotal).appliedDiscountAmount();
+        BigDecimal appliedVoucherDiscount =
+                discountAmount != null ? computedVoucherDiscount.min(discountAmount) : computedVoucherDiscount;
+        BigDecimal resolvedFinalAmount = finalAmount != null
+                ? finalAmount
+                : discountCalculator.calculateFinalAmount(
+                        safeSubtotal, discountAmount != null ? discountAmount : appliedVoucherDiscount);
 
         DiscountResult result = new DiscountResult(
                 voucher.getId(),
                 voucher.getCode(),
                 voucher.getType(),
-                subtotal != null ? subtotal : BigDecimal.ZERO,
+                safeSubtotal,
                 voucher.getDiscountAmount(),
                 voucher.getDiscountPercent(),
-                discountAmount != null ? discountAmount : BigDecimal.ZERO,
-                finalAmount != null ? finalAmount : BigDecimal.ZERO);
+                appliedVoucherDiscount,
+                resolvedFinalAmount);
 
         return new VoucherPaymentResult(voucher, result);
     }
@@ -169,9 +162,10 @@ public class VoucherCheckoutService {
             return VoucherValidationStatus.EXPIRED;
         }
 
+        int effectiveUsed = safeCount(voucher.getUsedCount()) + safeCount(voucher.getReservedCount());
         if (voucher.getUsageLimit() != null
                 && voucher.getUsageLimit() > 0
-                && voucher.getUsedCount() >= voucher.getUsageLimit()) {
+                && effectiveUsed >= voucher.getUsageLimit()) {
             return VoucherValidationStatus.EXHAUSTED;
         }
 
@@ -193,13 +187,18 @@ public class VoucherCheckoutService {
             return VoucherValidationStatus.EXPIRED;
         }
 
+        int effectiveUsed = safeCount(voucher.getUsedCount()) + safeCount(voucher.getReservedCount());
         if (voucher.getUsageLimit() != null
                 && voucher.getUsageLimit() > 0
-                && voucher.getUsedCount() >= voucher.getUsageLimit()) {
+                && effectiveUsed >= voucher.getUsageLimit()) {
             return VoucherValidationStatus.EXHAUSTED;
         }
 
         return VoucherValidationStatus.ACTIVE;
+    }
+
+    private int safeCount(Integer value) {
+        return value != null ? value : 0;
     }
 
     private String normalizeNullableCode(String code) {

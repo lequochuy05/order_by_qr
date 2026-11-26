@@ -6,7 +6,7 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
-import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderLookupService;
 import com.qros.modules.order.service.OrderService;
 import com.qros.shared.time.AppTime;
 import java.time.LocalDateTime;
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class KitchenService {
 
-    private final OrderRepository orderRepository;
+    private final OrderLookupService orderRepository;
     private final OrderService orderService;
     private final KitchenMapper kitchenMapper;
 
@@ -52,9 +52,7 @@ public class KitchenService {
         if (itemIds == null || itemIds.isEmpty()) {
             return;
         }
-        for (Long itemId : itemIds) {
-            orderService.updateItemStatus(itemId, status, userId);
-        }
+        orderService.updateBatchItemStatus(itemIds, status, userId);
     }
 
     @Transactional

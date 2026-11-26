@@ -10,9 +10,7 @@ import org.springframework.data.repository.query.Param;
 public interface DailySummaryRepository extends Repository<Order, Long> {
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            value =
-                    """
+    @Query(value = """
             INSERT INTO daily_revenue_summary (
                 business_date,
                 total_orders,
@@ -24,25 +22,19 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
             )
             VALUES (:businessDate, 0, 0, 0, 0, 0, CURRENT_TIMESTAMP)
             ON CONFLICT (business_date) DO NOTHING
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     void ensureRevenueSummaryRow(@Param("businessDate") LocalDate businessDate);
 
-    @Query(
-            value =
-                    """
+    @Query(value = """
             SELECT business_date
             FROM daily_revenue_summary
             WHERE business_date = :businessDate
             FOR UPDATE
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     LocalDate lockRevenueSummaryRow(@Param("businessDate") LocalDate businessDate);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            value =
-                    """
+    @Query(value = """
             UPDATE daily_revenue_summary summary
             SET total_orders = source.total_orders,
                 subtotal_amount = source.subtotal_amount,
@@ -62,8 +54,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                   AND fact.payment_status = 'PAID'
             ) source
             WHERE summary.business_date = :businessDate
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     void refreshRevenueSummary(@Param("businessDate") LocalDate businessDate);
 
     @Modifying(flushAutomatically = true)
@@ -71,9 +62,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
     void deleteStaffSalesSummary(@Param("businessDate") LocalDate businessDate);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            value =
-                    """
+    @Query(value = """
             INSERT INTO daily_staff_sales_summary (
                 business_date,
                 staff_key,
@@ -98,8 +87,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
               AND fact.payment_status = 'PAID'
               AND fact.paid_by IS NOT NULL
             GROUP BY fact.paid_by
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     void refreshStaffSalesSummary(@Param("businessDate") LocalDate businessDate);
 
     @Modifying(flushAutomatically = true)
@@ -107,9 +95,7 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
     void deleteItemSalesSummary(@Param("businessDate") LocalDate businessDate);
 
     @Modifying(flushAutomatically = true)
-    @Query(
-            value =
-                    """
+    @Query(value = """
             WITH item_sales AS (
                 SELECT CASE
                            WHEN oi.item_type = 'MENU_ITEM' AND oi.menu_item_id IS NOT NULL
@@ -126,7 +112,10 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                                    THEN COALESCE(category.name, 'Uncategorized')
                                ELSE 'Combo'
                            END) AS category_name_snapshot,
-                       MAX(CASE WHEN oi.item_type = 'MENU_ITEM' THEN menu_item.img END) AS image_url_snapshot,
+                       MAX(CASE
+                               WHEN oi.item_type = 'MENU_ITEM' THEN menu_item.img
+                               WHEN oi.item_type = 'COMBO' THEN combo_thumb.img
+                           END) AS image_url_snapshot,
                        oi.item_type,
                        SUM(oi.quantity)::BIGINT AS quantity,
                        COALESCE(SUM(COALESCE(oi.line_total, oi.quantity * oi.unit_price)), 0) AS revenue
@@ -138,6 +127,19 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                 LEFT JOIN category
                        ON category.id = menu_item.cate_id
                       AND category.is_deleted = false
+                LEFT JOIN LATERAL (
+                    SELECT mi.img
+                    FROM combo_items ci
+                    JOIN menu_item mi
+                      ON mi.id = ci.menu_item_id
+                     AND mi.is_deleted = false
+                    WHERE oi.item_type = 'COMBO'
+                      AND ci.combo_id = oi.combo_id
+                      AND ci.is_deleted = false
+                      AND mi.img IS NOT NULL
+                    ORDER BY ci.id ASC
+                    LIMIT 1
+                ) combo_thumb ON TRUE
                 WHERE fact.business_date = :businessDate
                   AND fact.status = 'COMPLETED'
                   AND fact.payment_status = 'PAID'
@@ -179,7 +181,6 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                    revenue,
                    CURRENT_TIMESTAMP
             FROM item_sales
-            """,
-            nativeQuery = true)
+            """, nativeQuery = true)
     void refreshItemSalesSummary(@Param("businessDate") LocalDate businessDate);
 }

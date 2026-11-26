@@ -1,0 +1,5 @@
+app:
+  qr:
+    secret: ${QR_SIGNING_SECRET:}
+  security:
+    qr-secret: ${QR_SIGNING_SECRET:}

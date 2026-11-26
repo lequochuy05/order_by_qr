@@ -1,39 +1,59 @@
 package com.qros.shared.idempotency;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.scheduling.DistributedSchedulerLock;
 import com.qros.shared.time.AppTime;
+import com.qros.shared.transaction.TransactionExecutor;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.function.Supplier;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 @Lazy(false)
-@RequiredArgsConstructor
 public class IdempotencyService {
 
     private static final Duration REQUEST_TTL = Duration.ofHours(24);
+    private static final String CLEANUP_LOCK_NAME = "idempotency-cleanup";
+    private static final Duration CLEANUP_LOCK_TTL = Duration.ofMinutes(10);
 
     private final IdempotencyRequestRepository repository;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final DistributedSchedulerLock schedulerLock;
+    private final TransactionExecutor transactionExecutor;
+
+    public IdempotencyService(
+            IdempotencyRequestRepository repository, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
+        this(repository, objectMapper, meterRegistry, DistributedSchedulerLock.noOp(), TransactionExecutor.direct());
+    }
+
+    @Autowired
+    public IdempotencyService(
+            IdempotencyRequestRepository repository,
+            ObjectMapper objectMapper,
+            MeterRegistry meterRegistry,
+            DistributedSchedulerLock schedulerLock,
+            TransactionExecutor transactionExecutor) {
+        this.repository = repository;
+        this.objectMapper = objectMapper;
+        this.meterRegistry = meterRegistry;
+        this.schedulerLock = schedulerLock != null ? schedulerLock : DistributedSchedulerLock.noOp();
+        this.transactionExecutor = transactionExecutor != null ? transactionExecutor : TransactionExecutor.direct();
+    }
 
     private Counter claimedCounter;
     private Counter replayedCounter;
@@ -79,9 +99,11 @@ public class IdempotencyService {
     }
 
     @Scheduled(cron = "${idempotency.cleanup-cron:0 15 * * * *}")
-    @Transactional
     public void cleanupExpiredRequests() {
-        repository.deleteExpired(AppTime.now());
+        schedulerLock.runWithLock(
+                CLEANUP_LOCK_NAME,
+                CLEANUP_LOCK_TTL,
+                () -> transactionExecutor.writeWithoutResult(() -> repository.deleteExpired(AppTime.now())));
     }
 
     private <T> T replayExisting(IdempotencyRequest request, String requestHash, Class<T> responseType) {
@@ -102,7 +124,7 @@ public class IdempotencyService {
         try {
             replayedCounter.increment();
             return objectMapper.readValue(request.getResponseJson(), responseType);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Unable to read stored idempotency response", exception);
         }
     }
@@ -110,7 +132,7 @@ public class IdempotencyService {
     private String hashPayload(Object requestPayload) {
         try {
             return sha256(objectMapper.writeValueAsString(requestPayload));
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to serialize idempotent request", exception);
         }
     }
@@ -118,7 +140,7 @@ public class IdempotencyService {
     private String writeResponse(Object response) {
         try {
             return objectMapper.writeValueAsString(response);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalStateException("Unable to store idempotency response", exception);
         }
     }
@@ -132,11 +154,6 @@ public class IdempotencyService {
     }
 
     private String sha256(String value) {
-        try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return com.qros.shared.security.HashUtils.sha256Hex(value);
     }
 }

@@ -7,9 +7,18 @@ import {
   TextField,
   ToggleRow,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
-const BillSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, copy }) => (
+const BillSettingsTab = ({
+  settings,
+  setSettings,
+  saving,
+  saveDisabled,
+  onSave,
+  copy,
+  errors = {},
+  onClearError,
+}) => (
   <section className="min-w-0">
     <SectionHeader icon={ReceiptText} title={copy.bill.title} subtitle={copy.bill.subtitle} />
 
@@ -21,14 +30,22 @@ const BillSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, 
             description={copy.bill.titleHelp}
             maxLength="100"
             value={settings.billTitle}
-            onChange={(value) => setSettingsValue(setSettings, 'billTitle', value)}
+            error={errors?.billTitle}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'billTitle', value);
+              onClearError?.('billTitle');
+            }}
           />
           <TextField
             label={copy.bill.footer}
             description={copy.bill.footerHelp}
             maxLength="255"
             value={settings.billFooterMessage}
-            onChange={(value) => setSettingsValue(setSettings, 'billFooterMessage', value)}
+            error={errors?.billFooterMessage}
+            onChange={(value) => {
+              setSettingsValue(setSettings, 'billFooterMessage', value);
+              onClearError?.('billFooterMessage');
+            }}
           />
         </div>
       </SettingsGroup>

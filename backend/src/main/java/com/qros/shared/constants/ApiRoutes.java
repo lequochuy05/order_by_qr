@@ -11,6 +11,7 @@ public final class ApiRoutes {
     public static final String ORDER_BY_ID = ORDERS + "/{orderId}";
     public static final String TABLES = PREFIX + "/tables";
     public static final String TABLE_SESSIONS = PREFIX + "/table-sessions";
+    public static final String TABLE_SERVICE_REQUESTS = PREFIX + "/table-service-requests";
     public static final String MENU_ITEMS = PREFIX + "/menu-items";
     public static final String CATEGORIES = PREFIX + "/categories";
     public static final String KITCHEN = PREFIX + "/kitchen";

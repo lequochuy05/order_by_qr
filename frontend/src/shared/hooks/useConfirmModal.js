@@ -9,7 +9,7 @@ const closedState = {
   resolveConfirm: null,
 };
 
-export const useConfirmModalStore = create((set, get) => ({
+const useConfirmModalStore = create((set, get) => ({
   isOpen: false,
   title: '',
   message: '',
@@ -41,6 +41,8 @@ export const useConfirmModalStore = create((set, get) => ({
     resolveConfirm?.(false);
   },
 }));
+
+export const useConfirm = () => useConfirmModalStore((state) => state.confirm);
 
 export const useConfirmModal = () => {
   const store = useConfirmModalStore();

@@ -10,10 +10,54 @@ import java.util.List;
 public record PublicOrderResponse(
         Long id,
         OrderStatus status,
+        BigDecimal subtotalAmount,
+        BigDecimal discountAmount,
+        BigDecimal serviceChargePercent,
+        BigDecimal serviceChargeAmount,
+        BigDecimal taxPercent,
+        BigDecimal taxAmount,
         BigDecimal finalAmount,
+        String voucherCode,
         Table table,
         List<OrderItem> items,
         LocalDateTime createdAt) {
+
+    public PublicOrderResponse(
+            Long id,
+            OrderStatus status,
+            BigDecimal subtotalAmount,
+            BigDecimal discountAmount,
+            BigDecimal finalAmount,
+            String voucherCode,
+            Table table,
+            List<OrderItem> items,
+            LocalDateTime createdAt) {
+        this(
+                id,
+                status,
+                subtotalAmount,
+                discountAmount,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                finalAmount,
+                voucherCode,
+                table,
+                items,
+                createdAt);
+    }
+
+    public PublicOrderResponse(
+            Long id,
+            OrderStatus status,
+            BigDecimal finalAmount,
+            Table table,
+            List<OrderItem> items,
+            LocalDateTime createdAt) {
+        this(id, status, finalAmount, BigDecimal.ZERO, finalAmount, null, table, items, createdAt);
+    }
+
     public record Table(Long id, String tableNumber) {}
 
     public record OrderItem(

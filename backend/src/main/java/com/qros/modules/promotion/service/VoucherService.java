@@ -10,7 +10,7 @@ import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
@@ -20,12 +20,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final VoucherMapper voucherMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final VoucherUsageCheckPort voucherUsageCheckPort;
+
+    public VoucherService(
+            VoucherRepository voucherRepository,
+            VoucherMapper voucherMapper,
+            ApplicationEventPublisher eventPublisher) {
+        this(voucherRepository, voucherMapper, eventPublisher, null);
+    }
+
+    @Autowired
+    public VoucherService(
+            VoucherRepository voucherRepository,
+            VoucherMapper voucherMapper,
+            ApplicationEventPublisher eventPublisher,
+            VoucherUsageCheckPort voucherUsageCheckPort) {
+        this.voucherRepository = voucherRepository;
+        this.voucherMapper = voucherMapper;
+        this.eventPublisher = eventPublisher;
+        this.voucherUsageCheckPort = voucherUsageCheckPort;
+    }
 
     @Transactional(readOnly = true)
     public Page<VoucherResponse> searchForManagement(String keyword, String status, @NonNull Pageable pageable) {
@@ -76,6 +95,20 @@ public class VoucherService {
             throw new BusinessException(ErrorCode.VOUCHER_CODE_EXISTS);
         }
 
+        boolean renamingCode = !voucher.getCode().equalsIgnoreCase(normalizedCode);
+        if (renamingCode && isInActiveUse(voucher)) {
+            throw new BusinessException(
+                    ErrorCode.VOUCHER_IN_USE,
+                    "Cannot rename voucher code while it is referenced by active orders or pending payments");
+        }
+
+        int committedUsage = safeInt(voucher.getUsedCount()) + safeInt(voucher.getReservedCount());
+        if (request.usageLimit() != null && request.usageLimit() > 0 && request.usageLimit() < committedUsage) {
+            throw new BusinessException(
+                    ErrorCode.VOUCHER_IN_USE,
+                    "Usage limit cannot be lower than current used and reserved count (" + committedUsage + ")");
+        }
+
         voucherMapper.updateEntity(voucher, request, normalizedCode);
         Voucher saved = voucherRepository.save(voucher);
 
@@ -88,9 +121,41 @@ public class VoucherService {
     @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
     public void delete(@NonNull Long id) {
         Voucher voucher = getEntityById(id);
+        if (isInActiveUse(voucher)) {
+            throw new BusinessException(
+                    ErrorCode.VOUCHER_IN_USE,
+                    "Cannot delete voucher while it is referenced by active orders or pending payments");
+        }
         voucherRepository.delete(voucher);
 
         eventPublisher.publishEvent(new VoucherChangeEvent());
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
+    public boolean tryReserveUsageByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return false;
+        }
+        Voucher voucher = voucherRepository
+                .findByCodeIgnoreCaseForUpdate(code.trim().toUpperCase())
+                .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
+        return voucherRepository.reserveUsageAtomically(voucher.getId()) == 1;
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
+    public void releaseReservedUsageByCode(String code) {
+        if (code == null || code.isBlank()) {
+            return;
+        }
+        voucherRepository.releaseReservedUsageAtomically(code.trim().toUpperCase());
+    }
+
+    @Transactional
+    @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
+    public boolean tryConfirmReservedUsage(@NonNull Long voucherId) {
+        return voucherRepository.confirmReservedUsageAtomically(voucherId) == 1;
     }
 
     @Transactional
@@ -107,33 +172,18 @@ public class VoucherService {
         }
     }
 
-    @Transactional
-    @CacheEvict(value = CacheNames.VOUCHERS, allEntries = true)
-    public void incrementUsageByCode(String code) {
-        String normalizedCode = normalizeNullableCode(code);
+    private boolean isInActiveUse(Voucher voucher) {
+        return safeInt(voucher.getReservedCount()) > 0
+                || (voucherUsageCheckPort != null && voucherUsageCheckPort.isVoucherInActiveUse(voucher.getCode()));
+    }
 
-        if (normalizedCode == null) {
-            return;
-        }
-
-        Voucher voucher = voucherRepository
-                .findByCodeIgnoreCase(normalizedCode)
-                .orElseThrow(() -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND));
-
-        incrementUsage(voucher.getId());
+    private int safeInt(Integer value) {
+        return value != null ? value : 0;
     }
 
     private String normalizeCode(String code) {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-
-        return code.trim().toUpperCase();
-    }
-
-    private String normalizeNullableCode(String code) {
-        if (code == null || code.isBlank()) {
-            return null;
         }
 
         return code.trim().toUpperCase();

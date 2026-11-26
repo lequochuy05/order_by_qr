@@ -4,8 +4,8 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.CategoryChangeEvent;
 import com.qros.shared.event.DomainEvents.ComboChangeEvent;
 import com.qros.shared.event.DomainEvents.MenuChangeEvent;
+import com.qros.shared.event.DomainEvents.SettingsChangeEvent;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -32,6 +32,11 @@ public class MenuCacheInvalidationListener {
         clearMenuCaches();
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSettingsChange(SettingsChangeEvent event) {
+        clearMenuCaches();
+    }
+
     private void clearMenuCaches() {
         clear(CacheNames.MENU);
         clear(CacheNames.PUBLIC_MENU);
@@ -44,9 +49,6 @@ public class MenuCacheInvalidationListener {
     }
 
     private void clear(String cacheName) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.clear();
-        }
+        com.qros.shared.cache.CacheHelper.clear(cacheManager, cacheName);
     }
 }

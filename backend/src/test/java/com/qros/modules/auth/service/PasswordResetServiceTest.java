@@ -11,13 +11,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.infrastructure.mail.SmtpEmailService;
+import com.qros.infrastructure.mail.EmailService;
 import com.qros.infrastructure.sms.SmsService;
 import com.qros.modules.auth.config.PasswordResetProperties;
 import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
 import com.qros.modules.user.model.User;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
+import com.qros.shared.event.DomainEvents.UserAuthChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -25,6 +26,7 @@ import com.qros.shared.transaction.TransactionSideEffectService;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,11 +35,12 @@ class PasswordResetServiceTest {
 
     @Test
     void emailResetConsumesLockedTokenBeforeSavingPassword() {
-        UserRepository userRepository = mock(UserRepository.class);
+        UserLookupService userRepository = mock(UserLookupService.class);
         PasswordResetTokenRepository tokenRepository = mock(PasswordResetTokenRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
         RefreshTokenService refreshTokenService = mock(RefreshTokenService.class);
         AccountLockoutService accountLockoutService = mock(AccountLockoutService.class);
+        ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         User user = User.builder()
                 .id(7L)
                 .email("manager@example.com")
@@ -57,14 +60,15 @@ class PasswordResetServiceTest {
         PasswordResetService service = new PasswordResetService(
                 userRepository,
                 tokenRepository,
-                mock(SmtpEmailService.class),
+                mock(EmailService.class),
                 mock(SmsService.class),
                 new PasswordResetProperties(),
                 mock(Environment.class),
                 passwordEncoder,
                 mock(TransactionSideEffectService.class),
                 refreshTokenService,
-                accountLockoutService);
+                accountLockoutService,
+                eventPublisher);
 
         service.resetPassword("raw-token", "new-password");
 
@@ -77,11 +81,12 @@ class PasswordResetServiceTest {
         verify(userRepository).save(user);
         verify(refreshTokenService).revokeUserTokens(7L);
         verify(accountLockoutService).unlock("manager@example.com");
+        verify(eventPublisher).publishEvent(new UserAuthChangeEvent("manager@example.com", null));
     }
 
     @Test
     void phoneResetRegistersSmsAfterCommitWhenGatewayIsAvailable() {
-        UserRepository userRepository = mock(UserRepository.class);
+        UserLookupService userRepository = mock(UserLookupService.class);
         PasswordResetTokenRepository tokenRepository = mock(PasswordResetTokenRepository.class);
         SmsService smsService = mock(SmsService.class);
         Environment environment = mock(Environment.class);
@@ -97,14 +102,15 @@ class PasswordResetServiceTest {
         PasswordResetService service = new PasswordResetService(
                 userRepository,
                 tokenRepository,
-                mock(SmtpEmailService.class),
+                mock(EmailService.class),
                 smsService,
                 properties,
                 environment,
                 mock(PasswordEncoder.class),
                 sideEffects,
                 mock(RefreshTokenService.class),
-                mock(AccountLockoutService.class));
+                mock(AccountLockoutService.class),
+                mock(ApplicationEventPublisher.class));
 
         service.createOtpAndSendOtp("0912345678");
 
@@ -117,7 +123,7 @@ class PasswordResetServiceTest {
 
     @Test
     void phoneResetFailsBeforeCreatingTokenWhenSmsIsUnavailable() {
-        UserRepository userRepository = mock(UserRepository.class);
+        UserLookupService userRepository = mock(UserLookupService.class);
         PasswordResetTokenRepository tokenRepository = mock(PasswordResetTokenRepository.class);
         SmsService smsService = mock(SmsService.class);
         Environment environment = mock(Environment.class);
@@ -132,18 +138,20 @@ class PasswordResetServiceTest {
         PasswordResetService service = new PasswordResetService(
                 userRepository,
                 tokenRepository,
-                mock(SmtpEmailService.class),
+                mock(EmailService.class),
                 smsService,
                 properties,
                 environment,
                 mock(PasswordEncoder.class),
                 mock(TransactionSideEffectService.class),
                 mock(RefreshTokenService.class),
-                mock(AccountLockoutService.class));
+                mock(AccountLockoutService.class),
+                mock(ApplicationEventPublisher.class));
 
         assertThatThrownBy(() -> service.createOtpAndSendOtp("0912345678"))
-                .isInstanceOfSatisfying(BusinessException.class, exception -> assertThat(exception.getErrorCode())
-                        .isEqualTo(ErrorCode.FEATURE_DISABLED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.FEATURE_DISABLED));
 
         verify(tokenRepository, never()).save(any());
     }

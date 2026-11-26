@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày thực hiện: 2026-11-14*
 *Khung kiểm thử: Playwright v1.65.0 (Chromium Headless) | Môi trường: Linux (CachyOS)*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Báo cáo ghi nhận đợt kiểm thử Playwright E2E tại ngày `2026-11-14` (26 named routes + `*`). Đối với danh mục route mới nhất (28 named routes + `*`, gồm `/admin/promotions` & `/admin/service-requests`) và bộ test CI hiện hành (318 backend tests / 144 frontend unit tests), xem [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## 1. BẢNG TỔNG HỢP CHỈ SỐ KIỂM THỬ (EXECUTIVE QA METRICS)
@@ -10,13 +12,13 @@
 | Chỉ số kiểm thử (Test Metric) | Giá trị ghi nhận | Tỷ lệ hoàn thành | Đánh giá |
 |---|:---:|:---:|:---:|
 | **Tổng số vai trò đã kiểm thử (Roles Tested)** | **6 / 6 vai trò** | 100% | ✅ PASS |
-| **Tổng số tuyến đường kiểm thử (Routes Tested)** | **24 / 24 routes** | 100% | ✅ PASS |
-| **Tổng số ảnh chụp màn hình (Total Screenshots)** | **144 ảnh** | 100% | ✅ PASS |
+| **Tổng số tuyến đường kiểm thử (Routes Tested)** | **26 named routes** (27 gồm `*` wildcard fallback) | 100% | ✅ PASS |
+| **Tổng số ảnh chụp màn hình (Total Screenshots)** | **144 ảnh chuẩn hóa** (+ 20 ảnh bổ sung trong `screenshots/`) | 100% | ✅ PASS |
 | **Kích thước thiết bị kiểm thử (Viewports)** | **3 chuẩn** (`1440x900`, `768x1024`, `390x844`) | 100% | ✅ PASS |
 | **Số lượng Modals đã kích hoạt thực tế** | **15 Modals** | 100% | ✅ PASS |
 | **Số lượng Biểu mẫu đã kiểm thử (Forms)** | **14 Forms** | 100% | ✅ PASS |
-| **Kịch bản kiểm thử thành công (Passed Tests)** | **138 kịch bản** | 95.8% | ✅ EXCELLENT |
-| **Kịch bản gặp lỗi phân quyền (Permission Defects)**| **1 lỗi (Cashier History Analytics)** | 4.2% | ⚠️ DEFECT FOUND |
+| **Chạy lần đầu — Trước khi vá (Initial Run, Pre-Fix)** | **138 / 144 PASS**, **6 / 144 bị ảnh hưởng** (`BUG-01` Cashier `/admin/history` trên 3 viewports & các cảnh báo liên quan) | 95.8% PASS / 4.2% FAIL | ⚠️ DEFECTS FOUND |
+| **Kiểm thử lại — Sau khi vá (Re-verification, Post-Fix)** | **144 / 144 PASS** (sau khi khắc phục `BUG-01`, `BUG-03`, `BUG-04`, `BUG-05`) | **100% PASS** | ✅ RESOLVED / PASS |
 
 ---
 
@@ -37,10 +39,10 @@
 - **Tương tác:** Chuyển đổi linh hoạt giữa chế độ Kanban và chế độ Nấu gom món (`BatchCookingView`), kiểm tra bảng tồn kho nguyên liệu.
 - **Đánh giá:** Màn hình KDS tối ưu rất tốt cho Tablet đặt tại quầy bếp.
 
-### 2.4 Cashier (Thu ngân) — CONDITIONAL PASS (80%)
+### 2.4 Cashier (Thu ngân) — ✅ RESOLVED (Post-Fix PASS 100% | Initial Run: 80%)
 - **Tuyến đường:** Sơ đồ bàn (`/admin/tables`), Lập hóa đơn (`PaymentModal`), Lịch sử đơn hàng (`/admin/history`), Đơn mang về.
 - **Tương tác:** Mở Modal thanh toán tiền mặt/chuyển khoản VietQR PayOS thành công.
-- **Vấn đề phát hiện:** Khi tài khoản `CASHIER` truy cập trang `/admin/history`, hai endpoint thống kê nền (`/api/v1/analytics/orders/history` và `/api/v1/analytics/orders/summary`) trả về **HTTP 403 Forbidden**. Nguyên nhân do backend chỉ cho phép `MANAGER` và `ADMIN` gọi phân hệ `analytics`. Cần nới lỏng quyền đọc cho `CASHIER`.
+- **Vấn đề phát hiện (Initial Run) & Khắc phục (Post-Fix):** Trong lần chạy đầu, khi tài khoản `CASHIER` truy cập trang `/admin/history`, hai endpoint thống kê nền (`/api/v1/analytics/orders/history` và `/api/v1/analytics/orders/summary`) trả về **HTTP 403 Forbidden** (`BUG-01`). **Trạng thái hiện tại: ĐÃ KHẮC PHỤC (RESOLVED — Post-Fix PASS)** sau khi mở quyền `GET` cho `MANAGER`, `CASHIER` tại `SecurityConfig.java` (dòng 95–96), `SecurityRoutes.java` và `AnalyticsController.java`, được xác nhận lại trên cả 3 viewports (xem chi tiết tại `reports/BUG_REPORT.md`).
 
 ### 2.5 Manager (Quản lý) — PASS (100%)
 - **Tuyến đường:** Dashboard (`/admin/dashboard`), Quản lý Danh mục, Món ăn, Combo, Voucher, Nhân viên, Thống kê Món, Thống kê Nhân viên, Bàn ăn, Lịch sử.
@@ -49,7 +51,7 @@
 
 ### 2.6 Admin (Quản trị viên) — PASS (100%)
 - **Tuyến đường:** Đăng nhập bảo mật 2FA OTP (`/login`), Thống kê Doanh thu độc quyền (`/admin/statistics/revenue`), Cấu hình Nhà hàng toàn diện (`/admin/settings`).
-- **Tương tác:** Bắt mã 2FA từ Redis `qros:2fa:ticket:*`, đăng nhập thành công vào trang doanh thu và duyệt qua 7 tab cài đặt hệ thống.
+- **Tương tác:** Bắt mã 2FA từ Redis `qros:2fa:ticket:*`, đăng nhập thành công vào trang doanh thu và duyệt qua **8 tab cài đặt** (1 tab Tùy chọn cá nhân + 7 tab Cài đặt hệ thống).
 - **Đánh giá:** Tính năng bảo mật 2FA hoạt động xuất sắc, báo cáo doanh thu chuyên sâu hiển thị đầy đủ biểu đồ vùng (AreaChart) và số liệu tài chính.
 
 ---
@@ -59,21 +61,21 @@
 Trong suốt quá trình kiểm thử tự động, hệ thống Playwright đã bắt và ghi lại toàn bộ lỗi runtime vào `artifacts/ui-audit/logs/`:
 
 ### 3.1 Lỗi Trình duyệt (Browser Console Errors)
-1. **Permissions policy violation (`unload`):**
+1. **Permissions policy violation (`unload`) — ✅ RESOLVED (`BUG-04`):**
    - *Chi tiết:* `Permissions policy violation: unload is not allowed in this document.`
-   - *Phân tích:* Do Chrome/Chromium phiên bản mới đã bắt đầu deprecate sự kiện `unload` trên các trang web hiện đại. Đây là cảnh báo không gây crash ứng dụng.
-2. **WebSocket STOMP Broker Connection Drops:**
+   - *Phân tích & Khắc phục:* Do Chrome/Chromium phiên bản mới deprecate sự kiện `unload` nếu không khai báo Permissions Policy. Đã khắc phục bằng cách bổ sung `unload=(self)` vào header `Permissions-Policy` trong `SecurityConfig.java` (xem `reports/BUG_REPORT.md` — `BUG-04`).
+2. **WebSocket STOMP Broker Connection Drops — ✅ RESOLVED (`BUG-03`):**
    - *Chi tiết:* `admin WebSocket broker error: Failed to send message to ExecutorSubscribableChannel[clientInboundChannel]`
-   - *Phân tích:* Xảy ra khi trình duyệt Playwright chuyển đổi route quá nhanh làm ngắt kết nối WebSocket đột ngột trước khi heartbeat STOMP kịp đóng nhẹ nhàng.
+   - *Phân tích & Khắc phục:* Xảy ra do `WebSocketConfig.java` chưa đánh giá quyền qua `RoleHierarchy` và `websocket.js` chưa bọc `try-catch` khi unmount nhanh. Đã khắc phục hoàn toàn ở cả backend và frontend (xem `reports/BUG_REPORT.md` — `BUG-03`).
 
 ### 3.2 Lỗi Mạng & API (Network Request Failures)
-1. **Lỗi ảnh Unsplash bị chặn bởi ORB (Opaque Response Blocking):**
+1. **Lỗi ảnh Unsplash bị chặn bởi ORB (Opaque Response Blocking) — OPEN / MINOR (`BUG-02`):**
    - *Chi tiết:* `net::ERR_BLOCKED_BY_ORB` trên các URL `https://images.unsplash.com/...`
-   - *Phân tích:* Một số món ăn mẫu đang dùng link ảnh trực tiếp từ Unsplash mà không qua CDN Cloudinary, dẫn đến việc bị chính sách bảo mật trình duyệt chặn hiển thị.
-   - *Khuyến nghị:* Nên đồng bộ toàn bộ ảnh món ăn mẫu lên Cloudinary hoặc lưu trữ local assets.
-2. **Lỗi 403 Forbidden phân quyền Cashier:**
-   - *Chi tiết:* `GET /api/v1/analytics/orders/history` -> `HTTP 403`
-   - *Phân tích:* Đã xác định rõ lỗi cấu hình RBAC tại Backend Spring Security.
-3. **Lỗi 429 Too Many Requests (Rate Limiter 2FA):**
+   - *Phân tích:* Không còn URL `unsplash.com` trong mã nguồn hay Flyway migrations; các lỗi ghi nhận xuất phát từ bản ghi legacy trên Neon DB chưa migrate sang Cloudinary.
+   - *Khuyến nghị:* Chạy script đồng bộ toàn bộ URL ảnh legacy trên Neon DB sang Cloudinary.
+2. **Lỗi 403 Forbidden phân quyền Cashier — ✅ RESOLVED (`BUG-01`):**
+   - *Chi tiết:* `GET /api/v1/analytics/orders/history` và `GET /api/v1/analytics/orders/summary` -> `HTTP 403` (trong Initial Run).
+   - *Phân tích & Khắc phục:* Đã mở quyền RBAC cho `CASHIER` tại `SecurityConfig.java:95-96` và `AnalyticsController.java`, xác nhận PASS ở lần chạy kiểm thử lại (xem `reports/BUG_REPORT.md` — `BUG-01`).
+3. **Lỗi 429 Too Many Requests (Rate Limiter 2FA) — ✅ RESOLVED (`BUG-05`):**
    - *Chi tiết:* `POST /api/v1/auth/verify-2fa` -> `HTTP 429`
-   - *Phân tích:* Cơ chế chống brute-force của hệ thống hoạt động chính xác khi có nhiều request đăng nhập Admin liên tiếp trong vòng 1 phút.
+   - *Phân tích & Khắc phục:* Cơ chế chống brute-force của hệ thống hoạt động chính xác; đồng thời đã bổ sung giao diện đếm ngược `rateLimitCooldown` tại `LoginPage.jsx` hiển thị `THỬ LẠI SAU (Xs)` từ `retryAfterSeconds` (xem `reports/BUG_REPORT.md` — `BUG-05`).

@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
 
 class GlobalExceptionHandlerTest {
 
@@ -40,8 +41,8 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void mapsUnreadableRequestBodyToBadRequest() {
-        ResponseEntity<ApiResponse<ErrorResponse>> response =
-                handler.handleUnreadableMessage(new HttpMessageNotReadableException("invalid json"));
+        ResponseEntity<ApiResponse<ErrorResponse>> response = handler.handleUnreadableMessage(
+                new HttpMessageNotReadableException("invalid json", new MockHttpInputMessage(new byte[0])));
 
         assertError(
                 response, 400, ErrorCode.MALFORMED_REQUEST, "Request body is malformed or contains an invalid value.");

@@ -1,7 +1,5 @@
 package com.qros.modules.user.service;
 
-import com.qros.modules.auth.service.AccountLockoutService;
-import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.*;
 import com.qros.modules.user.dto.response.UserResponse;
 import com.qros.modules.user.mapper.UserMapper;
@@ -36,22 +34,19 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
-    private final RefreshTokenService refreshTokenService;
-    private final AccountLockoutService accountLockoutService;
+    private final UserAuthSessionPort userAuthSessionPort;
 
     public UserService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             ApplicationEventPublisher eventPublisher,
             UserMapper userMapper,
-            RefreshTokenService refreshTokenService,
-            AccountLockoutService accountLockoutService) {
+            UserAuthSessionPort userAuthSessionPort) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
         this.userMapper = userMapper;
-        this.refreshTokenService = refreshTokenService;
-        this.accountLockoutService = accountLockoutService;
+        this.userAuthSessionPort = userAuthSessionPort;
     }
 
     @Transactional
@@ -86,6 +81,7 @@ public class UserService {
         userRepository.save(u);
         // log.info("New user created: {}", u.getEmail());
         eventPublisher.publishEvent(new UserChangeEvent());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(u.getEmail(), null));
         return userMapper.toDto(u);
     }
 
@@ -101,20 +97,44 @@ public class UserService {
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse update(@NonNull Long id, @NonNull UpdateUserRequest req, String actorEmail) {
         User u = userRepository.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        validateManagerHierarchyRestrictions(actorEmail, u.getRole(), "update");
+        User actor = StringUtils.hasText(actorEmail)
+                ? userRepository.findByEmailIgnoreCase(actorEmail.trim()).orElse(null)
+                : null;
+        validateManagerHierarchyRestrictions(actor, u.getRole(), "update");
         if (req.role() != null) {
-            validateManagerHierarchyRestrictions(actorEmail, req.role(), "assign role to");
+            validateManagerHierarchyRestrictions(actor, req.role(), "assign role to");
+        }
+
+        if (actor != null && Objects.equals(actor.getId(), u.getId())) {
+            if (req.role() != null && req.role() != u.getRole()) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "You cannot change your own role");
+            }
+            if (req.status() != null && req.status() != UserStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "You cannot deactivate your own account");
+            }
         }
 
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
-        List<User> activeManagers = mayRemoveActiveManager(req)
+        UserRole nextRole = req.role() != null ? req.role() : u.getRole();
+        UserStatus nextStatus = req.status() != null ? req.status() : u.getStatus();
+
+        boolean removingActiveAdmin = isActiveAdmin(u) && !isActiveAdmin(nextRole, nextStatus);
+        boolean removingActiveManager = isActiveManager(u) && !isActiveManager(nextRole, nextStatus);
+
+        List<User> activeManagers = (removingActiveAdmin || removingActiveManager)
                 ? userRepository.findByRoleInAndStatusForUpdate(ADMIN_ROLES, UserStatus.ACTIVE)
                 : List.of();
 
-        UserRole nextRole = req.role() != null ? req.role() : u.getRole();
-        UserStatus nextStatus = req.status() != null ? req.status() : u.getStatus();
-        if (isActiveManager(u) && !isActiveManager(nextRole, nextStatus) && activeManagers.size() <= 1) {
+        if (removingActiveAdmin) {
+            long activeAdminCount = activeManagers.stream()
+                    .filter(user -> user.getRole() == UserRole.ADMIN)
+                    .count();
+            if (activeAdminCount <= 1) {
+                throw new BusinessException(ErrorCode.LAST_ACTIVE_ADMIN_REQUIRED);
+            }
+        }
+        if (removingActiveManager && activeManagers.size() <= 1) {
             throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
         }
 
@@ -128,7 +148,8 @@ public class UserService {
             throw new BusinessException(ErrorCode.PHONE_EXISTS);
         }
 
-        boolean emailChanged = !u.getEmail().equalsIgnoreCase(email);
+        String previousEmail = u.getEmail();
+        boolean emailChanged = !previousEmail.equalsIgnoreCase(email);
         boolean statusDeactivated = req.status() != null && req.status() != UserStatus.ACTIVE;
         boolean roleChanged = req.role() != null && req.role() != u.getRole();
 
@@ -145,10 +166,11 @@ public class UserService {
 
         userRepository.save(u);
         if (statusDeactivated || roleChanged || emailChanged) {
-            refreshTokenService.revokeUserTokens(u.getId());
+            userAuthSessionPort.revokeUserTokens(u.getId());
         }
         // log.info("User updated: {}", u.getEmail());
         eventPublisher.publishEvent(new UserChangeEvent());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(u.getEmail(), emailChanged ? previousEmail : null));
         return userMapper.toDto(u);
     }
 
@@ -169,14 +191,23 @@ public class UserService {
             throw new BusinessException(
                     ErrorCode.FORBIDDEN, "Manager is not allowed to delete Admin or Manager accounts");
         }
+        if (isActiveAdmin(target)) {
+            long activeAdminCount = activeManagers.stream()
+                    .filter(user -> user.getRole() == UserRole.ADMIN)
+                    .count();
+            if (activeAdminCount <= 1) {
+                throw new BusinessException(ErrorCode.LAST_ACTIVE_ADMIN_REQUIRED);
+            }
+        }
         if (isActiveManager(target) && activeManagers.size() <= 1) {
             throw new BusinessException(ErrorCode.LAST_ACTIVE_MANAGER_REQUIRED);
         }
 
         userRepository.delete(target);
-        refreshTokenService.revokeUserTokens(target.getId());
+        userAuthSessionPort.revokeUserTokens(target.getId());
         // log.info("User with id {} deleted", id);
         eventPublisher.publishEvent(new UserChangeEvent());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(target.getEmail(), null));
     }
 
     @Transactional
@@ -197,8 +228,9 @@ public class UserService {
         u.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
         u.setMustChangePassword(true);
         userRepository.save(u);
-        refreshTokenService.revokeUserTokens(u.getId());
-        accountLockoutService.unlock(u.getEmail());
+        userAuthSessionPort.revokeUserTokens(u.getId());
+        userAuthSessionPort.unlockAccount(u.getEmail());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(u.getEmail(), null));
         // log.info("Password reset for user: {}", u.getEmail());
     }
 
@@ -206,8 +238,12 @@ public class UserService {
         if (!StringUtils.hasText(actorEmail) || targetRole == null) {
             return;
         }
-        User actor = userRepository.findByEmailIgnoreCase(actorEmail).orElse(null);
-        if (actor != null && actor.getRole() == UserRole.MANAGER) {
+        User actor = userRepository.findByEmailIgnoreCase(actorEmail.trim()).orElse(null);
+        validateManagerHierarchyRestrictions(actor, targetRole, action);
+    }
+
+    private void validateManagerHierarchyRestrictions(User actor, UserRole targetRole, String action) {
+        if (actor != null && targetRole != null && actor.getRole() == UserRole.MANAGER) {
             if (targetRole == UserRole.ADMIN || targetRole == UserRole.MANAGER) {
                 throw new BusinessException(
                         ErrorCode.FORBIDDEN, "Manager is not allowed to " + action + " Admin or Manager accounts");
@@ -215,9 +251,12 @@ public class UserService {
         }
     }
 
-    private boolean mayRemoveActiveManager(UpdateUserRequest req) {
-        return (req.role() != null && !ADMIN_ROLES.contains(req.role()))
-                || (req.status() != null && req.status() != UserStatus.ACTIVE);
+    private boolean isActiveAdmin(User user) {
+        return isActiveAdmin(user.getRole(), user.getStatus());
+    }
+
+    private boolean isActiveAdmin(UserRole role, UserStatus status) {
+        return role == UserRole.ADMIN && status == UserStatus.ACTIVE;
     }
 
     private boolean isActiveManager(User user) {

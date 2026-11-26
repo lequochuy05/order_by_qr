@@ -1,5 +1,5 @@
 # Stage 1: Build ứng dụng với Maven
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+FROM maven:3.9.16-eclipse-temurin-25-alpine AS builder
 WORKDIR /app
 
 # Chỉ copy file cấu hình để cache dependencies
@@ -11,10 +11,10 @@ COPY backend/src ./backend/src
 RUN mvn -f backend/pom.xml clean package -DskipTests -Dspotless.check.skip=true -B
 
 # Giải nén jar thành các layer
-RUN java -Djarmode=layertools -jar backend/target/*.jar extract
+RUN java -Djarmode=tools -jar backend/target/*.jar extract --layers --launcher --destination /app/extracted
 
 # Stage 2: Runtime
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
 # Tối ưu: chỉ cài đặt những gì cần thiết
@@ -24,17 +24,17 @@ RUN apk add --no-cache tzdata curl && \
 USER spring
 
 # Copy layers từ builder
-COPY --chown=spring:spring --from=builder /app/dependencies/ ./
-COPY --chown=spring:spring --from=builder /app/spring-boot-loader/ ./
-COPY --chown=spring:spring --from=builder /app/snapshot-dependencies/ ./
-COPY --chown=spring:spring --from=builder /app/application/ .
+COPY --chown=spring:spring --from=builder /app/extracted/dependencies/ ./
+COPY --chown=spring:spring --from=builder /app/extracted/spring-boot-loader/ ./
+COPY --chown=spring:spring --from=builder /app/extracted/snapshot-dependencies/ ./
+COPY --chown=spring:spring --from=builder /app/extracted/application/ .
 
-# JVM tuning ưu tiên cold-start và footprint nhỏ trên Render.
+# JVM tuning cân bằng throughput (C2 JIT + G1GC) và bộ nhớ container.
 ENV TZ="Asia/Ho_Chi_Minh"
 ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh \
     -XX:MaxRAMPercentage=60.0 \
-    -XX:+UseSerialGC \
-    -XX:TieredStopAtLevel=1 \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=100 \
     -XX:+ExitOnOutOfMemoryError \
     -Djava.security.egd=file:/dev/./urandom"
 

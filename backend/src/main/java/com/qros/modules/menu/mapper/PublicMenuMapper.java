@@ -1,9 +1,6 @@
 package com.qros.modules.menu.mapper;
 
 import com.qros.modules.menu.dto.publicmenu.*;
-import com.qros.modules.menu.dto.response.ItemOptionResponse;
-import com.qros.modules.menu.dto.response.ItemOptionValueResponse;
-import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.dto.summary.CategorySummary;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.Combo;
@@ -18,13 +15,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class PublicMenuMapper {
 
-    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = Comparator.comparing(
-                    (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder())
-            .thenComparing((ItemOption option) -> option.getName() == null ? "" : option.getName());
-
-    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR = Comparator.comparing(
-                    (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder())
-            .thenComparing((ItemOptionValue value) -> value.getName() == null ? "" : value.getName());
+    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = MenuOptionComparators.ITEM_OPTION_COMPARATOR;
+    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR =
+            MenuOptionComparators.ITEM_OPTION_VALUE_COMPARATOR;
 
     public PublicCategoryItem toCategoryItem(Category category) {
         if (category == null) {
@@ -111,6 +104,18 @@ public class PublicMenuMapper {
                                 item.getMenuItem().getName(), item.getMenuItem().getImg(), item.getQuantity()))
                         .toList();
 
+        boolean comboAvailable = Boolean.TRUE.equals(combo.getAvailable())
+                && (combo.getItems() == null
+                        || combo.getItems().isEmpty()
+                        || combo.getItems().stream()
+                                .filter(item -> !item.isDeleted())
+                                .allMatch(item -> item.getMenuItem() != null
+                                        && !item.getMenuItem().isDeleted()
+                                        && Boolean.TRUE.equals(
+                                                item.getMenuItem().getActive())
+                                        && Boolean.TRUE.equals(
+                                                item.getMenuItem().getAvailable())));
+
         return new PublicComboItem(
                 combo.getId(),
                 combo.getName(),
@@ -118,54 +123,8 @@ public class PublicMenuMapper {
                 null,
                 combo.getPrice(),
                 lines,
-                combo.getAvailable(),
+                comboAvailable,
                 combo.getDisplayOrder());
-    }
-
-    public PublicMenuItem fromMenuItemResponse(MenuItemResponse item) {
-        if (item == null) {
-            return null;
-        }
-
-        List<PublicItemOption> options = item.itemOptions() == null
-                ? Collections.emptyList()
-                : item.itemOptions().stream()
-                        .sorted(Comparator.comparing((ItemOptionResponse option) ->
-                                        option.displayOrder() == null ? 0 : option.displayOrder())
-                                .thenComparing(
-                                        (ItemOptionResponse option) -> option.name() == null ? "" : option.name()))
-                        .map(option -> {
-                            List<PublicItemOptionValue> values = option.optionValues() == null
-                                    ? Collections.emptyList()
-                                    : option.optionValues().stream()
-                                            .sorted(Comparator.comparing((ItemOptionValueResponse value) ->
-                                                            value.displayOrder() == null ? 0 : value.displayOrder())
-                                                    .thenComparing((ItemOptionValueResponse value) ->
-                                                            value.name() == null ? "" : value.name()))
-                                            .map(value -> new PublicItemOptionValue(
-                                                    value.id(), value.name(), value.extraPrice(), value.displayOrder()))
-                                            .toList();
-
-                            return new PublicItemOption(
-                                    option.id(),
-                                    option.name(),
-                                    option.required(),
-                                    option.maxSelection(),
-                                    option.displayOrder(),
-                                    values);
-                        })
-                        .toList();
-
-        return new PublicMenuItem(
-                item.id(),
-                item.name(),
-                item.description(),
-                item.img(),
-                item.price(),
-                item.category(),
-                options,
-                item.available(),
-                item.displayOrder());
     }
 
     public PublicMenuItem withAvailability(PublicMenuItem item, boolean available) {

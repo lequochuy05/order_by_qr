@@ -1,5 +1,11 @@
 package com.qros.modules.analytics.service;
 
+import com.qros.modules.analytics.dto.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.dto.projection.OrderFilterSummaryProjection;
+import com.qros.modules.analytics.dto.projection.OrderSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TableSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TodayRevenueSummaryProjection;
+import com.qros.modules.analytics.dto.projection.UserPerformanceProjection;
 import com.qros.modules.analytics.dto.response.DashboardSummaryResponse;
 import com.qros.modules.analytics.dto.response.OrderDetailResponse;
 import com.qros.modules.analytics.dto.response.OrderSummaryResponse;
@@ -12,12 +18,6 @@ import com.qros.modules.analytics.dto.response.TableSummaryResponse;
 import com.qros.modules.analytics.dto.response.TopSellingItemResponse;
 import com.qros.modules.analytics.dto.response.UserPerformanceResponse;
 import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
-import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TodayRevenueSummaryProjection;
-import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
 import com.qros.modules.order.dto.response.OrderResponse;
 import com.qros.modules.order.service.OrderService;
 import com.qros.shared.cache.CacheNames;
@@ -46,6 +46,7 @@ public class AnalyticsService {
 
     private static final int DEFAULT_DAYS = 30;
     private static final int DASHBOARD_DAYS = 7;
+    private static final int MAX_DATE_RANGE_DAYS = 366;
     private static final int DEFAULT_LIMIT = 10;
     private static final int MAX_LIMIT = 50;
 
@@ -53,7 +54,7 @@ public class AnalyticsService {
     private final AnalyticsForecastService analyticsForecastService;
     private final OrderService orderService;
 
-    @Cacheable(value = CacheNames.ANALYTICS, key = "'dashboard:' + #from + ':' + #to")
+    @Cacheable(value = CacheNames.STATS_DASHBOARD, key = "'dashboard:' + #from + ':' + #to")
     public DashboardSummaryResponse getDashboardSummary(LocalDate from, LocalDate to) {
         DateRange range = normalizeDateRange(from, to, DASHBOARD_DAYS);
 
@@ -77,11 +78,11 @@ public class AnalyticsService {
                 safeMoney(summary != null ? summary.getAverageOrderValue() : null),
                 safeMoney(todayRevenueSummary != null ? todayRevenueSummary.getTodayRevenue() : null),
                 safeMoney(todayRevenueSummary != null ? todayRevenueSummary.getTodayAvgOrderValue() : null),
-                getRevenueSeries(range.from(), range.to()),
-                getUserPerformance(range.from(), range.to(), 5),
-                getOrderDetails(range.from(), range.to(), PageRequest.of(0, 5)).getContent(),
-                getTopSellingItems(range.from(), range.to(), 5),
-                getSalesTrend(range.from(), range.to()),
+                loadRevenueSeries(range),
+                loadUserPerformance(range, 5),
+                loadOrderDetails(range, PageRequest.of(0, 5)).getContent(),
+                loadTopSellingItems(range, 5),
+                loadSalesTrend(range),
                 analyticsForecastService.getRevenueForecast(),
                 analyticsForecastService.getPopularItemsForecast(),
                 toOrderSummaryResponse(orderSummary),
@@ -91,27 +92,43 @@ public class AnalyticsService {
 
     @Cacheable(value = CacheNames.ANALYTICS, key = "'revenue:' + #from + ':' + #to")
     public List<RevenuePointResponse> getRevenueSeries(LocalDate from, LocalDate to) {
-        DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
+        return loadRevenueSeries(normalizeDateRange(from, to, DEFAULT_DAYS));
+    }
 
+    @Cacheable(value = CacheNames.ANALYTICS, key = "'users:' + #from + ':' + #to + ':' + #limit")
+    public List<UserPerformanceResponse> getUserPerformance(LocalDate from, LocalDate to, int limit) {
+        return loadUserPerformance(normalizeDateRange(from, to, DEFAULT_DAYS), limit);
+    }
+
+    public Page<OrderDetailResponse> getOrderDetails(LocalDate from, LocalDate to, Pageable pageable) {
+        return loadOrderDetails(normalizeDateRange(from, to, DEFAULT_DAYS), pageable);
+    }
+
+    @Cacheable(value = CacheNames.ANALYTICS, key = "'topItems:' + #from + ':' + #to + ':' + #limit")
+    public List<TopSellingItemResponse> getTopSellingItems(LocalDate from, LocalDate to, int limit) {
+        return loadTopSellingItems(normalizeDateRange(from, to, DEFAULT_DAYS), limit);
+    }
+
+    @Cacheable(value = CacheNames.ANALYTICS, key = "'salesTrend:' + #from + ':' + #to")
+    public List<SalesTrendPointResponse> getSalesTrend(LocalDate from, LocalDate to) {
+        return loadSalesTrend(normalizeDateRange(from, to, DEFAULT_DAYS));
+    }
+
+    private List<RevenuePointResponse> loadRevenueSeries(DateRange range) {
         return analyticsQueryRepository.revenueByDay(range.from(), range.toExclusive()).stream()
                 .map(row -> new RevenuePointResponse(
                         LocalDate.parse(row.getDate()), safeMoney(row.getRevenue()), safeLong(row.getOrderCount())))
                 .toList();
     }
 
-    @Cacheable(value = CacheNames.ANALYTICS, key = "'users:' + #from + ':' + #to + ':' + #limit")
-    public List<UserPerformanceResponse> getUserPerformance(LocalDate from, LocalDate to, int limit) {
-        DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
+    private List<UserPerformanceResponse> loadUserPerformance(DateRange range, int limit) {
         int safeLimit = sanitizeLimit(limit);
-
         return analyticsQueryRepository.userPerformance(range.from(), range.toExclusive(), safeLimit).stream()
                 .map(this::toUserPerformanceResponse)
                 .toList();
     }
 
-    public Page<OrderDetailResponse> getOrderDetails(LocalDate from, LocalDate to, Pageable pageable) {
-        DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
-
+    private Page<OrderDetailResponse> loadOrderDetails(DateRange range, Pageable pageable) {
         return analyticsQueryRepository
                 .orderDetails(range.from(), range.toExclusive(), pageable)
                 .map(row -> new OrderDetailResponse(
@@ -122,11 +139,8 @@ public class AnalyticsService {
                         row.getTableNumber()));
     }
 
-    @Cacheable(value = CacheNames.ANALYTICS, key = "'topItems:' + #from + ':' + #to + ':' + #limit")
-    public List<TopSellingItemResponse> getTopSellingItems(LocalDate from, LocalDate to, int limit) {
-        DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
+    private List<TopSellingItemResponse> loadTopSellingItems(DateRange range, int limit) {
         int safeLimit = sanitizeLimit(limit);
-
         return analyticsQueryRepository.topSellingItems(range.from(), range.toExclusive(), safeLimit).stream()
                 .map(row -> new TopSellingItemResponse(
                         row.getMenuItemId(),
@@ -138,10 +152,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    @Cacheable(value = CacheNames.ANALYTICS, key = "'salesTrend:' + #from + ':' + #to")
-    public List<SalesTrendPointResponse> getSalesTrend(LocalDate from, LocalDate to) {
-        DateRange range = normalizeDateRange(from, to, DEFAULT_DAYS);
-
+    private List<SalesTrendPointResponse> loadSalesTrend(DateRange range) {
         return analyticsQueryRepository.salesTrendByDay(range.from(), range.toExclusive()).stream()
                 .map(row ->
                         new SalesTrendPointResponse(LocalDate.parse(row.getDate()), safeLong(row.getQuantitySold())))
@@ -235,6 +246,11 @@ public class AnalyticsService {
             throw new BusinessException(ErrorCode.INVALID_DATE_RANGE);
         }
 
+        if (java.time.temporal.ChronoUnit.DAYS.between(safeFrom, safeTo) > MAX_DATE_RANGE_DAYS) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_DATE_RANGE, "Date range cannot exceed " + MAX_DATE_RANGE_DAYS + " days");
+        }
+
         return new DateRange(safeFrom, safeTo, safeTo.plusDays(1));
     }
 
@@ -250,11 +266,20 @@ public class AnalyticsService {
         if (status == null || status.isBlank()) {
             return null;
         }
-        return status.trim().toUpperCase();
+        String normalized = status.trim().toUpperCase();
+        try {
+            com.qros.modules.order.model.enums.OrderStatus.valueOf(normalized);
+            return normalized;
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid order status: " + status.trim());
+        }
     }
 
     private String normalizeText(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private Long parseOrderId(String orderId) {
@@ -276,11 +301,11 @@ public class AnalyticsService {
     }
 
     private BigDecimal safeMoney(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
+        return com.qros.shared.constants.NumericDefaults.safeMoney(value);
     }
 
     private Long safeLong(Long value) {
-        return value != null ? value : 0L;
+        return com.qros.shared.constants.NumericDefaults.safeLong(value);
     }
 
     private record DateRange(LocalDate from, LocalDate to, LocalDate toExclusive) {}

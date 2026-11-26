@@ -1,5 +1,10 @@
 export const isAdminRoute = (pathname = '') => pathname.startsWith('/admin');
 
+export const isKitchenDisplayRoute = (pathname = '') => {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  return normalized === '/admin/kitchen';
+};
+
 export const isCustomerMenuPath = (pathname = '') => {
   const normalized = pathname.replace(/\/+$/, '') || '/';
   if (normalized === '/menu') return true;

@@ -27,18 +27,14 @@ public class RecommendationController {
     public ApiResponse<RecommendationResponse> getPersonalizedRecommendations(
             @RequestParam(defaultValue = "ANY") RecommendationContext context,
             @RequestParam(defaultValue = "5")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 20, message = "Limit cannot exceed 20")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 20, message = "Limit cannot exceed 20") int limit) {
         return ApiResponse.success(recommendationService.getPersonalizedRecommendations(context, limit));
     }
 
     @GetMapping("/popular")
     public ApiResponse<RecommendationResponse> getPopularItems(
             @RequestParam(defaultValue = "5")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 20, message = "Limit cannot exceed 20")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 20, message = "Limit cannot exceed 20") int limit) {
         return ApiResponse.success(recommendationService.getPopularItems(limit));
     }
 
@@ -46,9 +42,7 @@ public class RecommendationController {
     public ApiResponse<RecommendationResponse> getCrossSellRecommendations(
             @PathVariable @Min(value = 1, message = "Item id must be positive") Long itemId,
             @RequestParam(defaultValue = "3")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 20, message = "Limit cannot exceed 20")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 20, message = "Limit cannot exceed 20") int limit) {
         return ApiResponse.success(recommendationService.getCrossSellRecommendations(itemId, limit));
     }
 
@@ -56,9 +50,7 @@ public class RecommendationController {
     public ApiResponse<RecommendationResponse> getRecommendations(
             @PathVariable @Min(value = 1, message = "Item id must be positive") Long itemId,
             @RequestParam(defaultValue = "5")
-                    @Min(value = 1, message = "Limit must be at least 1")
-                    @Max(value = 20, message = "Limit cannot exceed 20")
-                    int limit) {
+                    @Min(value = 1, message = "Limit must be at least 1") @Max(value = 20, message = "Limit cannot exceed 20") int limit) {
         return ApiResponse.success(recommendationService.getRecommendations(itemId, limit));
     }
 }

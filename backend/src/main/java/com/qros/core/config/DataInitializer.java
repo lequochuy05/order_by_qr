@@ -4,6 +4,7 @@ import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.config.AppProperties;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
- * DataInitializer - Initialize essential data when the application starts.
+ * Creates an explicitly configured development administrator when requested.
  */
 @Component
 @Profile("dev")
@@ -27,23 +28,23 @@ public class DataInitializer implements CommandLineRunner {
 
     /**
      * Executes when the application starts.
-     * Checks if the user table is empty and creates a default admin account if necessary.
-     *
-     * @param args Command line arguments
-     * @throws Exception If an error occurs during initialization
+     * Creates no accounts unless development bootstrap is explicitly enabled.
      */
     @Override
-    public void run(String... args) throws Exception {
+    public void run(String... args) {
         if (!appProperties.getSecurity().isEnableDefaultAdmin()) {
-            log.info("Default admin bootstrap is disabled");
+            log.info("Development admin bootstrap is disabled");
             return;
         }
 
-        seedUserIfNotExists("admin@gmail.com", "admin123", "Administrator", UserRole.ADMIN);
-        seedUserIfNotExists("manager@gmail.com", "manager123", "Restaurant Manager", UserRole.MANAGER);
-        seedUserIfNotExists("chef@gmail.com", "chef123", "Head Chef", UserRole.CHEF);
-        seedUserIfNotExists("staff@gmail.com", "staff123", "Service Staff", UserRole.STAFF);
-        seedUserIfNotExists("cashier@gmail.com", "cashier123", "Cashier", UserRole.CASHIER);
+        String email = appProperties.getSecurity().getDefaultAdminEmail();
+        String password = appProperties.getSecurity().getDefaultAdminPassword();
+        if (email == null || email.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalStateException(
+                    "Development admin bootstrap requires DEV_ADMIN_EMAIL and DEV_ADMIN_PASSWORD");
+        }
+
+        seedUserIfNotExists(email, password, "Administrator", UserRole.ADMIN);
     }
 
     private void seedUserIfNotExists(String email, String rawPassword, String fullName, UserRole role) {
@@ -57,7 +58,7 @@ public class DataInitializer implements CommandLineRunner {
                     .mustChangePassword(false)
                     .build();
             userRepo.save(Objects.requireNonNull(u));
-            log.warn("Seeded dev test account: {} ({})", email, role);
+            log.info("Seeded explicitly configured development account: {} ({})", email, role);
         }
     }
 }

@@ -2,7 +2,6 @@ package com.qros.modules.menu.mapper;
 
 import com.qros.modules.menu.dto.response.CategoryResponse;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
-import com.qros.modules.menu.dto.summary.CategorySummary;
 import com.qros.modules.menu.model.Category;
 import java.util.Collections;
 import java.util.List;
@@ -37,10 +36,15 @@ public class CategoryMapper {
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
                 category.getVersion(),
+                menuItems.size(),
                 menuItems);
     }
 
     public CategoryResponse toSummaryResponse(Category category) {
+        return toSummaryResponse(category, 0L);
+    }
+
+    public CategoryResponse toSummaryResponse(Category category, long itemCount) {
         if (category == null) {
             return null;
         }
@@ -55,14 +59,7 @@ public class CategoryMapper {
                 category.getCreatedAt(),
                 category.getUpdatedAt(),
                 category.getVersion(),
+                itemCount,
                 Collections.emptyList());
-    }
-
-    public CategorySummary toSummary(Category category) {
-        if (category == null) {
-            return null;
-        }
-
-        return new CategorySummary(category.getId(), category.getName());
     }
 }

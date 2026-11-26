@@ -40,7 +40,7 @@ public class ComboMapper {
                 combo.getDescription(),
                 combo.getPrice(),
                 combo.getActive(),
-                combo.getAvailable(),
+                isComboAvailable(combo),
                 combo.getDisplayOrder(),
                 combo.getCreatedAt(),
                 combo.getUpdatedAt(),
@@ -65,6 +65,40 @@ public class ComboMapper {
                 combo.getUpdatedAt(),
                 combo.getVersion(),
                 Collections.emptyList());
+    }
+
+    public ComboResponse withAvailability(ComboResponse combo, boolean available) {
+        if (combo == null) {
+            return null;
+        }
+
+        return new ComboResponse(
+                combo.id(),
+                combo.name(),
+                combo.description(),
+                combo.price(),
+                combo.active(),
+                available,
+                combo.displayOrder(),
+                combo.createdAt(),
+                combo.updatedAt(),
+                combo.version(),
+                combo.items());
+    }
+
+    private boolean isComboAvailable(Combo combo) {
+        if (!Boolean.TRUE.equals(combo.getAvailable())) {
+            return false;
+        }
+        if (combo.getItems() == null || combo.getItems().isEmpty()) {
+            return true;
+        }
+        return combo.getItems().stream()
+                .filter(item -> !item.isDeleted())
+                .allMatch(item -> item.getMenuItem() != null
+                        && !item.getMenuItem().isDeleted()
+                        && Boolean.TRUE.equals(item.getMenuItem().getActive())
+                        && Boolean.TRUE.equals(item.getMenuItem().getAvailable()));
     }
 
     public ComboItemResponse toItemResponse(ComboItem item) {

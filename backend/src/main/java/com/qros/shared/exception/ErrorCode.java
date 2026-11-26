@@ -24,6 +24,7 @@ public enum ErrorCode {
     PHONE_EXISTS(HttpStatus.CONFLICT, "Phone number already exists"),
     SELF_DELETE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "You cannot delete your own account"),
     LAST_ACTIVE_MANAGER_REQUIRED(HttpStatus.CONFLICT, "At least one active manager is required"),
+    LAST_ACTIVE_ADMIN_REQUIRED(HttpStatus.CONFLICT, "At least one active admin is required"),
     FEATURE_DISABLED(HttpStatus.SERVICE_UNAVAILABLE, "Feature is currently disabled"),
     ACCOUNT_INACTIVE(HttpStatus.FORBIDDEN, "Account is locked or not activated"),
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Account is temporarily locked due to too many failed login attempts"),
@@ -57,16 +58,26 @@ public enum ErrorCode {
     TABLE_SESSION_INVALID(HttpStatus.BAD_REQUEST, "Invalid table session"),
     TABLE_SESSION_EXPIRED(HttpStatus.BAD_REQUEST, "Table session has expired"),
     TABLE_MERGE_REQUIRES_MULTIPLE_TABLES(HttpStatus.BAD_REQUEST, "Table merge requires multiple tables"),
-    TABLE_ALREADY_IN_ANOTHER_SESSION(HttpStatus.CONFLICT, "Table already belongs to another active session"),
     TABLE_MERGE_HAS_MULTIPLE_ACTIVE_ORDERS(HttpStatus.CONFLICT, "Cannot merge tables with multiple active orders"),
     TABLE_MERGE_CAPACITY_EXCEEDED(HttpStatus.BAD_REQUEST, "Guest count exceeds merged table capacity"),
     TABLE_MERGE_PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "Cannot merge while payment is in progress"),
     TABLE_SESSION_MEMBERSHIP_NOT_FOUND(HttpStatus.NOT_FOUND, "Table session membership not found"),
 
+    SERVICE_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "Service request not found"),
+    SERVICE_REQUEST_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "Please wait before sending another service request"),
+    SERVICE_REQUEST_DUPLICATE_ACTIVE(
+            HttpStatus.CONFLICT, "An active service request with this reason already exists for this table"),
+    SERVICE_REQUEST_OPEN_LIMIT_REACHED(
+            HttpStatus.TOO_MANY_REQUESTS, "This table has reached the maximum number of open service requests"),
+    SERVICE_REQUEST_ALREADY_CLAIMED(
+            HttpStatus.CONFLICT, "This service request has already been claimed by another staff member"),
+    SERVICE_REQUEST_INVALID_STATE(HttpStatus.CONFLICT, "Service request cannot be modified in its current state"),
+    SERVICE_REQUEST_NOT_ASSIGNED_TO_USER(
+            HttpStatus.FORBIDDEN, "Only the assigned staff member or a manager can perform this action"),
+
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Order not found"),
     ORDER_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Order item not found"),
     ORDER_CONTENT_EMPTY(HttpStatus.BAD_REQUEST, "Order content cannot be empty"),
-    ORDER_INVALID_STATUS(HttpStatus.BAD_REQUEST, "Invalid order status"),
     ORDER_INVALID_ITEM_STATUS(HttpStatus.BAD_REQUEST, "Invalid item status"),
     ORDER_INVALID_STATE(HttpStatus.BAD_REQUEST, "Invalid order state"),
     ORDER_ALREADY_PAID(HttpStatus.BAD_REQUEST, "Order is already paid"),
@@ -75,7 +86,6 @@ public enum ErrorCode {
     ORDER_HAS_UNFINISHED_ITEMS(HttpStatus.CONFLICT, "Order has items still being prepared in the kitchen"),
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Request already submitted with this idempotency key"),
     IDEMPOTENCY_PROCESSING(HttpStatus.CONFLICT, "This request is still being processed"),
-    ORDER_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Order request already submitted"),
 
     VOUCHER_NOT_FOUND(HttpStatus.NOT_FOUND, "Voucher not found"),
     VOUCHER_CODE_EXISTS(HttpStatus.CONFLICT, "Voucher code already exists"),
@@ -83,12 +93,10 @@ public enum ErrorCode {
     VOUCHER_NOT_YET_ACTIVE(HttpStatus.BAD_REQUEST, "Voucher is not active yet"),
     VOUCHER_EXPIRED(HttpStatus.BAD_REQUEST, "Voucher has expired"),
     VOUCHER_USAGE_LIMIT_REACHED(HttpStatus.BAD_REQUEST, "Voucher usage limit has been reached"),
-    VOUCHER_INVALID(HttpStatus.BAD_REQUEST, "Voucher invalid"),
+    VOUCHER_IN_USE(HttpStatus.CONFLICT, "Voucher is currently used by active orders or pending payments"),
 
     PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Promotion not found"),
     PROMOTION_NAME_EXISTS(HttpStatus.CONFLICT, "Promotion name already exists"),
-    PROMOTION_INACTIVE(HttpStatus.BAD_REQUEST, "Promotion is inactive"),
-    PROMOTION_INVALID(HttpStatus.BAD_REQUEST, "Promotion invalid"),
 
     INVENTORY_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Inventory item not found"),
     INVENTORY_ITEM_NAME_EXISTS(HttpStatus.CONFLICT, "Inventory item name already exists"),

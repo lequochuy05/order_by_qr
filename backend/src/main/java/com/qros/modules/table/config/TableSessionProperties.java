@@ -19,11 +19,9 @@ public class TableSessionProperties {
     private Duration tokenMaxLifetime = Duration.ofHours(12);
     private Duration heartbeatWriteInterval = Duration.ofSeconds(30);
 
-    @Min(1)
-    private int maxActiveTokensPerSession = 8;
+    @Min(1) private int maxActiveTokensPerSession = 8;
 
-    @AssertTrue(message = "Table-session durations must be positive and max lifetime must cover idle timeout")
-    public boolean isDurationConfigurationValid() {
+    @AssertTrue(message = "Table-session durations must be positive and max lifetime must cover idle timeout") public boolean isDurationConfigurationValid() {
         return isPositive(noOrderExpire)
                 && isPositive(tokenIdleTimeout)
                 && isPositive(tokenMaxLifetime)

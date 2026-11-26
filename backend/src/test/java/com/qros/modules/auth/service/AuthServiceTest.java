@@ -15,18 +15,22 @@ import com.qros.modules.auth.dto.request.LoginRequest;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+@ExtendWith(OutputCaptureExtension.class)
 class AuthServiceTest {
 
-    private UserRepository userRepository;
+    private UserLookupService userRepository;
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private AccountLockoutService accountLockoutService;
@@ -35,7 +39,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        userRepository = mock(UserRepository.class);
+        userRepository = mock(UserLookupService.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
         accountLockoutService = mock(AccountLockoutService.class);
@@ -47,28 +51,51 @@ class AuthServiceTest {
     }
 
     @Test
-    void loginWhenAccountIsLockedThrowsAccountLocked() {
+    void loginWhenAccountIsLockedThrowsAccountLocked(CapturedOutput output) {
         LoginRequest request = new LoginRequest("locked@example.com", "Secret123!");
         doThrow(new BusinessException(ErrorCode.ACCOUNT_LOCKED))
                 .when(accountLockoutService)
                 .checkLocked("locked@example.com");
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.ACCOUNT_LOCKED));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ACCOUNT_LOCKED));
+        assertThat(output.toString()).contains("account is locked email=l***d@example.com");
+        assertThat(output.toString()).doesNotContain("locked@example.com");
     }
 
     @Test
-    void loginWithNonExistentEmailComputesDummyHashToPreventTimingAttacks() {
+    void loginWithNonExistentEmailComputesDummyHashToPreventTimingAttacks(CapturedOutput output) {
         LoginRequest request = new LoginRequest("unknown@example.com", "Secret123!");
         when(userRepository.findByEmailIgnoreCase("unknown@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_CREDENTIALS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS));
 
         verify(passwordEncoder).matches(eq("Secret123!"), eq("$2a$10$encodedDummyHashValueForTimingDefense123"));
         verify(accountLockoutService).recordFailedAttempt("unknown@example.com");
+        assertThat(output.toString()).contains("invalid credentials email=u***n@example.com");
+        assertThat(output.toString()).doesNotContain("unknown@example.com");
+    }
+
+    @Test
+    void loginAttemptThatTriggersLockoutIsLoggedBeforeLockoutException(CapturedOutput output) {
+        LoginRequest request = new LoginRequest("user@example.com", "WrongPassword123!");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.empty());
+        doThrow(new BusinessException(ErrorCode.ACCOUNT_LOCKED))
+                .when(accountLockoutService)
+                .recordFailedAttempt("user@example.com");
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ACCOUNT_LOCKED));
+
+        assertThat(output.toString()).contains("invalid credentials email=u***r@example.com");
+        assertThat(output.toString()).doesNotContain("user@example.com");
     }
 
     @Test
@@ -86,8 +113,9 @@ class AuthServiceTest {
         when(passwordEncoder.matches("WrongPassword123!", user.getPassword())).thenReturn(false);
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.INVALID_CREDENTIALS));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS));
 
         verify(passwordEncoder).matches("WrongPassword123!", user.getPassword());
         verify(accountLockoutService).recordFailedAttempt("user@example.com");
@@ -108,8 +136,9 @@ class AuthServiceTest {
         when(passwordEncoder.matches("Secret123!", user.getPassword())).thenReturn(true);
 
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.ACCOUNT_INACTIVE));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.ACCOUNT_INACTIVE));
     }
 
     @Test

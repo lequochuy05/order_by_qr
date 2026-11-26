@@ -9,6 +9,8 @@ public interface DomainEvents {
 
     record MenuChangeEvent(String type, Object id) {}
 
+    record MenuItemDeletedEvent(Long menuItemId) {}
+
     record TableChangeEvent() {}
 
     record CategoryChangeEvent(String type, Object id) {}
@@ -23,7 +25,11 @@ public interface DomainEvents {
 
     record UserChangeEvent() {}
 
+    record UserAuthChangeEvent(String email, String previousEmail) {}
+
     record SettingsChangeEvent(Object publicSettings) {}
 
     record InventoryChangeEvent(String type, Object id) {}
+
+    record ServiceRequestChangeEvent(String action, Long requestId, Long tableId) {}
 }

@@ -1,18 +1,15 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.inventory.service.InventoryReservationService;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.ItemOptionValueRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
 import com.qros.modules.order.dto.request.StaffCreateOrderRequest;
 import com.qros.modules.order.dto.response.OrderResponse;
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import com.qros.modules.order.listener.OrderCacheInvalidationService;
 import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderBatch;
@@ -26,12 +23,9 @@ import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
-import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
-import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
@@ -49,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,16 +57,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OrderCreationService {
 
-    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
-            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
-    private static final List<String> ACTIVE_ORDER_STATUS_NAMES =
-            ACTIVE_ORDER_STATUSES.stream().map(Enum::name).toList();
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = OrderStatus.ACTIVE_STATUSES;
+    private static final List<String> ACTIVE_ORDER_STATUS_NAMES = OrderStatus.ACTIVE_STATUS_NAMES;
 
     private final OrderRepository orderRepository;
-    private final MenuItemRepository menuItemRepository;
-    private final DiningTableRepository tableRepository;
-    private final ComboRepository comboRepository;
-    private final ItemOptionValueRepository itemOptionValueRepository;
+    private final MenuCatalogLookupService menuCatalogLookupService;
     private final ApplicationEventPublisher eventPublisher;
     private final OrderPricingService orderPricingService;
     private final OrderStatusService orderStatusService;
@@ -79,10 +69,10 @@ public class OrderCreationService {
     private final OrderMapper orderMapper;
     private final MeterRegistry meterRegistry;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
-    private final InventoryReservationService inventoryReservationService;
+    private final OrderInventoryReservationPort inventoryReservationService;
     private final OrderValidator orderValidator;
     private final TableSessionService tableSessionService;
-    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final OrderPaymentPort orderPaymentPort;
     private final SystemSettingsService settingsService;
 
     private Counter ordersCreatedCounter;
@@ -97,6 +87,7 @@ public class OrderCreationService {
     @Transactional
     public OrderResponse createCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
         validateOrderContent(request.items(), request.combos());
+        orderValidator.validateCustomerOperatingHours();
 
         TableSession session =
                 tableSessionService.requireOpenSessionForOrdering(request.tableCode(), request.sessionToken());
@@ -122,6 +113,8 @@ public class OrderCreationService {
     }
 
     private OrderResponse createTakeawayOrder(@NonNull StaffCreateOrderRequest request) {
+        orderValidator.validateSystemAcceptsOrders();
+
         Order order = Order.builder()
                 .status(OrderStatus.PENDING)
                 .paymentStatus(PaymentStatus.PENDING)
@@ -133,39 +126,9 @@ public class OrderCreationService {
                 .businessDate(AppTime.today())
                 .build();
 
-        OrderBatch batch = OrderBatch.builder()
-                .submittedAt(AppTime.now())
-                .source(BatchSource.STAFF)
-                .build();
-
-        Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
-
-        buildOrderItems(request.items(), order, batch, quantitiesToReserve);
-        buildOrderCombos(request.combos(), order, batch, quantitiesToReserve);
-
-        attachBatchIfNotEmpty(order, batch);
-        cleanupEmptyBatches(order);
-
-        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
-
-        orderPricingService.recalculateOrderTotals(order);
-        if (request.voucherCode() != null && !request.voucherCode().isBlank()) {
-            orderPricingService.applyVoucher(order, request.voucherCode());
-        }
-
-        if (Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
-            order.setStatus(OrderStatus.SERVING);
-        }
-
-        Order saved = orderRepository.save(order);
-
-        orderCacheInvalidationService.evictAfterOrderMutation(saved);
-
-        ordersCreatedCounter.increment();
-
-        eventPublisher.publishEvent(new OrderChangeEvent());
+        Order saved = populateAndPersistOrderBatch(
+                order, request.items(), request.combos(), BatchSource.STAFF, request.voucherCode(), true, null);
         log.info("Takeaway order processed: ID #{}", saved.getId());
-
         return orderMapper.toResponse(saved);
     }
 
@@ -180,46 +143,54 @@ public class OrderCreationService {
         ensureNoPaymentInProgress(order);
         orderValidator.validateTableAcceptsOrders(table);
 
+        Order saved = populateAndPersistOrderBatch(order, items, combos, source, voucherCode, true, savedOrder -> {
+            orderStatusService.tryAutoPromoteOrder(savedOrder);
+            orderTableSyncService.recalcTableStatus(savedOrder);
+        });
+        log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
+        return orderMapper.toResponse(saved);
+    }
+
+    private Order populateAndPersistOrderBatch(
+            Order order,
+            List<OrderItemRequest> items,
+            List<OrderComboRequest> combos,
+            BatchSource source,
+            String voucherCode,
+            boolean autoConfirmIfEnabled,
+            Consumer<Order> postReservationHook) {
         OrderBatch batch =
                 OrderBatch.builder().submittedAt(AppTime.now()).source(source).build();
 
         Map<OrderItem, Integer> quantitiesToReserve = new LinkedHashMap<>();
-
         buildOrderItems(items, order, batch, quantitiesToReserve);
-        buildOrderCombos(combos, order, batch, quantitiesToReserve);
+        buildOrderCombos(combos, order, batch, quantitiesToReserve, source == BatchSource.QR);
 
         attachBatchIfNotEmpty(order, batch);
         cleanupEmptyBatches(order);
-
-        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
 
         orderPricingService.recalculateOrderTotals(order);
         if (voucherCode != null && !voucherCode.isBlank()) {
             orderPricingService.applyVoucher(order, voucherCode);
         }
-        applyAutoConfirmation(order, source);
-
-        Order saved = orderRepository.save(order);
-
-        orderStatusService.tryAutoPromoteOrder(saved);
-        orderTableSyncService.recalcTableStatus(saved);
-
-        orderCacheInvalidationService.evictAfterOrderMutation(saved);
-
-        ordersCreatedCounter.increment();
-
-        eventPublisher.publishEvent(new OrderChangeEvent());
-        log.info("Order processed for table {}: ID #{}", table.getTableNumber(), saved.getId());
-
-        return orderMapper.toResponse(saved);
-    }
-
-    private void applyAutoConfirmation(Order order, BatchSource source) {
-        if (source == BatchSource.QR
+        if (autoConfirmIfEnabled
                 && order.getStatus() == OrderStatus.PENDING
                 && Boolean.TRUE.equals(settingsService.getSettingsEntity().getAutoConfirmOrders())) {
             order.setStatus(OrderStatus.SERVING);
         }
+
+        Order saved = orderRepository.save(order);
+        orderRepository.flush();
+        inventoryReservationService.reserveForOrderItems(quantitiesToReserve);
+
+        if (postReservationHook != null) {
+            postReservationHook.accept(saved);
+        }
+
+        orderCacheInvalidationService.evictAfterOrderMutation(saved);
+        ordersCreatedCounter.increment();
+        eventPublisher.publishEvent(new OrderChangeEvent());
+        return saved;
     }
 
     private Order getOrCreateActiveOrder(DiningTable table, TableSession session) {
@@ -279,8 +250,12 @@ public class OrderCreationService {
             return;
         }
 
-        boolean hasPendingPayment = paymentTransactionRepository.existsByOrderIdAndStatusIn(
-                order.getId(), List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
+        if (order.isPaid()) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_ALREADY_PAID, "This order is already paid and cannot accept additional items.");
+        }
+
+        boolean hasPendingPayment = orderPaymentPort.hasPendingPaymentForOrder(order.getId());
 
         if (hasPendingPayment) {
             throw new BusinessException(
@@ -290,18 +265,7 @@ public class OrderCreationService {
     }
 
     private void validateOrderContent(List<OrderItemRequest> items, List<OrderComboRequest> combos) {
-        boolean hasItems = items != null && !items.isEmpty();
-        boolean hasCombos = combos != null && !combos.isEmpty();
-
-        if (!hasItems && !hasCombos) {
-            throw new BusinessException(ErrorCode.ORDER_CONTENT_EMPTY);
-        }
-
-        if (hasCombos
-                && combos.stream()
-                        .anyMatch(combo -> combo == null || combo.quantity() == null || combo.quantity() < 1)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Combo quantity must be at least 1");
-        }
+        OrderOptionSupport.validateOrderContent(items, combos);
     }
 
     private void buildOrderItems(
@@ -312,7 +276,7 @@ public class OrderCreationService {
 
         Set<Long> menuItemIds = items.stream().map(OrderItemRequest::menuItemId).collect(Collectors.toSet());
 
-        Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
+        Map<Long, MenuItem> menuItemsMap = menuCatalogLookupService.findMenuItemsByIds(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
         Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
 
@@ -324,15 +288,13 @@ public class OrderCreationService {
             List<Long> selectedOptionValueIds =
                     itemRequest.selectedOptionValueIds() == null ? List.of() : itemRequest.selectedOptionValueIds();
 
-            validateSelectedOptions(menuItem, selectedOptionValueIds);
+            OrderOptionSupport.validateSelectedOptions(menuItem, selectedOptionValueIds);
 
-            List<ItemOptionValue> selectedValues = resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
-            validateOptionValuesExist(selectedOptionValueIds, selectedValues);
+            List<ItemOptionValue> selectedValues =
+                    OrderOptionSupport.resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
+            OrderOptionSupport.validateOptionValuesExist(selectedOptionValueIds, selectedValues);
 
-            BigDecimal extraPrice = selectedValues.stream()
-                    .map(ItemOptionValue::getExtraPrice)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal extraPrice = OrderOptionSupport.calculateOptionsPrice(selectedValues);
 
             BigDecimal unitPrice = menuItem.getPrice().add(extraPrice);
 
@@ -376,51 +338,38 @@ public class OrderCreationService {
     }
 
     private Map<Long, ItemOptionValue> loadSelectedOptionValues(List<OrderItemRequest> items) {
-        Set<Long> selectedOptionValueIds = items.stream()
-                .filter(Objects::nonNull)
-                .flatMap(item -> item.selectedOptionValueIds() == null
-                        ? java.util.stream.Stream.<Long>empty()
-                        : item.selectedOptionValueIds().stream())
-                .collect(Collectors.toSet());
-
+        Set<Long> selectedOptionValueIds = OrderOptionSupport.extractSelectedOptionValueIds(items);
         if (selectedOptionValueIds.isEmpty()) {
             return Map.of();
         }
 
-        return itemOptionValueRepository.findAllByIdIn(selectedOptionValueIds).stream()
+        return menuCatalogLookupService.findItemOptionValuesByIds(selectedOptionValueIds).stream()
                 .collect(Collectors.toMap(ItemOptionValue::getId, value -> value));
-    }
-
-    private List<ItemOptionValue> resolveSelectedValues(
-            List<Long> selectedOptionValueIds, Map<Long, ItemOptionValue> selectedValuesById) {
-        if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
-            return List.of();
-        }
-
-        return selectedOptionValueIds.stream()
-                .map(selectedValuesById::get)
-                .filter(Objects::nonNull)
-                .toList();
     }
 
     private void buildOrderCombos(
             List<OrderComboRequest> combos,
             Order order,
             OrderBatch batch,
-            Map<OrderItem, Integer> quantitiesToReserve) {
+            Map<OrderItem, Integer> quantitiesToReserve,
+            boolean isCustomerOrder) {
         if (combos == null || combos.isEmpty()) {
             return;
         }
 
         List<Long> comboIds = combos.stream().map(OrderComboRequest::comboId).collect(Collectors.toList());
 
-        java.util.Map<Long, Combo> combosMap = comboRepository.findAllByIdInWithItems(comboIds).stream()
+        java.util.Map<Long, Combo> combosMap = menuCatalogLookupService.findCombosByIdsWithItems(comboIds).stream()
                 .collect(Collectors.toMap(Combo::getId, c -> c));
 
         for (OrderComboRequest comboRequest : combos) {
             Combo combo = Optional.ofNullable(combosMap.get(comboRequest.comboId()))
                     .orElseThrow(() -> new BusinessException(ErrorCode.COMBO_NOT_FOUND));
-            orderValidator.validateComboOrderable(combo);
+            if (isCustomerOrder) {
+                orderValidator.validateComboOrderable(combo, true);
+            } else {
+                orderValidator.validateComboOrderable(combo);
+            }
 
             Optional<OrderItem> existing = order.getOrderItems().stream()
                     .filter(item -> Objects.equals(item.getBatch(), batch))
@@ -474,77 +423,19 @@ public class OrderCreationService {
 
     private void mergeExistingItem(
             OrderItem existingItem, Integer additionalQuantity, Map<OrderItem, Integer> quantitiesToReserve) {
-
-        quantitiesToReserve.merge(existingItem, additionalQuantity, Integer::sum);
-
-        existingItem.setQuantity(existingItem.getQuantity() + additionalQuantity);
-        orderPricingService.recalculateLineTotal(existingItem);
-    }
-
-    private void validateSelectedOptions(MenuItem menuItem, List<Long> selectedValueIds) {
-        Set<Long> selectedIds = new HashSet<>(selectedValueIds);
-
-        validateRequiredOptions(menuItem, selectedIds);
-        validateMaxSelections(menuItem, selectedIds);
-        validateOptionValuesBelongToMenuItem(menuItem, selectedIds);
-    }
-
-    private void validateRequiredOptions(MenuItem menuItem, Set<Long> selectedIds) {
-        menuItem.getItemOptions().stream()
-                .filter(option -> Boolean.TRUE.equals(option.getRequired()))
-                .forEach(option -> {
-                    boolean selected =
-                            option.getOptionValues().stream().anyMatch(value -> selectedIds.contains(value.getId()));
-
-                    if (!selected) {
-                        throw new BusinessException(
-                                ErrorCode.INVALID_REQUEST, "Required option selection missing: " + option.getName());
-                    }
-                });
-    }
-
-    private void validateMaxSelections(MenuItem menuItem, Set<Long> selectedIds) {
-        menuItem.getItemOptions().forEach(option -> {
-            int maxSelection = option.getMaxSelection() == null ? 1 : option.getMaxSelection();
-            long selectedCount = option.getOptionValues().stream()
-                    .filter(value -> selectedIds.contains(value.getId()))
-                    .count();
-
-            if (selectedCount > maxSelection) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_REQUEST, "Too many option selections for: " + option.getName());
+        final int mergedQuantity;
+        try {
+            mergedQuantity = Math.addExact(existingItem.getQuantity(), additionalQuantity);
+            if (mergedQuantity > 1000) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Order item quantity exceeds maximum limit");
             }
-        });
-    }
-
-    private void validateOptionValuesBelongToMenuItem(MenuItem menuItem, Set<Long> selectedIds) {
-        if (selectedIds.isEmpty()) {
-            return;
+            quantitiesToReserve.merge(existingItem, additionalQuantity, Math::addExact);
+        } catch (ArithmeticException ex) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Order item quantity exceeds maximum limit");
         }
 
-        Set<Long> validValueIds = menuItem.getItemOptions().stream()
-                .flatMap(option -> option.getOptionValues().stream())
-                .map(ItemOptionValue::getId)
-                .collect(Collectors.toSet());
-
-        boolean allBelongToMenuItem = validValueIds.containsAll(selectedIds);
-
-        if (!allBelongToMenuItem) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "Selected option contains invalid value for this menu item.");
-        }
-    }
-
-    private void validateOptionValuesExist(List<Long> requestedIds, List<ItemOptionValue> selectedValues) {
-        if (requestedIds.isEmpty()) {
-            return;
-        }
-
-        Set<Long> foundIds = selectedValues.stream().map(ItemOptionValue::getId).collect(Collectors.toSet());
-
-        if (!foundIds.containsAll(requestedIds)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Selected option value does not exist.");
-        }
+        existingItem.setQuantity(mergedQuantity);
+        orderPricingService.recalculateLineTotal(existingItem);
     }
 
     private boolean checkOptionsMatch(Collection<OrderItemOption> existingOptions, List<Long> incomingIds) {

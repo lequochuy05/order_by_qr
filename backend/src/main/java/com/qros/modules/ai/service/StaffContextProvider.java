@@ -6,10 +6,10 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
-import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderLookupService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableStatus;
-import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -17,15 +17,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,9 +32,9 @@ public class StaffContextProvider {
     private static final int RECENT_ORDER_LIMIT = 8;
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private final OrderRepository orderRepository;
+    private final OrderLookupService orderLookupService;
     private final KitchenService kitchenService;
-    private final DiningTableRepository diningTableRepository;
+    private final TableLookupService tableLookupService;
 
     @Transactional(readOnly = true)
     public String buildStaffContext() {
@@ -104,39 +99,25 @@ public class StaffContextProvider {
     }
 
     private void appendTableContext(StringBuilder builder) {
-        List<DiningTable> tables = diningTableRepository.findAllByOrderByTableNumberAsc();
+        List<DiningTable> tables = tableLookupService.findAllTablesOrdered();
         Map<TableStatus, Long> counts = tables.stream()
                 .collect(Collectors.groupingBy(
                         DiningTable::getStatus, () -> new EnumMap<>(TableStatus.class), Collectors.counting()));
 
-        builder.append("TRẠNG THÁI BÀN:\n");
-        builder.append("  - Tổng: ").append(tables.size());
+        builder.append("TỔNG QUAN TRẠNG THÁI BÀN:\n");
+        builder.append("  - Tổng số bàn: ").append(tables.size());
         for (TableStatus status : TableStatus.values()) {
             builder.append(" | ").append(tableStatusLabel(status)).append(": ").append(counts.getOrDefault(status, 0L));
         }
-        builder.append("\n");
-
-        if (tables.isEmpty()) {
-            builder.append("  - Chưa có bàn trong hệ thống.\n\n");
-            return;
-        }
-
-        tables.forEach(table -> builder.append("  - Bàn ")
-                .append(table.getTableNumber())
-                .append(" | ")
-                .append(tableStatusLabel(table.getStatus()))
-                .append(" | sức chứa ")
-                .append(table.getCapacity())
-                .append("\n"));
-        builder.append("\n");
+        builder.append("\n\n");
     }
 
     private void appendRecentOrderContext(StringBuilder builder, LocalDateTime now) {
-        List<Order> recentOrders = recentOrders();
+        List<Order> recentOrders = recentOrders(now);
 
-        builder.append("ORDER GẦN ĐÂY:\n");
+        builder.append("ORDER ĐANG PHỤC VỤ TRONG CA (GẦN ĐÂY):\n");
         if (recentOrders.isEmpty()) {
-            builder.append("  - Chưa có order gần đây.\n");
+            builder.append("  - Không có order đang phục vụ cần lưu ý.\n\n");
             return;
         }
 
@@ -154,30 +135,25 @@ public class StaffContextProvider {
                     .append(" | tạo ")
                     .append(ageMinutes)
                     .append(" phút trước")
-                    .append(" | tổng ")
-                    .append(formatMoney(order.getFinalAmount()))
                     .append(" | món: ")
                     .append(items)
                     .append("\n");
         });
+        builder.append("\n");
     }
 
-    private List<Order> recentOrders() {
-        PageRequest pageable = PageRequest.of(0, RECENT_ORDER_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<Long> orderIds = orderRepository.findAll(pageable).getContent().stream()
-                .filter(o -> o.getStatus() != OrderStatus.COMPLETED && o.getStatus() != OrderStatus.CANCELLED)
-                .map(Order::getId)
-                .toList();
-
-        if (orderIds.isEmpty()) {
+    private List<Order> recentOrders(LocalDateTime now) {
+        LocalDateTime cutoff = now.minusHours(12);
+        List<Order> activeOrders =
+                orderLookupService.findOrdersByStatuses(List.of(OrderStatus.PENDING, OrderStatus.SERVING));
+        if (activeOrders == null || activeOrders.isEmpty()) {
             return List.of();
         }
-
-        Map<Long, Order> ordersById = orderRepository.findDistinctByIdIn(orderIds).stream()
-                .collect(
-                        Collectors.toMap(Order::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
-
-        return orderIds.stream().map(ordersById::get).filter(Objects::nonNull).toList();
+        return activeOrders.stream()
+                .filter(o -> o.getCreatedAt() != null && o.getCreatedAt().isAfter(cutoff))
+                .sorted(Comparator.comparing(Order::getCreatedAt).reversed())
+                .limit(RECENT_ORDER_LIMIT)
+                .toList();
     }
 
     private String orderItemsText(Order order) {
@@ -251,7 +227,7 @@ public class StaffContextProvider {
     }
 
     private String formatMoney(BigDecimal value) {
-        return value != null ? "%,.0fđ".formatted(value).replace(",", ".") : "0đ";
+        return com.qros.modules.ai.support.AiJsonExtractor.formatVndMoney(value);
     }
 
     private String orderStatusLabel(OrderStatus status) {

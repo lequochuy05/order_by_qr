@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { inventoryService } from '@entities/inventory/api/inventoryService.js';
+import { inventoryService } from '@entities/inventory';
 import { menuItemService } from '@entities/menu-item';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
@@ -65,7 +65,7 @@ const useRecipeEditor = () => {
 
       setInventoryItemsLoading(true);
       try {
-        const inventoryData = await inventoryService.getItems({ force });
+        const inventoryData = await inventoryService.getActiveItems({ force });
         if (!isMountedRef.current) return inventoryData || [];
 
         setInventoryItems(inventoryData || []);
@@ -176,11 +176,13 @@ const useRecipeEditor = () => {
     selectedMenuItem,
     selectedMenuItemId,
     menuItemsLoading,
+    inventoryItemsLoading,
     recipeLoading: recipeLoading || inventoryItemsLoading,
     recipeOpen,
     isRecipeSubmitting,
     setRecipeItems,
     ensureMenuItems,
+    ensureInventoryOptions: ensureInventoryItems,
     refreshInventoryOptions,
     refreshRecipeSources,
     openRecipe,

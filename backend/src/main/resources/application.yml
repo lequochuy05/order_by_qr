@@ -1,11 +1,15 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   config:
     import:
       - "optional:file:.env[.properties]"
       - "optional:file:../.env[.properties]"
 
   datasource:
-    url: ${DB_URL}
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:qros}}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -44,6 +48,11 @@ spring:
     problemdetails:
       enabled: false
 
+  web:
+    error:
+      include-message: never
+      include-binding-errors: never
+
   servlet:
     multipart:
       max-file-size: 5MB
@@ -54,9 +63,11 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
+      host: ${REDIS_HOST}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:true}
       repositories:
         enabled: false
 
@@ -72,8 +83,8 @@ spring:
           starttls:
             enable: true
           connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
 
 auth:
   lockout:
@@ -122,9 +133,6 @@ server:
       - application/json
       - application/xml
     min-response-size: 1024
-  error:
-    include-message: never
-    include-binding-errors: never
 
 security:
   jwt:
@@ -150,6 +158,16 @@ rate-limit:
       method: POST
       max-requests: 5
       window: 1m
+    - scope: public:service-requests
+      path: /api/v1/public/tables/*/service-requests
+      method: POST
+      max-requests: 6
+      window: 1m
+    - scope: public:self-checkout
+      path: /api/v1/public/tables/*/self-checkout/**
+      method: POST
+      max-requests: 15
+      window: 1m
     - scope: public:heartbeat
       path: /api/v1/public/sessions/heartbeat
       method: POST
@@ -170,6 +188,16 @@ rate-limit:
       method: POST
       max-requests: 60
       window: 1m
+    - scope: public:voucher-validate
+      path: /api/v1/vouchers/validate
+      method: GET
+      max-requests: 20
+      window: 1m
+    - scope: public:self-checkout-sync
+      path: /api/v1/public/tables/*/self-checkout/*
+      method: GET
+      max-requests: 30
+      window: 1m
 
 cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME}
@@ -178,10 +206,12 @@ cloudinary:
 
 app:
   base-url: ${APP_BASE_URL}
+  security:
+    qr-secret: ${QR_SIGNING_SECRET:}
   frontend:
     base-url: ${APP_FRONTEND_BASE_URL}
   cache:
-    prefix:  "qros:v3:"
+    prefix: "qros:v4:"
   email:
     from-name: QROS
     brand-name: QROS
@@ -203,7 +233,7 @@ management:
         include: prometheus,health
   endpoint:
     prometheus:
-      enabled: true
+      access: read-only
     health:
       show-details: never
       probes:
@@ -225,8 +255,9 @@ table-session:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent}
-  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:30}
-  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:60}
+  fallback-api-url: ${GEMINI_FALLBACK_API_URL:}
+  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:10}
+  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:25}
   temperature: ${GEMINI_TEMPERATURE:0.7}
   top-p: ${GEMINI_TOP_P:0.9}
   max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:800}
@@ -250,6 +281,18 @@ ai:
       window: 1m
     menu-user-daily:
       max-requests: 100
+      window: 1d
+    insights-user:
+      max-requests: 10
+      window: 1m
+    insights-user-daily:
+      max-requests: 80
+      window: 1d
+    operations-user:
+      max-requests: 15
+      window: 1m
+    operations-user-daily:
+      max-requests: 150
       window: 1d
 
 logging:

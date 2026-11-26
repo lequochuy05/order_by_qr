@@ -4,22 +4,31 @@ import com.qros.modules.inventory.model.RecipeItem;
 import java.util.List;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
 
-    boolean existsByMenuItem_IdAndInventoryItem_Id(Long menuItemId, Long inventoryItemId);
+    @Query("""
+            SELECT COUNT(r) > 0
+            FROM RecipeItem r
+            JOIN r.menuItem m
+            WHERE r.inventoryItem.id = :inventoryItemId
+            """)
+    boolean existsByInventoryItem_Id(@Param("inventoryItemId") Long inventoryItemId);
 
-    boolean existsByMenuItem_IdAndInventoryItem_IdAndIdNot(Long menuItemId, Long inventoryItemId, Long id);
-
-    boolean existsByInventoryItem_Id(Long inventoryItemId);
-
-    long countByMenuItem_Id(Long menuItemId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE RecipeItem r
+            SET r.isDeleted = true
+            WHERE r.menuItem.id = :menuItemId
+              AND r.isDeleted = false
+            """)
+    int softDeleteByMenuItemId(@Param("menuItemId") Long menuItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id = :menuItemId
@@ -28,8 +37,7 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     List<RecipeItem> findByMenuItemId(@Param("menuItemId") Long menuItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.inventoryItem.id = :inventoryItemId
@@ -38,12 +46,30 @@ public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long> {
     List<RecipeItem> findByInventoryItemId(@Param("inventoryItemId") Long inventoryItemId);
 
     @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM RecipeItem r
             WHERE r.menuItem.id IN :menuItemIds
             ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
             """)
     List<RecipeItem> findByMenuItemIds(@Param("menuItemIds") List<Long> menuItemIds);
+
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query("""
+            SELECT r
+            FROM RecipeItem r
+            WHERE r.inventoryItem.id IN :inventoryItemIds
+            ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
+            """)
+    List<RecipeItem> findByInventoryItemIds(@Param("inventoryItemIds") java.util.Collection<Long> inventoryItemIds);
+
+    @EntityGraph(attributePaths = {"menuItem", "inventoryItem"})
+    @Query("""
+            SELECT r
+            FROM RecipeItem r
+            WHERE r.inventoryItem.active = true
+              AND r.menuItem.active = true
+            ORDER BY r.menuItem.id ASC, r.inventoryItem.name ASC
+            """)
+    List<RecipeItem> findAllActiveWithMenuAndInventory();
 }

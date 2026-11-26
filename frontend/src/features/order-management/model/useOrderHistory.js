@@ -1,13 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 
-import { printInvoice } from '@entities/order/lib/invoiceGenerator.js';
-import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { useSettingsStore } from '@entities/settings';
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import {
   useOrderAnalyticsQuery,
   useOrdersHistoryQuery,
+  ORDER_STATUSES,
+  printInvoice,
   useReconcileOrderMutation,
 } from '@entities/order';
 import useOrderHistoryFilters from './useOrderHistoryFilters.js';
@@ -43,6 +44,7 @@ const useOrderHistory = () => {
       table: order.table,
       paidBy: order.paidByName || 'Nhân viên',
       paidAt: order.paymentTime,
+      settings: useSettingsStore.getState().settings,
     });
   }, []);
 

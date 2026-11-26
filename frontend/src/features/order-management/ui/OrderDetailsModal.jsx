@@ -1,11 +1,15 @@
-import { ORDER_STATUSES } from '@entities/order/lib/orderStatus.js';
-import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
+import { ORDER_ITEM_STATUSES, ORDER_STATUSES } from '@entities/order';
+import { PAYMENT_METHODS } from '@entities/payment';
 import { fmtVND, fmtDateTime } from '@shared/lib/formatters.js';
 import {
   getOrderDiscountAmount,
   getOrderFinalAmount,
+  getOrderServiceChargeAmount,
+  getOrderServiceChargePercent,
   getOrderSubtotalAmount,
-} from '@entities/order/lib/orderMoney.js';
+  getOrderTaxAmount,
+  getOrderTaxPercent,
+} from '@entities/order';
 import { X, Receipt, Clock, Utensils, Printer, RotateCw, UserCheck, CreditCard } from 'lucide-react';
 import SharedModal from '@shared/ui/SharedModal.jsx';
 import { useTranslation } from '@shared/lib/i18n';
@@ -15,6 +19,10 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
   if (!isOpen || !order) return null;
   const subtotalAmount = getOrderSubtotalAmount(order);
   const discountAmount = getOrderDiscountAmount(order);
+  const serviceChargePercent = getOrderServiceChargePercent(order);
+  const serviceChargeAmount = getOrderServiceChargeAmount(order);
+  const taxPercent = getOrderTaxPercent(order);
+  const taxAmount = getOrderTaxAmount(order);
   const finalAmount = getOrderFinalAmount(order);
 
   return (
@@ -106,31 +114,56 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
             </h3>
           </div>
           <div className="p-5 space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800/60">
-            {order.orderItems?.map((item, idx) => (
-              <div key={idx} className={`flex justify-between items-start ${idx > 0 ? 'pt-3' : ''}`}>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                      {item.itemNameSnapshot ||
-                        item.menuItem?.name ||
-                        item.combo?.name ||
-                        (isEn ? 'Unknown item' : 'Món không tên')}
-                    </span>
-                    <span className="rounded-lg bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 text-[10px] font-bold font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-300">
-                      x{item.quantity}
-                    </span>
+            {order.orderItems?.map((item, idx) => {
+              const isCancelled = item.status === ORDER_ITEM_STATUSES.CANCELLED;
+              return (
+                <div
+                  key={item.id ?? idx}
+                  className={`flex justify-between items-start ${idx > 0 ? 'pt-3' : ''} ${
+                    isCancelled ? 'opacity-65' : ''
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`text-xs font-bold ${
+                          isCancelled
+                            ? 'line-through text-slate-400 dark:text-slate-500'
+                            : 'text-slate-800 dark:text-slate-100'
+                        }`}
+                      >
+                        {item.itemNameSnapshot ||
+                          item.menuItem?.name ||
+                          item.combo?.name ||
+                          (isEn ? 'Unknown item' : 'Món không tên')}
+                      </span>
+                      <span className="rounded-lg bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 text-[10px] font-bold font-mono text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/40 dark:text-indigo-300">
+                        x{item.quantity}
+                      </span>
+                      {isCancelled && (
+                        <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">
+                          {isEn ? 'Cancelled' : 'Đã hủy'}
+                        </span>
+                      )}
+                    </div>
+                    {item.notes && (
+                      <p className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        {item.notes}
+                      </p>
+                    )}
                   </div>
-                  {item.notes && (
-                    <p className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                      {item.notes}
-                    </p>
-                  )}
+                  <span
+                    className={`whitespace-nowrap pl-4 font-mono font-bold text-xs ${
+                      isCancelled
+                        ? 'line-through text-slate-400 dark:text-slate-500'
+                        : 'text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    {fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}
+                  </span>
                 </div>
-                <span className="whitespace-nowrap pl-4 font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
-                  {fmtVND(item.lineTotal ?? item.unitPrice * item.quantity)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -146,6 +179,30 @@ export default function OrderDetailsModal({ isOpen, onClose, order, reconcilingI
             <div className="flex justify-between text-emerald-600 text-xs">
               <span>{isEn ? 'Discount' : 'Khuyến mãi'}</span>
               <span className="font-mono font-bold">-{fmtVND(discountAmount)}</span>
+            </div>
+          )}
+          {serviceChargeAmount > 0 && (
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>
+                {isEn
+                  ? `Service charge${serviceChargePercent > 0 ? ` (${serviceChargePercent}%)` : ''}`
+                  : `Phí dịch vụ${serviceChargePercent > 0 ? ` (${serviceChargePercent}%)` : ''}`}
+              </span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                +{fmtVND(serviceChargeAmount)}
+              </span>
+            </div>
+          )}
+          {taxAmount > 0 && (
+            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span>
+                {isEn
+                  ? `VAT${taxPercent > 0 ? ` (${taxPercent}%)` : ''}`
+                  : `Thuế VAT${taxPercent > 0 ? ` (${taxPercent}%)` : ''}`}
+              </span>
+              <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                +{fmtVND(taxAmount)}
+              </span>
             </div>
           )}
           <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-3 dark:border-slate-800">

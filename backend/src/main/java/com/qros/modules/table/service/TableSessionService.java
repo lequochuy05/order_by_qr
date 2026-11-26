@@ -8,47 +8,43 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.model.TableSessionTable;
 import com.qros.modules.table.model.TableSessionToken;
+import com.qros.modules.table.model.enums.ServiceRequestStatus;
 import com.qros.modules.table.model.enums.TableSessionSource;
 import com.qros.modules.table.model.enums.TableSessionStatus;
 import com.qros.modules.table.model.enums.TableStatus;
 import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.repository.TableServiceRequestRepository;
 import com.qros.modules.table.repository.TableSessionRepository;
 import com.qros.modules.table.repository.TableSessionTableRepository;
 import com.qros.modules.table.repository.TableSessionTokenRepository;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.event.DomainEvents.ServiceRequestChangeEvent;
 import com.qros.shared.event.DomainEvents.TableChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import com.qros.shared.transaction.TransactionSideEffectService;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Comparator;
-import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.lang.NonNull;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@Lazy(false)
 public class TableSessionService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final int TOKEN_BYTES = 32;
+    private static final List<ServiceRequestStatus> OPEN_SERVICE_REQUEST_STATUSES =
+            List.of(ServiceRequestStatus.PENDING, ServiceRequestStatus.CLAIMED);
 
     private final DiningTableRepository tableRepository;
     private final TableSessionRepository sessionRepository;
@@ -60,6 +56,7 @@ public class TableSessionService {
     private final TableSessionProperties tableSessionProperties;
     private final TransactionSideEffectService sideEffects;
     private final TableQrSecurityService tableQrSecurityService;
+    private final TableServiceRequestRepository serviceRequestRepository;
 
     public TableSessionService(
             DiningTableRepository tableRepository,
@@ -81,6 +78,32 @@ public class TableSessionService {
                 activeOrderChecker,
                 tableSessionProperties,
                 sideEffects,
+                null,
+                null);
+    }
+
+    public TableSessionService(
+            DiningTableRepository tableRepository,
+            TableSessionRepository sessionRepository,
+            TableSessionTableRepository membershipRepository,
+            TableSessionTokenRepository tokenRepository,
+            CacheManager cacheManager,
+            ApplicationEventPublisher eventPublisher,
+            TableActiveOrderChecker activeOrderChecker,
+            TableSessionProperties tableSessionProperties,
+            TransactionSideEffectService sideEffects,
+            TableQrSecurityService tableQrSecurityService) {
+        this(
+                tableRepository,
+                sessionRepository,
+                membershipRepository,
+                tokenRepository,
+                cacheManager,
+                eventPublisher,
+                activeOrderChecker,
+                tableSessionProperties,
+                sideEffects,
+                tableQrSecurityService,
                 null);
     }
 
@@ -95,7 +118,8 @@ public class TableSessionService {
             TableActiveOrderChecker activeOrderChecker,
             TableSessionProperties tableSessionProperties,
             TransactionSideEffectService sideEffects,
-            TableQrSecurityService tableQrSecurityService) {
+            TableQrSecurityService tableQrSecurityService,
+            TableServiceRequestRepository serviceRequestRepository) {
         this.tableRepository = tableRepository;
         this.sessionRepository = sessionRepository;
         this.membershipRepository = membershipRepository;
@@ -106,6 +130,7 @@ public class TableSessionService {
         this.tableSessionProperties = tableSessionProperties;
         this.sideEffects = sideEffects;
         this.tableQrSecurityService = tableQrSecurityService;
+        this.serviceRequestRepository = serviceRequestRepository;
     }
 
     @Transactional(readOnly = true)
@@ -161,8 +186,10 @@ public class TableSessionService {
         }
 
         TableSession session = membershipRepository
-                .findActiveOpenMembershipByTableIdForUpdate(table.getId(), TableSessionStatus.OPEN)
+                .findActiveOpenMembershipByTableId(table.getId(), TableSessionStatus.OPEN)
                 .map(TableSessionTable::getSession)
+                .flatMap(observed -> sessionRepository.findByIdForUpdate(observed.getId()))
+                .filter(TableSession::isOpen)
                 .orElse(null);
 
         if (session == null) {
@@ -192,7 +219,7 @@ public class TableSessionService {
         validateOpenSession(session);
 
         LocalDateTime now = AppTime.now();
-        if (!shouldWriteHeartbeat(token, now)) {
+        if (!TableSessionTokenSupport.shouldWriteHeartbeat(token, tableSessionProperties, now)) {
             return;
         }
 
@@ -224,9 +251,22 @@ public class TableSessionService {
         }
 
         TableSession session = membershipRepository
-                .findActiveOpenMembershipByTableIdForUpdate(table.getId(), TableSessionStatus.OPEN)
+                .findActiveOpenMembershipByTableId(table.getId(), TableSessionStatus.OPEN)
                 .map(TableSessionTable::getSession)
+                .flatMap(observed -> sessionRepository.findByIdForUpdate(observed.getId()))
+                .filter(TableSession::isOpen)
                 .orElse(null);
+
+        if (session != null) {
+            List<TableSessionTable> activeMemberships =
+                    membershipRepository.findActiveBySessionIdForUpdate(session.getId());
+            boolean stillMember = activeMemberships.stream()
+                    .anyMatch(m -> m.getTable() != null
+                            && table.getId().equals(m.getTable().getId()));
+            if (!stillMember) {
+                session = null;
+            }
+        }
 
         if (session == null) {
             session = createOpenSession(table, TableSessionSource.STAFF);
@@ -237,6 +277,22 @@ public class TableSessionService {
         evictTableSessionCachesForTables(getActiveMemberTables(session.getId()));
         eventPublisher.publishEvent(new TableChangeEvent());
         return session;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean tableEverBelongedToSession(@NonNull Long sessionId, @NonNull String tableCode) {
+        return membershipRepository.existsAnyBySessionIdAndTableCode(sessionId, tableCode);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean verifySessionAccessForOrder(
+            @NonNull Long sessionId, @NonNull String tableCode, @NonNull String sessionToken) {
+        if (sessionToken.isBlank() || tableCode.isBlank()) {
+            return false;
+        }
+        String tokenHash = TableSessionTokenSupport.hashToken(sessionToken);
+        return tokenRepository.existsBySession_IdAndTokenHash(sessionId, tokenHash)
+                && membershipRepository.existsAnyBySessionIdAndTableCode(sessionId, tableCode);
     }
 
     @Transactional(readOnly = true)
@@ -272,7 +328,7 @@ public class TableSessionService {
         validateOpenSession(session);
 
         LocalDateTime now = AppTime.now();
-        if (shouldWriteHeartbeat(token, now)) {
+        if (TableSessionTokenSupport.shouldWriteHeartbeat(token, tableSessionProperties, now)) {
             token.setLastSeenAt(now);
             tokenRepository.save(token);
         }
@@ -282,10 +338,28 @@ public class TableSessionService {
 
     @Transactional
     public void requestPayment(@NonNull String tableCode, @NonNull String sessionToken) {
-        TableSession session = requireOpenSession(sessionToken);
+        TableSessionToken token = requireActiveToken(sessionToken);
+        Long sessionId = token.getSession() != null ? token.getSession().getId() : null;
+        if (sessionId == null) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND);
+        }
+
+        // Canonical lock order: tables (id ASC) -> table_sessions -> table_session_tables
+        List<DiningTable> memberTables = lockActiveMemberTables(sessionId);
+        TableSession session = sessionRepository
+                .findByIdForUpdate(sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
+        validateOpenSession(session);
         validateSessionBelongsToTable(session, tableCode);
 
-        List<DiningTable> memberTables = lockActiveMemberTables(session.getId());
+        LocalDateTime now = AppTime.now();
+        if (TableSessionTokenSupport.shouldWriteHeartbeat(token, tableSessionProperties, now)) {
+            token.setLastSeenAt(now);
+            tokenRepository.save(token);
+        }
+
+        activeOrderChecker.validateAndPrepareSessionForPaymentRequest(session.getId());
+
         List<DiningTable> changed = memberTables.stream()
                 .filter(table -> table.getStatus() == TableStatus.OCCUPIED)
                 .peek(table -> table.setStatus(TableStatus.WAITING_FOR_PAYMENT))
@@ -296,6 +370,28 @@ public class TableSessionService {
             evictTableSessionCachesForTables(changed);
             eventPublisher.publishEvent(new TableChangeEvent());
         }
+    }
+
+    @Transactional
+    public void closeEmptySession(@NonNull Long sessionId, String actorEmail) {
+        // Canonical lock order: tables (id ASC) -> table_sessions -> table_session_tables
+        List<DiningTable> tables = lockActiveMemberTables(sessionId);
+        TableSession session = sessionRepository
+                .findByIdForUpdate(sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
+
+        if (!session.isOpen()) {
+            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Table session is already closed");
+        }
+
+        if (activeOrderChecker.hasActiveOrdersForSession(sessionId)
+                || activeOrderChecker.hasPaymentInProgressForSession(sessionId)) {
+            throw new BusinessException(
+                    ErrorCode.TABLE_IN_USE, "Cannot close session while the table has an active order");
+        }
+
+        String actor = (actorEmail != null && !actorEmail.isBlank()) ? actorEmail.trim() : "staff";
+        completeCloseLockedSession(session, tables, TableSessionStatus.CANCELLED, "Empty session closed by " + actor);
     }
 
     @Transactional
@@ -310,10 +406,17 @@ public class TableSessionService {
             throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID, "Cannot close session with OPEN status");
         }
 
+        // Canonical lock order: tables (id ASC) -> table_sessions -> table_session_tables
+        List<DiningTable> tables = lockActiveMemberTables(sessionId);
         TableSession session = sessionRepository
                 .findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_NOT_FOUND));
-        List<DiningTable> tables = lockActiveMemberTables(sessionId);
+        completeCloseLockedSession(session, tables, normalizedStatus, reason);
+    }
+
+    private void completeCloseLockedSession(
+            TableSession session, List<DiningTable> tables, TableSessionStatus normalizedStatus, String reason) {
+        Long sessionId = session.getId();
         List<TableSessionTable> memberships = membershipRepository.findActiveBySessionIdForUpdate(sessionId);
 
         LocalDateTime now = AppTime.now();
@@ -327,51 +430,105 @@ public class TableSessionService {
         tokenRepository.revokeActiveTokensBySessionId(sessionId, now);
         memberships.forEach(membership -> membership.setReleasedAt(now));
         membershipRepository.saveAll(memberships);
-        tables.forEach(this::releaseTableIfUnused);
+        releaseUnusedTables(tables);
+
+        int closedRequests = 0;
+        if (serviceRequestRepository != null) {
+            closedRequests = serviceRequestRepository.closeOpenRequestsBySessionId(
+                    sessionId,
+                    ServiceRequestStatus.CANCELLED,
+                    OPEN_SERVICE_REQUEST_STATUSES,
+                    "SYSTEM",
+                    "Table session closed",
+                    now);
+        }
 
         evictTableSessionCachesForTables(tables);
         eventPublisher.publishEvent(new TableChangeEvent());
+        if (closedRequests > 0) {
+            Long tableId = session.getTable() != null ? session.getTable().getId() : null;
+            eventPublisher.publishEvent(new ServiceRequestChangeEvent("AUTO_CLOSED", null, tableId));
+        }
     }
 
-    @Scheduled(fixedDelayString = "${table-session.cleanup-fixed-delay-ms:300000}")
     @Transactional
     public void expireStaleOpenSessionsWithoutOrders() {
         LocalDateTime cutoff = AppTime.now().minus(tableSessionProperties.getNoOrderExpire());
-        List<TableSession> staleSessions = sessionRepository.findStaleOpenSessionsWithoutOrdersForUpdate(cutoff);
+        List<Long> staleSessionIds = sessionRepository.findStaleOpenSessionIdsWithoutOrders(cutoff);
 
-        if (staleSessions.isEmpty()) {
+        if (staleSessionIds.isEmpty()) {
             return;
         }
 
         LocalDateTime now = AppTime.now();
-        List<DiningTable> changedTables = new ArrayList<>();
-        for (TableSession session : staleSessions) {
-            List<DiningTable> memberTables = lockActiveMemberTables(session.getId());
-            List<TableSessionTable> memberships = membershipRepository.findActiveBySessionIdForUpdate(session.getId());
+        List<TableSession> expiredSessions = new ArrayList<>();
+        List<TableSessionTable> membershipsToRelease = new ArrayList<>();
+        Map<Long, DiningTable> candidateTablesById = new LinkedHashMap<>();
+        boolean autoClosedRequests = false;
+        for (Long sessionId : staleSessionIds) {
+            // Canonical lock order: tables (id ASC) -> table_sessions -> table_session_tables
+            List<DiningTable> memberTables = lockActiveMemberTables(sessionId);
+            TableSession session =
+                    sessionRepository.findByIdForUpdate(sessionId).orElse(null);
+            if (session == null || !session.isOpen()) {
+                continue;
+            }
+            if (session.getLastActivityAt() != null
+                    && !session.getLastActivityAt().isBefore(cutoff)) {
+                continue;
+            }
+            if (activeOrderChecker.hasActiveOrdersForSession(sessionId)
+                    || activeOrderChecker.hasPaymentInProgressForSession(sessionId)) {
+                continue;
+            }
+
+            List<TableSessionTable> memberships = membershipRepository.findActiveBySessionIdForUpdate(sessionId);
 
             session.setStatus(TableSessionStatus.EXPIRED);
             session.setClosedAt(now);
             session.setClosedReason("Expired before first order");
-            tokenRepository.revokeActiveTokensBySessionId(session.getId(), now);
+            expiredSessions.add(session);
+            tokenRepository.revokeActiveTokensBySessionId(sessionId, now);
 
             memberships.forEach(membership -> membership.setReleasedAt(now));
-            membershipRepository.saveAll(memberships);
+            membershipsToRelease.addAll(memberships);
 
             for (DiningTable table : memberTables) {
-                if (table != null
-                        && table.getStatus() != TableStatus.INACTIVE
-                        && !activeOrderChecker.hasActiveOrders(table.getId())) {
-                    table.setStatus(TableStatus.AVAILABLE);
-                    tableRepository.save(table);
-                    changedTables.add(table);
+                if (table != null && table.getId() != null) {
+                    candidateTablesById.putIfAbsent(table.getId(), table);
+                }
+            }
+
+            if (serviceRequestRepository != null) {
+                int closed = serviceRequestRepository.closeOpenRequestsBySessionId(
+                        sessionId,
+                        ServiceRequestStatus.CANCELLED,
+                        OPEN_SERVICE_REQUEST_STATUSES,
+                        "SYSTEM",
+                        "Table session expired",
+                        now);
+                if (closed > 0) {
+                    autoClosedRequests = true;
                 }
             }
         }
 
-        sessionRepository.saveAll(staleSessions);
+        if (expiredSessions.isEmpty()) {
+            return;
+        }
+
+        if (!membershipsToRelease.isEmpty()) {
+            membershipRepository.saveAll(membershipsToRelease);
+        }
+        List<DiningTable> changedTables = releaseUnusedTables(new ArrayList<>(candidateTablesById.values()));
+
+        sessionRepository.saveAll(expiredSessions);
         evictTableSessionCachesForTables(changedTables);
         eventPublisher.publishEvent(new TableChangeEvent());
-        log.info("Expired {} stale table sessions without orders", staleSessions.size());
+        if (autoClosedRequests) {
+            eventPublisher.publishEvent(new ServiceRequestChangeEvent("AUTO_CLOSED", null, null));
+        }
+        log.info("Expired {} stale table sessions without orders", expiredSessions.size());
     }
 
     public void evictTableSessionCachesForTables(List<DiningTable> tables) {
@@ -412,11 +569,11 @@ public class TableSessionService {
     }
 
     private TableSessionToken requireActiveToken(String sessionToken) {
-        String tokenHash = hashToken(sessionToken);
+        String tokenHash = TableSessionTokenSupport.hashToken(sessionToken);
         TableSessionToken token = tokenRepository
                 .findFirstByTokenHashAndRevokedAtIsNull(tokenHash)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_SESSION_INVALID));
-        validateTokenLifetime(token, AppTime.now());
+        TableSessionTokenSupport.validateTokenLifetime(token, tableSessionProperties, AppTime.now());
         return token;
     }
 
@@ -444,10 +601,10 @@ public class TableSessionService {
         LocalDateTime now = AppTime.now();
         reserveTokenSlot(session, now);
 
-        String rawToken = generateRawToken();
+        String rawToken = TableSessionTokenSupport.generateRawToken();
         TableSessionToken token = TableSessionToken.builder()
                 .session(session)
-                .tokenHash(hashToken(rawToken))
+                .tokenHash(TableSessionTokenSupport.hashToken(rawToken))
                 .issuedAt(now)
                 .lastSeenAt(now)
                 .build();
@@ -458,25 +615,8 @@ public class TableSessionService {
 
     private void reserveTokenSlot(TableSession session, LocalDateTime now) {
         List<TableSessionToken> activeTokens = tokenRepository.findActiveBySessionIdForUpdate(session.getId());
-        List<TableSessionToken> validTokens = new ArrayList<>();
-        List<TableSessionToken> tokensToRevoke = new ArrayList<>();
-
-        for (TableSessionToken token : activeTokens) {
-            if (isTokenExpired(token, now)) {
-                token.setRevokedAt(now);
-                tokensToRevoke.add(token);
-            } else {
-                validTokens.add(token);
-            }
-        }
-
-        int overflow = validTokens.size() - tableSessionProperties.getMaxActiveTokensPerSession() + 1;
-        for (int index = 0; index < overflow; index++) {
-            TableSessionToken token = validTokens.get(index);
-            token.setRevokedAt(now);
-            tokensToRevoke.add(token);
-        }
-
+        List<TableSessionToken> tokensToRevoke =
+                TableSessionTokenSupport.markTokensToRevokeForNewSlot(activeTokens, tableSessionProperties, now);
         if (!tokensToRevoke.isEmpty()) {
             tokenRepository.saveAll(tokensToRevoke);
         }
@@ -532,42 +672,39 @@ public class TableSessionService {
         }
     }
 
-    private void validateTokenLifetime(TableSessionToken token, LocalDateTime now) {
-        if (token.getIssuedAt() == null) {
-            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID);
+    private List<DiningTable> releaseUnusedTables(List<DiningTable> tables) {
+        if (tables == null || tables.isEmpty()) {
+            return List.of();
         }
 
-        if (isTokenExpired(token, now)) {
-            throw new BusinessException(ErrorCode.TABLE_SESSION_EXPIRED);
-        }
-    }
-
-    private boolean isTokenExpired(TableSessionToken token, LocalDateTime now) {
-        LocalDateTime issuedAt = token.getIssuedAt();
-        if (issuedAt == null) {
-            return true;
-        }
-
-        LocalDateTime lastSeenAt = token.getLastSeenAt() != null ? token.getLastSeenAt() : issuedAt;
-        return issuedAt.isBefore(now.minus(tableSessionProperties.getTokenMaxLifetime()))
-                || lastSeenAt.isBefore(now.minus(tableSessionProperties.getTokenIdleTimeout()));
-    }
-
-    private boolean shouldWriteHeartbeat(TableSessionToken token, LocalDateTime now) {
-        LocalDateTime lastSeenAt = token.getLastSeenAt();
-        return lastSeenAt == null || !lastSeenAt.isAfter(now.minus(tableSessionProperties.getHeartbeatWriteInterval()));
-    }
-
-    private void releaseTableIfUnused(DiningTable table) {
-        if (table == null
-                || table.getStatus() == TableStatus.INACTIVE
-                || table.getStatus() == TableStatus.AVAILABLE
-                || activeOrderChecker.hasActiveOrders(table.getId())) {
-            return;
+        List<DiningTable> candidates = tables.stream()
+                .filter(table -> table != null
+                        && table.getId() != null
+                        && table.getStatus() != TableStatus.INACTIVE
+                        && table.getStatus() != TableStatus.AVAILABLE)
+                .toList();
+        if (candidates.isEmpty()) {
+            return List.of();
         }
 
-        table.setStatus(TableStatus.AVAILABLE);
-        tableRepository.save(table);
+        Set<Long> busyTableIds;
+        if (candidates.size() == 1) {
+            Long singleId = candidates.get(0).getId();
+            busyTableIds = activeOrderChecker.hasActiveOrders(singleId) ? Set.of(singleId) : Set.of();
+        } else {
+            List<Long> candidateIds =
+                    candidates.stream().map(DiningTable::getId).toList();
+            busyTableIds = activeOrderChecker.findTableIdsWithActiveOrders(candidateIds);
+        }
+
+        List<DiningTable> toRelease = candidates.stream()
+                .filter(table -> !busyTableIds.contains(table.getId()))
+                .peek(table -> table.setStatus(TableStatus.AVAILABLE))
+                .toList();
+        if (!toRelease.isEmpty()) {
+            tableRepository.saveAll(toRelease);
+        }
+        return toRelease;
     }
 
     private void touchIfStale(TableSession session, LocalDateTime now) {
@@ -592,7 +729,7 @@ public class TableSessionService {
 
         return membershipRepository.findActiveBySessionId(sessionId).stream()
                 .map(TableSessionTable::getTable)
-                .sorted(Comparator.comparing(DiningTable::getTableNumber, TableSessionService::compareTableNumbers))
+                .sorted(Comparator.comparing(DiningTable::getTableNumber, TableNumberComparator::compare))
                 .toList();
     }
 
@@ -619,55 +756,11 @@ public class TableSessionService {
                 .reduce(0, Integer::sum);
     }
 
-    private static int compareTableNumbers(String left, String right) {
-        if (left == null && right == null) {
-            return 0;
-        }
-        if (left == null) {
-            return -1;
-        }
-        if (right == null) {
-            return 1;
-        }
-
-        try {
-            return Integer.compare(Integer.parseInt(left), Integer.parseInt(right));
-        } catch (NumberFormatException ignored) {
-            return left.compareToIgnoreCase(right);
-        }
-    }
-
     private void evict(String cacheName, Object key) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.evictIfPresent(key);
-        }
+        com.qros.shared.cache.CacheHelper.evict(cacheManager, cacheName, key);
     }
 
     private void clear(String cacheName) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.clear();
-        }
-    }
-
-    private String generateRawToken() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        SECURE_RANDOM.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String hashToken(String token) {
-        if (token == null || token.isBlank()) {
-            throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID);
-        }
-
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashed = digest.digest(token.trim().getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashed);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is not available", e);
-        }
+        com.qros.shared.cache.CacheHelper.clear(cacheManager, cacheName);
     }
 }

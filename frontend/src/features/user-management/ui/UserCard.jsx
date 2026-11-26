@@ -7,7 +7,7 @@ import {
   User as UserIcon,
   UtensilsCrossed,
 } from 'lucide-react';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { fmtRole, fmtStatus } from '@shared/lib/formatters.js';
 import { EditDeleteActions } from '@shared/ui';
 

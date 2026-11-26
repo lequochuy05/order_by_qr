@@ -8,8 +8,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.modules.auth.service.AccountLockoutService;
-import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.PasswordChangeRequest;
 import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
@@ -28,8 +26,7 @@ class CurrentUserServiceTest {
     private UserMapper userMapper;
     private ApplicationEventPublisher eventPublisher;
     private PasswordEncoder passwordEncoder;
-    private RefreshTokenService refreshTokenService;
-    private AccountLockoutService accountLockoutService;
+    private UserAuthSessionPort userAuthSessionPort;
     private CurrentUserService service;
 
     @BeforeEach
@@ -38,16 +35,10 @@ class CurrentUserServiceTest {
         userMapper = mock(UserMapper.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         passwordEncoder = mock(PasswordEncoder.class);
-        refreshTokenService = mock(RefreshTokenService.class);
-        accountLockoutService = mock(AccountLockoutService.class);
+        userAuthSessionPort = mock(UserAuthSessionPort.class);
 
         service = new CurrentUserService(
-                userRepository,
-                userMapper,
-                eventPublisher,
-                passwordEncoder,
-                refreshTokenService,
-                accountLockoutService);
+                userRepository, userMapper, eventPublisher, passwordEncoder, userAuthSessionPort);
     }
 
     @Test
@@ -73,8 +64,8 @@ class CurrentUserServiceTest {
         assertThat(user.isMustChangePassword()).isFalse();
 
         verify(userRepository).save(user);
-        verify(refreshTokenService).revokeUserTokens(9L);
-        verify(accountLockoutService).unlock(email);
+        verify(userAuthSessionPort).revokeUserTokens(9L);
+        verify(userAuthSessionPort).unlockAccount(email);
     }
 
     @Test
@@ -89,10 +80,11 @@ class CurrentUserServiceTest {
         PasswordChangeRequest request = new PasswordChangeRequest("WrongPass", "NewPass123");
 
         assertThatThrownBy(() -> service.changeCurrentPassword(email, request))
-                .isInstanceOfSatisfying(BusinessException.class, ex -> assertThat(ex.getErrorCode())
-                        .isEqualTo(ErrorCode.PASSWORD_INVALID));
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PASSWORD_INVALID));
 
         verify(userRepository, never()).save(user);
-        verify(refreshTokenService, never()).revokeUserTokens(anyLong());
+        verify(userAuthSessionPort, never()).revokeUserTokens(anyLong());
     }
 }

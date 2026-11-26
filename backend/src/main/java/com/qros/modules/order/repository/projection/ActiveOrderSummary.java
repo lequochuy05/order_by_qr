@@ -9,6 +9,8 @@ public interface ActiveOrderSummary {
 
     String getStatus();
 
+    String getPaymentStatus();
+
     BigDecimal getFinalAmount();
 
     Long getTableId();

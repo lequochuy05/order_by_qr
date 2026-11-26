@@ -1,10 +1,8 @@
 package com.qros.core.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.config.AppProperties;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,9 +17,16 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import tools.jackson.core.TreeNode;
+import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
+import tools.jackson.databind.jsontype.impl.DefaultTypeResolverBuilder;
 
 /**
  * RedisConfig - Configuration for Redis caching and template.
@@ -62,15 +67,38 @@ public class RedisConfig implements CachingConfigurer {
         };
     }
 
-    private ObjectMapper createRedisObjectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        // RedisCache deserializes values as Object, so type metadata must also be
-        // written for final DTOs/records returned by public APIs.
-        mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.EVERYTHING, JsonTypeInfo.As.PROPERTY);
-        return mapper;
+    static GenericJacksonJsonRedisSerializer createRedisSerializer() {
+        PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
+                .allowIfSubType("com.qros.")
+                .allowIfSubType("java.util.")
+                .allowIfSubType("java.time.")
+                .allowIfSubType("java.math.")
+                .allowIfSubType("org.springframework.data.domain.")
+                .allowIfSubType(Record.class)
+                .allowIfSubType(Enum.class)
+                .allowIfSubType(Number.class)
+                .allowIfSubType(String.class)
+                .allowIfSubType(Boolean.class)
+                .allowIfSubTypeIsArray()
+                .build();
+
+        DefaultTypeResolverBuilder typeResolver =
+                new DefaultTypeResolverBuilder(typeValidator, DefaultTyping.NON_FINAL, JsonTypeInfo.As.WRAPPER_ARRAY) {
+                    @Override
+                    public boolean useForType(JavaType t) {
+                        if (t.isPrimitive() || t.isEnumType() || TreeNode.class.isAssignableFrom(t.getRawClass())) {
+                            return false;
+                        }
+                        Class<?> raw = t.getRawClass();
+                        if (raw == String.class || Number.class.isAssignableFrom(raw) || raw == Boolean.class) {
+                            return false;
+                        }
+                        return true;
+                    }
+                };
+
+        JsonMapper mapper = JsonMapper.builder().setDefaultTyping(typeResolver).build();
+        return new GenericJacksonJsonRedisSerializer(mapper);
     }
 
     @Bean
@@ -78,8 +106,7 @@ public class RedisConfig implements CachingConfigurer {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        ObjectMapper redisObjectMapper = createRedisObjectMapper();
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+        GenericJacksonJsonRedisSerializer serializer = createRedisSerializer();
 
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
@@ -92,8 +119,7 @@ public class RedisConfig implements CachingConfigurer {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, AppProperties appProperties) {
-        ObjectMapper redisObjectMapper = createRedisObjectMapper();
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+        GenericJacksonJsonRedisSerializer serializer = createRedisSerializer();
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(1))
@@ -118,6 +144,8 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put(CacheNames.ORDER_ID_CACHE, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.MENU_AVAILABILITY, config.entryTtl(Duration.ofSeconds(60)));
+        cacheConfigurations.put(CacheNames.USER_AUTH, config.entryTtl(Duration.ofSeconds(60)));
+        cacheConfigurations.put(CacheNames.AI_MENU_CONTEXT, config.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

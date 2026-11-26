@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import { ORDER_ITEM_STATUSES } from '../../src/entities/order/lib/orderConstants.js';
 import {
+  aggregateBatchCookingItems,
   buildKitchenItems,
   groupKitchenItems,
   KITCHEN_COLUMNS,
   OVERDUE_MINUTES,
+  scaleRecipeItems,
   summarizeKitchenItems,
 } from '../../src/features/kitchen-board/lib/kitchenItems.js';
 
@@ -25,7 +27,7 @@ const orders = [
         createdAt: '2026-06-20T11:35:00.000Z',
         itemNameSnapshot: 'Cơm rang',
         notes: 'Ít cay',
-        menuItem: { category: { name: 'Cơm' } },
+        menuItem: { id: 101, category: { name: 'Cơm' }, available: false },
       },
       {
         id: 2,
@@ -33,7 +35,7 @@ const orders = [
         quantity: 1,
         createdAt: '2026-06-20T11:50:00.000Z',
         updatedAt: '2026-06-20T11:55:00.000Z',
-        combo: { name: 'Combo trưa' },
+        combo: { id: 202, name: 'Combo trưa', available: true },
       },
       { id: 3, status: ORDER_ITEM_STATUSES.CANCELLED, quantity: 1 },
     ],
@@ -119,7 +121,120 @@ test('summarizeKitchenItems calculates counts and average wait', () => {
       cooking: 1,
       finished: 1,
       overdue: 1,
+      allergenCount: 0,
       averageWait: 20,
     },
   );
+});
+
+test('buildKitchenItems and summarizeKitchenItems surface allergen risks and avoid homographs', () => {
+  const allergyOrders = [
+    {
+      id: 99,
+      createdAt: '2026-06-20T11:45:00.000Z',
+      table: { tableNumber: 5 },
+      orderItems: [
+        {
+          id: 501,
+          status: ORDER_ITEM_STATUSES.PENDING,
+          quantity: 1,
+          createdAt: '2026-06-20T11:50:00.000Z',
+          itemNameSnapshot: 'Gỏi Cuốn',
+          notes: 'Dị ứng đậu phộng nặng',
+        },
+        {
+          id: 502,
+          status: ORDER_ITEM_STATUSES.PENDING,
+          quantity: 1,
+          createdAt: '2026-06-20T11:52:00.000Z',
+          itemNameSnapshot: 'Cơm gà',
+          notes: 'Bàn số 5 cần ghế trẻ em cho con của khách',
+        },
+      ],
+    },
+  ];
+
+  const built = buildKitchenItems(allergyOrders, NOW);
+  assert.equal(built[0].hasAllergenAlert, true);
+  assert.equal(built[0].hasPriorityNote, true);
+  assert.equal(built[1].hasAllergenAlert, false);
+  assert.equal(built[1].hasPriorityNote, true);
+
+  const summary = summarizeKitchenItems(built);
+  assert.equal(summary.allergenCount, 1);
+});
+
+test('buildKitchenItems and aggregateBatchCookingItems preserve catalog IDs and availability', () => {
+  const built = buildKitchenItems(orders, NOW);
+  assert.equal(built[0].menuItemId, 101);
+  assert.equal(built[0].comboId, null);
+  assert.equal(built[0].isCombo, false);
+  assert.equal(built[0].isAvailable, false);
+
+  assert.equal(built[1].menuItemId, null);
+  assert.equal(built[1].comboId, 202);
+  assert.equal(built[1].isCombo, true);
+  assert.equal(built[1].isAvailable, true);
+
+  const batches = aggregateBatchCookingItems(built);
+  assert.equal(batches.length, 2);
+  const friedRiceBatch = batches.find((g) => g.itemName === 'Cơm rang');
+  const comboBatch = batches.find((g) => g.itemName === 'Combo trưa');
+
+  assert.equal(friedRiceBatch.menuItemId, 101);
+  assert.equal(friedRiceBatch.isAvailable, false);
+  assert.equal(comboBatch.comboId, 202);
+  assert.equal(comboBatch.isCombo, true);
+  assert.equal(comboBatch.isAvailable, true);
+});
+
+test('scaleRecipeItems scales ingredient quantities and flags stock shortages', () => {
+  const scaled = scaleRecipeItems(
+    [
+      {
+        id: 1,
+        inventoryItemId: 10,
+        inventoryItemName: 'Thịt bò',
+        unit: 'kg',
+        quantityRequired: 0.25,
+        availableQuantity: 0.6,
+        lowStock: true,
+        outOfStock: false,
+      },
+      {
+        id: 2,
+        inventoryItemId: 11,
+        inventoryItemName: 'Bún tươi',
+        unit: 'kg',
+        quantityRequired: 0.3,
+        availableQuantity: 0,
+        lowStock: true,
+        outOfStock: true,
+      },
+      {
+        id: 3,
+        inventoryItemId: 12,
+        inventoryItemName: 'Hành lá',
+        unit: 'g',
+        quantityRequired: 15,
+      },
+    ],
+    3,
+  );
+
+  assert.equal(scaled[0].scaledQuantity, 0.75);
+  assert.equal(scaled[0].isInsufficientStock, true);
+  assert.equal(scaled[0].isOutOfStock, false);
+  assert.equal(scaled[0].isLowStock, true);
+
+  assert.equal(scaled[1].scaledQuantity, 0.9);
+  assert.equal(scaled[1].isOutOfStock, true);
+  assert.equal(scaled[1].isInsufficientStock, true);
+
+  assert.equal(scaled[2].scaledQuantity, 45);
+  assert.equal(scaled[2].hasStockInfo, false);
+  assert.equal(scaled[2].isInsufficientStock, false);
+
+  const clamped = scaleRecipeItems([{ id: 4, quantityRequired: 0.5 }], 0);
+  assert.equal(clamped[0].scaledQuantity, 0.5);
 });

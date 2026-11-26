@@ -1,7 +1,10 @@
 package com.qros.modules.ai.controller;
 
+import com.qros.modules.ai.dto.request.AiNoteTriageRequest;
 import com.qros.modules.ai.dto.request.AiStaffRequest;
+import com.qros.modules.ai.dto.response.AiNoteTriageResponse;
 import com.qros.modules.ai.dto.response.AiStaffResponse;
+import com.qros.modules.ai.service.AiNoteTriageService;
 import com.qros.modules.ai.service.AiQuotaService;
 import com.qros.modules.ai.service.AiStaffService;
 import com.qros.shared.constants.ApiRoutes;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiStaffController {
 
     private final AiStaffService aiStaffService;
+    private final AiNoteTriageService aiNoteTriageService;
     private final AiQuotaService aiQuotaService;
 
     @PostMapping("/query")
@@ -30,5 +34,13 @@ public class AiStaffController {
             @Valid @RequestBody AiStaffRequest request, @NonNull Principal principal) {
         aiQuotaService.checkStaffAssistant(principal.getName());
         return ApiResponse.success(aiStaffService.query(request));
+    }
+
+    @PostMapping("/analyze-notes")
+    @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
+    public ApiResponse<AiNoteTriageResponse> analyzeNotes(
+            @Valid @RequestBody(required = false) AiNoteTriageRequest request, @NonNull Principal principal) {
+        return ApiResponse.success(
+                aiNoteTriageService.triage(request, () -> aiQuotaService.checkStaffAssistant(principal.getName())));
     }
 }

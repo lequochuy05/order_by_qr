@@ -15,24 +15,14 @@ public interface OrderItemInventoryReservationRepository extends JpaRepository<O
 
     boolean existsByOrderItem_IdAndStatus(Long orderItemId, InventoryReservationStatus status);
 
-    @EntityGraph(attributePaths = {"orderItem", "inventoryItem"})
-    List<OrderItemInventoryReservation> findByOrderItem_IdOrderByIdAsc(Long orderItemId);
-
-    @EntityGraph(attributePaths = {"orderItem", "inventoryItem"})
-    List<OrderItemInventoryReservation> findByOrderItem_IdAndStatusOrderByIdAsc(
-            Long orderItemId, InventoryReservationStatus status);
+    boolean existsByInventoryItem_IdAndStatus(Long inventoryItemId, InventoryReservationStatus status);
 
     @EntityGraph(attributePaths = {"orderItem", "inventoryItem"})
     Optional<OrderItemInventoryReservation> findByOrderItem_IdAndInventoryItem_IdAndStatus(
             Long orderItemId, Long inventoryItemId, InventoryReservationStatus status);
 
-    @EntityGraph(attributePaths = {"orderItem", "inventoryItem"})
-    List<OrderItemInventoryReservation> findByInventoryItem_IdAndStatusOrderByIdDesc(
-            Long inventoryItemId, InventoryReservationStatus status);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query(
-            """
+    @Query("""
             SELECT r
             FROM OrderItemInventoryReservation r
             JOIN FETCH r.inventoryItem

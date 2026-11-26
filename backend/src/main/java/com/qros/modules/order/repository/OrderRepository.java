@@ -31,29 +31,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                 "orderItems.orderItemOptions",
                 "orderItems.orderItemOptions.itemOptionValue"
             })
-    @Query(
-            """
-                        SELECT o FROM Order o
-                        WHERE o.table.id = :tableId
-                          AND o.status IN :statuses
-                        ORDER BY o.createdAt DESC
-                        """)
-    List<Order> findActiveByTableIdForUpdate(
-            @Param("tableId") Long tableId, @Param("statuses") List<OrderStatus> statuses);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(
-            attributePaths = {
-                "table",
-                "orderItems",
-                "orderItems.batch",
-                "orderItems.menuItem",
-                "orderItems.combo",
-                "orderItems.orderItemOptions",
-                "orderItems.orderItemOptions.itemOptionValue"
-            })
-    @Query(
-            """
+    @Query("""
                         SELECT o FROM Order o
                         WHERE o.tableSession.id = :sessionId
                           AND o.status IN :statuses
@@ -62,9 +40,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     List<Order> findActiveByTableSessionIdForUpdate(
             @Param("sessionId") Long sessionId, @Param("statuses") List<OrderStatus> statuses);
 
-    @Query(
-            value =
-                    """
+    @Query(value = """
                         SELECT o.id AS id,
                                o.table_session_id AS "tableSessionId"
                         FROM orders o
@@ -73,14 +49,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                           AND o.is_deleted = false
                         ORDER BY o.created_at DESC
                         FOR UPDATE
-                        """,
-            nativeQuery = true)
+                        """, nativeQuery = true)
     List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdForUpdate(
             @Param("tableId") Long tableId, @Param("statuses") Collection<String> statuses);
 
-    @Query(
-            value =
-                    """
+    @Query(value = """
                         SELECT o.id AS id,
                                o.table_session_id AS "tableSessionId"
                         FROM orders o
@@ -89,14 +62,12 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                           AND o.is_deleted = false
                         ORDER BY o.created_at DESC
                         FOR UPDATE
-                        """,
-            nativeQuery = true)
+                        """, nativeQuery = true)
     List<ActiveOrderLockProjection> findActiveOrderLocksByTableSessionIdForUpdate(
             @Param("sessionId") Long sessionId, @Param("statuses") Collection<String> statuses);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE Order o
             SET o.tableSession = :session
             WHERE o.id = :orderId
@@ -106,10 +77,23 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
 
     boolean existsByTableIdAndStatusIn(Long tableId, Collection<OrderStatus> statuses);
 
+    @Query("""
+            SELECT COUNT(item) > 0
+            FROM Order o
+            JOIN o.orderItems item
+            WHERE o.table.id = :tableId
+              AND o.status IN :statuses
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.CANCELLED
+              AND item.status <> com.qros.modules.order.model.enums.OrderItemStatus.FINISHED
+            """)
+    boolean existsUnfinishedBillableItemByTableId(
+            @Param("tableId") Long tableId, @Param("statuses") Collection<OrderStatus> statuses);
+
     boolean existsByTableSessionIdAndStatusIn(Long tableSessionId, Collection<OrderStatus> statuses);
 
-    @Query(
-            """
+    boolean existsByVoucherCodeIgnoreCaseAndStatusIn(String voucherCode, Collection<OrderStatus> statuses);
+
+    @Query("""
             SELECT COUNT(o)
             FROM Order o
             WHERE o.table.id IN :tableIds
@@ -118,8 +102,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     long countActiveByTableIds(
             @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<OrderStatus> statuses);
 
-    @Query(
-            """
+    @Query("""
+            SELECT DISTINCT o.table.id
+            FROM Order o
+            WHERE o.table.id IN :tableIds
+              AND o.status IN :statuses
+            """)
+    List<Long> findDistinctActiveTableIdsIn(
+            @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<OrderStatus> statuses);
+
+    @Query("""
             SELECT COUNT(o)
             FROM Order o
             JOIN o.orderItems item
@@ -130,9 +122,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     long countBillableItemsByTableSessionId(
             @Param("sessionId") Long sessionId, @Param("statuses") Collection<OrderStatus> statuses);
 
-    @Query(
-            value =
-                    """
+    @Query(value = """
                         SELECT o.id AS id,
                                o.table_session_id AS "tableSessionId"
                         FROM orders o
@@ -141,14 +131,12 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                           AND o.is_deleted = false
                         ORDER BY o.created_at DESC
                         FOR UPDATE
-                        """,
-            nativeQuery = true)
+                        """, nativeQuery = true)
     List<ActiveOrderLockProjection> findActiveOrderLocksByTableIdsForUpdate(
             @Param("tableIds") Collection<Long> tableIds, @Param("statuses") Collection<String> statuses);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE Order o
             SET o.status = com.qros.modules.order.model.enums.OrderStatus.CANCELLED,
                 o.paymentStatus = com.qros.modules.order.model.enums.PaymentStatus.CANCELLED
@@ -255,11 +243,13 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
             })
     List<Order> findByStatusIn(List<OrderStatus> statuses);
 
-    @Query(
-            """
-            SELECT o FROM Order o
+    @Query("""
+            SELECT DISTINCT o FROM Order o
             LEFT JOIN FETCH o.table
-            LEFT JOIN FETCH o.orderItems
+            LEFT JOIN FETCH o.paidBy
+            LEFT JOIN FETCH o.orderItems oi
+            LEFT JOIN FETCH oi.menuItem
+            LEFT JOIN FETCH oi.combo
             WHERE o.orderType = :orderType
               AND o.status IN :statuses
             ORDER BY o.createdAt DESC
@@ -309,11 +299,10 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     /**
      * Lightweight active order summaries for table board.
      */
-    @Query(
-            value =
-                    """
+    @Query(value = """
                         SELECT o.id AS id,
                                o.status AS status,
+                               o.payment_status AS paymentStatus,
                                o.final_amount AS finalAmount,
                                o.table_id AS tableId,
                                t.table_number AS tableNumber,
@@ -324,15 +313,13 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
                         WHERE o.is_deleted = false
                           AND o.status IN ('PENDING', 'SERVING', 'AWAITING_PAYMENT')
                         ORDER BY o.created_at DESC
-                        """,
-            nativeQuery = true)
+                        """, nativeQuery = true)
     List<ActiveOrderSummary> findActiveOrderSummariesForTableBoard();
 
     /**
      * Orders visible on kitchen board.
      */
-    @Query(
-            """
+    @Query("""
                         SELECT DISTINCT o FROM Order o
                         JOIN o.orderItems oi
                         WHERE o.status IN :statuses
@@ -345,6 +332,7 @@ public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecific
     @EntityGraph(
             attributePaths = {
                 "table",
+                "paidBy",
                 "orderItems",
                 "orderItems.batch",
                 "orderItems.menuItem",

@@ -9,8 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ItemOptionValueRepository extends JpaRepository<ItemOptionValue, Long> {
 
-    List<ItemOptionValue> findByItemOptionIdOrderByDisplayOrderAscNameAsc(Long optionId);
-
     @EntityGraph(attributePaths = "itemOption")
     List<ItemOptionValue> findAllByIdIn(@Param("ids") java.util.Collection<Long> ids);
 }

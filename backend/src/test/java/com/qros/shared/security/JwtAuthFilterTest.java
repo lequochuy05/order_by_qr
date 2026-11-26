@@ -7,8 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
@@ -22,6 +20,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class JwtAuthFilterTest {
 
@@ -37,7 +37,7 @@ class JwtAuthFilterTest {
         jwtService = mock(JwtService.class);
         userDetailsService = mock(UserDetailsService.class);
         tokenBlacklistService = mock(TokenBlacklistService.class);
-        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        objectMapper = new JsonMapper();
 
         jwtAuthFilter = new JwtAuthFilter(jwtService, userDetailsService, tokenBlacklistService, objectMapper);
     }

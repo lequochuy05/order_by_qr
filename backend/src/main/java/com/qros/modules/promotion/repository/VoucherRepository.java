@@ -19,6 +19,15 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
+    @Query(value = """
+                    SELECT *
+                    FROM vouchers
+                    WHERE UPPER(code) = UPPER(:code)
+                    ORDER BY is_deleted ASC, id DESC
+                    LIMIT 1
+                    """, nativeQuery = true)
+    Optional<Voucher> findAnyByCodeIgnoreCaseIncludingDeleted(@Param("code") String code);
+
     // C5 fix: pessimistic write lock variant used exclusively in resolveForPayment
     // to prevent two concurrent payments from both seeing usedCount < usageLimit
     // and both successfully consuming the same voucher.
@@ -30,12 +39,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     boolean existsByCodeIgnoreCaseAndIdNot(String code, Long id);
 
-    Page<Voucher> findByCodeContainingIgnoreCase(String code, Pageable pageable);
-
-    Page<Voucher> findAllByOrderByIdDesc(Pageable pageable);
-
-    @Query(
-            """
+    @Query("""
             SELECT v
             FROM Voucher v
             WHERE (CAST(:keyword AS string) IS NULL OR LOWER(v.code) LIKE LOWER(CONCAT('%', CAST(:keyword AS string), '%')))
@@ -49,7 +53,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
                         AND (
                             v.usageLimit IS NULL
                             OR v.usageLimit = 0
-                            OR v.usedCount < v.usageLimit
+                            OR (v.usedCount + v.reservedCount) < v.usageLimit
                         )
                     )
                     OR (
@@ -71,7 +75,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
                         AND v.validTo >= :now
                         AND v.usageLimit IS NOT NULL
                         AND v.usageLimit > 0
-                        AND v.usedCount >= v.usageLimit
+                        AND (v.usedCount + v.reservedCount) >= v.usageLimit
                     )
                   )
             """)
@@ -82,10 +86,36 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
             Pageable pageable);
 
     @Modifying
-    @Query(
-            """
+    @Query("""
             UPDATE Voucher v
             SET v.usedCount = v.usedCount + 1
+            WHERE v.id = :id
+              AND (
+                    v.usageLimit IS NULL
+                    OR v.usageLimit = 0
+                    OR (v.usedCount + v.reservedCount) < v.usageLimit
+                  )
+            """)
+    int incrementUsedCountAtomically(@Param("id") Long id);
+
+    @Modifying
+    @Query("""
+            UPDATE Voucher v
+            SET v.reservedCount = v.reservedCount + 1
+            WHERE v.id = :id
+              AND (
+                    v.usageLimit IS NULL
+                    OR v.usageLimit = 0
+                    OR (v.usedCount + v.reservedCount) < v.usageLimit
+                  )
+            """)
+    int reserveUsageAtomically(@Param("id") Long id);
+
+    @Modifying
+    @Query("""
+            UPDATE Voucher v
+            SET v.usedCount = v.usedCount + 1,
+                v.reservedCount = CASE WHEN v.reservedCount > 0 THEN v.reservedCount - 1 ELSE 0 END
             WHERE v.id = :id
               AND (
                     v.usageLimit IS NULL
@@ -93,5 +123,14 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
                     OR v.usedCount < v.usageLimit
                   )
             """)
-    int incrementUsedCountAtomically(@Param("id") Long id);
+    int confirmReservedUsageAtomically(@Param("id") Long id);
+
+    @Modifying
+    @Query("""
+            UPDATE Voucher v
+            SET v.reservedCount = CASE WHEN v.reservedCount > 0 THEN v.reservedCount - 1 ELSE 0 END
+            WHERE UPPER(v.code) = UPPER(:code)
+              AND v.reservedCount > 0
+            """)
+    int releaseReservedUsageAtomically(@Param("code") String code);
 }

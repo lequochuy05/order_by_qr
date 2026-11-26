@@ -16,7 +16,7 @@ export const ORDER_STATUS = {
   [ORDER_STATUSES.CANCELLED]: { label: 'Đã hủy', helper: 'Đơn đã bị hủy', color: 'rose' },
 };
 
-export const ORDER_STATUS_EN = {
+const ORDER_STATUS_EN = {
   [ORDER_STATUSES.PENDING]: { label: 'Received', helper: 'Checking order', color: 'amber' },
   [ORDER_STATUSES.SERVING]: { label: 'Preparing', helper: 'Kitchen cooking', color: 'blue' },
   [ORDER_STATUSES.AWAITING_PAYMENT]: { label: 'Awaiting payment', helper: 'All items served', color: 'cyan' },
@@ -25,14 +25,14 @@ export const ORDER_STATUS_EN = {
 };
 
 // ORDER ITEM STATUS (Kitchen workflow)
-export const ITEM_STATUS = {
+const ITEM_STATUS = {
   [ORDER_ITEM_STATUSES.PENDING]: { label: 'Chờ nấu', color: 'amber' },
   [ORDER_ITEM_STATUSES.COOKING]: { label: 'Đang chế biến', color: 'blue' },
   [ORDER_ITEM_STATUSES.FINISHED]: { label: 'Hoàn thành', color: 'emerald' },
   [ORDER_ITEM_STATUSES.CANCELLED]: { label: 'Đã hủy', color: 'rose' },
 };
 
-export const ITEM_STATUS_EN = {
+const ITEM_STATUS_EN = {
   [ORDER_ITEM_STATUSES.PENDING]: { label: 'Pending', color: 'amber' },
   [ORDER_ITEM_STATUSES.COOKING]: { label: 'Cooking', color: 'blue' },
   [ORDER_ITEM_STATUSES.FINISHED]: { label: 'Finished', color: 'emerald' },

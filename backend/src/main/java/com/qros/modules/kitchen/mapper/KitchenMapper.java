@@ -21,6 +21,7 @@ public class KitchenMapper {
         return new KitchenOrderResponse(
                 order.getId(),
                 order.getStatus(),
+                order.getPaymentStatus(),
                 order.getFinalAmount(),
                 order.getTable() != null
                         ? new KitchenOrderResponse.TableSummary(
@@ -100,7 +101,8 @@ public class KitchenMapper {
                     item.getMenuItem().getCategory() != null
                             ? new KitchenOrderResponse.CategorySummary(
                                     item.getMenuItem().getCategory().getName())
-                            : null);
+                            : null,
+                    item.getMenuItem().getAvailable());
         }
 
         if (item.getItemType() == OrderItemType.MENU_ITEM) {
@@ -112,10 +114,20 @@ public class KitchenMapper {
 
     private KitchenOrderResponse.ComboSummary toComboSummary(OrderItem item) {
         if (item.getCombo() != null) {
+            var combo = item.getCombo();
+            boolean comboAvailable = Boolean.TRUE.equals(combo.getAvailable())
+                    && (combo.getItems() == null
+                            || combo.getItems().isEmpty()
+                            || combo.getItems().stream()
+                                    .filter(ci -> !ci.isDeleted())
+                                    .allMatch(ci -> ci.getMenuItem() != null
+                                            && !ci.getMenuItem().isDeleted()
+                                            && Boolean.TRUE.equals(
+                                                    ci.getMenuItem().getActive())
+                                            && Boolean.TRUE.equals(
+                                                    ci.getMenuItem().getAvailable())));
             return new KitchenOrderResponse.ComboSummary(
-                    item.getCombo().getId(),
-                    item.getCombo().getName(),
-                    item.getCombo().getPrice());
+                    combo.getId(), combo.getName(), combo.getPrice(), comboAvailable);
         }
 
         if (item.getItemType() == OrderItemType.COMBO) {

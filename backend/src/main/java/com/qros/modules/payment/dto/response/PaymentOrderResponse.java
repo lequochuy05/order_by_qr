@@ -12,6 +12,10 @@ public record PaymentOrderResponse(
         String voucherCode,
         BigDecimal subtotalAmount,
         BigDecimal discountAmount,
+        BigDecimal serviceChargePercent,
+        BigDecimal serviceChargeAmount,
+        BigDecimal taxPercent,
+        BigDecimal taxAmount,
         BigDecimal finalAmount,
         BigDecimal paidAmount,
         LocalDate businessDate,
@@ -23,6 +27,46 @@ public record PaymentOrderResponse(
         TableSummary table,
         List<Item> orderItems,
         LocalDateTime createdAt) {
+
+    public PaymentOrderResponse(
+            Long id,
+            String status,
+            String voucherCode,
+            BigDecimal subtotalAmount,
+            BigDecimal discountAmount,
+            BigDecimal finalAmount,
+            BigDecimal paidAmount,
+            LocalDate businessDate,
+            String orderType,
+            String paymentStatus,
+            PaymentMethod paymentMethod,
+            String paidByName,
+            LocalDateTime paymentTime,
+            TableSummary table,
+            List<Item> orderItems,
+            LocalDateTime createdAt) {
+        this(
+                id,
+                status,
+                voucherCode,
+                subtotalAmount,
+                discountAmount,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                finalAmount,
+                paidAmount,
+                businessDate,
+                orderType,
+                paymentStatus,
+                paymentMethod,
+                paidByName,
+                paymentTime,
+                table,
+                orderItems,
+                createdAt);
+    }
 
     public record TableSummary(Long id, String tableNumber) {}
 

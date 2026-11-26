@@ -16,13 +16,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class MenuItemMapper {
 
-    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = Comparator.comparing(
-                    (ItemOption option) -> option.getDisplayOrder() == null ? 0 : option.getDisplayOrder())
-            .thenComparing((ItemOption option) -> option.getName() == null ? "" : option.getName());
-
-    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR = Comparator.comparing(
-                    (ItemOptionValue value) -> value.getDisplayOrder() == null ? 0 : value.getDisplayOrder())
-            .thenComparing((ItemOptionValue value) -> value.getName() == null ? "" : value.getName());
+    private static final Comparator<ItemOption> ITEM_OPTION_COMPARATOR = MenuOptionComparators.ITEM_OPTION_COMPARATOR;
+    private static final Comparator<ItemOptionValue> ITEM_OPTION_VALUE_COMPARATOR =
+            MenuOptionComparators.ITEM_OPTION_VALUE_COMPARATOR;
 
     public MenuItemResponse toResponse(MenuItem item) {
         if (item == null) {
@@ -111,5 +107,26 @@ public class MenuItemMapper {
         }
 
         return new CategorySummary(category.getId(), category.getName());
+    }
+
+    public MenuItemResponse withAvailability(MenuItemResponse item, boolean available) {
+        if (item == null) {
+            return null;
+        }
+
+        return new MenuItemResponse(
+                item.id(),
+                item.name(),
+                item.description(),
+                item.img(),
+                item.price(),
+                item.active(),
+                available,
+                item.displayOrder(),
+                item.category(),
+                item.itemOptions(),
+                item.createdAt(),
+                item.updatedAt(),
+                item.version());
     }
 }

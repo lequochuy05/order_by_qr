@@ -7,13 +7,16 @@ import static org.mockito.Mockito.when;
 
 import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.kitchen.mapper.KitchenMapper;
+import com.qros.modules.menu.model.Category;
+import com.qros.modules.menu.model.Combo;
+import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderBatch;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
-import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderLookupService;
 import com.qros.modules.order.service.OrderService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.shared.time.AppTime;
@@ -30,7 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class KitchenServiceTest {
 
     @Mock
-    private OrderRepository orderRepository;
+    private OrderLookupService orderRepository;
 
     @Mock
     private OrderService orderService;
@@ -64,10 +67,25 @@ class KitchenServiceTest {
         order.addBatch(batch1);
         order.addBatch(batch2);
 
+        MenuItem phoBo = MenuItem.builder()
+                .id(11L)
+                .name("Phở Bò")
+                .available(false)
+                .category(Category.builder().id(3L).name("Món Nước").build())
+                .build();
+
+        Combo traCombo = Combo.builder()
+                .id(22L)
+                .name("Combo Trà Đá")
+                .price(BigDecimal.valueOf(25000))
+                .available(true)
+                .build();
+
         OrderItem item1 = OrderItem.builder()
                 .id(1L)
                 .order(order)
                 .batch(batch1)
+                .menuItem(phoBo)
                 .itemNameSnapshot("Phở Bò")
                 .quantity(2)
                 .status(OrderItemStatus.PENDING)
@@ -77,7 +95,8 @@ class KitchenServiceTest {
                 .id(2L)
                 .order(order)
                 .batch(batch2)
-                .itemNameSnapshot("Trà Đá")
+                .combo(traCombo)
+                .itemNameSnapshot("Combo Trà Đá")
                 .quantity(1)
                 .status(OrderItemStatus.PENDING)
                 .build();
@@ -102,6 +121,8 @@ class KitchenServiceTest {
                 .orElseThrow();
         assertThat(resItem1.batchId()).isEqualTo(101L);
         assertThat(resItem1.batchNumber()).isEqualTo(1);
+        assertThat(resItem1.menuItem().id()).isEqualTo(11L);
+        assertThat(resItem1.menuItem().available()).isFalse();
 
         KitchenOrderResponse.KitchenOrderItemResponse resItem2 = response.orderItems().stream()
                 .filter(i -> i.id().equals(2L))
@@ -109,6 +130,8 @@ class KitchenServiceTest {
                 .orElseThrow();
         assertThat(resItem2.batchId()).isEqualTo(102L);
         assertThat(resItem2.batchNumber()).isEqualTo(2);
+        assertThat(resItem2.combo().id()).isEqualTo(22L);
+        assertThat(resItem2.combo().available()).isTrue();
     }
 
     @Test
@@ -118,11 +141,9 @@ class KitchenServiceTest {
     }
 
     @Test
-    void updateBatchItemStatusUpdatesEachItem() {
+    void updateBatchItemStatusDelegatesSingleCoalescedBatchCall() {
         kitchenService.updateBatchItemStatus(List.of(10L, 20L, 30L), OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(10L, OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(20L, OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(30L, OrderItemStatus.COOKING, 99L);
+        verify(orderService).updateBatchItemStatus(List.of(10L, 20L, 30L), OrderItemStatus.COOKING, 99L);
     }
 
     @Test

@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../model/AuthContext.jsx';
+import { useAuth } from '@entities/session';
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user } = useAuth();

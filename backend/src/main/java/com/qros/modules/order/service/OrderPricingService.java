@@ -3,9 +3,7 @@ package com.qros.modules.order.service;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ItemOptionValue;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.ItemOptionValueRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import com.qros.modules.order.dto.request.CustomerCreateOrderRequest;
 import com.qros.modules.order.dto.request.OrderComboRequest;
 import com.qros.modules.order.dto.request.OrderItemRequest;
@@ -15,42 +13,173 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
+import com.qros.modules.promotion.service.PromotionService;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
+import com.qros.modules.settings.model.SystemSettings;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
-import java.util.HashSet;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class OrderPricingService {
 
-    private final MenuItemRepository menuItemRepository;
-    private final ComboRepository comboRepository;
-    private final ItemOptionValueRepository itemOptionValueRepository;
+    private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
+
+    private final MenuCatalogLookupService menuCatalogLookupService;
     private final VoucherCheckoutService voucherCheckoutService;
     private final OrderValidator orderValidator;
     private final TableSessionService tableSessionService;
+    private final PromotionService promotionService;
+    private final SystemSettingsService systemSettingsService;
+
+    public OrderPricingService(
+            MenuCatalogLookupService menuCatalogLookupService,
+            VoucherCheckoutService voucherCheckoutService,
+            OrderValidator orderValidator,
+            TableSessionService tableSessionService) {
+        this(menuCatalogLookupService, voucherCheckoutService, orderValidator, tableSessionService, null, null);
+    }
+
+    public OrderPricingService(
+            MenuCatalogLookupService menuCatalogLookupService,
+            VoucherCheckoutService voucherCheckoutService,
+            OrderValidator orderValidator,
+            TableSessionService tableSessionService,
+            PromotionService promotionService) {
+        this(
+                menuCatalogLookupService,
+                voucherCheckoutService,
+                orderValidator,
+                tableSessionService,
+                promotionService,
+                null);
+    }
+
+    @Autowired
+    public OrderPricingService(
+            MenuCatalogLookupService menuCatalogLookupService,
+            VoucherCheckoutService voucherCheckoutService,
+            OrderValidator orderValidator,
+            TableSessionService tableSessionService,
+            PromotionService promotionService,
+            SystemSettingsService systemSettingsService) {
+        this.menuCatalogLookupService = menuCatalogLookupService;
+        this.voucherCheckoutService = voucherCheckoutService;
+        this.orderValidator = orderValidator;
+        this.tableSessionService = tableSessionService;
+        this.promotionService = promotionService;
+        this.systemSettingsService = systemSettingsService;
+    }
+
+    public record PriceBreakdown(
+            BigDecimal subtotalAmount,
+            BigDecimal discountAmount,
+            BigDecimal taxableBase,
+            BigDecimal serviceChargePercent,
+            BigDecimal serviceChargeAmount,
+            BigDecimal taxPercent,
+            BigDecimal taxAmount,
+            BigDecimal finalAmount) {}
+
+    public PriceBreakdown calculatePriceBreakdown(BigDecimal subtotal, BigDecimal discount) {
+        BigDecimal safeSubtotal = safe(subtotal);
+        BigDecimal safeDiscount = safe(discount).min(safeSubtotal).max(BigDecimal.ZERO);
+        BigDecimal taxableBase = safeSubtotal.subtract(safeDiscount).max(BigDecimal.ZERO);
+
+        BigDecimal serviceChargePercent = BigDecimal.ZERO;
+        BigDecimal taxPercent = BigDecimal.ZERO;
+        if (systemSettingsService != null) {
+            SystemSettings settings = systemSettingsService.getSettingsEntity();
+            if (settings != null) {
+                serviceChargePercent = normalizeRate(settings.getServiceChargePercent());
+                taxPercent = normalizeRate(settings.getTaxPercent());
+            }
+        }
+
+        BigDecimal serviceChargeAmount = serviceChargePercent.compareTo(BigDecimal.ZERO) > 0
+                ? taxableBase.multiply(serviceChargePercent).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal taxBase = taxableBase.add(serviceChargeAmount);
+        BigDecimal taxAmount = taxPercent.compareTo(BigDecimal.ZERO) > 0
+                ? taxBase.multiply(taxPercent).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal finalAmount = taxBase.add(taxAmount);
+
+        return new PriceBreakdown(
+                safeSubtotal,
+                safeDiscount,
+                taxableBase,
+                serviceChargePercent,
+                serviceChargeAmount,
+                taxPercent,
+                taxAmount,
+                finalAmount);
+    }
+
+    public BigDecimal calculatePromotionDiscount(BigDecimal subtotal) {
+        if (promotionService == null || subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return safe(promotionService.calculatePromotionDiscount(subtotal));
+    }
+
+    public BigDecimal resolveOrderPromotionDiscount(Order order, BigDecimal subtotal) {
+        BigDecimal safeSubtotal = safe(subtotal);
+        if (safeSubtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal liveDiscount = calculatePromotionDiscount(safeSubtotal);
+        BigDecimal livePercent = BigDecimal.ZERO;
+        if (promotionService != null) {
+            livePercent = promotionService
+                    .findBestActivePromotion()
+                    .map(com.qros.modules.promotion.model.Promotion::getDiscountPercent)
+                    .map(this::normalizeRate)
+                    .orElse(BigDecimal.ZERO);
+        }
+
+        BigDecimal currentSnapshot =
+                order != null ? normalizeRate(order.getAppliedPromotionPercent()) : BigDecimal.ZERO;
+        BigDecimal effectivePercent = currentSnapshot.max(livePercent);
+        if (order != null && effectivePercent.compareTo(currentSnapshot) > 0) {
+            order.setAppliedPromotionPercent(effectivePercent);
+        }
+
+        BigDecimal snapshotDiscount = effectivePercent.compareTo(BigDecimal.ZERO) > 0
+                ? safeSubtotal.multiply(effectivePercent).divide(ONE_HUNDRED, 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        return liveDiscount.max(snapshotDiscount).min(safeSubtotal);
+    }
 
     public void recalculateOrderTotals(Order order) {
         order.getOrderItems().forEach(this::recalculateLineTotal);
 
         BigDecimal subtotal = calculateSubtotal(order);
-        BigDecimal discount = safe(order.getDiscountAmount());
+        BigDecimal promotionDiscount = resolveOrderPromotionDiscount(order, subtotal);
+        BigDecimal voucherDiscount = BigDecimal.ZERO;
 
-        setOrderMoney(order, subtotal, discount);
+        if (order.getVoucherCode() != null && !order.getVoucherCode().isBlank()) {
+            DiscountResult preview = voucherCheckoutService.previewVoucher(order.getVoucherCode(), subtotal);
+            voucherDiscount = safe(preview.appliedDiscountAmount());
+        }
+
+        BigDecimal totalDiscount = promotionDiscount.add(voucherDiscount).min(subtotal);
+        setOrderMoney(order, subtotal, totalDiscount);
     }
 
     public void applyVoucher(Order order, String voucherCode) {
@@ -59,20 +188,26 @@ public class OrderPricingService {
         }
 
         BigDecimal subtotal = calculateSubtotal(order);
+        BigDecimal promotionDiscount = resolveOrderPromotionDiscount(order, subtotal);
         VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode.trim(), subtotal);
+        BigDecimal totalDiscount = promotionDiscount
+                .add(safe(voucherResult.appliedDiscountAmount()))
+                .min(subtotal);
 
         order.setVoucherCode(voucherResult.voucherCode());
-        setOrderMoney(order, subtotal, voucherResult.appliedDiscountAmount());
+        setOrderMoney(order, subtotal, totalDiscount);
     }
 
     public void setOrderMoney(Order order, BigDecimal subtotal, BigDecimal discount) {
-        BigDecimal safeSubtotal = safe(subtotal);
-        BigDecimal safeDiscount = safe(discount);
-        BigDecimal finalAmount = calculateFinalTotal(safeSubtotal, safeDiscount);
+        PriceBreakdown breakdown = calculatePriceBreakdown(subtotal, discount);
 
-        order.setSubtotalAmount(safeSubtotal);
-        order.setDiscountAmount(safeDiscount);
-        order.setFinalAmount(finalAmount);
+        order.setSubtotalAmount(breakdown.subtotalAmount());
+        order.setDiscountAmount(breakdown.discountAmount());
+        order.setServiceChargePercentSnapshot(breakdown.serviceChargePercent());
+        order.setServiceChargeAmount(breakdown.serviceChargeAmount());
+        order.setTaxPercentSnapshot(breakdown.taxPercent());
+        order.setTaxAmount(breakdown.taxAmount());
+        order.setFinalAmount(breakdown.finalAmount());
 
         if (order.getPaidAmount() == null) {
             order.setPaidAmount(BigDecimal.ZERO);
@@ -91,7 +226,7 @@ public class OrderPricingService {
     }
 
     public BigDecimal calculateFinalTotal(BigDecimal subtotal, BigDecimal discount) {
-        return safe(subtotal).subtract(safe(discount)).max(BigDecimal.ZERO);
+        return calculatePriceBreakdown(subtotal, discount).finalAmount();
     }
 
     public void recalculateLineTotal(OrderItem item) {
@@ -105,55 +240,53 @@ public class OrderPricingService {
     @Transactional(readOnly = true)
     public OrderPreviewResponse previewCustomerOrder(@NonNull CustomerCreateOrderRequest request) {
         tableSessionService.requireOpenSessionForRead(request.tableCode(), request.sessionToken());
+        orderValidator.validateCustomerOperatingHours();
 
-        return preview(request.items(), request.combos(), null);
+        return preview(request.items(), request.combos(), null, true);
     }
 
     @Transactional(readOnly = true)
     public OrderPreviewResponse previewStaffOrder(@NonNull StaffCreateOrderRequest request) {
-        return preview(request.items(), request.combos(), request.voucherCode());
+        return preview(request.items(), request.combos(), request.voucherCode(), false);
     }
 
     private OrderPreviewResponse preview(
-            List<OrderItemRequest> items, List<OrderComboRequest> combos, String voucherCode) {
+            List<OrderItemRequest> items, List<OrderComboRequest> combos, String voucherCode, boolean isCustomerOrder) {
         validateOrderContent(items, combos);
         orderValidator.validateSystemAcceptsOrders();
 
         BigDecimal subtotalItems = calculateItemSubtotal(items);
-        BigDecimal subtotalCombos = calculateComboSubtotal(combos);
+        BigDecimal subtotalCombos = calculateComboSubtotal(combos, isCustomerOrder);
         BigDecimal subtotal = subtotalItems.add(subtotalCombos);
 
+        BigDecimal discountPromotion = calculatePromotionDiscount(subtotal);
         DiscountResult discountResult = voucherCheckoutService.previewVoucher(voucherCode, subtotal);
+        BigDecimal voucherDiscount = safe(discountResult.appliedDiscountAmount());
+        BigDecimal totalDiscount = discountPromotion.add(voucherDiscount).min(subtotal);
+        PriceBreakdown breakdown = calculatePriceBreakdown(subtotal, totalDiscount);
 
         boolean isVoucherValid = discountResult.voucherId() != null;
         String voucherMessage = isVoucherValid
                 ? "Voucher applied successfully"
-                : (voucherCode != null ? "Voucher is invalid or expired" : "");
+                : (voucherCode != null && !voucherCode.isBlank() ? "Voucher is invalid or expired" : "");
 
         return new OrderPreviewResponse(
                 subtotalItems,
                 subtotalCombos,
-                subtotal,
-                discountResult.appliedDiscountAmount(),
-                discountResult.finalAmount(),
+                breakdown.subtotalAmount(),
+                breakdown.discountAmount(),
+                breakdown.serviceChargePercent(),
+                breakdown.serviceChargeAmount(),
+                breakdown.taxPercent(),
+                breakdown.taxAmount(),
+                breakdown.finalAmount(),
                 isVoucherValid,
                 voucherMessage,
-                BigDecimal.ZERO);
+                discountPromotion);
     }
 
     private void validateOrderContent(List<OrderItemRequest> items, List<OrderComboRequest> combos) {
-        boolean hasItems = items != null && !items.isEmpty();
-        boolean hasCombos = combos != null && !combos.isEmpty();
-
-        if (!hasItems && !hasCombos) {
-            throw new BusinessException(ErrorCode.ORDER_CONTENT_EMPTY);
-        }
-
-        if (hasCombos
-                && combos.stream()
-                        .anyMatch(combo -> combo == null || combo.quantity() == null || combo.quantity() < 1)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Combo quantity must be at least 1");
-        }
+        OrderOptionSupport.validateOrderContent(items, combos);
     }
 
     private BigDecimal calculateItemSubtotal(List<OrderItemRequest> items) {
@@ -165,7 +298,7 @@ public class OrderPricingService {
 
         Set<Long> menuItemIds = items.stream().map(OrderItemRequest::menuItemId).collect(Collectors.toSet());
 
-        java.util.Map<Long, MenuItem> menuItemsMap = menuItemRepository.findAllByIdIn(menuItemIds).stream()
+        java.util.Map<Long, MenuItem> menuItemsMap = menuCatalogLookupService.findMenuItemsByIds(menuItemIds).stream()
                 .collect(Collectors.toMap(MenuItem::getId, item -> item));
         Map<Long, ItemOptionValue> selectedValuesById = loadSelectedOptionValues(items);
 
@@ -180,12 +313,13 @@ public class OrderPricingService {
             List<Long> selectedOptionValueIds =
                     itemRequest.selectedOptionValueIds() == null ? List.of() : itemRequest.selectedOptionValueIds();
 
-            validateSelectedOptions(menuItem, selectedOptionValueIds);
+            OrderOptionSupport.validateSelectedOptions(menuItem, selectedOptionValueIds);
 
-            List<ItemOptionValue> selectedValues = resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
-            validateOptionValuesExist(selectedOptionValueIds, selectedValues);
+            List<ItemOptionValue> selectedValues =
+                    OrderOptionSupport.resolveSelectedValues(selectedOptionValueIds, selectedValuesById);
+            OrderOptionSupport.validateOptionValuesExist(selectedOptionValueIds, selectedValues);
 
-            BigDecimal optionsPrice = calculateOptionsPrice(selectedValues);
+            BigDecimal optionsPrice = OrderOptionSupport.calculateOptionsPrice(selectedValues);
 
             BigDecimal unitTotal = safe(menuItem.getPrice()).add(optionsPrice);
             subtotal = subtotal.add(calculateLineTotal(unitTotal, itemRequest.quantity()));
@@ -194,7 +328,7 @@ public class OrderPricingService {
         return subtotal;
     }
 
-    private BigDecimal calculateComboSubtotal(List<OrderComboRequest> combos) {
+    private BigDecimal calculateComboSubtotal(List<OrderComboRequest> combos, boolean isCustomerOrder) {
         if (combos == null || combos.isEmpty()) {
             return BigDecimal.ZERO;
         }
@@ -203,14 +337,18 @@ public class OrderPricingService {
 
         List<Long> comboIds = combos.stream().map(OrderComboRequest::comboId).collect(Collectors.toList());
 
-        java.util.Map<Long, Combo> combosMap = comboRepository.findAllByIdInWithItems(comboIds).stream()
+        java.util.Map<Long, Combo> combosMap = menuCatalogLookupService.findCombosByIdsWithItems(comboIds).stream()
                 .collect(Collectors.toMap(Combo::getId, c -> c));
 
         for (OrderComboRequest comboRequest : combos) {
             Combo combo = Optional.ofNullable(combosMap.get(comboRequest.comboId()))
                     .orElseThrow(() -> new BusinessException(
                             ErrorCode.COMBO_NOT_FOUND, "Combo not found: " + comboRequest.comboId()));
-            orderValidator.validateComboOrderable(combo);
+            if (isCustomerOrder) {
+                orderValidator.validateComboOrderable(combo, true);
+            } else {
+                orderValidator.validateComboOrderable(combo);
+            }
 
             subtotal = subtotal.add(calculateLineTotal(combo.getPrice(), comboRequest.quantity()));
         }
@@ -219,105 +357,23 @@ public class OrderPricingService {
     }
 
     private Map<Long, ItemOptionValue> loadSelectedOptionValues(List<OrderItemRequest> items) {
-        Set<Long> selectedOptionValueIds = items.stream()
-                .filter(Objects::nonNull)
-                .flatMap(item -> item.selectedOptionValueIds() == null
-                        ? java.util.stream.Stream.<Long>empty()
-                        : item.selectedOptionValueIds().stream())
-                .collect(Collectors.toSet());
-
+        Set<Long> selectedOptionValueIds = OrderOptionSupport.extractSelectedOptionValueIds(items);
         if (selectedOptionValueIds.isEmpty()) {
             return Map.of();
         }
 
-        return itemOptionValueRepository.findAllById(selectedOptionValueIds).stream()
+        return menuCatalogLookupService.findItemOptionValuesByIterableIds(selectedOptionValueIds).stream()
                 .collect(Collectors.toMap(ItemOptionValue::getId, value -> value));
-    }
-
-    private List<ItemOptionValue> resolveSelectedValues(
-            List<Long> selectedOptionValueIds, Map<Long, ItemOptionValue> selectedValuesById) {
-        if (selectedOptionValueIds == null || selectedOptionValueIds.isEmpty()) {
-            return List.of();
-        }
-
-        return selectedOptionValueIds.stream()
-                .map(selectedValuesById::get)
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    private BigDecimal calculateOptionsPrice(List<ItemOptionValue> selectedValues) {
-        if (selectedValues == null || selectedValues.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-
-        return selectedValues.stream()
-                .map(ItemOptionValue::getExtraPrice)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private void validateSelectedOptions(MenuItem menuItem, List<Long> selectedValueIds) {
-        Set<Long> selectedIds = selectedValueIds == null ? Set.of() : new HashSet<>(selectedValueIds);
-
-        validateRequiredOptions(menuItem, selectedIds);
-        validateMaxSelections(menuItem, selectedIds);
-        validateOptionValuesBelongToMenuItem(menuItem, selectedIds);
-    }
-
-    private void validateRequiredOptions(MenuItem menuItem, Set<Long> selectedIds) {
-        menuItem.getItemOptions().stream()
-                .filter(option -> Boolean.TRUE.equals(option.getRequired()))
-                .forEach(option -> {
-                    boolean selected =
-                            option.getOptionValues().stream().anyMatch(value -> selectedIds.contains(value.getId()));
-
-                    if (!selected) {
-                        throw new BusinessException(
-                                ErrorCode.INVALID_REQUEST, "Required option selection missing: " + option.getName());
-                    }
-                });
-    }
-
-    private void validateMaxSelections(MenuItem menuItem, Set<Long> selectedIds) {
-        menuItem.getItemOptions().forEach(option -> {
-            int maxSelection = option.getMaxSelection() == null ? 1 : option.getMaxSelection();
-            long selectedCount = option.getOptionValues().stream()
-                    .filter(value -> selectedIds.contains(value.getId()))
-                    .count();
-
-            if (selectedCount > maxSelection) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_REQUEST, "Too many option selections for: " + option.getName());
-            }
-        });
-    }
-
-    private void validateOptionValuesBelongToMenuItem(MenuItem menuItem, Set<Long> selectedIds) {
-        if (selectedIds.isEmpty()) {
-            return;
-        }
-
-        Set<Long> validValueIds = menuItem.getItemOptions().stream()
-                .flatMap(option -> option.getOptionValues().stream())
-                .map(ItemOptionValue::getId)
-                .collect(Collectors.toSet());
-
-        if (!validValueIds.containsAll(selectedIds)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "Selected option contains invalid value for this menu item.");
-        }
-    }
-
-    private void validateOptionValuesExist(List<Long> requestedIds, List<ItemOptionValue> selectedValues) {
-        Set<Long> foundIds = selectedValues.stream().map(ItemOptionValue::getId).collect(Collectors.toSet());
-
-        if (!foundIds.containsAll(requestedIds)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Selected option value does not exist.");
-        }
     }
 
     private BigDecimal safe(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private BigDecimal normalizeRate(BigDecimal rate) {
+        if (rate == null || rate.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return rate;
     }
 }

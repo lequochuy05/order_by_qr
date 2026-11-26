@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
+import { publicMenuService } from '@entities/public-menu';
 
 const useCrossSellRecommendations = (hydrateRecommendationItems, enabled = true) => {
   const [crossSellItems, setCrossSellItems] = useState([]);

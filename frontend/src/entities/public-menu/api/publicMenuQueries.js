@@ -22,11 +22,12 @@ export const useCustomerMenuQuery = (options = {}) =>
   useQuery({
     queryKey: queryKeys.menu.customer,
     queryFn: async () => {
-      const [categoriesRes, menuRes, combosRes, settingsRes] = await Promise.all([
+      const [categoriesRes, menuRes, combosRes, settingsRes, promotionsRes] = await Promise.all([
         publicMenuService.getCategories(),
         publicMenuService.getAllMenuItems(),
         publicMenuService.getCombos(),
         publicMenuService.getSettings(),
+        publicMenuService.getActivePromotions().catch(() => []),
       ]);
 
       return {
@@ -34,6 +35,7 @@ export const useCustomerMenuQuery = (options = {}) =>
         menuItems: Array.isArray(menuRes) ? menuRes : [],
         combos: (Array.isArray(combosRes) ? combosRes : []).filter((c) => c.active !== false),
         settings: settingsRes,
+        promotions: Array.isArray(promotionsRes) ? promotionsRes : [],
       };
     },
     staleTime: 10 * 60 * 1000,

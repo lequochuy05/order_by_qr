@@ -94,6 +94,9 @@ nbproject/private/
 .env
 .env.*
 !.env.example
+!frontend/.env.development
+!frontend/.env.production
+!frontend/.env.capacitor
 *.pem
 *.key
 *.pfx
@@ -115,17 +118,19 @@ desktop.ini
 *~
 
 # === AI Agents & Local Tooling ===
-.agents/
-.agent/
 .codegraph/
 .claude/
 .cursor/
+.github/modernize/
 *.patch
 CLAUDE.md
 TT_*.md
 
 # === Databases & Backups ===
+backups/
 *.sql
+!backend/src/main/resources/db/migration/*.sql
+*.dump
 *.tar
 *.zip
 *.gz

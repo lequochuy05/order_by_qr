@@ -7,30 +7,6 @@ import { inventoryService } from './inventoryService.js';
 const invalidateInventory = () =>
   queryClient.invalidateQueries({ queryKey: queryKeys.inventory.all });
 
-export const useCreateInventoryItemMutation = (options = {}) =>
-  useMutation({
-    mutationFn: (data) => inventoryService.createItem(data),
-    onSuccess: (...args) => {
-      invalidateInventory();
-      options.onSuccess?.(...args);
-    },
-    onError: (...args) => {
-      options.onError?.(...args);
-    },
-  });
-
-export const useUpdateInventoryItemMutation = (options = {}) =>
-  useMutation({
-    mutationFn: ({ id, data }) => inventoryService.updateItem(id, data),
-    onSuccess: (...args) => {
-      invalidateInventory();
-      options.onSuccess?.(...args);
-    },
-    onError: (...args) => {
-      options.onError?.(...args);
-    },
-  });
-
 export const useStockInMutation = (options = {}) =>
   useMutation({
     mutationFn: ({ id, data }) => inventoryService.stockIn(id, data),
@@ -43,9 +19,9 @@ export const useStockInMutation = (options = {}) =>
     },
   });
 
-export const useAdjustStockMutation = (options = {}) =>
+export const useBatchStockInMutation = (options = {}) =>
   useMutation({
-    mutationFn: ({ id, data }) => inventoryService.adjust(id, data),
+    mutationFn: (data) => inventoryService.batchStockIn(data),
     onSuccess: (...args) => {
       invalidateInventory();
       options.onSuccess?.(...args);
@@ -55,9 +31,9 @@ export const useAdjustStockMutation = (options = {}) =>
     },
   });
 
-export const useUpdateRecipeMutation = (options = {}) =>
+export const useAdjustStockMutation = (options = {}) =>
   useMutation({
-    mutationFn: ({ menuItemId, data }) => inventoryService.updateRecipe(menuItemId, data),
+    mutationFn: ({ id, data }) => inventoryService.adjust(id, data),
     onSuccess: (...args) => {
       invalidateInventory();
       options.onSuccess?.(...args);

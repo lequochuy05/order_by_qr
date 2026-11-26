@@ -1,9 +1,8 @@
 package com.qros.modules.table.service;
 
-import com.qros.core.config.AppProperties;
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import com.qros.shared.security.JwtProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -17,19 +16,30 @@ import org.springframework.util.StringUtils;
 public class TableQrSecurityService {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
-    private static final String DEFAULT_FALLBACK_SECRET = "qros-table-qr-cryptographic-secret-key-2026";
 
-    private final AppProperties appProperties;
-    private final JwtProperties jwtProperties;
+    private final String secret;
 
-    public TableQrSecurityService(AppProperties appProperties, JwtProperties jwtProperties) {
-        this.appProperties = appProperties;
-        this.jwtProperties = jwtProperties;
+    public TableQrSecurityService(AppProperties appProperties) {
+        String configuredSecret = null;
+        if (appProperties != null) {
+            if (appProperties.getQr() != null
+                    && StringUtils.hasText(appProperties.getQr().getSecret())) {
+                configuredSecret = appProperties.getQr().getSecret();
+            } else if (appProperties.getSecurity() != null
+                    && StringUtils.hasText(appProperties.getSecurity().getQrSecret())) {
+                configuredSecret = appProperties.getSecurity().getQrSecret();
+            }
+        }
+        if (!StringUtils.hasText(configuredSecret)) {
+            throw new IllegalStateException(
+                    "app.security.qr-secret (or app.qr.secret) must be configured using QR_SIGNING_SECRET");
+        }
+        this.secret = configuredSecret.trim();
     }
 
     public String generateSignature(@NonNull String tableCode) {
         try {
-            byte[] secretBytes = resolveSecret().getBytes(StandardCharsets.UTF_8);
+            byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);
             mac.init(new SecretKeySpec(secretBytes, HMAC_ALGORITHM));
             byte[] hmacBytes = mac.doFinal(tableCode.getBytes(StandardCharsets.UTF_8));
@@ -66,18 +76,5 @@ public class TableQrSecurityService {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String resolveSecret() {
-        if (appProperties != null && appProperties.getSecurity() != null) {
-            String qrSecret = appProperties.getSecurity().getQrSecret();
-            if (StringUtils.hasText(qrSecret)) {
-                return qrSecret.trim();
-            }
-        }
-        if (jwtProperties != null && StringUtils.hasText(jwtProperties.getSecret())) {
-            return jwtProperties.getSecret().trim();
-        }
-        return DEFAULT_FALLBACK_SECRET;
     }
 }

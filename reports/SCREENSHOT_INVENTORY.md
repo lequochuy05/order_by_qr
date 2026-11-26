@@ -1,7 +1,11 @@
 # SCREENSHOT INVENTORY (MỤC LỤC KHO ẢNH CHỤP GIAO DIỆN)
 **Hệ thống: QROS — Nền tảng Đặt món qua mã QR & Quản lý Nhà hàng Đa vai trò**
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày thu thập: 2026-11-14*
-*Tổng số ảnh chụp: 144 ảnh (PNG) | Phủ đủ 6 vai trò + 3 chuẩn thiết bị (Desktop, Tablet, Mobile)*
+*Tổng số ảnh chụp chuẩn hóa: 144 ảnh (PNG) | Phủ đủ 6 vai trò + 3 chuẩn thiết bị (Desktop, Tablet, Mobile)*
+
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Kho ảnh được chụp cho đợt nghiệm thu 6 vai trò ngày `2026-11-14`. Đối với danh mục màn hình cập nhật (`SCR-01`–`SCR-27`), xem [PROTOTYPE_SCREEN_MAP.md](../docs/knowledge/02-design/PROTOTYPE_SCREEN_MAP.md) và [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md).
+>
+> **Ghi chú về tệp bổ sung trên đĩa:** Ngoài **144 ảnh kiểm toán chuẩn hóa** được lập mục lục bên dưới, thư mục `screenshots/` còn chứa **20 tệp PNG bổ sung** (gồm 17 ảnh chụp thủ công tại `screenshots/customer/Screen Shot 2026-11-14 at *.png` và 3 ảnh xác minh `verify_*.png` đã được sắp xếp gọn vào `screenshots/cashier/desktop/pages/` và `screenshots/shared/desktop/pages/`), nâng tổng số tệp PNG thực tế trên đĩa lên **164 tệp**.
 
 ---
 
@@ -99,7 +103,7 @@
 | 53 | Desktop | `pages` | Hồ sơ cá nhân | `screenshots/chef/desktop/pages/chef_desktop_pages_profile_default.png` |
 | 54 | Tablet | `pages` | KDS Bếp (Kanban) | `screenshots/chef/tablet/pages/chef_tablet_pages_kitchen-board-kanban_default.png` |
 | 55 | Tablet | `features`| Chế độ Nấu gom món | `screenshots/chef/tablet/features/chef_tablet_features_kitchen-batch-cooking_active.png` |
-| 56 | Tablet | `widgets` | AI Trợ lý Bếp | `screenshots/chef/tablet/widgets/chef_desktop_widgets_ai-staff-panel_visible.png` |
+| 56 | Tablet | `widgets` | AI Trợ lý Bếp | `screenshots/chef/tablet/widgets/chef_tablet_widgets_ai-staff-panel_visible.png` |
 | 57 | Tablet | `pages` | Quản lý kho | `screenshots/chef/tablet/pages/chef_tablet_pages_inventory-stock-list_default.png` |
 | 58 | Tablet | `pages` | Hồ sơ cá nhân | `screenshots/chef/tablet/pages/chef_tablet_pages_profile_default.png` |
 | 59 | Mobile | `pages` | KDS Bếp (Kanban) | `screenshots/chef/mobile/pages/chef_mobile_pages_kitchen-board-kanban_default.png` |
@@ -136,9 +140,9 @@
 
 | STT | Thiết bị | Danh mục | Tên Component / Trạng thái | Đường dẫn file screenshot |
 |:---:|:---:|:---:|---|---|
-| 79-94 | Desktop | Đa dạng | Dashboard, Danh mục (+Modal), Món ăn (+Modal), Combo (+Modal), Voucher (+Modal), Nhân sự (+Modal), Thống kê Món, Thống kê NV, Sơ đồ Bàn (+Modal), Lịch sử (+Modal), Profile | `screenshots/manager/desktop/...` (16 ảnh) |
-| 95-111 | Tablet | Đa dạng | Toàn bộ 11 chức năng quản lý + 5 modals trên Tablet (iPad 768px) | `screenshots/manager/tablet/...` (17 ảnh) |
-| 112-128 | Mobile | Đa dạng | Toàn bộ 11 chức năng quản lý + 5 modals trên Mobile (iPhone 390px) | `screenshots/manager/mobile/...` (17 ảnh) |
+| 79-95 | Desktop | Đa dạng | Dashboard, Danh mục (+Modal), Món ăn (+Modal), Combo (+Modal), Voucher (+Modal), Nhân sự (+Modal), Thống kê Món, Thống kê NV, Sơ đồ Bàn (+Modal), Lịch sử (+Modal), Profile | `screenshots/manager/desktop/...` (17 ảnh) |
+| 96-112 | Tablet | Đa dạng | Toàn bộ 11 chức năng quản lý + 5 modals trên Tablet (iPad 768px) | `screenshots/manager/tablet/...` (17 ảnh) |
+| 113-128 | Mobile | Đa dạng | Toàn bộ 11 chức năng quản lý + 5 modals trên Mobile (iPhone 390px) | `screenshots/manager/mobile/...` (16 ảnh) |
 
 ---
 

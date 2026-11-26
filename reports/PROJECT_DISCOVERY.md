@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày khảo sát: 2026-11-14*
 *Đơn vị thực hiện: Senior QA Automation Lead & Frontend Architect*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Tài liệu này lưu kết quả khảo sát ngày `2026-11-14` (26 named routes + `*`, Java 21 / Spring Boot 3.5.14). Phiên bản hiện hành đã nâng cấp lên **Java 25 LTS / Spring Boot 4.1.2**, **28 named routes (+ `*`, thêm `/admin/promotions` & `/admin/service-requests`)**, 19 features, 16 entities, 2 widgets (`admin-layout`, `order-modals`) — xem nguồn chân lý hiện hành tại [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## 1. TỔNG QUAN KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)
@@ -26,7 +28,7 @@ QROS là hệ thống quản lý nhà hàng và đặt món thông minh hoạt �
 
 ## 2. TOÀN BỘ CÁC ROUTE TRONG HỆ THỐNG (ROUTE INVENTORY)
 
-Toàn bộ các tuyến đường (routes) được định nghĩa tại `frontend/src/app/router.jsx`:
+Toàn bộ **27 tuyến đường** (**26 named routes** + **1 wildcard fallback `*`**) được định nghĩa tại `frontend/src/app/router.jsx`:
 
 ### 2.1 Tuyến đường công khai & Khách hàng (Public & Customer Routes)
 | Route Path | Tên Component | Mục đích nghiệp vụ | Quyền truy cập |
@@ -41,6 +43,7 @@ Toàn bộ các tuyến đường (routes) được định nghĩa tại `fronte
 | `/not-found` | `NotFoundPage` (404) | Màn hình thông báo trang không tồn tại | Mọi người |
 | `/offline` | `SystemStatusPage` (offline) | Màn hình cảnh báo mất kết nối mạng Internet | Mọi người |
 | `/error/:statusCode` | `SystemStatusPage` | Màn hình hiển thị mã lỗi hệ thống (500, 502, 503...) | Mọi người |
+| `*` | `NotFoundPage` (Wildcard Fallback) | Bắt mọi đường dẫn không khớp route nào (Fallback 404) | Mọi người |
 
 ### 2.2 Tuyến đường nội bộ quản trị (`/admin/*` - Protected Routes)
 Tất cả các route này được bảo vệ bởi `ProtectedRoute` và bọc trong layout chung `AdminLayout`:
@@ -72,7 +75,7 @@ Toàn bộ các Modal và Dialog trong hệ thống đã được xác minh từ
 
 | STT | Tên Modal | File mã nguồn | Mô tả & Trạng thái kích hoạt |
 |:---:|---|---|---|
-| **1** | `ItemOptionsModal` | `frontend/src/shared/ui/modal/ItemOptionsModal.jsx` | Khách/Nhân viên bấm chọn món ăn để chọn topping, mức cay, định lượng và nhập ghi chú. |
+| **1** | `ItemOptionsModal` | `frontend/src/shared/ui/ItemOptionsModal.jsx` | Khách/Nhân viên bấm chọn món ăn để chọn topping, mức cay, định lượng và nhập ghi chú. |
 | **2** | `CartModal` | `frontend/src/features/customer-menu/ui/CartModal.jsx` | Xem giỏ hàng của khách, điều chỉnh số lượng, xác nhận gửi đơn xuống bếp. |
 | **3** | `CurrentOrderSheet` | `frontend/src/features/customer-menu/ui/CurrentOrderSheet.jsx` | Bảng trượt hiển thị tiến độ món ăn đã đặt của bàn (Đang nấu, Đã phục vụ). |
 | **4** | `TableFormModal` | `frontend/src/features/table-management/ui/TableFormModal.jsx` | Form thêm mới hoặc chỉnh sửa thông tin bàn ăn (Mã bàn, Sức chứa, Vị trí). |
