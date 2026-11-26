@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày khảo sát: 2026-11-14*
 *Đơn vị thực hiện: Senior QA Automation Lead & Frontend Architect*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Tài liệu này lưu kết quả khảo sát ngày `2026-11-14` (26 named routes + `*`, Java 21 / Spring Boot 3.5.14). Phiên bản hiện hành đã nâng cấp lên **Java 25 LTS / Spring Boot 4.1.2**, **28 named routes (+ `*`, thêm `/admin/promotions` & `/admin/service-requests`)**, 19 features, 16 entities, 2 widgets (`admin-layout`, `order-modals`) — xem nguồn chân lý hiện hành tại [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## 1. TỔNG QUAN KIẾN TRÚC HỆ THỐNG (SYSTEM ARCHITECTURE)

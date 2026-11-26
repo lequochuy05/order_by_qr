@@ -21,7 +21,7 @@ Trước khi thiết kế hoặc cập nhật bất kỳ màn hình/token nào, 
 > **Hard Rule:** Nếu `docs/knowledge/01-po/` chưa có dữ liệu hoặc thiếu mục tiêu/persona cho tính năng đang thiết kế, **DỪNG LẠI** và yêu cầu cập nhật bằng `po-product-discovery` trước. Không thiết kế tách rời PO Knowledge.
 
 ## Quy trình thực thi
-1. **Đối chiếu PO Knowledge:** Xác nhận rõ tính năng `F1.1`–`F6.5` phục vụ `PER-01`–`PER-06` nào, thiết bị ưu tiên nào (Mobile Order, Tablet POS, KDS, Desktop Admin) và nằm ở `STG-01`–`STG-06` nào.
+1. **Đối chiếu PO Knowledge:** Xác nhận rõ tính năng `F1.1`–`F6.7` phục vụ `PER-01`–`PER-06` nào, thiết bị ưu tiên nào (Mobile Order, Tablet POS, KDS, Desktop Admin) và nằm ở `STG-01`–`STG-06` nào.
 2. **Cập nhật Design System (`docs/knowledge/02-design/DESIGN_SYSTEM.md` & `figma-tokens.json`):**
    - Duy trì kiến trúc Token 2 tầng (*Evondev Signature Edition*, chống AI slop): Static Brand Tokens + Dynamic Semantic Tokens (`:root`/`.dark`) đạt chuẩn tương phản WCAG 2.1 AA, khóa chặt bằng thông số spacing/bo góc/typography rõ ràng.
    - Bàn giao token JSON sạch để Frontend ánh xạ vào stylesheet mà không hardcode mã màu.

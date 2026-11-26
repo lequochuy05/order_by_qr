@@ -10,7 +10,7 @@
   - BA User Stories: [USER_STORIES.md](../../03-ba/USER_STORIES.md) (`US-018`, `US-024`)
   - Tech: [SYSTEM_DESIGN.md](../../04-tech/SYSTEM_DESIGN.md)
 
-> **Lưu ý minh bạch:** Quy luật chuẩn của QROS là **chiều thuận (`01-po → 02-design → 03-ba → 04-tech → 05-specs → Sinh Code`)**. Riêng `001-customer-self-checkout` là **Baseline Spec dựng ngược từ mã nguồn có sẵn (`V1.22`)** dùng làm ví dụ minh họa quy trình phát hiện lệch & duyệt Sync-Back cho buổi trình bày. Từ `002-` trở đi, mọi tính năng mới đều đi theo chiều thuận.
+> **Lưu ý minh bạch:** Quy luật chuẩn của QROS là **chiều thuận (`01-po → 02-design → 03-ba → 04-tech → 05-specs → Sinh Code`)**. Riêng `001-customer-self-checkout` là **Baseline Spec dựng ngược từ mã nguồn có sẵn (`V1.22`)** dùng làm ví dụ minh họa quy trình phát hiện lệch & duyệt Sync-Back cho buổi trình bày. Từ `004-` trở đi, mọi tính năng mới đều đi theo chiều thuận.
 
 ---
 

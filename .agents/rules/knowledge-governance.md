@@ -35,9 +35,9 @@ Không vai trò nào được phép làm việc độc lập mà bỏ qua nguồ
 
 ## 4. Quy ước Mã Truy Vết (Traceability IDs)
 Mọi tài liệu mới hoặc chỉnh sửa phải duy trì chuỗi truy vết xuyên suốt:
-- PO Feature: `F1.1` .. `F6.5` (6 Epics trong `01-po/journey-features.md`)
+- PO Feature: `F1.1` .. `F6.7` (6 Epics · 37 features trong `01-po/journey-features.md`)
 - User Stage: `STG-01` .. `STG-06`
 - Persona / Role: `PER-01` (Customer), `PER-02` (Staff), `PER-03` (Chef), `PER-04` (Cashier), `PER-05` (Manager), `PER-06` (Admin)
-- Design Screen: `SCR-01` .. `SCR-26`
-- Business Rule: `BR-01` .. `BR-24` (mở rộng tiếp `BR-xx`)
-- User Story: `US-001` .. `US-024` (mở rộng tiếp `US-xxx`)
+- Design Screen: `SCR-01` .. `SCR-27`
+- Business Rule: `BR-01` .. `BR-36` (mở rộng tiếp `BR-xx`)
+- User Story: `US-001` .. `US-034` (mở rộng tiếp `US-xxx`)

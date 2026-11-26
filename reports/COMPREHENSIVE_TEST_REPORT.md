@@ -3,7 +3,9 @@
 **Hệ thống: QROS - Nền tảng Đặt món qua mã QR (QR Ordering Platform)**  
 **Đơn vị thực hiện:** Senior QA Engineer, Performance Engineer & Software Architect  
 **Ngày thực hiện:** 2026-10-31  
-**Môi trường kiểm định:** Java 21 LTS | Spring Boot 3.5.14 | React 19.2.0 | PostgreSQL 17.11 (AWS Neon Pooler) | Redis 7 Alpine  
+**Môi trường kiểm định tại thời điểm chạy (2026-10-31):** Java 21 LTS | Spring Boot 3.5.14 | React 19.2.0 | PostgreSQL 17.11 (AWS Neon Pooler) | Redis 7 Alpine  
+
+> **Historical QA Snapshot (`2026-10-31`, mốc trước nâng cấp Java 25 / Spring Boot 4.1.2 và các migration `V1.22`–`V1.24`):** Báo cáo này giữ nguyên số liệu benchmark/kiểm thử lịch sử tại ngày thực hiện. Hệ thống hiện tại đã nâng cấp lên **Java 25 LTS / Spring Boot 4.1.2**, 25 Flyway migrations (`V1`–`V1.24`), ArchUnit 10 rules, 318 backend tests và 144 frontend unit tests — xem nguồn chân lý hiện hành tại [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
 
 ---
 

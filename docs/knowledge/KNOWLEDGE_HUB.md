@@ -76,7 +76,7 @@ flowchart TB
 
 | Tài liệu | Nội dung cốt lõi | Trạng thái |
 |---|---|---|
-| [SYSTEM_DESIGN.md](./04-tech/SYSTEM_DESIGN.md) | Ánh xạ `US/BR/SCR` → Kiến trúc Modular Monolith (Spring Boot 4.1.2 / Java 25) + FSD (React 19.2 / Capacitor 8.6), 35 bảng DB (`V1`–`V1.24`), 12 STOMP topics, 6-Role RBAC & CI Quality Gates | ✅ Sẵn sàng |
+| [SYSTEM_DESIGN.md](./04-tech/SYSTEM_DESIGN.md) | Ánh xạ `US/BR/SCR` → Kiến trúc Modular Monolith (Spring Boot 4.1.2 / Java 25) + FSD (React 19.2 / Capacitor 8.6), 35 bảng DB (`V1`–`V1.26`), 12 STOMP topics, 6-Role RBAC & CI Quality Gates | ✅ Sẵn sàng |
 
 ### Tầng 5 — Spec-Driven Execution & Sync (`05-specs/`) · Skill: `sdd-coding-sync`
 *Áp dụng phương pháp Spec-Driven Development (lấy cảm hứng từ GitHub Spec Kit). Luồng chuẩn là **chiều thuận sinh ra code** (`Nhánh A`). Thư mục này chỉ là **lịch sử thực thi** (`Draft → In Progress → Implemented → Archived`), không phải bản sao thứ hai của `03-ba/` hay `04-tech/`. Riêng `001-`..`003-` là **Baseline Spec dựng ngược từ code có sẵn** để minh họa quy trình duyệt Sync-Back.*
@@ -87,10 +87,10 @@ flowchart TB
 | [001-customer-self-checkout/](./05-specs/001-customer-self-checkout/spec.md) | **Baseline Spec** *(ví dụ dựng ngược từ code `V1.22`)* — kèm Sync-Back Proposal (`SB-01` → `SB-04`) | ⏳ `Pending Sync-Back Review` |
 | [002-customer-table-order/](./05-specs/002-customer-table-order/spec.md) | **Baseline Spec** *(mẫu demo luồng cốt lõi Khách đặt món tại bàn)* — kèm Sync-Back Proposal (`SB-05` → `SB-07`) | ⏳ `Pending Sync-Back Review` |
 | [003-role-based-auth-login/](./05-specs/003-role-based-auth-login/spec.md) | **Baseline Spec** *(mẫu demo luồng Đăng nhập, 2FA & Điều hướng theo 6 Role)* — kèm Sync-Back Proposal (`SB-08` → `SB-10`) | ⏳ `Pending Sync-Back Review` |
-| [004-table-service-requests/](./05-specs/004-table-service-requests/spec.md) | **New Feature (`Nhánh A`)** — Gọi nhân viên tại bàn (`F1.6`, `BR-25..26`, `US-025`) & Hàng đợi yêu cầu bàn realtime (`F4.5`, `SCR-27`, `BR-27..28`, `US-026..027`, `V1.23`) | 📝 `Draft (Chờ duyệt triển khai)` |
+| [004-table-service-requests/](./05-specs/004-table-service-requests/spec.md) | **New Feature (`Nhánh A`)** — Gọi nhân viên tại bàn (`F1.6`, `BR-25..26`, `US-025`) & Hàng đợi yêu cầu bàn realtime (`F4.5`, `SCR-27`, `BR-27..28`, `US-026..027`, `V1.23`) | ⏳ `Implemented (Pending Sync-Back Review)` |
 | [005-ai-ordering-and-executive-insights/](./05-specs/005-ai-ordering-and-executive-insights/spec.md) | **New Feature (`Nhánh A`)** — AI Đặt món trực tiếp từ Chat (`F1.5`, `SCR-05`, `BR-29..30`, `US-028`) & AI Tóm tắt điều hành Dashboard (`F6.6`, `SCR-10`, `BR-31`, `US-029`) | ⏳ `Implemented (Pending Sync-Back Review)` |
 | [006-ai-operations-suite/](./05-specs/006-ai-operations-suite/spec.md) | **New Feature (`Nhánh A`)** — AI Nhập kho BOM+Dự báo (`F5.6`), AI Đề xuất Combo & Khung giờ KM (`F6.7`), AI Dị ứng & Ghi chú (`F2.6`), AI BOM & Giá vốn (`F5.7`, `V1.24`) | ⏳ `Implemented (Pending Sync-Back Review)` |
-| [007-ai-invoice-stock-in/](./05-specs/007-ai-invoice-stock-in/spec.md) | **New Feature (`Nhánh A`)** — Nhập kho từ ảnh hóa đơn bằng Gemini Vision (`F5.8`, `SCR-18`, `BR-36`, `US-034`) | ✅ `Implemented (Pending Sync-Back Review)` |
+| [007-ai-invoice-stock-in/](./05-specs/007-ai-invoice-stock-in/spec.md) | **New Feature (`Nhánh A`)** — Nhập kho từ ảnh hóa đơn bằng Gemini Vision (`F5.8`, `SCR-18`, `BR-36`, `US-034`) | ⏳ `Implemented (Pending Sync-Back Review)` |
 
 ---
 
@@ -111,10 +111,10 @@ flowchart TB
 - [x] **Gate 1 (`01-po` → `02-design`):** 9 tài liệu thuần tư duy PO (`PER-01..06`, `STG-01..06`, `F1.1..F6.7` — 37 features), 0 thuật ngữ code.
 - [x] **Gate 2 (`01-po` + `02-design` → `03-ba`):** Đủ Design System (`DESIGN_SYSTEM.md`, `figma-tokens.json`) và 27 màn hình Prototype (`SCR-01..27`) thuần UI/UX.
 - [x] **Gate 3 (`03-ba` → `04-tech`):** Đủ PRD theo 6 User Stages (`BR-01..36`) và 34 User Stories (`US-001..34`) phủ 100% mã từ PO & Design, thuần nghiệp vụ.
-- [x] **Gate 4 (`04-tech` → `05-specs` / Sinh Code):** Đủ `SYSTEM_DESIGN.md` ánh xạ 1-1 `STG/US/BR/SCR` xuống kiến trúc thực tế (Spring Boot 4.1.2 / Java 25, React 19.2, 35 bảng `V1`–`V1.24`, 12 STOMP topics) và `CONSTITUTION.md` (DoD khớp CI).
-- [ ] **Gate 5 (`05-specs` → Chờ duyệt triển khai / Sync-Back):**
-  - **Tính năng mới (`Nhánh A`):** `004-table-service-requests` đã hoàn tất `spec.md`, `plan.md`, `tasks.md` (`Status: Draft`) — **chờ người dùng duyệt Clarifications & Plan trước khi vào Pha 4 `implement`**.
-  - **Baseline Sync-Back Demo:** Đang giữ trạng thái chờ duyệt cho Sync-Back Proposal của `001-customer-self-checkout` (`SB-01` → `SB-04`), `002-customer-table-order` (`SB-05` → `SB-07`) và `003-role-based-auth-login` (`SB-08` → `SB-10`).
+- [x] **Gate 4 (`04-tech` → `05-specs` / Sinh Code):** Đủ `SYSTEM_DESIGN.md` ánh xạ 1-1 `STG/US/BR/SCR` xuống kiến trúc thực tế (Spring Boot 4.1.2 / Java 25, React 19.2, 35 bảng `V1`–`V1.26`, 12 STOMP topics) và `CONSTITUTION.md` (DoD khớp CI).
+- [ ] **Gate 5 (`05-specs` → Chờ duyệt Sync-Back & Lưu trữ):**
+  - **Baseline Sync-Back Demo (giữ nguyên phục vụ trình bày):** `001-customer-self-checkout` (`SB-01` → `SB-04`), `002-customer-table-order` (`SB-05` → `SB-07`), `003-role-based-auth-login` (`SB-08` → `SB-10`) giữ trạng thái `Pending Sync-Back Review`.
+  - **Tính năng mới đã triển khai (`Nhánh A`):** `004-table-service-requests`, `005-ai-ordering-and-executive-insights`, `006-ai-operations-suite`, `007-ai-invoice-stock-in` đã hoàn tất mã nguồn & kiểm thử, đang ở trạng thái `Implemented (Pending Sync-Back Review)` chờ duyệt lưu trữ (`Archived`).
 
 ---
 
@@ -122,6 +122,10 @@ flowchart TB
 
 | Ngày | Spec ID | Các ID / Tài liệu cập nhật | Trạng thái & Người duyệt |
 |---|---|---|---|
-| `2026-11-22` | `001-customer-self-checkout` *(Baseline demo)* | Đề xuất `SB-01` → `SB-04` (`BR-19`, `US-018`, `SCR-05`, `SYSTEM_DESIGN.md §6.1`) | ⏳ Chờ duyệt *(chưa ghi vào nguồn chân lý)* |
-| `2026-11-22` | `002-customer-table-order` *(Baseline demo)* | Đề xuất `SB-05` → `SB-07` (`BR-05`, `BR-06`, `US-007`, `SYSTEM_DESIGN.md §6.1, §6.3`) | ⏳ Chờ duyệt *(chưa ghi vào nguồn chân lý)* |
-| `2026-11-22` | `003-role-based-auth-login` *(Baseline demo)* | Đề xuất `SB-08` → `SB-10` (`SCR-17/19/21/25`, `BR-03`, `US-002/004`, `SYSTEM_DESIGN.md §7.2`) | ⏳ Chờ duyệt *(chưa ghi vào nguồn chân lý)* |
+| `2026-11-22` | `001-customer-self-checkout` *(Baseline demo)* | Đề xuất `SB-01` → `SB-04` (`BR-19`, `US-018`, `SCR-05`, `SYSTEM_DESIGN.md §6.1`) | ⏳ Chờ duyệt *(giữ demo trình bày)* |
+| `2026-11-22` | `002-customer-table-order` *(Baseline demo)* | Đề xuất `SB-05` → `SB-07` (`BR-05`, `BR-06`, `US-007`, `SYSTEM_DESIGN.md §6.1, §6.3`) | ⏳ Chờ duyệt *(giữ demo trình bày)* |
+| `2026-11-22` | `003-role-based-auth-login` *(Baseline demo)* | Đề xuất `SB-08` → `SB-10` (`SCR-17/19/21/25`, `BR-03`, `US-002/004`, `SYSTEM_DESIGN.md §7.2`) | ⏳ Chờ duyệt *(giữ demo trình bày)* |
+| `2026-11-23` | `004`–`007` *(Feature sync status)* | Đồng bộ trạng thái `004` (`Implemented`) & danh mục `004`–`007` trong `KNOWLEDGE_HUB.md` | ⏳ Chờ duyệt đóng `Archived` |
+| `2026-11-23` | `Architecture & Doc Alignment` | Đồng bộ `PROTOTYPE_SCREEN_MAP.md` (`SCR-05/17/19/21/25/26`), `USER_STORIES.md` (`SCR-07/09`), `SYSTEM_DESIGN.md`, `CONSTITUTION.md`, `.agents/`, `CLAUDE.md` & READMEs sau refactor Modular Monolith (0 cycle, 0 cross-repo) + FSD strict ESLint | ✅ Đã duyệt bởi User *(2026-11-23)* |
+| `2026-11-26` | `Audit Hardening (Waves 1–3 · 42 Issues)` | Đồng bộ `SB-11` → `SB-18` (`PROTOTYPE_SCREEN_MAP.md` [`SCR-05/11/13/14/22/25/26`], `PRD_BY_USER_STAGE.md` [`BR-02..05`, `BR-10..11`, `BR-13..14`, `BR-16..19`, `BR-21..22`], `USER_STORIES.md` [`US-002..004`, `US-014`, `US-016..018`, `US-023`], `SYSTEM_DESIGN.md` [`V1.25`, RBAC, locking, PayOS, tax/service charge, infra & CI 347+153 tests]) | ✅ Đã duyệt bởi User *(2026-11-26)* |
+| `2026-11-26` | `Wave 2 Pre-Release Hardening (34 Issues · W2-1..W2-7)` | Đồng bộ `SB-19` → `SB-24` (`PROTOTYPE_SCREEN_MAP.md` [`SCR-05/11/12/14/15/17/26`], `PRD_BY_USER_STAGE.md` [`BR-02..03`, `BR-05`, `BR-07`, `BR-10..11`, `BR-14`, `BR-16..18`, `BR-27`, `BR-36`], `USER_STORIES.md` [`US-002/005/007/009/016/017/020/034`], `SYSTEM_DESIGN.md` [`V1.26`, multi-device sessions, operating hours, Happy-Hour snapshot, G1GC/Virtual Threads, PWA/Capacitor, Testcontainers PG16+Redis7 364+160 tests]) | ✅ Đã duyệt bởi User *(2026-11-26)* |

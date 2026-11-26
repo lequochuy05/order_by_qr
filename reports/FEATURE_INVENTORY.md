@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày khảo sát ban đầu: 2026-10-30 | Cập nhật đồng bộ 6-role RBAC & 2FA: 2026-11-14*
 *Chuyên viên đánh giá: Senior QA Engineer, Performance Engineer & Software Architect*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24` & tích hợp AI mở rộng):** Bảng dưới đây ghi nhận snapshot khảo sát tại mốc `V1.21` (Java 21 / Spring Boot 3.5.14). Hệ thống hiện hành đã nâng cấp lên **Java 25 LTS / Spring Boot 4.1.2**, **25 migrations (`V1`–`V1.24`, 35 bảng)**, bổ sung Tự thanh toán QR (`V1.22`), Yêu cầu hỗ trợ bàn (`V1.23`), AI Insights/Inventory OCR/Merchandising/Note Triage (`V1.24`), và chuẩn hóa Modular Monolith + FSD — xem nguồn chân lý hiện hành tại [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## I. TỔNG QUAN HỆ THỐNG VÀ KIẾN TRÚC KỸ THUẬT

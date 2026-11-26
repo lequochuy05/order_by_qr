@@ -3,7 +3,9 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày thu thập: 2026-11-14*
 *Tổng số ảnh chụp chuẩn hóa: 144 ảnh (PNG) | Phủ đủ 6 vai trò + 3 chuẩn thiết bị (Desktop, Tablet, Mobile)*
 
-> **Ghi chú về tệp bổ sung trên đĩa:** Ngoài **144 ảnh kiểm toán chuẩn hóa** được lập mục lục bên dưới, thư mục `screenshots/` còn chứa **20 tệp PNG bổ sung** (gồm 17 ảnh chụp thủ công tại `screenshots/customer/Screen Shot 2026-11-14 at *.png` và 3 ảnh xác minh tại thư mục gốc `verify_*.png`), nâng tổng số tệp PNG thực tế trên đĩa lên **164 tệp**.
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Kho ảnh được chụp cho đợt nghiệm thu 6 vai trò ngày `2026-11-14`. Đối với danh mục màn hình cập nhật (`SCR-01`–`SCR-27`), xem [PROTOTYPE_SCREEN_MAP.md](../docs/knowledge/02-design/PROTOTYPE_SCREEN_MAP.md) và [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md).
+>
+> **Ghi chú về tệp bổ sung trên đĩa:** Ngoài **144 ảnh kiểm toán chuẩn hóa** được lập mục lục bên dưới, thư mục `screenshots/` còn chứa **20 tệp PNG bổ sung** (gồm 17 ảnh chụp thủ công tại `screenshots/customer/Screen Shot 2026-11-14 at *.png` và 3 ảnh xác minh `verify_*.png` đã được sắp xếp gọn vào `screenshots/cashier/desktop/pages/` và `screenshots/shared/desktop/pages/`), nâng tổng số tệp PNG thực tế trên đĩa lên **164 tệp**.
 
 ---
 

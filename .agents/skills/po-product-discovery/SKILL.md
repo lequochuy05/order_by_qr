@@ -19,7 +19,7 @@ description: >-
 1. **Discovery & Intake (`project-intake.md`, `source-preparation.md`):** Xác nhận mục tiêu dự án, phạm vi In-Scope / Out-of-Scope, các bên liên quan, khảo sát thực địa và bằng chứng vận hành.
 2. **Problem & Personas (`problem.md`, `personas.md`):** Định nghĩa rõ 6 nhóm người dùng theo đúng thứ tự (`PER-01` Customer, `PER-02` Staff, `PER-03` Chef, `PER-04` Cashier, `PER-05` Manager, `PER-06` Admin) kèm nỗi đau (Pain Points), JTBD và chỉ số định lượng.
 3. **Vision, Market & Blueprint (`vision.md`, `market.md`, `blueprint.md`):** Xác định North Star Metric, phân tích 4 nhóm đối thủ, Business Model Canvas và Service Blueprint *(Frontstage / Backstage / Support)*.
-4. **Roadmap & Feature Scope (`roadmap.md`, `journey-features.md`):** Chia lộ trình giá trị theo giai đoạn và danh mục 6 Epics (`F1.1` → `F6.5`) gắn với 6 User Stages (`STG-01` → `STG-06`).
+4. **Roadmap & Feature Scope (`roadmap.md`, `journey-features.md`):** Chia lộ trình giá trị theo giai đoạn và danh mục 6 Epics (`F1.1` → `F6.7`) gắn với 6 User Stages (`STG-01` → `STG-06`).
 
 > **Language Boundary Rule (Thuần tư duy PO):** Luôn viết dưới góc nhìn **người lên ý tưởng & chủ sở hữu sản phẩm**. Tuyệt đối **không** đưa tên framework, thư viện, REST endpoint, WebSocket topic, tên bảng SQL, tên class/file code hay số Flyway migration vào `docs/knowledge/01-po/`.
 
