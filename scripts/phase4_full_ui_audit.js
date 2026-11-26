@@ -493,9 +493,11 @@ async function runPhase4Audit() {
       const page = await ctx.newPage();
       attachLoggers(page, 'admin');
 
+      const adminEmail = process.env.AUDIT_ADMIN_EMAIL || process.env.DEV_ADMIN_EMAIL || 'admin@gmail.com';
+      const adminPassword = process.env.AUDIT_ADMIN_PASSWORD || process.env.DEV_ADMIN_PASSWORD || 'admin123';
       await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
-      await page.fill('input[type="email"]', 'admin@gmail.com');
-      await page.fill('input[type="password"]', 'admin123');
+      await page.fill('input[type="email"]', adminEmail);
+      await page.fill('input[type="password"]', adminPassword);
       await page.click('button[type="submit"]');
       await page.waitForTimeout(1500);
 

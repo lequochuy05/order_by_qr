@@ -1,7 +1,7 @@
 services:
   - type: web
     name: qros-backend
-    runtime: image
+    runtime: docker
     repo: https://github.com/lequochuy05/order-by-qr
     branch: master
     dockerfilePath: Dockerfile
@@ -11,10 +11,18 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: DB_URL
+      - key: DB_HOST
         fromDatabase:
           name: qros-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: qros-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: qros-db
+          property: database
       - key: DB_USERNAME
         fromDatabase:
           name: qros-db
@@ -40,7 +48,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: QR_SIGNING_SECRET
-        generateValue: true
+        sync: false
       - key: JWT_EXPIRATION_MS
         value: 900000
       - key: JWT_REFRESH_EXPIRATION_MS

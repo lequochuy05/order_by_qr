@@ -29,12 +29,12 @@ COPY --chown=spring:spring --from=builder /app/extracted/spring-boot-loader/ ./
 COPY --chown=spring:spring --from=builder /app/extracted/snapshot-dependencies/ ./
 COPY --chown=spring:spring --from=builder /app/extracted/application/ .
 
-# JVM tuning ưu tiên cold-start và footprint nhỏ trên Render.
+# JVM tuning cân bằng throughput (C2 JIT + G1GC) và bộ nhớ container.
 ENV TZ="Asia/Ho_Chi_Minh"
 ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh \
     -XX:MaxRAMPercentage=60.0 \
-    -XX:+UseSerialGC \
-    -XX:TieredStopAtLevel=1 \
+    -XX:+UseG1GC \
+    -XX:MaxGCPauseMillis=100 \
     -XX:+ExitOnOutOfMemoryError \
     -Djava.security.egd=file:/dev/./urandom"
 
