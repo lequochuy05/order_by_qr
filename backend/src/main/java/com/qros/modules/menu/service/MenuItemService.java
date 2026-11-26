@@ -1,7 +1,6 @@
 package com.qros.modules.menu.service;
 
 import com.qros.infrastructure.storage.StorageService;
-import com.qros.modules.inventory.service.InventoryAvailabilityService;
 import com.qros.modules.menu.dto.publicmenu.PublicMenuItem;
 import com.qros.modules.menu.dto.request.MenuItemRequest;
 import com.qros.modules.menu.dto.response.MenuItemImageResponse;
@@ -17,6 +16,7 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.util.List;
@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,7 +56,9 @@ public class MenuItemService {
     private final ApplicationEventPublisher eventPublisher;
     private final MenuItemOptionService menuItemOptionService;
     private final ImageFileValidator imageFileValidator;
-    private final InventoryAvailabilityService inventoryAvailabilityService;
+    private final MenuInventoryAvailabilityPort inventoryAvailabilityService;
+    private final MenuCatalogOrderUsagePort orderUsagePort;
+    private final TransactionExecutor transactionExecutor;
 
     public Page<MenuItemResponse> searchSummaries(String keyword, Long categoryId, @NonNull Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
@@ -120,13 +123,15 @@ public class MenuItemService {
 
         menuItemOptionService.validateOptions(req.itemOptions());
 
+        boolean initialAvailable = req.available() != null ? req.available() : true;
         MenuItem item = MenuItem.builder()
                 .name(name)
                 .description(normalizeBlank(req.description()))
                 .img(normalizeBlankOrDefault(req.img(), DEFAULT_MENU_ITEM_IMAGE))
                 .price(req.price())
                 .active(req.active() != null ? req.active() : true)
-                .available(req.available() != null ? req.available() : true)
+                .available(initialAvailable)
+                .manuallyPaused(!initialAvailable)
                 .displayOrder(req.displayOrder() != null ? req.displayOrder() : 0)
                 .category(category)
                 .build();
@@ -181,6 +186,7 @@ public class MenuItemService {
                 throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT_STOCK);
             }
             item.setAvailable(req.available());
+            item.setManuallyPaused(!Boolean.TRUE.equals(req.available()));
         }
 
         if (req.displayOrder() != null) {
@@ -218,6 +224,7 @@ public class MenuItemService {
         }
 
         item.setAvailable(nextAvailable);
+        item.setManuallyPaused(!nextAvailable);
 
         MenuItem saved = saveMenuItem(item);
         inventoryAvailabilityService.syncCombosForMenuItem(saved);
@@ -242,6 +249,12 @@ public class MenuItemService {
                     "Cannot delete menu item that is part of a combo. Please remove it from all combos first.");
         }
 
+        if (orderUsagePort.isMenuItemUsedInActiveOrders(id)) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT,
+                    "Cannot delete menu item that is referenced by active orders. Complete or cancel those orders first.");
+        }
+
         String oldImg = item.getImg();
 
         menuItemRepository.delete(item);
@@ -251,40 +264,62 @@ public class MenuItemService {
                     () -> storageService.delete(oldImg), "delete menu item image after item delete " + id);
         }
 
+        eventPublisher.publishEvent(new MenuItemDeletedEvent(id));
         eventPublisher.publishEvent(new MenuChangeEvent("deleted", id));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public MenuItemImageResponse uploadImage(@NonNull Long id, @NonNull Long version, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
-        MenuItem item = getEntityById(id);
-        // M-fix: assert version before upload to prevent overwriting an image on a stale entity.
-        // Without this guard, two concurrent uploads could race: both load the same old item,
-        // the first updates the img URL, and the second upload still succeeds, silently losing the first image.
-        assertVersionMatches(item.getVersion(), version);
-        String oldUrl = item.getImg();
+        // Pre-validate entity existence and version in a short read-only transaction before external upload.
+        transactionExecutor.readOnly(() -> {
+            MenuItem item = getEntityById(id);
+            assertVersionMatches(item.getVersion(), version);
+            return null;
+        });
+
+        String newUrl = uploadImageOutsideTransaction(id, file);
 
         try {
-            String newUrl = storageService.upload(file, MENU_ITEM_IMAGE_FOLDER);
+            return transactionExecutor.write(() -> {
+                MenuItem item = getEntityById(id);
+                assertVersionMatches(item.getVersion(), version);
+                String oldUrl = item.getImg();
 
-            sideEffects.afterRollback(() -> storageService.delete(newUrl), "delete rolled back menu item image " + id);
+                item.setImg(newUrl);
+                menuItemRepository.saveAndFlush(item);
 
-            item.setImg(newUrl);
-            menuItemRepository.save(item);
+                if (isCustomImage(oldUrl)) {
+                    sideEffects.afterCommit(
+                            () -> storageService.delete(oldUrl), "delete replaced menu item image " + id);
+                }
 
-            if (isCustomImage(oldUrl)) {
-                sideEffects.afterCommit(() -> storageService.delete(oldUrl), "delete replaced menu item image " + id);
-            }
+                eventPublisher.publishEvent(new MenuChangeEvent("image_updated", id));
+                return new MenuItemImageResponse(newUrl);
+            });
+        } catch (RuntimeException e) {
+            deleteUploadedImageSilently(newUrl, id);
+            throw e;
+        }
+    }
 
-            eventPublisher.publishEvent(new MenuChangeEvent("image_updated", id));
-
-            return new MenuItemImageResponse(newUrl);
+    private String uploadImageOutsideTransaction(Long id, MultipartFile file) {
+        try {
+            return storageService.upload(file, MENU_ITEM_IMAGE_FOLDER);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             log.error("Error uploading menu item image ID {}: {}", id, e.getMessage(), e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload menu item image", e);
+        }
+    }
+
+    private void deleteUploadedImageSilently(String uploadedUrl, Long id) {
+        try {
+            storageService.delete(uploadedUrl);
+        } catch (Exception cleanupException) {
+            log.warn("Failed to clean up rolled back menu item image ID {}: {}", id, cleanupException.getMessage());
         }
     }
 
@@ -296,33 +331,44 @@ public class MenuItemService {
         try {
             return menuItemRepository.saveAndFlush(item);
         } catch (DataIntegrityViolationException exception) {
-            throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS, "Item name already exists", exception);
+            if (isDuplicateMenuItemNameViolation(exception)) {
+                throw new BusinessException(ErrorCode.MENU_ITEM_NAME_EXISTS, "Item name already exists", exception);
+            }
+            throw exception;
         }
+    }
+
+    private boolean isDuplicateMenuItemNameViolation(Throwable exception) {
+        Throwable cursor = exception;
+        while (cursor != null) {
+            String message = cursor.getMessage();
+            if (message != null) {
+                String lower = message.toLowerCase(java.util.Locale.ROOT);
+                if (lower.contains("ux_menu_item_name_active") || lower.contains("uk_menu_item_name_active")) {
+                    return true;
+                }
+            }
+            cursor = cursor.getCause();
+        }
+        return false;
     }
 
     private String normalizeBlank(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        return MenuTextSupport.normalizeBlank(value);
     }
 
     private String normalizeBlankOrDefault(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value.trim();
+        String normalized = MenuTextSupport.normalizeBlank(value);
+        return normalized == null ? defaultValue : normalized;
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "Menu item version is required. Please refresh and try again.");
-        }
-
-        if (!Objects.equals(currentVersion, expectedVersion)) {
-            throw new BusinessException(
-                    ErrorCode.CONCURRENT_MODIFICATION,
-                    "This menu item was changed by another request. Please refresh and try again.");
-        }
+        com.qros.shared.validation.OptimisticVersionGuard.requireMatch(
+                currentVersion, expectedVersion, "Menu item", "menu item");
     }
 
     private boolean isCustomImage(String image) {
-        return image != null && !image.isBlank() && !DEFAULT_MENU_ITEM_IMAGE.equals(image) && image.startsWith("http");
+        return MenuTextSupport.isHttpImage(image) && !DEFAULT_MENU_ITEM_IMAGE.equals(image);
     }
 
     private MenuItemResponse applyAvailability(MenuItemResponse response, boolean effectiveAvailable) {

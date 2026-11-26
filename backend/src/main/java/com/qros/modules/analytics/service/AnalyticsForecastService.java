@@ -1,9 +1,9 @@
 package com.qros.modules.analytics.service;
 
+import com.qros.modules.analytics.dto.projection.RevenuePointProjection;
 import com.qros.modules.analytics.dto.response.PopularItemForecastResponse;
 import com.qros.modules.analytics.dto.response.RevenueForecastResponse;
 import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.RevenuePointProjection;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
@@ -91,8 +91,8 @@ public class AnalyticsForecastService {
     @Cacheable(value = CacheNames.ANALYTICS, key = "'forecast:popularItems'")
     public List<PopularItemForecastResponse> getPopularItemsForecast() {
         LocalDate today = AppTime.now().toLocalDate();
-        LocalDate from = today.minusDays(FORECAST_HISTORY_DAYS - 1L);
-        LocalDate toExclusive = today.plusDays(1);
+        LocalDate from = today.minusDays(FORECAST_HISTORY_DAYS);
+        LocalDate toExclusive = today;
 
         return analyticsQueryRepository.topSellingItems(from, toExclusive, POPULAR_ITEM_FORECAST_LIMIT).stream()
                 .map(row -> {
@@ -201,10 +201,10 @@ public class AnalyticsForecastService {
     }
 
     private BigDecimal safeMoney(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
+        return com.qros.shared.constants.NumericDefaults.safeMoney(value);
     }
 
     private Long safeLong(Long value) {
-        return value != null ? value : 0L;
+        return com.qros.shared.constants.NumericDefaults.safeLong(value);
     }
 }

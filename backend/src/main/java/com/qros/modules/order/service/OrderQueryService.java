@@ -8,12 +8,14 @@ import com.qros.modules.order.mapper.OrderMapper;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
+import com.qros.modules.order.model.enums.PaymentStatus;
 import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.promotion.dto.internal.DiscountResult;
+import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableSession;
-import com.qros.modules.table.model.TableSessionTable;
 import com.qros.modules.table.model.enums.TableSessionStatus;
-import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.modules.table.service.TableSessionResolver;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.cache.CacheNames;
@@ -30,7 +32,6 @@ import jakarta.persistence.criteria.Subquery;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -57,9 +58,11 @@ public class OrderQueryService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final DiningTableRepository tableRepository;
+    private final TableLookupService tableLookupService;
     private final TableSessionService tableSessionService;
     private final TableSessionResolver tableSessionResolver;
+    private final OrderPricingService orderPricingService;
+    private final VoucherCheckoutService voucherCheckoutService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -133,7 +136,14 @@ public class OrderQueryService {
 
         List<Predicate> predicates = buildPredicates(root, cq, cb, status, from, to, orderId, tableNumber);
 
-        cq.multiselect(cb.count(root), cb.coalesce(cb.sum(root.get("finalAmount")), BigDecimal.ZERO));
+        Predicate completedPaid = cb.and(
+                cb.equal(root.get("status"), OrderStatus.COMPLETED),
+                cb.equal(root.get("paymentStatus"), PaymentStatus.PAID));
+        var revenueExpr = cb.<BigDecimal>selectCase()
+                .when(completedPaid, root.get("finalAmount"))
+                .otherwise(BigDecimal.ZERO);
+
+        cq.multiselect(cb.count(root), cb.coalesce(cb.sum(revenueExpr), BigDecimal.ZERO));
 
         if (!predicates.isEmpty()) {
             cq.where(cb.and(predicates.toArray(new Predicate[0])));
@@ -161,104 +171,15 @@ public class OrderQueryService {
     }
 
     public TableBoardResponse getTableBoard() {
-        List<TableSessionTable> activeMemberships =
-                tableSessionResolver.findActiveBySessionStatus(TableSessionStatus.OPEN);
-        Map<Long, TableSessionTable> membershipByTableId = activeMemberships.stream()
-                .collect(Collectors.toMap(
-                        membership -> membership.getTable().getId(),
-                        Function.identity(),
-                        (left, right) -> left,
-                        LinkedHashMap::new));
-        Map<Long, List<DiningTable>> tablesBySessionId = activeMemberships.stream()
-                .collect(Collectors.groupingBy(
-                        membership -> membership.getSession().getId(),
-                        LinkedHashMap::new,
-                        Collectors.mapping(TableSessionTable::getTable, Collectors.toList())));
-        tablesBySessionId.replaceAll((sessionId, tables) -> sortedTables(tables));
-
-        List<TableBoardResponse.TableItem> tables = tableRepository.findAllByOrderByTableNumberAsc().stream()
-                .map(table -> {
-                    TableSessionTable membership = membershipByTableId.get(table.getId());
-                    TableSession session = membership != null ? membership.getSession() : null;
-                    List<DiningTable> memberTables =
-                            session != null ? tablesBySessionId.getOrDefault(session.getId(), List.of()) : List.of();
-                    DiningTable primaryTable = session != null ? session.getTable() : null;
-
-                    return new TableBoardResponse.TableItem(
-                            table.getId(),
-                            table.getTableNumber(),
-                            table.getTableCode(),
-                            table.getStatus().name(),
-                            table.getCapacity(),
-                            table.getQrCodeUrl(),
-                            session != null,
-                            session != null ? session.getStatus().name() : null,
-                            session != null ? session.getOpenedAt() : null,
-                            session != null ? session.getLastActivityAt() : null,
-                            session != null ? session.getId() : null,
-                            primaryTable != null ? primaryTable.getId() : null,
-                            memberTables.size() > 1,
-                            memberTables.stream().map(DiningTable::getId).toList(),
-                            memberTables.stream()
-                                    .map(DiningTable::getTableNumber)
-                                    .toList(),
-                            memberTables.isEmpty() ? null : tableSessionResolver.displayName(memberTables),
-                            session != null ? session.getGuestCount() : null,
-                            memberTables.isEmpty()
-                                    ? table.getCapacity()
-                                    : tableSessionResolver.totalCapacity(memberTables),
-                            table.getCreatedAt(),
-                            table.getUpdatedAt());
-                })
-                .toList();
-
-        List<TableBoardResponse.ActiveOrder> activeOrders =
-                orderRepository.findActiveOrderSummariesForTableBoard().stream()
-                        .map(order -> {
-                            List<DiningTable> memberTables = order.getSessionId() != null
-                                    ? tablesBySessionId.getOrDefault(order.getSessionId(), List.of())
-                                    : List.of();
-                            Long primaryTableId = memberTables.isEmpty()
-                                    ? order.getTableId()
-                                    : memberTables.getFirst().getId();
-                            String displayName = memberTables.isEmpty()
-                                    ? "Table " + order.getTableNumber()
-                                    : tableSessionResolver.displayName(memberTables);
-
-                            return new TableBoardResponse.ActiveOrder(
-                                    order.getId(),
-                                    order.getStatus(),
-                                    order.getFinalAmount(),
-                                    order.getTableId(),
-                                    order.getTableNumber(),
-                                    order.getSessionId(),
-                                    primaryTableId,
-                                    memberTables.stream()
-                                            .map(DiningTable::getId)
-                                            .toList(),
-                                    memberTables.stream()
-                                            .map(DiningTable::getTableNumber)
-                                            .toList(),
-                                    displayName,
-                                    order.getCreatedAt());
-                        })
-                        .toList();
-
-        return new TableBoardResponse(tables, activeOrders);
+        return TableBoardAssembler.assemble(
+                tableSessionResolver.findActiveBySessionStatus(TableSessionStatus.OPEN),
+                tableLookupService.findAllTablesOrdered(),
+                orderRepository.findActiveOrderSummariesForTableBoard(),
+                tableSessionResolver);
     }
 
     public Optional<OrderResponse> getCurrentOrderByTable(@NonNull Long tableId) {
-        Optional<TableSession> session = tableSessionResolver.findOpenSessionByTableId(tableId);
-        if (session.isPresent()) {
-            return orderRepository
-                    .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(
-                            session.get().getId(), activeStatuses())
-                    .map(orderMapper::toResponse);
-        }
-
-        return orderRepository
-                .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
-                .map(orderMapper::toResponse);
+        return findLatestActiveOrderByTableId(tableId).map(orderMapper::toResponse);
     }
 
     public Optional<PublicOrderResponse> getPublicCurrentOrderByTableCode(@NonNull String tableCode) {
@@ -289,17 +210,16 @@ public class OrderQueryService {
     }
 
     public Optional<PublicOrderResponse> getPublicCurrentOrderByTable(@NonNull Long tableId) {
+        return findLatestActiveOrderByTableId(tableId).map(orderMapper::toPublicResponse);
+    }
+
+    private Optional<Order> findLatestActiveOrderByTableId(Long tableId) {
         Optional<TableSession> session = tableSessionResolver.findOpenSessionByTableId(tableId);
         if (session.isPresent()) {
-            return orderRepository
-                    .findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(
-                            session.get().getId(), activeStatuses())
-                    .map(orderMapper::toPublicResponse);
+            return orderRepository.findFirstByTableSessionIdAndStatusInOrderByCreatedAtDesc(
+                    session.get().getId(), activeStatuses());
         }
-
-        return orderRepository
-                .findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses())
-                .map(orderMapper::toPublicResponse);
+        return orderRepository.findFirstByTableIdAndStatusInOrderByCreatedAtDesc(tableId, activeStatuses());
     }
 
     @Cacheable(value = CacheNames.ORDER_ID_CACHE, key = "#id")
@@ -320,18 +240,39 @@ public class OrderQueryService {
                         () -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "No active session for this table"));
 
         BigDecimal subtotalAmount = safe(order.getSubtotalAmount());
-        BigDecimal discountAmount = safe(order.getDiscountAmount());
-        BigDecimal finalAmount = safe(order.getFinalAmount());
+        BigDecimal discountPromotion = safe(orderPricingService.calculatePromotionDiscount(subtotalAmount));
+        String voucherCode = order.getVoucherCode();
+        boolean voucherValid = false;
+        String voucherMessage = "";
+        BigDecimal voucherDiscount = BigDecimal.ZERO;
+
+        if (voucherCode != null && !voucherCode.isBlank()) {
+            DiscountResult preview = voucherCheckoutService.previewVoucher(voucherCode, subtotalAmount);
+            voucherValid = preview.voucherId() != null;
+            voucherMessage = voucherValid ? "Voucher applied successfully" : "Voucher is invalid or expired";
+            voucherDiscount = safe(preview.appliedDiscountAmount());
+        }
+
+        BigDecimal effectiveDiscount = discountPromotion
+                .add(voucherDiscount)
+                .max(safe(order.getDiscountAmount()))
+                .min(subtotalAmount);
+        OrderPricingService.PriceBreakdown breakdown =
+                orderPricingService.calculatePriceBreakdown(subtotalAmount, effectiveDiscount);
 
         return new OrderPreviewResponse(
                 subtotalAmount,
                 BigDecimal.ZERO,
-                subtotalAmount,
-                discountAmount,
-                finalAmount,
-                false,
-                "",
-                discountAmount);
+                breakdown.subtotalAmount(),
+                breakdown.discountAmount(),
+                breakdown.serviceChargePercent(),
+                breakdown.serviceChargeAmount(),
+                breakdown.taxPercent(),
+                breakdown.taxAmount(),
+                breakdown.finalAmount(),
+                voucherValid,
+                voucherMessage,
+                discountPromotion);
     }
 
     private List<Predicate> buildPredicates(
@@ -350,7 +291,7 @@ public class OrderQueryService {
                 predicates.add(cb.equal(
                         root.get("status"), OrderStatus.valueOf(status.trim().toUpperCase())));
             } catch (IllegalArgumentException e) {
-                log.warn("Invalid order status: {}", status);
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid order status: " + status.trim());
             }
         }
 
@@ -359,7 +300,7 @@ public class OrderQueryService {
         }
 
         if (to != null) {
-            predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), to.atTime(23, 59, 59)));
+            predicates.add(cb.lessThan(root.get("createdAt"), to.plusDays(1).atStartOfDay()));
         }
 
         if (orderId != null && !orderId.isBlank()) {
@@ -372,13 +313,14 @@ public class OrderQueryService {
         }
 
         if (tableNumber != null && !tableNumber.isBlank()) {
-            String pattern = "%" + tableNumber.trim().toLowerCase() + "%";
+            String escaped = escapeLikePattern(tableNumber.trim().toLowerCase());
+            String pattern = "%" + escaped + "%";
 
             Subquery<Long> subquery = query.subquery(Long.class);
             Root<Order> subRoot = subquery.from(Order.class);
             Join<Order, DiningTable> subTable = subRoot.join("table");
 
-            subquery.select(subRoot.get("id")).where(cb.like(cb.lower(subTable.get("tableNumber")), pattern));
+            subquery.select(subRoot.get("id")).where(cb.like(cb.lower(subTable.get("tableNumber")), pattern, '\\'));
 
             predicates.add(root.get("id").in(subquery));
         }
@@ -386,36 +328,12 @@ public class OrderQueryService {
         return predicates;
     }
 
-    private List<DiningTable> sortedTables(List<DiningTable> tables) {
-        if (tables == null) {
-            return List.of();
-        }
-
-        return tables.stream()
-                .sorted(Comparator.comparing(DiningTable::getTableNumber, OrderQueryService::compareTableNumbers))
-                .toList();
-    }
-
-    private static int compareTableNumbers(String left, String right) {
-        if (left == null && right == null) {
-            return 0;
-        }
-        if (left == null) {
-            return -1;
-        }
-        if (right == null) {
-            return 1;
-        }
-
-        try {
-            return Integer.compare(Integer.parseInt(left), Integer.parseInt(right));
-        } catch (NumberFormatException ignored) {
-            return left.compareToIgnoreCase(right);
-        }
+    private String escapeLikePattern(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private List<OrderStatus> activeStatuses() {
-        return List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
+        return OrderStatus.ACTIVE_STATUSES;
     }
 
     private BigDecimal safe(BigDecimal value) {

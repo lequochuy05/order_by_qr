@@ -13,11 +13,6 @@ import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
-import com.qros.modules.payment.model.PaymentTransaction;
-import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
-import com.qros.modules.payment.service.PaymentService;
-import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.idempotency.IdempotencyService;
@@ -47,8 +42,7 @@ public class OrderService {
     private final OrderStatusService orderStatusService;
     private final OrderItemWorkflowService orderItemWorkflowService;
     private final OrderRepository orderRepository;
-    private final PaymentTransactionRepository transactionRepository;
-    private final PaymentService paymentService;
+    private final OrderPaymentReconciliationPort orderPaymentReconciliationPort;
     private final OrderMapper orderMapper;
     private final IdempotencyService idempotencyService;
 
@@ -151,15 +145,7 @@ public class OrderService {
             return orderMapper.toResponse(order);
         }
 
-        Optional<PaymentTransaction> latestTx =
-                transactionRepository.findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
-                        order.getId(),
-                        PaymentMethod.PAYOS,
-                        List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
-
-        if (latestTx.isPresent()) {
-            paymentService.syncPaymentStatus(latestTx.get().getId());
-
+        if (orderPaymentReconciliationPort.syncLatestPendingPayosPayment(order.getId())) {
             order = orderRepository.findDetailById(id).orElse(order);
         }
 
@@ -196,6 +182,10 @@ public class OrderService {
 
     public void updateItemStatus(@NonNull Long itemId, @NonNull OrderItemStatus status, Long userId) {
         orderItemWorkflowService.updateItemStatus(itemId, status, userId);
+    }
+
+    public void updateBatchItemStatus(@NonNull List<Long> itemIds, @NonNull OrderItemStatus status, Long userId) {
+        orderItemWorkflowService.updateBatchItemStatus(itemIds, status, userId);
     }
 
     public void markItemPrepared(@NonNull Long itemId, Long userId) {

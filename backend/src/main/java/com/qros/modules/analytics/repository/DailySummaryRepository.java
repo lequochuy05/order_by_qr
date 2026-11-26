@@ -112,7 +112,10 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                                    THEN COALESCE(category.name, 'Uncategorized')
                                ELSE 'Combo'
                            END) AS category_name_snapshot,
-                       MAX(CASE WHEN oi.item_type = 'MENU_ITEM' THEN menu_item.img END) AS image_url_snapshot,
+                       MAX(CASE
+                               WHEN oi.item_type = 'MENU_ITEM' THEN menu_item.img
+                               WHEN oi.item_type = 'COMBO' THEN combo_thumb.img
+                           END) AS image_url_snapshot,
                        oi.item_type,
                        SUM(oi.quantity)::BIGINT AS quantity,
                        COALESCE(SUM(COALESCE(oi.line_total, oi.quantity * oi.unit_price)), 0) AS revenue
@@ -124,6 +127,19 @@ public interface DailySummaryRepository extends Repository<Order, Long> {
                 LEFT JOIN category
                        ON category.id = menu_item.cate_id
                       AND category.is_deleted = false
+                LEFT JOIN LATERAL (
+                    SELECT mi.img
+                    FROM combo_items ci
+                    JOIN menu_item mi
+                      ON mi.id = ci.menu_item_id
+                     AND mi.is_deleted = false
+                    WHERE oi.item_type = 'COMBO'
+                      AND ci.combo_id = oi.combo_id
+                      AND ci.is_deleted = false
+                      AND mi.img IS NOT NULL
+                    ORDER BY ci.id ASC
+                    LIMIT 1
+                ) combo_thumb ON TRUE
                 WHERE fact.business_date = :businessDate
                   AND fact.status = 'COMPLETED'
                   AND fact.payment_status = 'PAID'

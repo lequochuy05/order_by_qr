@@ -40,7 +40,7 @@ public class AiStaffController {
     @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
     public ApiResponse<AiNoteTriageResponse> analyzeNotes(
             @Valid @RequestBody(required = false) AiNoteTriageRequest request, @NonNull Principal principal) {
-        aiQuotaService.checkStaffAssistant(principal.getName());
-        return ApiResponse.success(aiNoteTriageService.triage(request));
+        return ApiResponse.success(
+                aiNoteTriageService.triage(request, () -> aiQuotaService.checkStaffAssistant(principal.getName())));
     }
 }

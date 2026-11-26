@@ -18,6 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class CloudinaryStorageService implements StorageService {
 
+    private static final int CONNECT_TIMEOUT_MS = 5_000;
+    private static final int REQUEST_TIMEOUT_MS = 15_000;
+
     private final Cloudinary cloudinary;
 
     /**
@@ -25,10 +28,18 @@ public class CloudinaryStorageService implements StorageService {
      */
     public CloudinaryStorageService(CloudinaryProperties properties) {
         this.cloudinary = new Cloudinary(ObjectUtils.asMap(
-                "cloud_name", properties.getCloudName(),
-                "api_key", properties.getApiKey(),
-                "api_secret", properties.getApiSecret(),
-                "secure", true));
+                "cloud_name",
+                properties.getCloudName(),
+                "api_key",
+                properties.getApiKey(),
+                "api_secret",
+                properties.getApiSecret(),
+                "secure",
+                true,
+                "connect_timeout",
+                CONNECT_TIMEOUT_MS,
+                "timeout",
+                REQUEST_TIMEOUT_MS));
         log.info("Cloudinary storage service initialized successfully.");
     }
 
@@ -46,7 +57,13 @@ public class CloudinaryStorageService implements StorageService {
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = (Map<String, Object>) cloudinary
                     .uploader()
-                    .upload(file.getBytes(), ObjectUtils.asMap("folder", folder, "resource_type", "image"));
+                    .upload(
+                            file.getBytes(),
+                            ObjectUtils.asMap(
+                                    "folder", folder,
+                                    "resource_type", "image",
+                                    "connect_timeout", CONNECT_TIMEOUT_MS,
+                                    "timeout", REQUEST_TIMEOUT_MS));
             String url = Objects.requireNonNull(uploadResult.get("secure_url")).toString();
             log.info("Successfully uploaded image to Cloudinary. URL: {}", url);
             return url;
@@ -65,7 +82,14 @@ public class CloudinaryStorageService implements StorageService {
         if (publicId == null || publicId.isBlank() || "PENDING".equals(publicId)) return;
         try {
             log.info("Attempting to delete cloud image with PublicID: {}", publicId);
-            cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", "image"));
+            cloudinary
+                    .uploader()
+                    .destroy(
+                            publicId,
+                            ObjectUtils.asMap(
+                                    "resource_type", "image",
+                                    "connect_timeout", CONNECT_TIMEOUT_MS,
+                                    "timeout", REQUEST_TIMEOUT_MS));
         } catch (Exception e) {
             log.error("Failed to delete cloud image (PublicID: {}): {}", publicId, e.getMessage());
         }
@@ -161,7 +185,9 @@ public class CloudinaryStorageService implements StorageService {
                             ObjectUtils.asMap(
                                     "folder", folder,
                                     "public_id", publicId,
-                                    "resource_type", "image"));
+                                    "resource_type", "image",
+                                    "connect_timeout", CONNECT_TIMEOUT_MS,
+                                    "timeout", REQUEST_TIMEOUT_MS));
             return result;
         } catch (Exception e) {
             log.error("Failed to upload raw byte data to Cloudinary: {}", e.getMessage());

@@ -13,4 +13,4 @@ public record OrderItemRequest(
 
         @Size(max = 255, message = "Notes must not exceed 255 characters") String notes,
 
-        List<Long> selectedOptionValueIds) {}
+        @Size(max = 30, message = "Maximum 30 options per item") List<Long> selectedOptionValueIds) {}

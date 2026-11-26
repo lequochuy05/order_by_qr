@@ -47,6 +47,10 @@ public class PasswordResetToken extends BaseEntity {
     @Column(length = 64)
     private String otpCode;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private int attempts = 0;
+
     @NotNull @Builder.Default
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

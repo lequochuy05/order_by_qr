@@ -3,7 +3,7 @@ package com.qros.modules.auth.service;
 import static org.mockito.Mockito.verify;
 
 import com.qros.modules.auth.config.AuthRateLimitProperties;
-import com.qros.shared.rate_limit.RedisRateLimiter;
+import com.qros.shared.ratelimit.RedisRateLimiter;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

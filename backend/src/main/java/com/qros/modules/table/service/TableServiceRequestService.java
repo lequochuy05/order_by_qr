@@ -1,7 +1,7 @@
 package com.qros.modules.table.service;
 
-import com.qros.modules.table.dto.request.CancelServiceRequestDto;
-import com.qros.modules.table.dto.request.CreateServiceRequestDto;
+import com.qros.modules.table.dto.request.CancelTableServiceRequest;
+import com.qros.modules.table.dto.request.CreateTableServiceRequest;
 import com.qros.modules.table.dto.response.CustomerServiceRequestsStateResponse;
 import com.qros.modules.table.dto.response.TableServiceRequestResponse;
 import com.qros.modules.table.mapper.TableServiceRequestMapper;
@@ -14,7 +14,7 @@ import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableServiceRequestRepository;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.event.DomainEvents.ServiceRequestChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -39,6 +39,7 @@ public class TableServiceRequestService {
 
     public static final int COOLDOWN_SECONDS = 60;
     public static final int MAX_OPEN_REQUESTS_PER_SESSION = 3;
+    public static final int MAX_HISTORY_QUEUE_RESULTS = 100;
     private static final int MIN_OTHER_NOTE_LENGTH = 2;
     private static final int MAX_NOTE_LENGTH = 200;
 
@@ -49,7 +50,7 @@ public class TableServiceRequestService {
     private final DiningTableRepository tableRepository;
     private final TableSessionService tableSessionService;
     private final TableSessionResolver tableSessionResolver;
-    private final UserRepository userRepository;
+    private final UserLookupService userRepository;
     private final TableServiceRequestMapper mapper;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -89,7 +90,7 @@ public class TableServiceRequestService {
 
     @Transactional
     public TableServiceRequestResponse createCustomerRequest(
-            @NonNull String tableCode, @NonNull CreateServiceRequestDto dto) {
+            @NonNull String tableCode, @NonNull CreateTableServiceRequest dto) {
         TableSession session = tableSessionService.requireOpenSessionForOrdering(tableCode, dto.sessionToken());
         DiningTable table = requireTableByCode(tableCode);
 
@@ -145,7 +146,7 @@ public class TableServiceRequestService {
 
     @Transactional
     public TableServiceRequestResponse cancelByCustomer(
-            @NonNull String tableCode, @NonNull Long requestId, CancelServiceRequestDto dto) {
+            @NonNull String tableCode, @NonNull Long requestId, CancelTableServiceRequest dto) {
         if (dto == null || !StringUtils.hasText(dto.sessionToken())) {
             throw new BusinessException(ErrorCode.TABLE_SESSION_INVALID);
         }
@@ -186,6 +187,8 @@ public class TableServiceRequestService {
         String normalizedStatus =
                 StringUtils.hasText(statusFilter) ? statusFilter.trim().toUpperCase(Locale.ROOT) : "OPEN";
 
+        org.springframework.data.domain.Pageable historyLimit =
+                org.springframework.data.domain.PageRequest.of(0, MAX_HISTORY_QUEUE_RESULTS);
         List<TableServiceRequest> requests = switch (normalizedStatus) {
             case "OPEN" ->
                 serviceRequestRepository.findByStatusesOrderByCreatedAtAsc(OPEN_STATUSES, tableId, claimedByUserId);
@@ -197,19 +200,25 @@ public class TableServiceRequestService {
                         List.of(ServiceRequestStatus.CLAIMED), tableId, claimedByUserId);
             case "RESOLVED" ->
                 serviceRequestRepository.findByStatusesOrderByCreatedAtDesc(
-                        List.of(ServiceRequestStatus.RESOLVED), tableId, claimedByUserId);
+                        List.of(ServiceRequestStatus.RESOLVED), tableId, claimedByUserId, historyLimit);
             case "CANCELLED" ->
                 serviceRequestRepository.findByStatusesOrderByCreatedAtDesc(
-                        List.of(ServiceRequestStatus.CANCELLED), tableId, claimedByUserId);
+                        List.of(ServiceRequestStatus.CANCELLED), tableId, claimedByUserId, historyLimit);
             case "ALL" ->
                 serviceRequestRepository.findByStatusesOrderByCreatedAtDesc(
-                        List.of(ServiceRequestStatus.values()), tableId, claimedByUserId);
+                        List.of(ServiceRequestStatus.values()), tableId, claimedByUserId, historyLimit);
             default ->
                 throw new BusinessException(
                         ErrorCode.INVALID_REQUEST, "Unsupported service request status filter: " + normalizedStatus);
         };
 
-        Map<Long, String> displayNames = new HashMap<>();
+        List<Long> sessionIds = requests.stream()
+                .map(r -> r.getTableSession() != null ? r.getTableSession().getId() : null)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, String> batchDisplayNames = tableSessionResolver.getDisplayNamesBySessionIds(sessionIds);
+        Map<Long, String> displayNames = new HashMap<>(batchDisplayNames != null ? batchDisplayNames : Map.of());
         return requests.stream()
                 .map(request -> {
                     Long sessionId = request.getTableSession() != null
@@ -296,7 +305,7 @@ public class TableServiceRequestService {
 
     @Transactional
     public TableServiceRequestResponse cancelByStaff(
-            @NonNull Long requestId, CancelServiceRequestDto dto, @NonNull String userEmail) {
+            @NonNull Long requestId, CancelTableServiceRequest dto, @NonNull String userEmail) {
         User currentUser = requireUserByEmail(userEmail);
         TableServiceRequest request = serviceRequestRepository
                 .findByIdForUpdate(requestId)
@@ -354,6 +363,9 @@ public class TableServiceRequestService {
     private String resolveSessionDisplayName(Long sessionId, DiningTable fallbackTable) {
         if (sessionId != null) {
             List<DiningTable> memberTables = tableSessionResolver.getActiveMemberTables(sessionId);
+            if (memberTables.isEmpty()) {
+                memberTables = tableSessionResolver.getAllMemberTables(sessionId);
+            }
             if (!memberTables.isEmpty()) {
                 return tableSessionResolver.displayName(memberTables);
             }

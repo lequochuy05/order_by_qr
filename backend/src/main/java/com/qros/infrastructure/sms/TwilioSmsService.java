@@ -1,8 +1,6 @@
 package com.qros.infrastructure.sms;
 
-import com.qros.modules.auth.config.PasswordResetProperties;
 import java.time.Duration;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -20,12 +18,12 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class TwilioSmsService implements SmsService {
 
-    private final PasswordResetProperties properties;
+    private final SmsProperties properties;
     private final RestTemplate restTemplate;
 
-    public TwilioSmsService(PasswordResetProperties properties, RestTemplateBuilder restTemplateBuilder) {
+    public TwilioSmsService(SmsProperties properties, RestTemplateBuilder restTemplateBuilder) {
         this.properties = properties;
-        int timeoutSeconds = Math.max(1, properties.getSms().getTwilio().getTimeoutSeconds());
+        int timeoutSeconds = Math.max(1, properties.getTwilio().getTimeoutSeconds());
         this.restTemplate = restTemplateBuilder
                 .connectTimeout(Duration.ofSeconds(timeoutSeconds))
                 .readTimeout(Duration.ofSeconds(timeoutSeconds))
@@ -34,7 +32,7 @@ public class TwilioSmsService implements SmsService {
 
     @Override
     public boolean isAvailable() {
-        PasswordResetProperties.Twilio twilio = properties.getSms().getTwilio();
+        SmsProperties.Twilio twilio = properties.getTwilio();
         return twilio.isEnabled()
                 && StringUtils.hasText(twilio.getAccountSid())
                 && StringUtils.hasText(twilio.getAuthToken())
@@ -47,8 +45,7 @@ public class TwilioSmsService implements SmsService {
             throw new IllegalStateException("Twilio SMS delivery is not configured");
         }
 
-        PasswordResetProperties.Sms sms = properties.getSms();
-        PasswordResetProperties.Twilio twilio = sms.getTwilio();
+        SmsProperties.Twilio twilio = properties.getTwilio();
         String url = twilio.getApiBaseUrl() + "/Accounts/" + twilio.getAccountSid() + "/Messages.json";
 
         HttpHeaders headers = new HttpHeaders();
@@ -58,7 +55,7 @@ public class TwilioSmsService implements SmsService {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("To", phone);
         body.add("From", twilio.getFromPhone());
-        body.add("Body", sms.getOtpMessageTemplate().formatted(otpCode));
+        body.add("Body", properties.getOtpMessageTemplate().formatted(otpCode));
 
         HttpStatusCode statusCode = restTemplate
                 .postForEntity(url, new HttpEntity<>(body, headers), String.class)
@@ -67,14 +64,6 @@ public class TwilioSmsService implements SmsService {
             throw new IllegalStateException("Twilio SMS request failed with status " + statusCode);
         }
 
-        log.info("Password reset OTP SMS sent to {}", maskPhone(phone));
-    }
-
-    private String maskPhone(String phone) {
-        String normalized = Objects.toString(phone, "");
-        if (normalized.length() < 4) {
-            return "****";
-        }
-        return "****" + normalized.substring(normalized.length() - 4);
+        log.info("Password reset OTP SMS sent to {}", com.qros.shared.security.PhoneMasker.mask(phone));
     }
 }

@@ -98,7 +98,7 @@ public class StaffOrderController {
     }
 
     @DeleteMapping("/{orderId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deleteOrder(@PathVariable @NonNull Long orderId) {
         orderService.deleteOrder(orderId);
         return ApiResponse.success("Delete order successfully", null);

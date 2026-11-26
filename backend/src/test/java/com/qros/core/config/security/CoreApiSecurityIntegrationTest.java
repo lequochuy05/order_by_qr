@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.qros.core.config.AppProperties;
 import com.qros.modules.ai.controller.AiInsightsController;
 import com.qros.modules.ai.controller.AiInventoryController;
 import com.qros.modules.ai.controller.AiMerchandisingController;
@@ -35,10 +34,11 @@ import com.qros.modules.table.service.TableServiceRequestService;
 import com.qros.modules.user.controller.CurrentUserController;
 import com.qros.modules.user.service.CurrentUserService;
 import com.qros.modules.user.service.UserAvatarService;
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.constants.ApiRoutes;
-import com.qros.shared.rate_limit.ClientAddressResolver;
-import com.qros.shared.rate_limit.RateLimitProperties;
-import com.qros.shared.rate_limit.RedisRateLimiter;
+import com.qros.shared.ratelimit.ClientAddressResolver;
+import com.qros.shared.ratelimit.RateLimitProperties;
+import com.qros.shared.ratelimit.RedisRateLimiter;
 import com.qros.shared.security.JwtAuthFilter;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.TokenBlacklistService;
@@ -248,6 +248,12 @@ class CoreApiSecurityIntegrationTest {
         mockMvc.perform(post(ApiRoutes.AI + "/staff/analyze-notes")).andExpect(status().isUnauthorized());
         verifyNoInteractions(aiQuotaService, aiNoteTriageService);
 
+        org.mockito.Mockito.when(aiNoteTriageService.triage(any(), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    invocation.<Runnable>getArgument(1).run();
+                    return null;
+                });
+
         for (String role : java.util.List.of("STAFF", "CASHIER", "CHEF", "MANAGER", "ADMIN")) {
             mockMvc.perform(post(ApiRoutes.AI + "/staff/analyze-notes")
                             .with(user("floor@example.test").roles(role))
@@ -351,6 +357,12 @@ class CoreApiSecurityIntegrationTest {
 
         verifyNoInteractions(aiInvoiceOcrService);
 
+        org.mockito.Mockito.when(aiInvoiceOcrService.parseInvoice(any(), any(), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    invocation.<Runnable>getArgument(2).run();
+                    return null;
+                });
+
         mockMvc.perform(multipart(ApiRoutes.AI + "/inventory/invoice-ocr")
                         .file(image)
                         .param("language", "vi")
@@ -374,7 +386,7 @@ class CoreApiSecurityIntegrationTest {
         verify(aiQuotaService).checkOperationsAi("chef@example.test");
         verify(aiQuotaService).checkOperationsAi("manager@example.test");
         verify(aiQuotaService).checkOperationsAi("admin@example.test");
-        verify(aiInvoiceOcrService, org.mockito.Mockito.times(3)).parseInvoice(any(), any());
+        verify(aiInvoiceOcrService, org.mockito.Mockito.times(3)).parseInvoice(any(), any(), any(Runnable.class));
     }
 
     @Test

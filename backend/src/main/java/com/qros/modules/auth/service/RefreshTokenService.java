@@ -6,7 +6,7 @@ import com.qros.modules.auth.dto.response.TokenResponse;
 import com.qros.modules.auth.store.RefreshTokenStore;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserStatus;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtProperties;
@@ -26,30 +26,28 @@ public class RefreshTokenService {
 
     private final RefreshTokenStore refreshTokenStore;
     private final JwtService jwtService;
-    private final UserRepository userRepository;
+    private final UserLookupService userRepository;
     private final JwtProperties jwtProperties;
 
     /**
-     * Creates a new refresh token for the authenticated user.
-     * Overwrites any existing refresh token for this user — the old token
-     * is immediately invalidated.
-     *
-     * @param authUser The authenticated user
-     * @return The generated refresh token
+     * Creates a new multi-device refresh token family for the authenticated user.
+     * Each login gets its own family ID (fid) so multiple devices/KDS screens can
+     * remain signed in concurrently while revoking all sessions on security events.
      */
     public String createRefreshToken(AuthenticatedUser authUser) {
-        String key = "auth:refresh:user:" + authUser.userId();
+        return createRefreshTokenForFamily(authUser, UUID.randomUUID().toString());
+    }
+
+    private String createRefreshTokenForFamily(AuthenticatedUser authUser, String familyId) {
+        String userIndexKey = userSessionsIndexKey(authUser.userId());
+        String sessionKey = sessionKey(authUser.userId(), familyId);
         String jti = UUID.randomUUID().toString();
 
         String refreshToken = jwtService.generateRefreshToken(
                 authUser.email(),
-                Map.of(
-                        "uid", authUser.userId(),
-                        "role", authUser.role().name(),
-                        "jti", jti));
+                Map.of("uid", authUser.userId(), "role", authUser.role().name(), "jti", jti, "fid", familyId));
 
-        // SET ghi đè — lưu jti để verify khi refresh
-        refreshTokenStore.create(key, jti, jwtProperties.getRefreshExpirationMs());
+        refreshTokenStore.createSession(userIndexKey, sessionKey, jti, jwtProperties.getRefreshExpirationMs());
 
         return refreshToken;
     }
@@ -68,11 +66,19 @@ public class RefreshTokenService {
         String email = jwtService.extractSubject(refreshToken);
         Long userId = Long.valueOf(jwtService.extractClaim(refreshToken, "uid").toString());
         String jti = Objects.toString(jwtService.extractJti(refreshToken), "");
+        String familyId = extractFamilyId(refreshToken);
 
-        String key = "auth:refresh:user:" + userId;
+        boolean consumed;
+        if (familyId != null) {
+            consumed = !jti.isBlank()
+                    && refreshTokenStore.consumeSessionAtomically(
+                            userSessionsIndexKey(userId), sessionKey(userId, familyId), jti);
+        } else {
+            // Backward compatibility for legacy single-slot tokens issued before multi-device support.
+            consumed = !jti.isBlank() && refreshTokenStore.consumeAtomically(legacyKey(userId), jti);
+        }
 
-        // Atomically compare and consume the stored jti so a refresh token can only be rotated once.
-        if (jti.isBlank() || !refreshTokenStore.consumeAtomically(key, jti)) {
+        if (!consumed) {
             throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Refresh token has expired or was revoked");
         }
 
@@ -94,15 +100,14 @@ public class RefreshTokenService {
                         "role", user.getRole().name()));
 
         AuthenticatedUser authUser = AuthenticatedUser.from(user);
-        String newRefreshToken = createRefreshToken(authUser);
+        String nextFamilyId = familyId != null ? familyId : UUID.randomUUID().toString();
+        String newRefreshToken = createRefreshTokenForFamily(authUser, nextFamilyId);
 
         return new RefreshResult(TokenResponse.of(user, newAccessToken), newRefreshToken);
     }
 
     /**
-     * Revokes the refresh token, preventing it from being used for future access token
-     * refreshes.
-     * @param refreshToken The refresh token to revoke
+     * Revokes only the device session associated with this refresh token.
      */
     public void revokeRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank() || !jwtService.isRefreshToken(refreshToken)) {
@@ -110,22 +115,47 @@ public class RefreshTokenService {
         }
 
         Object uid = jwtService.extractClaim(refreshToken, "uid");
-
-        if (uid != null) {
-            refreshTokenStore.revoke("auth:refresh:user:" + uid);
+        if (uid == null) {
+            return;
+        }
+        Long userId = Long.valueOf(uid.toString());
+        String familyId = extractFamilyId(refreshToken);
+        if (familyId != null) {
+            refreshTokenStore.revokeSession(userSessionsIndexKey(userId), sessionKey(userId, familyId));
+        } else {
+            refreshTokenStore.revoke(legacyKey(userId));
         }
     }
 
     /**
-     * Revokes all active refresh tokens for the specified user ID.
-     * Used when an administrator deactivates, changes role, or deletes the user.
-     *
-     * @param userId The ID of the user whose refresh tokens should be invalidated
+     * Revokes all active refresh tokens across every device for the specified user ID.
+     * Used when an administrator deactivates, changes role, resets password, or deletes the user.
      */
     public void revokeUserTokens(Long userId) {
         if (userId != null) {
-            refreshTokenStore.revoke("auth:refresh:user:" + userId);
+            refreshTokenStore.revokeAllUserSessions(userSessionsIndexKey(userId), legacyKey(userId));
         }
+    }
+
+    private String extractFamilyId(String refreshToken) {
+        Object fid = jwtService.extractClaim(refreshToken, "fid");
+        if (fid == null) {
+            return null;
+        }
+        String value = fid.toString().trim();
+        return value.isBlank() ? null : value;
+    }
+
+    private static String legacyKey(Long userId) {
+        return "auth:refresh:user:" + userId;
+    }
+
+    private static String userSessionsIndexKey(Long userId) {
+        return "auth:refresh:user:" + userId + ":sessions";
+    }
+
+    private static String sessionKey(Long userId, String familyId) {
+        return "auth:refresh:user:" + userId + ":session:" + familyId;
     }
 
     private boolean wasIssuedBeforePasswordChange(String refreshToken, User user) {

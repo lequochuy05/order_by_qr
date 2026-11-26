@@ -2,7 +2,7 @@ package com.qros.modules.ai.service;
 
 import com.qros.modules.ai.dto.request.AiChatRequest;
 import com.qros.modules.ai.dto.response.AiChatResponse;
-import com.qros.modules.ai.dto.response.AiSuggestedItem;
+import com.qros.modules.ai.dto.response.AiSuggestedItemResponse;
 import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.service.MenuContextProvider.MenuCatalogSnapshot;
 import com.qros.modules.ai.support.AiJsonExtractor;
@@ -99,7 +99,7 @@ public class AiAssistantService {
             }
 
             MenuCatalogSnapshot catalog = menuContextProvider.loadAvailableCatalog();
-            List<AiSuggestedItem> hydrated = hydrateSuggestions(suggestionsNode, catalog);
+            List<AiSuggestedItemResponse> hydrated = hydrateSuggestions(suggestionsNode, catalog);
             return new AiChatResponse(reply, hydrated);
         } catch (Exception ex) {
             log.debug("AI assistant response fell back to plain text: {}", ex.getMessage());
@@ -107,8 +107,8 @@ public class AiAssistantService {
         }
     }
 
-    private List<AiSuggestedItem> hydrateSuggestions(JsonNode suggestionsNode, MenuCatalogSnapshot catalog) {
-        List<AiSuggestedItem> resolved = new ArrayList<>();
+    private List<AiSuggestedItemResponse> hydrateSuggestions(JsonNode suggestionsNode, MenuCatalogSnapshot catalog) {
+        List<AiSuggestedItemResponse> resolved = new ArrayList<>();
         Set<String> seenKeys = new LinkedHashSet<>();
 
         for (JsonNode node : suggestionsNode) {
@@ -133,7 +133,7 @@ public class AiAssistantService {
             int quantity = clampQuantity(node.path("quantity").asInt(1));
             String reason = sanitizeReason(node.path("reason").asString(""));
 
-            AiSuggestedItem suggestedItem = TYPE_COMBO.equals(type)
+            AiSuggestedItemResponse suggestedItem = TYPE_COMBO.equals(type)
                     ? toSuggestedCombo(catalog.combosById().get(id), quantity, reason)
                     : toSuggestedMenuItem(catalog.menuItemsById().get(id), quantity, reason);
 
@@ -145,7 +145,7 @@ public class AiAssistantService {
         return resolved;
     }
 
-    private AiSuggestedItem toSuggestedMenuItem(MenuItem item, int quantity, String reason) {
+    private AiSuggestedItemResponse toSuggestedMenuItem(MenuItem item, int quantity, String reason) {
         if (item == null || item.getId() == null) {
             return null;
         }
@@ -153,7 +153,7 @@ public class AiAssistantService {
         boolean hasOptions = item.getItemOptions() != null
                 && item.getItemOptions().stream().anyMatch(option -> option != null && !option.isDeleted());
 
-        return new AiSuggestedItem(
+        return new AiSuggestedItemResponse(
                 TYPE_MENU_ITEM,
                 item.getId(),
                 item.getName(),
@@ -166,7 +166,7 @@ public class AiAssistantService {
                 true);
     }
 
-    private AiSuggestedItem toSuggestedCombo(Combo combo, int quantity, String reason) {
+    private AiSuggestedItemResponse toSuggestedCombo(Combo combo, int quantity, String reason) {
         if (combo == null || combo.getId() == null) {
             return null;
         }
@@ -181,7 +181,7 @@ public class AiAssistantService {
                         .findFirst()
                         .orElse(null);
 
-        return new AiSuggestedItem(
+        return new AiSuggestedItemResponse(
                 TYPE_COMBO,
                 combo.getId(),
                 combo.getName(),

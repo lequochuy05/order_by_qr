@@ -2,20 +2,20 @@ package com.qros.modules.ai.service;
 
 import com.qros.modules.ai.dto.response.AiExecutiveSummaryResponse.MetricsSnapshot;
 import com.qros.modules.ai.dto.response.AiExecutiveSummaryResponse.TopDishMetric;
-import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.dto.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.dto.projection.OrderFilterSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TableSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.service.AnalyticsLookupService;
 import com.qros.modules.inventory.model.InventoryItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.kitchen.service.KitchenService;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.table.model.TableServiceRequest;
 import com.qros.modules.table.model.enums.ServiceRequestReason;
 import com.qros.modules.table.model.enums.ServiceRequestStatus;
-import com.qros.modules.table.repository.TableServiceRequestRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.shared.time.AppTime;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,10 +40,10 @@ public class ExecutiveInsightsContextProvider {
     private static final int TOP_DISH_LIMIT = 5;
     private static final int LOW_STOCK_NAME_LIMIT = 5;
 
-    private final AnalyticsQueryRepository analyticsQueryRepository;
+    private final AnalyticsLookupService analyticsLookupService;
     private final KitchenService kitchenService;
-    private final TableServiceRequestRepository tableServiceRequestRepository;
-    private final InventoryItemRepository inventoryItemRepository;
+    private final TableLookupService tableLookupService;
+    private final InventoryLookupService inventoryLookupService;
 
     @Transactional(readOnly = true)
     public ExecutiveInsightsData loadInsights(LocalDate from, LocalDate to) {
@@ -53,15 +53,15 @@ public class ExecutiveInsightsContextProvider {
         LocalDate previousToExclusive = from;
         LocalDateTime now = AppTime.now();
 
-        DashboardSummaryProjection currentSummary = analyticsQueryRepository.dashboardSummary(from, toExclusive);
+        DashboardSummaryProjection currentSummary = analyticsLookupService.dashboardSummary(from, toExclusive);
         DashboardSummaryProjection previousSummary =
-                analyticsQueryRepository.dashboardSummary(previousFrom, previousToExclusive);
+                analyticsLookupService.dashboardSummary(previousFrom, previousToExclusive);
         OrderFilterSummaryProjection cancelledSummary =
-                analyticsQueryRepository.orderFilterSummary("CANCELLED", from, toExclusive, null, null);
-        TableSummaryProjection tableSummary = analyticsQueryRepository.tableSummary();
+                analyticsLookupService.orderFilterSummary("CANCELLED", from, toExclusive, null, null);
+        TableSummaryProjection tableSummary = analyticsLookupService.tableSummary();
 
         List<TopDishMetric> topDishes =
-                analyticsQueryRepository.topSellingItems(from, toExclusive, TOP_DISH_LIMIT).stream()
+                analyticsLookupService.topSellingItems(from, toExclusive, TOP_DISH_LIMIT).stream()
                         .map(this::toTopDishMetric)
                         .toList();
 
@@ -147,7 +147,7 @@ public class ExecutiveInsightsContextProvider {
     private ServiceRequestMetrics collectServiceRequestMetrics(
             LocalDateTime fromStart, LocalDateTime toExclusiveStart, LocalDateTime now) {
         List<TableServiceRequest> requests =
-                tableServiceRequestRepository.findByCreatedAtRange(fromStart, toExclusiveStart);
+                tableLookupService.findServiceRequestsByCreatedAtRange(fromStart, toExclusiveStart);
         if (requests == null || requests.isEmpty()) {
             return new ServiceRequestMetrics(0L, 0L, 0L, null);
         }
@@ -193,8 +193,8 @@ public class ExecutiveInsightsContextProvider {
     }
 
     private InventoryMetrics collectInventoryMetrics() {
-        List<InventoryItem> lowStockItems = inventoryItemRepository.findLowStockActiveItems();
-        long outOfStockCount = inventoryItemRepository.countOutOfStockActiveItems();
+        List<InventoryItem> lowStockItems = inventoryLookupService.findLowStockActiveItems();
+        long outOfStockCount = inventoryLookupService.countOutOfStockActiveItems();
         if (lowStockItems == null || lowStockItems.isEmpty()) {
             return new InventoryMetrics(0L, outOfStockCount, List.of());
         }
@@ -302,15 +302,15 @@ public class ExecutiveInsightsContextProvider {
     }
 
     private BigDecimal safeMoney(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
+        return com.qros.shared.constants.NumericDefaults.safeMoney(value);
     }
 
     private long safeLong(Long value) {
-        return value != null ? value : 0L;
+        return com.qros.shared.constants.NumericDefaults.safeLong(value);
     }
 
     private String formatMoney(BigDecimal value) {
-        return "%,.0fđ".formatted(safeMoney(value)).replace(",", ".");
+        return com.qros.modules.ai.support.AiJsonExtractor.formatVndMoney(value);
     }
 
     public record ExecutiveInsightsData(MetricsSnapshot metrics, String formattedContext) {}

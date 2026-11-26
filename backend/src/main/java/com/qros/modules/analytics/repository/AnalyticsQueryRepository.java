@@ -1,18 +1,19 @@
 package com.qros.modules.analytics.repository;
 
-import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.DayOfWeekTrafficProjection;
-import com.qros.modules.analytics.repository.projection.HourlyTrafficProjection;
-import com.qros.modules.analytics.repository.projection.OrderDetailProjection;
-import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
-import com.qros.modules.analytics.repository.projection.OrderSummaryProjection;
-import com.qros.modules.analytics.repository.projection.RecentOrderProjection;
-import com.qros.modules.analytics.repository.projection.RevenuePointProjection;
-import com.qros.modules.analytics.repository.projection.SalesTrendPointProjection;
-import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TodayRevenueSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
-import com.qros.modules.analytics.repository.projection.UserPerformanceProjection;
+import com.qros.modules.analytics.dto.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.dto.projection.DayOfWeekTrafficProjection;
+import com.qros.modules.analytics.dto.projection.HourlyTrafficProjection;
+import com.qros.modules.analytics.dto.projection.MenuItemDemandProjection;
+import com.qros.modules.analytics.dto.projection.OrderDetailProjection;
+import com.qros.modules.analytics.dto.projection.OrderFilterSummaryProjection;
+import com.qros.modules.analytics.dto.projection.OrderSummaryProjection;
+import com.qros.modules.analytics.dto.projection.RecentOrderProjection;
+import com.qros.modules.analytics.dto.projection.RevenuePointProjection;
+import com.qros.modules.analytics.dto.projection.SalesTrendPointProjection;
+import com.qros.modules.analytics.dto.projection.TableSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TodayRevenueSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.dto.projection.UserPerformanceProjection;
 import com.qros.modules.order.model.Order;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -176,7 +177,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
 
     @Query(value = """
       SELECT COUNT(fact.order_id) AS totalOrders,
-             COALESCE(SUM(fact.final_amount), 0) AS totalRevenue
+             COALESCE(SUM(fact.final_amount) FILTER (WHERE fact.status = 'COMPLETED' AND fact.payment_status = 'PAID'), 0) AS totalRevenue
       FROM order_reporting_fact fact
       WHERE (CAST(:status AS VARCHAR) IS NULL OR fact.status = CAST(:status AS VARCHAR))
         AND (CAST(:from AS DATE) IS NULL OR fact.created_date >= CAST(:from AS DATE))
@@ -188,7 +189,7 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
         AND (
             CAST(:tableNumber AS VARCHAR) IS NULL
             OR LOWER(COALESCE(fact.table_number_snapshot, ''))
-                LIKE LOWER(CONCAT('%', CAST(:tableNumber AS VARCHAR), '%'))
+                LIKE LOWER(CONCAT('%', CAST(:tableNumber AS VARCHAR), '%')) ESCAPE '\\'
         )
       """, nativeQuery = true)
     OrderFilterSummaryProjection orderFilterSummary(
@@ -197,6 +198,42 @@ public interface AnalyticsQueryRepository extends Repository<Order, Long> {
             @Param("toExclusive") LocalDate toExclusive,
             @Param("orderId") Long orderId,
             @Param("tableNumber") String tableNumber);
+
+    @Query(value = """
+      SELECT expanded.menu_item_id AS menuItemId,
+             CAST(SUM(expanded.qty) AS BIGINT) AS quantitySold
+      FROM (
+          SELECT oi.menu_item_id AS menu_item_id,
+                 oi.quantity AS qty
+          FROM order_item oi
+          JOIN orders o ON o.id = oi.order_id
+          WHERE o.is_deleted = false
+            AND oi.is_deleted = false
+            AND o.status = 'COMPLETED'
+            AND o.payment_status = 'PAID'
+            AND oi.status <> 'CANCELLED'
+            AND oi.menu_item_id IS NOT NULL
+            AND o.business_date >= :from
+            AND o.business_date < :toExclusive
+          UNION ALL
+          SELECT ci.menu_item_id AS menu_item_id,
+                 oi.quantity * ci.quantity AS qty
+          FROM order_item oi
+          JOIN orders o ON o.id = oi.order_id
+          JOIN combo_items ci ON ci.combo_id = oi.combo_id AND ci.is_deleted = false
+          WHERE o.is_deleted = false
+            AND oi.is_deleted = false
+            AND o.status = 'COMPLETED'
+            AND o.payment_status = 'PAID'
+            AND oi.status <> 'CANCELLED'
+            AND oi.combo_id IS NOT NULL
+            AND o.business_date >= :from
+            AND o.business_date < :toExclusive
+      ) expanded
+      GROUP BY expanded.menu_item_id
+      """, nativeQuery = true)
+    List<MenuItemDemandProjection> menuItemDemandIncludingCombos(
+            @Param("from") LocalDate from, @Param("toExclusive") LocalDate toExclusive);
 
     @Query(value = """
       SELECT CAST(EXTRACT(HOUR FROM fact.created_at) AS INTEGER) AS hourOfDay,

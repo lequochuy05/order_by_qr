@@ -4,10 +4,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.core.config.AppProperties;
 import com.qros.modules.ai.config.AiQuotaProperties;
-import com.qros.shared.rate_limit.ClientAddressResolver;
-import com.qros.shared.rate_limit.RedisRateLimiter;
+import com.qros.shared.config.AppProperties;
+import com.qros.shared.ratelimit.ClientAddressResolver;
+import com.qros.shared.ratelimit.RedisRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;

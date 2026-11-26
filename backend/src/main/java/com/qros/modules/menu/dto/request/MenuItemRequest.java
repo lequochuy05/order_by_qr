@@ -12,7 +12,7 @@ public record MenuItemRequest(
 
         @Size(max = 500, message = "Image URL cannot exceed 500 characters") String img,
 
-        @NotNull(message = "Price cannot be empty") @DecimalMin(value = "0.0", message = "Price cannot be negative") BigDecimal price,
+        @NotNull(message = "Price cannot be empty") @DecimalMin(value = "1000.0", message = "Price must be at least 1,000 VND") BigDecimal price,
 
         @NotNull(message = "Category ID cannot be empty") Long categoryId,
         Boolean active,

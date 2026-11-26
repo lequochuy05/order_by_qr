@@ -36,7 +36,7 @@ public class CustomerSelfCheckoutService {
         PaymentCreateRequest paymentRequest = new PaymentCreateRequest(
                 order.getId(), PaymentMethod.PAYOS, request.voucherCode(), request.idempotencyKey(), null, null, false);
 
-        return paymentService.createPayment(paymentRequest, null);
+        return paymentService.createPayment(paymentRequest, null, "/" + tableCode + "/menu");
     }
 
     public void cancelSelfCheckout(
@@ -59,7 +59,7 @@ public class CustomerSelfCheckoutService {
         PaymentTransaction tx = persistenceService.loadForGatewayOperation(transactionId);
 
         if (tx.getStatus() == PaymentTransactionStatus.PAID
-                && orderSettlementService.belongsToTableCode(tx.getOrder(), tableCode)) {
+                && orderSettlementService.verifySelfCheckoutSessionAccess(tx.getOrder(), tableCode, sessionToken)) {
             return paymentService.syncPaymentStatus(transactionId);
         }
 

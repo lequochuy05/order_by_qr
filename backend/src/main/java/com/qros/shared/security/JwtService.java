@@ -81,10 +81,6 @@ public class JwtService {
         }
     }
 
-    public boolean isAccessToken(String token) {
-        return hasTokenType(token, "access");
-    }
-
     public boolean isRefreshToken(String token) {
         return hasTokenType(token, "refresh");
     }

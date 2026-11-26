@@ -1,6 +1,7 @@
 package com.qros.core.config.security;
 
-import com.qros.core.config.AppProperties;
+import com.qros.shared.config.AppProperties;
+import com.qros.shared.security.CorsOrigins;
 import java.net.URI;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;

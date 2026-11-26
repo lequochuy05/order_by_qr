@@ -37,8 +37,9 @@ public class AiStaffService {
 
     public AiStaffResponse query(AiStaffRequest request) {
         String staffContext = staffContextProvider.buildStaffContext();
-        String systemPrompt = promptBuilder.buildStaffPrompt(staffContext);
-        String reply = aiChatGateway.chat(toChatRequest(request), systemPrompt, staffContext);
+        // Keep dynamic kitchen/customer note data in user content rather than system_instruction.
+        String systemPrompt = promptBuilder.buildStaffPrompt("");
+        String reply = aiChatGateway.chat(toChatRequest(request, staffContext), systemPrompt, staffContext);
 
         aiRequestsCounter.increment();
 
@@ -49,13 +50,17 @@ public class AiStaffService {
         return new AiStaffResponse(reply);
     }
 
-    private AiChatRequest toChatRequest(AiStaffRequest request) {
+    private AiChatRequest toChatRequest(AiStaffRequest request, String staffContext) {
         List<AiChatRequest.ChatMessage> history = request.history() == null
                 ? null
                 : request.history().stream()
                         .map(message -> new AiChatRequest.ChatMessage(message.role(), message.content()))
                         .toList();
 
-        return new AiChatRequest(request.message(), history);
+        String contextualMessage = "<untrusted_customer_data>\n"
+                + (staffContext != null ? staffContext : "Không có dữ liệu vận hành.")
+                + "\n</untrusted_customer_data>\n\nCÂU HỎI CỦA NHÂN VIÊN: "
+                + request.message();
+        return new AiChatRequest(contextualMessage, history);
     }
 }

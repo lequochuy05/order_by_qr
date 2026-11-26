@@ -1,8 +1,12 @@
 package com.qros.modules.ai.support;
 
+import com.qros.shared.constants.NumericDefaults;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Extracts and safely reads structured JSON payloads from raw LLM text responses
@@ -94,5 +98,44 @@ public final class AiJsonExtractor {
             return "";
         }
         return text.length() <= maxLen ? text : text.substring(0, maxLen).trim();
+    }
+
+    public static JsonNode parseJsonObject(ObjectMapper objectMapper, String rawText) {
+        String json = extractJsonObject(rawText);
+        if (json == null) {
+            return null;
+        }
+        JsonNode root = objectMapper.readTree(json);
+        return root != null && root.isObject() ? root : null;
+    }
+
+    public static String formatVndMoney(BigDecimal value) {
+        return "%,.0fđ".formatted(NumericDefaults.safeMoney(value)).replace(",", ".");
+    }
+
+    public static BigDecimal safeScale(BigDecimal value, int scale) {
+        return (value == null ? BigDecimal.ZERO : value).setScale(scale, RoundingMode.HALF_UP);
+    }
+
+    public static BigDecimal readNonNegativeDecimal(JsonNode node, int scale) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        try {
+            BigDecimal value = node.isNumber()
+                    ? node.decimalValue()
+                    : new BigDecimal(node.asString("").replace(",", "").trim());
+            if (value.compareTo(BigDecimal.ZERO) < 0) {
+                return null;
+            }
+            return value.setScale(scale, RoundingMode.HALF_UP);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    public static BigDecimal readPositiveDecimal(JsonNode node, int scale) {
+        BigDecimal value = readNonNegativeDecimal(node, scale);
+        return value != null && value.compareTo(BigDecimal.ZERO) > 0 ? value : null;
     }
 }

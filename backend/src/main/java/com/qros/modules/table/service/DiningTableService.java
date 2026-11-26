@@ -5,7 +5,7 @@ import com.qros.modules.table.dto.request.CreateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateDiningTableRequest;
 import com.qros.modules.table.dto.request.UpdateTableStatusRequest;
 import com.qros.modules.table.dto.response.DiningTableResponse;
-import com.qros.modules.table.dto.response.PublicTable;
+import com.qros.modules.table.dto.response.PublicTableResponse;
 import com.qros.modules.table.mapper.DiningTableMapper;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableSessionStatus;
@@ -17,21 +17,22 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DiningTableService {
 
@@ -44,10 +45,59 @@ public class DiningTableService {
     private final TableSessionRepository sessionRepository;
     private final TableSessionTableRepository membershipRepository;
     private final TableActiveOrderChecker activeOrderChecker;
+    private final TransactionExecutor transactionExecutor;
+
+    public DiningTableService(
+            DiningTableRepository tableRepo,
+            TableCodeGenerator tableCodeGenerator,
+            TableQrService tableQrService,
+            DiningTableMapper diningTableMapper,
+            ApplicationEventPublisher eventPublisher,
+            TransactionSideEffectService sideEffects,
+            TableSessionRepository sessionRepository,
+            TableSessionTableRepository membershipRepository,
+            TableActiveOrderChecker activeOrderChecker) {
+        this(
+                tableRepo,
+                tableCodeGenerator,
+                tableQrService,
+                diningTableMapper,
+                eventPublisher,
+                sideEffects,
+                sessionRepository,
+                membershipRepository,
+                activeOrderChecker,
+                TransactionExecutor.direct());
+    }
+
+    @Autowired
+    public DiningTableService(
+            DiningTableRepository tableRepo,
+            TableCodeGenerator tableCodeGenerator,
+            TableQrService tableQrService,
+            DiningTableMapper diningTableMapper,
+            ApplicationEventPublisher eventPublisher,
+            TransactionSideEffectService sideEffects,
+            TableSessionRepository sessionRepository,
+            TableSessionTableRepository membershipRepository,
+            TableActiveOrderChecker activeOrderChecker,
+            TransactionExecutor transactionExecutor) {
+        this.tableRepo = tableRepo;
+        this.tableCodeGenerator = tableCodeGenerator;
+        this.tableQrService = tableQrService;
+        this.diningTableMapper = diningTableMapper;
+        this.eventPublisher = eventPublisher;
+        this.sideEffects = sideEffects;
+        this.sessionRepository = sessionRepository;
+        this.membershipRepository = membershipRepository;
+        this.activeOrderChecker = activeOrderChecker;
+        this.transactionExecutor = transactionExecutor != null ? transactionExecutor : TransactionExecutor.direct();
+    }
 
     @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
     public List<DiningTableResponse> getAllSorted() {
         return tableRepo.findAllByOrderByTableNumberAsc().stream()
+                .sorted(Comparator.comparing(DiningTable::getTableNumber, TableNumberComparator::compare))
                 .map(diningTableMapper::toResponse)
                 .toList();
     }
@@ -73,54 +123,53 @@ public class DiningTableService {
     }
 
     @Cacheable(value = CacheNames.TABLES, key = "'public_code_' + #tableCode")
-    public PublicTable getPublicByCode(@NonNull String tableCode) {
+    public PublicTableResponse getPublicByCode(@NonNull String tableCode) {
         return tableRepo
                 .findByTableCode(tableCode)
                 .map(diningTableMapper::toPublicTable)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TABLE_CODE_INVALID));
     }
 
-    public DiningTableResponse getByNumber(@NonNull String tableNumber) {
-        return tableRepo
-                .findByTableNumberIgnoreCase(tableNumber)
-                .map(diningTableMapper::toResponse)
-                .orElseThrow(() ->
-                        new BusinessException(ErrorCode.TABLE_NOT_FOUND, "Table number not found: " + tableNumber));
-    }
-
-    public List<DiningTableResponse> getByStatus(@NonNull TableStatus status) {
-        return tableRepo.findByStatusOrderByTableNumberAsc(status).stream()
-                .map(diningTableMapper::toResponse)
-                .toList();
-    }
-
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @CacheEvict(
             value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
             allEntries = true)
     public DiningTableResponse create(@NonNull CreateDiningTableRequest req) {
-        if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
-            throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
-        }
+        transactionExecutor.readOnly(() -> {
+            if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
+                throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
+            }
+            return null;
+        });
 
         String tableCode = tableCodeGenerator.generate();
         TableQrMedia qrMedia = tableQrService.generate(tableCode);
 
-        sideEffects.afterRollback(() -> tableQrService.delete(qrMedia.publicId()), "delete rolled back table QR media");
+        try {
+            return transactionExecutor.write(() -> {
+                if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
+                    throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
+                }
+                sideEffects.afterRollback(
+                        () -> tableQrService.delete(qrMedia.publicId()), "delete rolled back table QR media");
 
-        DiningTable table = DiningTable.builder()
-                .tableNumber(req.tableNumber())
-                .capacity(req.capacity())
-                .status(TableStatus.AVAILABLE)
-                .tableCode(tableCode)
-                .qrCodeUrl(qrMedia.url())
-                .qrCodePublicId(qrMedia.publicId())
-                .build();
+                DiningTable table = DiningTable.builder()
+                        .tableNumber(req.tableNumber())
+                        .capacity(req.capacity())
+                        .status(TableStatus.AVAILABLE)
+                        .tableCode(tableCode)
+                        .qrCodeUrl(qrMedia.url())
+                        .qrCodePublicId(qrMedia.publicId())
+                        .build();
 
-        DiningTable saved = tableRepo.save(table);
-        eventPublisher.publishEvent(new TableChangeEvent());
-
-        return diningTableMapper.toResponse(saved);
+                DiningTable saved = tableRepo.save(table);
+                eventPublisher.publishEvent(new TableChangeEvent());
+                return diningTableMapper.toResponse(saved);
+            });
+        } catch (RuntimeException exception) {
+            deleteUploadedQrSilently(qrMedia.publicId());
+            throw exception;
+        }
     }
 
     @Transactional
@@ -159,33 +208,53 @@ public class DiningTableService {
         return diningTableMapper.toResponse(saved);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @CacheEvict(
             value = {CacheNames.TABLES, CacheNames.STATS_DASHBOARD},
             allEntries = true)
     public DiningTableResponse regenerateQrCode(@NonNull Long id) {
-        DiningTable table = getEntityByIdForUpdate(id);
-        requireTableNotInUse(table.getId(), "Cannot regenerate QR code while the table is in use");
-
-        String oldPublicId = table.getQrCodePublicId();
+        transactionExecutor.readOnly(() -> {
+            DiningTable existing = getEntityById(id);
+            requireTableNotInUse(existing.getId(), "Cannot regenerate QR code while the table is in use");
+            return null;
+        });
 
         String newTableCode = tableCodeGenerator.generate();
         TableQrMedia qrMedia = tableQrService.generate(newTableCode);
 
-        sideEffects.afterRollback(
-                () -> tableQrService.delete(qrMedia.publicId()), "delete rolled back regenerated table QR media");
+        try {
+            return transactionExecutor.write(() -> {
+                DiningTable table = getEntityByIdForUpdate(id);
+                requireTableNotInUse(table.getId(), "Cannot regenerate QR code while the table is in use");
 
-        table.setTableCode(newTableCode);
-        table.setQrCodeUrl(qrMedia.url());
-        table.setQrCodePublicId(qrMedia.publicId());
+                String oldPublicId = table.getQrCodePublicId();
+                sideEffects.afterRollback(
+                        () -> tableQrService.delete(qrMedia.publicId()),
+                        "delete rolled back regenerated table QR media");
 
-        DiningTable saved = tableRepo.save(table);
+                table.setTableCode(newTableCode);
+                table.setQrCodeUrl(qrMedia.url());
+                table.setQrCodePublicId(qrMedia.publicId());
 
-        sideEffects.afterCommit(() -> tableQrService.delete(oldPublicId), "delete old table QR media " + id);
+                DiningTable saved = tableRepo.save(table);
 
-        eventPublisher.publishEvent(new TableChangeEvent());
+                sideEffects.afterCommit(() -> tableQrService.delete(oldPublicId), "delete old table QR media " + id);
 
-        return diningTableMapper.toResponse(saved);
+                eventPublisher.publishEvent(new TableChangeEvent());
+                return diningTableMapper.toResponse(saved);
+            });
+        } catch (RuntimeException exception) {
+            deleteUploadedQrSilently(qrMedia.publicId());
+            throw exception;
+        }
+    }
+
+    private void deleteUploadedQrSilently(String publicId) {
+        try {
+            tableQrService.delete(publicId);
+        } catch (Exception cleanupEx) {
+            log.warn("Failed to clean up uploaded table QR {}: {}", publicId, cleanupEx.getMessage());
+        }
     }
 
     @Transactional
@@ -206,15 +275,7 @@ public class DiningTableService {
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion == null) {
-            return;
-        }
-
-        if (!Objects.equals(currentVersion, expectedVersion)) {
-            throw new BusinessException(
-                    ErrorCode.CONCURRENT_MODIFICATION,
-                    "This table was changed by another request. Please refresh and try again.");
-        }
+        com.qros.shared.validation.OptimisticVersionGuard.matchIfPresent(currentVersion, expectedVersion, "table");
     }
 
     private void validateStatusTransition(DiningTable table, TableStatus newStatus) {

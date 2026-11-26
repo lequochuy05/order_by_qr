@@ -1,11 +1,15 @@
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   config:
     import:
       - "optional:file:.env[.properties]"
       - "optional:file:../.env[.properties]"
 
   datasource:
-    url: ${DB_URL}
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:qros}}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -79,8 +83,8 @@ spring:
           starttls:
             enable: true
           connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
+          timeout: 10000
+          writetimeout: 10000
 
 auth:
   lockout:
@@ -184,6 +188,16 @@ rate-limit:
       method: POST
       max-requests: 60
       window: 1m
+    - scope: public:voucher-validate
+      path: /api/v1/vouchers/validate
+      method: GET
+      max-requests: 20
+      window: 1m
+    - scope: public:self-checkout-sync
+      path: /api/v1/public/tables/*/self-checkout/*
+      method: GET
+      max-requests: 30
+      window: 1m
 
 cloudinary:
   cloud_name: ${CLOUDINARY_CLOUD_NAME}
@@ -192,8 +206,6 @@ cloudinary:
 
 app:
   base-url: ${APP_BASE_URL}
-  qr:
-    secret: ${QR_SIGNING_SECRET:}
   security:
     qr-secret: ${QR_SIGNING_SECRET:}
   frontend:
@@ -243,8 +255,9 @@ table-session:
 gemini:
   api-key: ${GEMINI_API_KEY:}
   api-url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent}
-  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:30}
-  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:60}
+  fallback-api-url: ${GEMINI_FALLBACK_API_URL:}
+  connect-timeout-seconds: ${GEMINI_CONNECT_TIMEOUT_SECONDS:10}
+  read-timeout-seconds: ${GEMINI_READ_TIMEOUT_SECONDS:25}
   temperature: ${GEMINI_TEMPERATURE:0.7}
   top-p: ${GEMINI_TOP_P:0.9}
   max-output-tokens: ${GEMINI_MAX_OUTPUT_TOKENS:800}

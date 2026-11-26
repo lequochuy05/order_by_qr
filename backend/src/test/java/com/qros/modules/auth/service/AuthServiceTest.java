@@ -15,7 +15,7 @@ import com.qros.modules.auth.dto.request.LoginRequest;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
@@ -30,7 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @ExtendWith(OutputCaptureExtension.class)
 class AuthServiceTest {
 
-    private UserRepository userRepository;
+    private UserLookupService userRepository;
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private AccountLockoutService accountLockoutService;
@@ -39,7 +39,7 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        userRepository = mock(UserRepository.class);
+        userRepository = mock(UserLookupService.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
         accountLockoutService = mock(AccountLockoutService.class);

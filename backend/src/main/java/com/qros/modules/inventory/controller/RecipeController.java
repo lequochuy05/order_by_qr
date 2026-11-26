@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,12 +28,14 @@ public class RecipeController {
     private final RecipeService recipeService;
 
     @GetMapping("/{menuItemId}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<List<RecipeItemResponse>> getRecipe(
             @PathVariable @Min(value = 1, message = "Menu item id must be positive") Long menuItemId) {
         return ApiResponse.success(recipeService.getRecipeByMenuItemId(menuItemId));
     }
 
     @PutMapping("/{menuItemId}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<List<RecipeItemResponse>> updateRecipe(
             @PathVariable @Min(value = 1, message = "Menu item id must be positive") Long menuItemId,
             @Valid @RequestBody RecipeUpdateRequest request) {
@@ -40,6 +43,7 @@ public class RecipeController {
     }
 
     @DeleteMapping("/{menuItemId}")
+    @PreAuthorize("hasRole('MANAGER')")
     public ApiResponse<Void> deleteRecipe(
             @PathVariable @Min(value = 1, message = "Menu item id must be positive") Long menuItemId) {
         recipeService.deleteRecipe(menuItemId);

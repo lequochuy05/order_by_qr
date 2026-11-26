@@ -13,7 +13,7 @@ import com.qros.modules.ai.support.AiJsonExtractor;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import com.qros.modules.ai.support.NoteSafetyAnalyzer;
 import com.qros.modules.inventory.model.InventoryItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -49,7 +49,7 @@ public class AiInvoiceOcrService {
     private static final BigDecimal THOUSAND = new BigDecimal("1000");
 
     private final ImageFileValidator imageFileValidator;
-    private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryLookupService inventoryLookupService;
     private final AiChatGateway aiChatGateway;
     private final AiPromptBuilder promptBuilder;
     private final ObjectMapper objectMapper;
@@ -57,13 +57,13 @@ public class AiInvoiceOcrService {
 
     public AiInvoiceOcrService(
             ImageFileValidator imageFileValidator,
-            InventoryItemRepository inventoryItemRepository,
+            InventoryLookupService inventoryLookupService,
             AiChatGateway aiChatGateway,
             AiPromptBuilder promptBuilder,
             ObjectMapper objectMapper,
             MeterRegistry meterRegistry) {
         this.imageFileValidator = imageFileValidator;
-        this.inventoryItemRepository = inventoryItemRepository;
+        this.inventoryLookupService = inventoryLookupService;
         this.aiChatGateway = aiChatGateway;
         this.promptBuilder = promptBuilder;
         this.objectMapper = objectMapper;
@@ -74,6 +74,10 @@ public class AiInvoiceOcrService {
     }
 
     public AiInvoiceOcrResponse parseInvoice(MultipartFile file, String language) {
+        return parseInvoice(file, language, null);
+    }
+
+    public AiInvoiceOcrResponse parseInvoice(MultipartFile file, String language, Runnable quotaCheck) {
         String normLang = normalizeLanguage(language);
         LocalDateTime now = AppTime.now();
 
@@ -88,9 +92,13 @@ public class AiInvoiceOcrService {
         } catch (IOException ex) {
             throw new BusinessException(ErrorCode.FILE_INVALID, "Unable to read uploaded image file", ex);
         }
+
+        if (quotaCheck != null) {
+            quotaCheck.run();
+        }
         String mimeType = file.getContentType() != null ? file.getContentType().toLowerCase(Locale.ROOT) : "image/jpeg";
 
-        List<InventoryItem> activeItems = inventoryItemRepository.findByActiveTrueOrderByNameAsc();
+        List<InventoryItem> activeItems = inventoryLookupService.findActiveInventoryItemsOrdered();
         Map<Long, InventoryItem> activeById = activeItems.stream()
                 .collect(Collectors.toMap(
                         InventoryItem::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
@@ -276,6 +284,14 @@ public class AiInvoiceOcrService {
 
         if (factor != null) {
             BigDecimal convertedQty = quantity.multiply(factor).setScale(3, RoundingMode.HALF_UP);
+            if (convertedQty.compareTo(BigDecimal.ZERO) <= 0) {
+                String tinyNote = isEnglish(language)
+                        ? "Converted quantity (%s %s -> %s) rounds below 0.001 — please verify manually."
+                                .formatted(safeQty.stripTrailingZeros().toPlainString(), fromUnit, toUnit)
+                        : "Số lượng sau quy đổi (%s %s -> %s) nhỏ hơn 0.001 — vui lòng nhập thủ công."
+                                .formatted(safeQty.stripTrailingZeros().toPlainString(), fromUnit, toUnit);
+                return new UnitConversionResult(safeQty, safePrice, false, true, tinyNote);
+            }
             BigDecimal convertedCost = unitPrice != null ? unitPrice.divide(factor, 2, RoundingMode.HALF_UP) : null;
             String note = isEnglish(language)
                     ? "Auto-converted %s %s -> %s %s"
@@ -333,28 +349,35 @@ public class AiInvoiceOcrService {
             if (foldedCandidate.equals(foldedRaw)) {
                 return candidate;
             }
-            if (foldedRaw.contains(foldedCandidate) || foldedCandidate.contains(foldedRaw)) {
-                double score = 0.85;
-                if (score > bestScore) {
-                    bestScore = score;
-                    best = candidate;
-                }
-                continue;
-            }
 
             Set<String> candidateTokens = tokenize(foldedCandidate);
             if (rawTokens.isEmpty() || candidateTokens.isEmpty()) {
                 continue;
             }
+
             long intersection =
                     rawTokens.stream().filter(candidateTokens::contains).count();
             if (intersection == 0) {
                 continue;
             }
-            long union = rawTokens.size() + candidateTokens.size() - intersection;
-            double jaccard = (double) intersection / union;
-            if (jaccard >= 0.5 && jaccard > bestScore) {
-                bestScore = jaccard;
+
+            // Require whole-token subset match with at least 2 matching tokens (or single-token exact equality)
+            // so short words like "bo" or "ca" never false-match "thit bo uc" or "ca chua".
+            boolean candidateSubsetOfRaw = candidateTokens.size() >= 2 && rawTokens.containsAll(candidateTokens);
+            boolean rawSubsetOfCandidate = rawTokens.size() >= 2 && candidateTokens.containsAll(rawTokens);
+
+            double score;
+            if (candidateSubsetOfRaw || rawSubsetOfCandidate) {
+                int smaller = Math.min(rawTokens.size(), candidateTokens.size());
+                int larger = Math.max(rawTokens.size(), candidateTokens.size());
+                score = 0.75 + 0.15 * ((double) smaller / larger);
+            } else {
+                long union = rawTokens.size() + candidateTokens.size() - intersection;
+                score = (double) intersection / union;
+            }
+
+            if (score >= 0.5 && score > bestScore) {
+                bestScore = score;
                 best = candidate;
             }
         }
@@ -414,25 +437,11 @@ public class AiInvoiceOcrService {
     }
 
     private static BigDecimal readPositiveDecimal(JsonNode node, int scale) {
-        BigDecimal value = readNonNegativeDecimal(node, scale);
-        return value != null && value.compareTo(BigDecimal.ZERO) > 0 ? value : null;
+        return AiJsonExtractor.readPositiveDecimal(node, scale);
     }
 
     private static BigDecimal readNonNegativeDecimal(JsonNode node, int scale) {
-        if (node == null || node.isMissingNode() || node.isNull()) {
-            return null;
-        }
-        try {
-            BigDecimal value = node.isNumber()
-                    ? node.decimalValue()
-                    : new BigDecimal(node.asString("").replace(",", "").trim());
-            if (value.compareTo(BigDecimal.ZERO) < 0) {
-                return null;
-            }
-            return value.setScale(scale, RoundingMode.HALF_UP);
-        } catch (NumberFormatException ex) {
-            return null;
-        }
+        return AiJsonExtractor.readNonNegativeDecimal(node, scale);
     }
 
     private static String combineNotes(String first, String second) {

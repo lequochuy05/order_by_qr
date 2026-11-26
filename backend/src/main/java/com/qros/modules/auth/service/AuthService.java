@@ -7,7 +7,7 @@ import com.qros.modules.auth.dto.response.LoginResponse;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.security.JwtService;
@@ -28,7 +28,7 @@ public class AuthService {
     private static final String DEFAULT_DUMMY_BCRYPT_HASH =
             "$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG";
 
-    private final UserRepository userRepository;
+    private final UserLookupService userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AccountLockoutService accountLockoutService;
@@ -36,7 +36,7 @@ public class AuthService {
     private final String dummyPasswordHash;
 
     public AuthService(
-            UserRepository userRepository,
+            UserLookupService userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AccountLockoutService accountLockoutService) {
@@ -45,7 +45,7 @@ public class AuthService {
 
     @Autowired
     public AuthService(
-            UserRepository userRepository,
+            UserLookupService userRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
             AccountLockoutService accountLockoutService,
@@ -88,10 +88,15 @@ public class AuthService {
         User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
 
         boolean passwordMatches;
-        if (user != null) {
-            passwordMatches = passwordEncoder.matches(req.password(), user.getPassword());
-        } else {
-            passwordEncoder.matches(req.password(), dummyPasswordHash);
+        try {
+            if (user != null) {
+                passwordMatches = passwordEncoder.matches(req.password(), user.getPassword());
+            } else {
+                passwordEncoder.matches(req.password(), dummyPasswordHash);
+                passwordMatches = false;
+            }
+        } catch (IllegalArgumentException ex) {
+            log.warn("Login failed: password rejected by encoder email={}", maskEmail(email));
             passwordMatches = false;
         }
 

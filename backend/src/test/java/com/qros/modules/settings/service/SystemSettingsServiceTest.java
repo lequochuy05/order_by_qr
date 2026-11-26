@@ -17,6 +17,7 @@ import com.qros.modules.settings.repository.SystemSettingsRepository;
 import com.qros.shared.event.DomainEvents.SettingsChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.math.BigDecimal;
@@ -44,7 +45,8 @@ class SystemSettingsServiceTest {
                 eventPublisher,
                 sideEffects,
                 mock(StorageService.class),
-                new ImageFileValidator());
+                new ImageFileValidator(),
+                TransactionExecutor.direct());
     }
 
     @Test

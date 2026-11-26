@@ -14,6 +14,7 @@ public final class CacheNames {
     public static final String VOUCHERS = "vouchers";
     public static final String PROMOTIONS = "promotions";
     public static final String USERS = "users";
+    public static final String USER_AUTH = "user_auth";
     public static final String RECOMMENDATIONS = "recommendations";
     public static final String POPULAR_ITEMS = "popularItems";
     public static final String AI_MENU_CONTEXT = "aiMenuContext";

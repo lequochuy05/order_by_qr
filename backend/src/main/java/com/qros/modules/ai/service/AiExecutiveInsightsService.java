@@ -34,8 +34,6 @@ public class AiExecutiveInsightsService {
     private static final int DEFAULT_RANGE_DAYS = 7;
     private static final long MAX_RANGE_DAYS = 90L;
     private static final int MAX_LIST_ITEMS = 3;
-    private static final String FALLBACK_PREFIX = "Xin lỗi";
-    private static final String CONFIG_PREFIX = "Tính năng trợ lý";
 
     private final ExecutiveInsightsContextProvider contextProvider;
     private final AiChatGateway aiChatGateway;
@@ -318,18 +316,14 @@ public class AiExecutiveInsightsService {
     }
 
     private String normalizeLanguage(String language) {
-        return "en".equalsIgnoreCase(language) ? "en" : "vi";
+        return AiJsonExtractor.normalizeLanguage(language);
     }
 
     private boolean isUsableModelOutput(String reply) {
-        return reply != null
-                && !reply.isBlank()
-                && !reply.startsWith(FALLBACK_PREFIX)
-                && !reply.startsWith(CONFIG_PREFIX);
+        return AiJsonExtractor.isUsableModelOutput(reply);
     }
 
     private String formatMoney(BigDecimal value) {
-        BigDecimal safe = value != null ? value : BigDecimal.ZERO;
-        return "%,.0fđ".formatted(safe).replace(",", ".");
+        return AiJsonExtractor.formatVndMoney(value);
     }
 }

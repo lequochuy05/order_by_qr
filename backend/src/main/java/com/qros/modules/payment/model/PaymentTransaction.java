@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
@@ -78,11 +80,19 @@ public class PaymentTransaction extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private User createdBy;
 
     @Column(nullable = false)
     @Builder.Default
     private Boolean voucherUsageClaimed = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean voucherUsageReserved = false;
+
+    @Column(length = 50)
+    private String voucherCodeSnapshot;
 
     @Column(length = 255)
     private String failureReason;

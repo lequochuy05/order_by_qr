@@ -7,8 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.modules.auth.service.AccountLockoutService;
-import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.user.dto.request.UpdateUserRequest;
 import com.qros.modules.user.mapper.UserMapper;
 import com.qros.modules.user.model.User;
@@ -29,24 +27,21 @@ class UserServiceTest {
     private static final List<UserRole> ADMIN_ROLES = List.of(UserRole.ADMIN, UserRole.MANAGER);
 
     private UserRepository userRepository;
-    private RefreshTokenService refreshTokenService;
-    private AccountLockoutService accountLockoutService;
+    private UserAuthSessionPort userAuthSessionPort;
     private PasswordEncoder passwordEncoder;
     private UserService userService;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
-        refreshTokenService = mock(RefreshTokenService.class);
-        accountLockoutService = mock(AccountLockoutService.class);
+        userAuthSessionPort = mock(UserAuthSessionPort.class);
         passwordEncoder = mock(PasswordEncoder.class);
         userService = new UserService(
                 userRepository,
                 passwordEncoder,
                 mock(ApplicationEventPublisher.class),
                 mock(UserMapper.class),
-                refreshTokenService,
-                accountLockoutService);
+                userAuthSessionPort);
     }
 
     @Test
@@ -144,7 +139,7 @@ class UserServiceTest {
 
         userService.update(staff.getId(), request);
 
-        verify(refreshTokenService).revokeUserTokens(staff.getId());
+        verify(userAuthSessionPort).revokeUserTokens(staff.getId());
     }
 
     @Test
@@ -156,7 +151,7 @@ class UserServiceTest {
 
         userService.update(staff.getId(), request);
 
-        verify(refreshTokenService).revokeUserTokens(staff.getId());
+        verify(userAuthSessionPort).revokeUserTokens(staff.getId());
     }
 
     @Test
@@ -169,7 +164,7 @@ class UserServiceTest {
         userService.delete(staff.getId(), manager.getEmail());
 
         verify(userRepository).delete(staff);
-        verify(refreshTokenService).revokeUserTokens(staff.getId());
+        verify(userAuthSessionPort).revokeUserTokens(staff.getId());
     }
 
     @Test
@@ -180,8 +175,8 @@ class UserServiceTest {
 
         userService.resetPassword(staff.getId(), "new-secret");
 
-        verify(refreshTokenService).revokeUserTokens(staff.getId());
-        verify(accountLockoutService).unlock(staff.getEmail());
+        verify(userAuthSessionPort).revokeUserTokens(staff.getId());
+        verify(userAuthSessionPort).unlockAccount(staff.getEmail());
         assertThat(staff.isMustChangePassword()).isTrue();
     }
 

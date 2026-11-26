@@ -26,7 +26,7 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableServiceRequest;
 import com.qros.modules.table.model.enums.ServiceRequestReason;
 import com.qros.modules.table.model.enums.ServiceRequestStatus;
-import com.qros.modules.table.repository.TableServiceRequestRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
@@ -39,19 +39,19 @@ import tools.jackson.databind.ObjectMapper;
 class AiNoteTriageServiceTest {
 
     private KitchenService kitchenService;
-    private TableServiceRequestRepository tableServiceRequestRepository;
+    private TableLookupService tableLookupService;
     private AiChatGateway aiChatGateway;
     private AiNoteTriageService service;
 
     @BeforeEach
     void setUp() {
         kitchenService = mock(KitchenService.class);
-        tableServiceRequestRepository = mock(TableServiceRequestRepository.class);
+        tableLookupService = mock(TableLookupService.class);
         aiChatGateway = mock(AiChatGateway.class);
 
         service = new AiNoteTriageService(
                 kitchenService,
-                tableServiceRequestRepository,
+                tableLookupService,
                 aiChatGateway,
                 new AiPromptBuilder(),
                 new ObjectMapper(),
@@ -61,7 +61,7 @@ class AiNoteTriageServiceTest {
     @Test
     void returnsEmptyWithoutCallingAiWhenNoNotesExist() {
         when(kitchenService.getKitchenOrders()).thenReturn(List.of());
-        when(tableServiceRequestRepository.findByStatusesOrderByCreatedAtAsc(any(), any(), any()))
+        when(tableLookupService.findServiceRequestsByStatuses(any(), any(), any()))
                 .thenReturn(List.of());
 
         AiNoteTriageResponse response = service.triage(new AiNoteTriageRequest("vi"));
@@ -123,7 +123,7 @@ class AiNoteTriageServiceTest {
                 .build();
         urgentServiceReq.setCreatedAt(now.minusMinutes(12));
 
-        when(tableServiceRequestRepository.findByStatusesOrderByCreatedAtAsc(any(), any(), any()))
+        when(tableLookupService.findServiceRequestsByStatuses(any(), any(), any()))
                 .thenReturn(List.of(urgentServiceReq));
 
         // Even if LLM returns NORMAL for item 10, deterministic CRITICAL cannot be downgraded
@@ -204,7 +204,7 @@ class AiNoteTriageServiceTest {
                         OrderType.TAKEAWAY,
                         List.of(mildOldItem, allergyFreshItem),
                         now.minusMinutes(30))));
-        when(tableServiceRequestRepository.findByStatusesOrderByCreatedAtAsc(any(), any(), any()))
+        when(tableLookupService.findServiceRequestsByStatuses(any(), any(), any()))
                 .thenReturn(List.of());
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("Xin lỗi");
 

@@ -19,8 +19,6 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
 
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    Page<InventoryItem> findByNameContainingIgnoreCaseOrderByNameAsc(String name, Pageable pageable);
-
     @Query("""
             SELECT i
             FROM InventoryItem i
@@ -79,15 +77,6 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, Lo
             ORDER BY i.id ASC
             """)
     List<InventoryItem> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
-
-    @Query("""
-            SELECT i
-            FROM InventoryItem i
-            WHERE i.active = true
-              AND (i.quantityOnHand - i.reservedQuantity) > 0
-            ORDER BY i.name ASC
-            """)
-    List<InventoryItem> findAvailableActiveItems();
 
     @Query("""
             SELECT i

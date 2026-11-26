@@ -102,7 +102,7 @@ class CustomerSelfCheckoutServiceTest {
                 "SAVE10",
                 "idem-1",
                 "ref-99");
-        when(paymentService.createPayment(any(PaymentCreateRequest.class), isNull()))
+        when(paymentService.createPayment(any(PaymentCreateRequest.class), isNull(), eq("/T01/menu")))
                 .thenReturn(expected);
 
         PaymentCreateResponse result = selfCheckoutService.createSelfCheckout(
@@ -110,7 +110,7 @@ class CustomerSelfCheckoutServiceTest {
 
         assertThat(result).isSameAs(expected);
         ArgumentCaptor<PaymentCreateRequest> captor = ArgumentCaptor.forClass(PaymentCreateRequest.class);
-        verify(paymentService).createPayment(captor.capture(), isNull());
+        verify(paymentService).createPayment(captor.capture(), isNull(), eq("/T01/menu"));
 
         PaymentCreateRequest sent = captor.getValue();
         assertThat(sent.orderId()).isEqualTo(55L);
@@ -190,12 +190,41 @@ class CustomerSelfCheckoutServiceTest {
                 null);
 
         when(persistenceService.loadForGatewayOperation(77L)).thenReturn(tx);
-        when(orderSettlementService.belongsToTableCode(order, "T01")).thenReturn(true);
+        when(orderSettlementService.verifySelfCheckoutSessionAccess(order, "T01", "revoked-token"))
+                .thenReturn(true);
         when(paymentService.syncPaymentStatus(77L)).thenReturn(response);
 
         PaymentTransactionResponse result = selfCheckoutService.syncSelfCheckoutStatus("T01", 77L, "revoked-token");
 
         assertThat(result.status()).isEqualTo(PaymentTransactionStatus.PAID);
         verifyNoInteractions(settingsService);
+    }
+
+    @Test
+    void syncSelfCheckoutStatusRejectsForgedTokenOnPaidTransaction() {
+        Order order = Order.builder().id(55L).build();
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .id(77L)
+                .order(order)
+                .status(PaymentTransactionStatus.PAID)
+                .build();
+
+        when(persistenceService.loadForGatewayOperation(77L)).thenReturn(tx);
+        when(orderSettlementService.verifySelfCheckoutSessionAccess(order, "T01", "attacker-token"))
+                .thenReturn(false);
+        when(settingsService.getSettingsEntity())
+                .thenReturn(SystemSettings.builder()
+                        .customerSelfCheckoutEnabled(true)
+                        .onlinePaymentEnabled(true)
+                        .build());
+        when(orderSettlementService.requireActiveSessionOrder("T01", "attacker-token"))
+                .thenThrow(new BusinessException(ErrorCode.TABLE_SESSION_INVALID));
+
+        assertThatThrownBy(() -> selfCheckoutService.syncSelfCheckoutStatus("T01", 77L, "attacker-token"))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.TABLE_SESSION_INVALID));
+
+        verifyNoInteractions(paymentService);
     }
 }

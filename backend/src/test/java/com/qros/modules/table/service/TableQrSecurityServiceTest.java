@@ -3,7 +3,7 @@ package com.qros.modules.table.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.qros.core.config.AppProperties;
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.exception.BusinessException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,7 +23,7 @@ class TableQrSecurityServiceTest {
     void devProfileDoesNotProvideHardCodedQrSecretFallback() throws Exception {
         String devYaml = Files.readString(Path.of("src/main/resources/application-dev.yml"));
 
-        assertThat(devYaml).contains("secret: ${QR_SIGNING_SECRET:}").contains("qr-secret: ${QR_SIGNING_SECRET:}");
+        assertThat(devYaml).contains("qr-secret: ${QR_SIGNING_SECRET:}").doesNotContain("app:\n  qr:");
         assertThat(Files.notExists(Path.of("src/main/resources/application-dev.properties")))
                 .isTrue();
     }

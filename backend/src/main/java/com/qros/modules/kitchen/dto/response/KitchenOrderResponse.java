@@ -3,6 +3,7 @@ package com.qros.modules.kitchen.dto.response;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
+import com.qros.modules.order.model.enums.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,11 +11,23 @@ import java.util.List;
 public record KitchenOrderResponse(
         Long id,
         OrderStatus status,
+        PaymentStatus paymentStatus,
         BigDecimal finalAmount,
         TableSummary table,
         OrderType orderType,
         List<KitchenOrderItemResponse> orderItems,
         LocalDateTime createdAt) {
+
+    public KitchenOrderResponse(
+            Long id,
+            OrderStatus status,
+            BigDecimal finalAmount,
+            TableSummary table,
+            OrderType orderType,
+            List<KitchenOrderItemResponse> orderItems,
+            LocalDateTime createdAt) {
+        this(id, status, PaymentStatus.PENDING, finalAmount, table, orderType, orderItems, createdAt);
+    }
 
     public record TableSummary(Long id, String tableNumber) {}
 

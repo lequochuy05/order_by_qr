@@ -1,12 +1,14 @@
 package com.qros.modules.auth.service;
 
-import com.qros.infrastructure.mail.SmtpEmailService;
+import com.qros.infrastructure.mail.EmailService;
 import com.qros.infrastructure.sms.SmsService;
 import com.qros.modules.auth.config.PasswordResetProperties;
 import com.qros.modules.auth.model.PasswordResetToken;
 import com.qros.modules.auth.repository.PasswordResetTokenRepository;
 import com.qros.modules.user.model.User;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.model.enums.UserStatus;
+import com.qros.modules.user.service.UserLookupService;
+import com.qros.shared.event.DomainEvents.UserAuthChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -15,8 +17,9 @@ import java.security.SecureRandom;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.data.domain.PageRequest;
@@ -30,12 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PasswordResetService {
 
-    private final UserRepository userRepo;
+    private final UserLookupService userRepo;
     private final PasswordResetTokenRepository tokenRepo;
-    private final SmtpEmailService emailService;
+    private final EmailService emailService;
     private final SmsService smsService;
     private final PasswordResetProperties passwordResetProperties;
     private final Environment environment;
@@ -44,6 +46,63 @@ public class PasswordResetService {
     private final TransactionSideEffectService sideEffects;
     private final RefreshTokenService refreshTokenService;
     private final AccountLockoutService accountLockoutService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final PasswordResetAttemptRecorder attemptRecorder;
+
+    public PasswordResetService(
+            UserLookupService userRepo,
+            PasswordResetTokenRepository tokenRepo,
+            EmailService emailService,
+            SmsService smsService,
+            PasswordResetProperties passwordResetProperties,
+            Environment environment,
+            PasswordEncoder passwordEncoder,
+            TransactionSideEffectService sideEffects,
+            RefreshTokenService refreshTokenService,
+            AccountLockoutService accountLockoutService,
+            ApplicationEventPublisher eventPublisher) {
+        this(
+                userRepo,
+                tokenRepo,
+                emailService,
+                smsService,
+                passwordResetProperties,
+                environment,
+                passwordEncoder,
+                sideEffects,
+                refreshTokenService,
+                accountLockoutService,
+                eventPublisher,
+                null);
+    }
+
+    @Autowired
+    public PasswordResetService(
+            UserLookupService userRepo,
+            PasswordResetTokenRepository tokenRepo,
+            EmailService emailService,
+            SmsService smsService,
+            PasswordResetProperties passwordResetProperties,
+            Environment environment,
+            PasswordEncoder passwordEncoder,
+            TransactionSideEffectService sideEffects,
+            RefreshTokenService refreshTokenService,
+            AccountLockoutService accountLockoutService,
+            ApplicationEventPublisher eventPublisher,
+            PasswordResetAttemptRecorder attemptRecorder) {
+        this.userRepo = userRepo;
+        this.tokenRepo = tokenRepo;
+        this.emailService = emailService;
+        this.smsService = smsService;
+        this.passwordResetProperties = passwordResetProperties;
+        this.environment = environment;
+        this.passwordEncoder = passwordEncoder;
+        this.sideEffects = sideEffects;
+        this.refreshTokenService = refreshTokenService;
+        this.accountLockoutService = accountLockoutService;
+        this.eventPublisher = eventPublisher;
+        this.attemptRecorder = attemptRecorder;
+    }
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
@@ -59,6 +118,9 @@ public class PasswordResetService {
 
         User user = userRepo.findByEmailIgnoreCase(normalizedEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.EMAIL_NOT_FOUND));
+        if (!isAccountActive(user)) {
+            throw new BusinessException(ErrorCode.EMAIL_NOT_FOUND);
+        }
 
         String rawToken = UUID.randomUUID().toString();
 
@@ -95,6 +157,10 @@ public class PasswordResetService {
         }
 
         User user = resetToken.getUser();
+        if (!isAccountActive(user)) {
+            throw new BusinessException(
+                    ErrorCode.ACCOUNT_INACTIVE, "Inactive or banned accounts cannot reset password");
+        }
         resetToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
@@ -103,6 +169,7 @@ public class PasswordResetService {
         tokenRepo.save(resetToken);
         refreshTokenService.revokeUserTokens(user.getId());
         accountLockoutService.unlock(user.getEmail());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(user.getEmail(), null));
     }
 
     /**
@@ -121,6 +188,9 @@ public class PasswordResetService {
 
         User user = userRepo.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PHONE_NOT_FOUND));
+        if (!isAccountActive(user)) {
+            throw new BusinessException(ErrorCode.PHONE_NOT_FOUND);
+        }
         boolean logOtpInDev = shouldLogOtpInDev();
         if (!logOtpInDev && !smsService.isAvailable()) {
             throw new BusinessException(ErrorCode.FEATURE_DISABLED, "SMS delivery is not configured");
@@ -171,11 +241,22 @@ public class PasswordResetService {
                 .orElseThrow(
                         () -> new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired"));
 
+        if (otpToken.getAttempts() >= PasswordResetAttemptRecorder.MAX_OTP_ATTEMPTS) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired");
+        }
+
         if (!otpToken.getOtpCode().equals(sha256(otpCode))) {
+            if (attemptRecorder != null) {
+                attemptRecorder.recordFailedOtpAttempt(otpToken.getId());
+            }
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_INVALID, "OTP invalid or expired");
         }
 
         User user = otpToken.getUser();
+        if (!isAccountActive(user)) {
+            throw new BusinessException(
+                    ErrorCode.ACCOUNT_INACTIVE, "Inactive or banned accounts cannot reset password");
+        }
         otpToken.setUsed(true);
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(AppTime.now().truncatedTo(ChronoUnit.SECONDS));
@@ -184,6 +265,7 @@ public class PasswordResetService {
         tokenRepo.save(otpToken);
         refreshTokenService.revokeUserTokens(user.getId());
         accountLockoutService.unlock(user.getEmail());
+        eventPublisher.publishEvent(new UserAuthChangeEvent(user.getEmail(), null));
     }
 
     /**
@@ -204,25 +286,16 @@ public class PasswordResetService {
         return normalizedPhone;
     }
 
-    /**
-     * Hashes a string using SHA-256.
-     */
     private String sha256(String raw) {
-        try {
-            var digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return java.util.HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            throw new IllegalStateException("Cannot hash token", e);
-        }
+        return com.qros.shared.security.HashUtils.sha256Hex(raw);
     }
 
     private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 4) {
-            return "****";
-        }
+        return com.qros.shared.security.PhoneMasker.mask(phone);
+    }
 
-        return "****" + phone.substring(phone.length() - 4);
+    private boolean isAccountActive(User user) {
+        return user != null && !user.isDeleted() && user.getStatus() == UserStatus.ACTIVE;
     }
 
     private boolean shouldLogOtpInDev() {

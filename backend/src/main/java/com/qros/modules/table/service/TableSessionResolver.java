@@ -58,6 +58,62 @@ public class TableSessionResolver {
                 .toList();
     }
 
+    public List<DiningTable> getAllMemberTables(@NonNull Long sessionId) {
+        return membershipRepository.findAllBySessionId(sessionId).stream()
+                .map(TableSessionTable::getTable)
+                .distinct()
+                .sorted(Comparator.comparing(DiningTable::getTableNumber, TableSessionResolver::compareTableNumbers))
+                .toList();
+    }
+
+    public java.util.Map<Long, String> getDisplayNamesBySessionIds(java.util.Collection<Long> sessionIds) {
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        List<Long> distinctIds = sessionIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return java.util.Map.of();
+        }
+        List<TableSessionTable> memberships = membershipRepository.findAllBySessionIdIn(distinctIds);
+        if (memberships == null || memberships.isEmpty()) {
+            return java.util.Map.of();
+        }
+        java.util.Map<Long, List<TableSessionTable>> bySession = memberships.stream()
+                .filter(m -> m.getSession() != null && m.getSession().getId() != null && m.getTable() != null)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        m -> m.getSession().getId()));
+
+        java.util.Map<Long, String> result = new java.util.HashMap<>();
+        bySession.forEach((sessionId, rows) -> {
+            List<DiningTable> active = rows.stream()
+                    .filter(m -> m.getReleasedAt() == null)
+                    .map(TableSessionTable::getTable)
+                    .distinct()
+                    .sorted(Comparator.comparing(
+                            DiningTable::getTableNumber, TableSessionResolver::compareTableNumbers))
+                    .toList();
+            List<DiningTable> effective = !active.isEmpty()
+                    ? active
+                    : rows.stream()
+                            .map(TableSessionTable::getTable)
+                            .distinct()
+                            .sorted(Comparator.comparing(
+                                    DiningTable::getTableNumber, TableSessionResolver::compareTableNumbers))
+                            .toList();
+            if (!effective.isEmpty()) {
+                result.put(sessionId, displayName(effective));
+            }
+        });
+        return result;
+    }
+
+    public boolean tableEverBelongedToSession(@NonNull Long sessionId, @NonNull String tableCode) {
+        return membershipRepository.existsAnyBySessionIdAndTableCode(sessionId, tableCode);
+    }
+
     public DiningTable requirePrimaryTable(@NonNull TableSession session) {
         if (session.getTable() != null) {
             return session.getTable();
@@ -97,20 +153,6 @@ public class TableSessionResolver {
     }
 
     private static int compareTableNumbers(String left, String right) {
-        if (left == null && right == null) {
-            return 0;
-        }
-        if (left == null) {
-            return -1;
-        }
-        if (right == null) {
-            return 1;
-        }
-
-        try {
-            return Integer.compare(Integer.parseInt(left), Integer.parseInt(right));
-        } catch (NumberFormatException ignored) {
-            return left.compareToIgnoreCase(right);
-        }
+        return TableNumberComparator.compare(left, right);
     }
 }

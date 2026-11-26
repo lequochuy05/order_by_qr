@@ -1,8 +1,8 @@
 package com.qros.modules.table.service;
 
-import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.storage.StorageService;
 import com.qros.modules.table.dto.internal.TableQrMedia;
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.Map;

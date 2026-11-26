@@ -27,6 +27,7 @@ public class GeminiChatGateway implements AiChatGateway {
 
     private static final String FALLBACK_REPLY =
             "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Bạn có thể xem thực đơn trực tiếp trên trang nhé! 😊";
+    private static final long MAX_TOTAL_BUDGET_NANOS = Duration.ofSeconds(45).toNanos();
 
     private final GeminiProperties properties;
     private final ObjectMapper objectMapper;
@@ -124,21 +125,39 @@ public class GeminiChatGateway implements AiChatGateway {
 
         List<String> targetUrls = new ArrayList<>();
         targetUrls.add(primaryUrl);
-        if (primaryUrl.contains("gemini-3.5-flash-lite")) {
-            targetUrls.add(primaryUrl.replace("gemini-3.5-flash-lite", "gemini-3.8-flash"));
-        } else if (primaryUrl.contains("gemini-3.8-flash")) {
-            targetUrls.add(primaryUrl.replace("gemini-3.8-flash", "gemini-3.5-flash-lite"));
+        String configuredFallback = resolveFallbackApiUrl(primaryUrl);
+        if (configuredFallback != null && !configuredFallback.equals(primaryUrl)) {
+            targetUrls.add(configuredFallback);
         }
 
-        for (String url : targetUrls) {
+        long deadlineNanos = System.nanoTime() + MAX_TOTAL_BUDGET_NANOS;
+
+        for (int urlIndex = 0; urlIndex < targetUrls.size(); urlIndex++) {
+            String url = targetUrls.get(urlIndex);
+            boolean hasAlternateModel = urlIndex < targetUrls.size() - 1;
             for (int attempt = 1; attempt <= 2; attempt++) {
+                if (urlIndex > 0 || attempt > 1) {
+                    if (System.nanoTime() >= deadlineNanos) {
+                        log.warn("Gemini API total retry budget exhausted; returning fallback reply");
+                        return FALLBACK_REPLY;
+                    }
+                }
                 try {
                     ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
                     return extractText(response.getBody());
                 } catch (HttpStatusCodeException httpEx) {
                     int statusCode = httpEx.getStatusCode().value();
                     boolean isTransient = statusCode == 503 || statusCode == 429;
-                    if (isTransient && attempt < 2) {
+                    boolean isModelNotFound = statusCode == 404;
+                    if (isModelNotFound && hasAlternateModel) {
+                        log.warn(
+                                "Gemini model URL {} returned 404, switching to alternate model...",
+                                maskSensitiveUrl(url));
+                        break;
+                    }
+                    if (isTransient
+                            && attempt < 2
+                            && System.nanoTime() + Duration.ofSeconds(2).toNanos() < deadlineNanos) {
                         log.warn(
                                 "Gemini API returned status {} (transient spike), retrying in 1s (attempt {}/2)...",
                                 statusCode,
@@ -147,10 +166,11 @@ public class GeminiChatGateway implements AiChatGateway {
                             Thread.sleep(1000);
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
+                            return FALLBACK_REPLY;
                         }
                         continue;
                     }
-                    if (isTransient && targetUrls.indexOf(url) < targetUrls.size() - 1) {
+                    if (isTransient && hasAlternateModel) {
                         log.warn(
                                 "Gemini model in {} is overloaded (503/429), switching to alternate model...",
                                 maskSensitiveUrl(url));
@@ -187,13 +207,21 @@ public class GeminiChatGateway implements AiChatGateway {
         if (url == null || url.isBlank()) {
             url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent";
         }
-        if (!url.contains("key=")
-                && properties.apiKey() != null
-                && !properties.apiKey().isBlank()) {
-            String separator = url.contains("?") ? "&" : "?";
-            url = url + separator + "key=" + properties.apiKey().trim();
+        // Authenticate exclusively via x-goog-api-key header (never duplicate API key in URL query params).
+        return url.trim();
+    }
+
+    private String resolveFallbackApiUrl(String primaryUrl) {
+        if (properties.fallbackApiUrl() != null && !properties.fallbackApiUrl().isBlank()) {
+            return properties.fallbackApiUrl().trim();
         }
-        return url;
+        if (primaryUrl.contains("gemini-3.5-flash-lite")) {
+            return primaryUrl.replace("gemini-3.5-flash-lite", "gemini-3.8-flash");
+        }
+        if (primaryUrl.contains("gemini-3.8-flash")) {
+            return primaryUrl.replace("gemini-3.8-flash", "gemini-3.5-flash-lite");
+        }
+        return null;
     }
 
     private Map<String, Object> buildPayload(AiChatRequest request, String systemPrompt) {

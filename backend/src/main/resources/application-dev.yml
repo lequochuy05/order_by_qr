@@ -1,6 +1,4 @@
 app:
-  qr:
-    secret: ${QR_SIGNING_SECRET:}
   security:
     enable-default-admin: ${DEV_ADMIN_BOOTSTRAP_ENABLED:false}
     default-admin-email: ${DEV_ADMIN_EMAIL:}

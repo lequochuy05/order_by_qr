@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -82,6 +83,24 @@ public interface TableServiceRequestRepository extends JpaRepository<TableServic
             @Param("statuses") Collection<ServiceRequestStatus> statuses,
             @Param("tableId") Long tableId,
             @Param("claimedByUserId") Long claimedByUserId);
+
+    @Query("""
+            SELECT r
+            FROM TableServiceRequest r
+            JOIN FETCH r.table
+            JOIN FETCH r.tableSession
+            LEFT JOIN FETCH r.claimedByUser
+            LEFT JOIN FETCH r.resolvedByUser
+            WHERE r.status IN :statuses
+              AND (CAST(:tableId AS long) IS NULL OR r.table.id = :tableId)
+              AND (CAST(:claimedByUserId AS long) IS NULL OR r.claimedByUser.id = :claimedByUserId)
+            ORDER BY r.createdAt DESC, r.id DESC
+            """)
+    List<TableServiceRequest> findByStatusesOrderByCreatedAtDesc(
+            @Param("statuses") Collection<ServiceRequestStatus> statuses,
+            @Param("tableId") Long tableId,
+            @Param("claimedByUserId") Long claimedByUserId,
+            Pageable pageable);
 
     @Query("""
             SELECT r

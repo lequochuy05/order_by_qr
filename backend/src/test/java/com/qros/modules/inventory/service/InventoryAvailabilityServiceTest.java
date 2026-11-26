@@ -10,8 +10,7 @@ import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,10 +29,7 @@ class InventoryAvailabilityServiceTest {
     private RecipeItemRepository recipeItemRepository;
 
     @Mock
-    private MenuItemRepository menuItemRepository;
-
-    @Mock
-    private ComboRepository comboRepository;
+    private MenuCatalogLookupService menuCatalogLookupService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -42,8 +38,8 @@ class InventoryAvailabilityServiceTest {
 
     @BeforeEach
     void setUp() {
-        availabilityService = new InventoryAvailabilityService(
-                recipeItemRepository, menuItemRepository, comboRepository, eventPublisher);
+        availabilityService =
+                new InventoryAvailabilityService(recipeItemRepository, menuCatalogLookupService, eventPublisher);
     }
 
     @Test
@@ -84,17 +80,16 @@ class InventoryAvailabilityServiceTest {
                         .quantity(1)
                         .build());
 
-        when(comboRepository.findAllByMenuItemIdsWithItems(List.of(10L))).thenReturn(List.of(combo));
+        when(menuCatalogLookupService.findCombosByMenuItemIdsWithItems(List.of(10L)))
+                .thenReturn(List.of(combo));
 
         // 1. Dish 1 marked out of stock -> Combo becomes unavailable
         availabilityService.syncCombosForMenuItem(dish1);
         assertThat(combo.getAvailable()).isFalse();
-        verify(comboRepository).save(combo);
+        verify(menuCatalogLookupService).saveAllCombos(List.of(combo));
 
         // 2. Dish 1 re-enabled -> Combo automatically becomes available again
         dish1.setAvailable(true);
-        when(menuItemRepository.existsById(10L)).thenReturn(true);
-        when(recipeItemRepository.findByMenuItemId(10L)).thenReturn(List.of());
         when(recipeItemRepository.findByMenuItemIds(List.of(10L, 20L))).thenReturn(List.of());
 
         availabilityService.syncCombosForMenuItem(dish1);
@@ -126,7 +121,7 @@ class InventoryAvailabilityServiceTest {
                         ComboItem.builder().id(2L).menuItem(dish2).quantity(1).build())))
                 .build();
 
-        when(comboRepository.findAllByIdInWithItems(List.of(100L))).thenReturn(List.of(combo));
+        when(menuCatalogLookupService.findCombosByIdsWithItems(List.of(100L))).thenReturn(List.of(combo));
 
         Map<Long, Boolean> result = availabilityService.getComboAvailabilityByIds(List.of(100L));
 
@@ -176,9 +171,10 @@ class InventoryAvailabilityServiceTest {
                 .build();
 
         when(recipeItemRepository.findByInventoryItemIds(List.of(500L))).thenReturn(List.of(phoBeefRecipe));
-        when(menuItemRepository.findAllByIdIn(List.of(10L))).thenReturn(List.of(phoBo));
+        when(menuCatalogLookupService.findMenuItemsByIds(List.of(10L))).thenReturn(List.of(phoBo));
         when(recipeItemRepository.findByMenuItemIds(List.of(10L))).thenReturn(List.of(phoBeefRecipe));
-        when(comboRepository.findAllByMenuItemIdsWithItems(List.of(10L))).thenReturn(List.of(combo));
+        when(menuCatalogLookupService.findCombosByMenuItemIdsWithItems(List.of(10L)))
+                .thenReturn(List.of(combo));
         when(recipeItemRepository.findByMenuItemIds(List.of(10L, 20L))).thenReturn(List.of(phoBeefRecipe));
 
         // 1. Beef has 0.100 kg (< 0.200 kg required) -> both Pho Bo and Combo become unavailable

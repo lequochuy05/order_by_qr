@@ -18,9 +18,8 @@ import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.shared.enums.PaymentMethod;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +39,10 @@ public class PaymentService {
     private final PaymentGatewayCancellationService gatewayCancellationService;
 
     public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId) {
+        return createPayment(request, userId, null);
+    }
+
+    public PaymentCreateResponse createPayment(@NonNull PaymentCreateRequest request, Long userId, String returnPath) {
         validatePaymentMethodEnabled(request.paymentMethod());
 
         if (request.paymentMethod() == PaymentMethod.CASH) {
@@ -66,15 +69,25 @@ public class PaymentService {
             return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
         }
 
+        if (preparation.cancelledOnlineTransactions() != null
+                && !preparation.cancelledOnlineTransactions().isEmpty()) {
+            gatewayCancellationService.cancelPendingOnlineGatewayLinks(
+                    preparation.cancelledOnlineTransactions(), "Superseded by a new payment request");
+        }
+
+        if (!preparation.gatewayCallRequired()
+                && preparation.transaction().getStatus() == PaymentTransactionStatus.PAID) {
+            return paymentMapper.toCreateResponse(preparation.transaction());
+        }
+
         final PaymentGateway gateway = gatewayResolver.resolve(request.paymentMethod());
 
-        // Nếu reuse transaction cũ đã có QR sẵn thì trả về luôn
+        // Reuse an already-created active online payment transaction that has a QR code.
         if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() != null) {
             return paymentMapper.toCreateResponse(preparation.transaction());
         }
 
-        // Transaction cũ bị stuck ở CREATING (gateway đã nhận nhưng chưa complete)
-        // → cancel link PayOS cũ để tránh "đơn đã tồn tại" khi tạo lại
+        // Recover a transaction stuck in CREATING (gateway call did not finalize) by cancelling and recreating.
         if (!preparation.gatewayCallRequired() && preparation.transaction().getQrCode() == null) {
             final PaymentTransaction stuckTx = preparation.transaction();
             try {
@@ -86,18 +99,21 @@ public class PaymentService {
                 log.warn("Could not cancel stuck PayOS link {} before retry: {}", stuckTx.getId(), ex.getMessage());
             }
             persistenceService.markOnlineCreationFailed(stuckTx.getId(), "Cancelled to retry");
-            // Tạo transaction mới
             try {
                 preparation = persistenceService.prepareOnline(request);
             } catch (DataIntegrityViolationException exception) {
                 return paymentMapper.toCreateResponse(persistenceService.recoverIdempotency(request));
             }
+            if (!preparation.gatewayCallRequired()
+                    && preparation.transaction().getStatus() == PaymentTransactionStatus.PAID) {
+                return paymentMapper.toCreateResponse(preparation.transaction());
+            }
         }
 
         final PaymentTransaction finalTx = preparation.transaction();
         try {
-            PaymentGatewayCreateResult result =
-                    recordGatewayCall("create", request.paymentMethod(), () -> gateway.createPaymentLink(finalTx));
+            PaymentGatewayCreateResult result = recordGatewayCall(
+                    "create", request.paymentMethod(), () -> gateway.createPaymentLink(finalTx, returnPath));
             return paymentMapper.toCreateResponse(persistenceService.completeOnlineCreation(finalTx.getId(), result));
         } catch (RuntimeException exception) {
             // H9 fix: wrap the failure-mark in its own try/catch so a secondary persistence
@@ -139,9 +155,26 @@ public class PaymentService {
         }
 
         PaymentGateway gateway = gatewayResolver.resolve(transaction.getPaymentMethod());
-        PaymentGatewayStatusResult result = recordGatewayCall(
-                "status", transaction.getPaymentMethod(), () -> gateway.getPaymentStatus(transaction));
-        return paymentMapper.toTransactionResponse(persistenceService.applyGatewayStatus(transactionId, result));
+        try {
+            PaymentGatewayStatusResult result = recordGatewayCall(
+                    "status", transaction.getPaymentMethod(), () -> gateway.getPaymentStatus(transaction));
+            return paymentMapper.toTransactionResponse(persistenceService.applyGatewayStatus(transactionId, result));
+        } catch (BusinessException ex) {
+            boolean orphanedCreating = transaction.getStatus() == PaymentTransactionStatus.CREATING
+                    && transaction.getCheckoutUrl() == null
+                    && transaction.getExpiresAt() != null
+                    && transaction.getExpiresAt().isBefore(AppTime.now());
+            if (orphanedCreating && ex.getErrorCode() == ErrorCode.PAYMENT_GATEWAY_ERROR) {
+                log.warn(
+                        "Expiring orphaned CREATING transaction {} after gateway lookup failed: {}",
+                        transactionId,
+                        ex.getMessage());
+                PaymentTransaction expired = persistenceService.expireOrphanedCreatingTransaction(
+                        transactionId, "Payment creation timed out before gateway link was finalized");
+                return paymentMapper.toTransactionResponse(expired);
+            }
+            throw ex;
+        }
     }
 
     public void confirmPaymentFromWebhook(PaymentWebhookResult webhookResult) {
@@ -171,15 +204,7 @@ public class PaymentService {
     }
 
     private <T> T recordGatewayCall(String operation, PaymentMethod method, java.util.function.Supplier<T> action) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
-            return action.get();
-        } finally {
-            sample.stop(Timer.builder("payment.gateway.latency")
-                    .tag("operation", operation)
-                    .tag("method", Objects.toString(method, "unknown"))
-                    .register(meterRegistry));
-        }
+        return PaymentGatewayMetrics.recordGatewayCall(meterRegistry, operation, method, action);
     }
 
     private void logSlowCashPayment(Long orderId, long startNanos) {

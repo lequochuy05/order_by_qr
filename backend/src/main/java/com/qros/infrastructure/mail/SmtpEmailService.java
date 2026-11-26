@@ -1,8 +1,8 @@
 package com.qros.infrastructure.mail;
 
-import com.qros.core.config.AppProperties;
 import com.qros.infrastructure.mail.template.Admin2faTemplateBuilder;
 import com.qros.infrastructure.mail.template.ResetPasswordTemplateBuilder;
+import com.qros.shared.config.AppProperties;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.net.URI;
@@ -28,7 +28,7 @@ import tools.jackson.databind.ObjectMapper;
  * SmtpEmailService - Manages sending emails via Brevo REST API or SMTP fallback.
  */
 @Service
-public class SmtpEmailService {
+public class SmtpEmailService implements EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(SmtpEmailService.class);
 
@@ -68,9 +68,9 @@ public class SmtpEmailService {
     }
 
     /**
-     * Sends a 2FA OTP verification email to an administrator.
+     * Sends a 2FA OTP verification email to an administrator synchronously so
+     * delivery failures propagate back to the caller as 503.
      */
-    @Async
     public void sendAdmin2faOtpEmail(@NonNull String toEmail, @NonNull String otp) {
         AppProperties.Email email = appProperties.getEmail();
         String subject = "[" + email.getBrandName() + "] Mã xác thực đăng nhập 2FA";

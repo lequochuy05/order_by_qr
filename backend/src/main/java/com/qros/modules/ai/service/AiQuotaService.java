@@ -2,8 +2,8 @@ package com.qros.modules.ai.service;
 
 import com.qros.modules.ai.config.AiQuotaProperties;
 import com.qros.modules.ai.config.AiQuotaProperties.Policy;
-import com.qros.shared.rate_limit.ClientAddressResolver;
-import com.qros.shared.rate_limit.RedisRateLimiter;
+import com.qros.shared.ratelimit.ClientAddressResolver;
+import com.qros.shared.ratelimit.RedisRateLimiter;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;

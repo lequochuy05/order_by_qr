@@ -17,6 +17,7 @@ import com.qros.modules.inventory.mapper.InventoryItemMapper;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.enums.StockMovementType;
 import com.qros.modules.inventory.repository.InventoryItemRepository;
+import com.qros.modules.inventory.repository.OrderItemInventoryReservationRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.shared.event.DomainEvents.InventoryChangeEvent;
 import com.qros.shared.exception.BusinessException;
@@ -39,6 +40,8 @@ class InventoryBatchStockInServiceTest {
     void setUp() {
         inventoryItemRepository = mock(InventoryItemRepository.class);
         RecipeItemRepository recipeItemRepository = mock(RecipeItemRepository.class);
+        OrderItemInventoryReservationRepository reservationRepository =
+                mock(OrderItemInventoryReservationRepository.class);
         stockMovementService = mock(StockMovementService.class);
         inventoryAvailabilityService = mock(InventoryAvailabilityService.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
@@ -46,6 +49,7 @@ class InventoryBatchStockInServiceTest {
         service = new InventoryItemService(
                 inventoryItemRepository,
                 recipeItemRepository,
+                reservationRepository,
                 new InventoryItemMapper(),
                 stockMovementService,
                 inventoryAvailabilityService,

@@ -47,7 +47,6 @@ public class AnalyticsController {
     }
 
     @GetMapping("/revenue")
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<RevenuePointResponse>> revenue(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {

@@ -44,15 +44,13 @@ public final class SecurityRoutes {
 
     public static final String[] SELF_POST = {ApiRoutes.USERS + "/me/avatar"};
 
-    public static final String[] ADMIN_GET = {
-        "/actuator/prometheus", ApiRoutes.FORECAST + "/**", ApiRoutes.ANALYTICS + "/revenue"
-    };
+    public static final String[] ADMIN_GET = {"/actuator/prometheus"};
 
     public static final String[] ADMIN_POST = {ApiRoutes.SETTINGS + "/logo"};
 
     public static final String[] ADMIN_PUT = {ApiRoutes.SETTINGS};
 
-    public static final String[] ADMIN_DELETE = {ApiRoutes.ORDERS + "/**", ApiRoutes.INVENTORY + "/**"};
+    public static final String[] ADMIN_DELETE = {ApiRoutes.ORDERS + "/*", ApiRoutes.INVENTORY_ITEMS + "/*"};
 
     public static final String[] MANAGER_GET = {ApiRoutes.USERS, ApiRoutes.USERS + "/*"};
 
@@ -60,7 +58,7 @@ public final class SecurityRoutes {
         ApiRoutes.ANALYTICS + "/orders/history", ApiRoutes.ANALYTICS + "/orders/summary"
     };
 
-    public static final String[] ANALYTICS_GET = {ApiRoutes.ANALYTICS + "/**"};
+    public static final String[] ANALYTICS_GET = {ApiRoutes.ANALYTICS + "/**", ApiRoutes.FORECAST + "/**"};
 
     public static final String[] STAFF_READ_GET = {
         ApiRoutes.CATEGORIES + "/**",
@@ -79,9 +77,10 @@ public final class SecurityRoutes {
         ApiRoutes.ORDERS + "/table/*/preview",
         ApiRoutes.TABLES,
         ApiRoutes.TABLES + "/**",
-        ApiRoutes.ORDERS + "/active",
-        ApiRoutes.INVENTORY + "/**"
+        ApiRoutes.ORDERS + "/active"
     };
+
+    public static final String[] INVENTORY_READ_GET = {ApiRoutes.INVENTORY + "/**"};
 
     public static final String[] KITCHEN_GET = {ApiRoutes.KITCHEN + "/orders"};
 
@@ -136,7 +135,8 @@ public final class SecurityRoutes {
         ApiRoutes.TABLES + "/**",
         ApiRoutes.VOUCHERS + "/**",
         ApiRoutes.PROMOTIONS + "/**",
-        ApiRoutes.COMBOS + "/**"
+        ApiRoutes.COMBOS + "/**",
+        ApiRoutes.INVENTORY_RECIPES + "/*"
     };
 
     public static final String[] KITCHEN_PATCH = {
@@ -166,7 +166,8 @@ public final class SecurityRoutes {
         ApiRoutes.ORDERS + "/preview",
         ApiRoutes.ORDERS + "/*/reconcile",
         ApiRoutes.TABLE_SESSIONS + "/merge",
-        ApiRoutes.TABLE_SESSIONS + "/*/cancel-merge"
+        ApiRoutes.TABLE_SESSIONS + "/*/cancel-merge",
+        ApiRoutes.TABLE_SESSIONS + "/*/close-empty"
     };
 
     public static final String[] STAFF_OPERATION_DELETE = {ApiRoutes.ORDER_ITEMS + "/*"};

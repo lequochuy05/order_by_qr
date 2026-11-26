@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.qros.shared.config.AppProperties;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.TokenBlacklistService;
 import com.qros.shared.time.AppTime;

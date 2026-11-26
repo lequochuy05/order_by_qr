@@ -21,6 +21,7 @@ public class KitchenMapper {
         return new KitchenOrderResponse(
                 order.getId(),
                 order.getStatus(),
+                order.getPaymentStatus(),
                 order.getFinalAmount(),
                 order.getTable() != null
                         ? new KitchenOrderResponse.TableSummary(

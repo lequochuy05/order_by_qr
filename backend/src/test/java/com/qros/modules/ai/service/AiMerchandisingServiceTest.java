@@ -15,17 +15,17 @@ import com.qros.modules.ai.dto.response.AiPromotionSuggestionsResponse.Promotion
 import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.service.MenuContextProvider.MenuCatalogSnapshot;
 import com.qros.modules.ai.support.AiPromptBuilder;
-import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.DayOfWeekTrafficProjection;
-import com.qros.modules.analytics.repository.projection.HourlyTrafficProjection;
-import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.dto.projection.DayOfWeekTrafficProjection;
+import com.qros.modules.analytics.dto.projection.HourlyTrafficProjection;
+import com.qros.modules.analytics.dto.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.service.AnalyticsLookupService;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.order.repository.OrderItemRepository;
-import com.qros.modules.promotion.repository.PromotionRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
+import com.qros.modules.order.service.OrderLookupService;
+import com.qros.modules.promotion.service.PromotionLookupService;
 import com.qros.modules.settings.dto.response.PublicSettingsResponse;
 import com.qros.modules.settings.service.SystemSettingsService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -42,10 +42,10 @@ import tools.jackson.databind.ObjectMapper;
 class AiMerchandisingServiceTest {
 
     private MenuContextProvider menuContextProvider;
-    private ComboRepository comboRepository;
-    private OrderItemRepository orderItemRepository;
-    private AnalyticsQueryRepository analyticsQueryRepository;
-    private PromotionRepository promotionRepository;
+    private MenuCatalogLookupService menuCatalogLookupService;
+    private OrderLookupService orderLookupService;
+    private AnalyticsLookupService analyticsLookupService;
+    private PromotionLookupService promotionLookupService;
     private SystemSettingsService systemSettingsService;
     private AiChatGateway aiChatGateway;
     private AiMerchandisingService service;
@@ -53,19 +53,19 @@ class AiMerchandisingServiceTest {
     @BeforeEach
     void setUp() {
         menuContextProvider = mock(MenuContextProvider.class);
-        comboRepository = mock(ComboRepository.class);
-        orderItemRepository = mock(OrderItemRepository.class);
-        analyticsQueryRepository = mock(AnalyticsQueryRepository.class);
-        promotionRepository = mock(PromotionRepository.class);
+        menuCatalogLookupService = mock(MenuCatalogLookupService.class);
+        orderLookupService = mock(OrderLookupService.class);
+        analyticsLookupService = mock(AnalyticsLookupService.class);
+        promotionLookupService = mock(PromotionLookupService.class);
         systemSettingsService = mock(SystemSettingsService.class);
         aiChatGateway = mock(AiChatGateway.class);
 
         service = new AiMerchandisingService(
                 menuContextProvider,
-                comboRepository,
-                orderItemRepository,
-                analyticsQueryRepository,
-                promotionRepository,
+                menuCatalogLookupService,
+                orderLookupService,
+                analyticsLookupService,
+                promotionLookupService,
                 systemSettingsService,
                 aiChatGateway,
                 new AiPromptBuilder(),
@@ -121,9 +121,9 @@ class AiMerchandisingServiceTest {
                         .menuItem(item3)
                         .quantity(1)
                         .build()));
-        when(comboRepository.findAllActiveWithItems()).thenReturn(List.of(existing));
-        when(orderItemRepository.findFrequentlyPairedMenuItems(any(), any())).thenReturn(List.of());
-        when(analyticsQueryRepository.topSellingItems(any(), any(), anyInt())).thenReturn(List.of());
+        when(menuCatalogLookupService.findAllActiveCombosWithItems()).thenReturn(List.of(existing));
+        when(orderLookupService.findFrequentlyPairedMenuItems(any(), any())).thenReturn(List.of());
+        when(analyticsLookupService.topSellingItems(any(), any(), anyInt())).thenReturn(List.of());
 
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("""
                 {
@@ -179,10 +179,10 @@ class AiMerchandisingServiceTest {
                 .build();
         when(menuContextProvider.loadAvailableCatalog())
                 .thenReturn(new MenuCatalogSnapshot(Map.of(11L, m1, 12L, m2), Map.of()));
-        when(comboRepository.findAllActiveWithItems()).thenReturn(List.of());
-        when(analyticsQueryRepository.topSellingItems(any(), any(), anyInt()))
+        when(menuCatalogLookupService.findAllActiveCombosWithItems()).thenReturn(List.of());
+        when(analyticsLookupService.topSellingItems(any(), any(), anyInt()))
                 .thenReturn(List.of(topSellerWithNullId("Combo Gia Đình", 9L)));
-        when(orderItemRepository.findFrequentlyPairedMenuItems(any(), any()))
+        when(orderLookupService.findFrequentlyPairedMenuItems(any(), any()))
                 .thenReturn(List.<Object[]>of(new Object[] {11L, "Cơm Tấm", 12L, "Trà Chanh", 18L}));
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("Xin lỗi, hệ thống bận.");
 
@@ -199,9 +199,9 @@ class AiMerchandisingServiceTest {
     @Test
     void suggestPromotionsClampsHoursDiscountAndWeekdays() {
         when(systemSettingsService.getPublicSettings()).thenReturn(settings(LocalTime.of(8, 0), LocalTime.of(22, 0)));
-        when(analyticsQueryRepository.hourlyOrderTraffic(any(), any())).thenReturn(List.of());
-        when(analyticsQueryRepository.dayOfWeekOrderTraffic(any(), any())).thenReturn(List.of());
-        when(promotionRepository.findAllWithDays()).thenReturn(List.of());
+        when(analyticsLookupService.hourlyOrderTraffic(any(), any())).thenReturn(List.of());
+        when(analyticsLookupService.dayOfWeekOrderTraffic(any(), any())).thenReturn(List.of());
+        when(promotionLookupService.findAllWithDays()).thenReturn(List.of());
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("""
                 {
                   "summary": "Tối ưu khung giờ thấp điểm.",
@@ -239,11 +239,11 @@ class AiMerchandisingServiceTest {
     @Test
     void suggestPromotionsUsesTrafficFallbackWithinOpeningHours() {
         when(systemSettingsService.getPublicSettings()).thenReturn(settings(LocalTime.of(9, 0), LocalTime.of(21, 0)));
-        when(analyticsQueryRepository.hourlyOrderTraffic(any(), any()))
+        when(analyticsLookupService.hourlyOrderTraffic(any(), any()))
                 .thenReturn(List.of(hourly(12, 40L), hourly(19, 55L)));
-        when(analyticsQueryRepository.dayOfWeekOrderTraffic(any(), any()))
+        when(analyticsLookupService.dayOfWeekOrderTraffic(any(), any()))
                 .thenReturn(List.of(dayTraffic(6, 50L), dayTraffic(7, 65L)));
-        when(promotionRepository.findAllWithDays()).thenReturn(List.of());
+        when(promotionLookupService.findAllWithDays()).thenReturn(List.of());
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("Tính năng trợ lý AI hiện chưa được bật.");
 
         AiPromotionSuggestionsResponse response = service.suggestPromotions(new AiMerchandisingRequest("vi"));
