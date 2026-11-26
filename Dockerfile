@@ -29,12 +29,17 @@ COPY --chown=spring:spring --from=builder /app/extracted/spring-boot-loader/ ./
 COPY --chown=spring:spring --from=builder /app/extracted/snapshot-dependencies/ ./
 COPY --chown=spring:spring --from=builder /app/extracted/application/ .
 
-# JVM tuning cân bằng throughput (C2 JIT + G1GC) và bộ nhớ container.
+# JVM tuning mặc định an toàn cho container 512 MiB / 0.1 vCPU (Render Free tier).
+# Có thể ghi đè JAVA_OPTS bằng -XX:+UseG1GC -XX:MaxRAMPercentage=65.0 trên server >= 2 GiB RAM.
 ENV TZ="Asia/Ho_Chi_Minh"
 ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh \
-    -XX:MaxRAMPercentage=60.0 \
-    -XX:+UseG1GC \
-    -XX:MaxGCPauseMillis=100 \
+    -Xms64m \
+    -XX:MaxRAMPercentage=45.0 \
+    -XX:MaxMetaspaceSize=128m \
+    -XX:ReservedCodeCacheSize=48m \
+    -XX:+UseSerialGC \
+    -XX:TieredStopAtLevel=1 \
+    -Xss256k \
     -XX:+ExitOnOutOfMemoryError \
     -Djava.security.egd=file:/dev/./urandom"
 
