@@ -33,9 +33,9 @@ COPY --chown=spring:spring --from=builder /app/extracted/application/ .
 # Có thể ghi đè JAVA_OPTS bằng -XX:+UseG1GC -XX:MaxRAMPercentage=65.0 trên server >= 2 GiB RAM.
 ENV TZ="Asia/Ho_Chi_Minh"
 ENV JAVA_OPTS="-Duser.timezone=Asia/Ho_Chi_Minh \
-    -Xms64m \
-    -XX:MaxRAMPercentage=45.0 \
-    -XX:MaxMetaspaceSize=128m \
+    -Xms48m \
+    -XX:MaxRAMPercentage=40.0 \
+    -XX:MaxMetaspaceSize=192m \
     -XX:ReservedCodeCacheSize=48m \
     -XX:+UseSerialGC \
     -XX:TieredStopAtLevel=1 \
