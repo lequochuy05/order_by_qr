@@ -2,7 +2,7 @@
 
 - **Type:** `New Feature`
 - **Branch / Track:** `Nhánh A (Full SDD)` *(Thay đổi API contract công khai `/api/v1/public/ai/chat`, bổ sung endpoint `/api/v1/ai/insights/summary` có RBAC & quota, bổ sung quy tắc `BR-29` → `BR-31`, `US-028` → `US-029`, và cập nhật UI trên `SCR-05`, `SCR-10`)*
-- **Status:** `Implemented (Pending Sync-Back Review)` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
+- **Status:** `Archived` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
 - **Source of Truth:**
   - PO: [journey-features.md](../../01-po/journey-features.md) (`F1.5`, `F6.6`) · [personas.md](../../01-po/personas.md) (`PER-01`, `PER-05`, `PER-06`)
   - Design: [PROTOTYPE_SCREEN_MAP.md](../../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-05`, `SCR-10`) · [DESIGN_SYSTEM.md](../../02-design/DESIGN_SYSTEM.md)

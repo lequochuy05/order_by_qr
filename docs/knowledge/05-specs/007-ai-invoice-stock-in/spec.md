@@ -2,7 +2,7 @@
 
 - **Type:** `New Feature`
 - **Branch / Track:** `Nhánh A (Full SDD)` *(Tích hợp Gemini Vision `inline_data`, endpoint trích xuất ảnh hóa đơn `POST /api/v1/ai/inventory/invoice-ocr`, endpoint nhập kho nguyên tử `POST /api/v1/inventory/items/batch-stock-in`, quy tắc `BR-36` và modal rà soát trên `SCR-18`)*
-- **Status:** `Implemented (Pending Sync-Back Review)` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
+- **Status:** `Archived` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
 - **Source of Truth:**
   - PO: [journey-features.md](../../01-po/journey-features.md) (`F5.8`) · [personas.md](../../01-po/personas.md) (`PER-03`, `PER-05`, `PER-06`)
   - Design: [PROTOTYPE_SCREEN_MAP.md](../../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-18`) · [DESIGN_SYSTEM.md](../../02-design/DESIGN_SYSTEM.md)

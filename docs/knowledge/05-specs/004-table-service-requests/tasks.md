@@ -37,4 +37,4 @@
 ## Nhóm 4 — Verification & Sync-Back Proposal (Chờ duyệt)
 - [x] Đối chiếu thực tế code & hành vi chạy thử với Acceptance Criteria của `US-025`, `US-026`, `US-027` và `BR-25` → `BR-28`.
 - [x] Chuyển `Status` trong [spec.md](./spec.md) sang `Implemented (Pending Sync-Back Review)` và lập **Sync-Back Proposal** (nếu có bất kỳ điểm lệch hoặc điều chỉnh nào phát sinh trong quá trình implement) chờ người dùng duyệt.
-- [ ] *(Chỉ tick sau khi người dùng duyệt)* Áp dụng diff được duyệt vào `docs/knowledge/`, thêm 1 dòng vào bảng `Sync Changelog` trong `KNOWLEDGE_HUB.md` và chuyển `spec.md` sang `Status: Archived`.
+- [x] *(Chỉ tick sau khi người dùng duyệt)* Áp dụng diff được duyệt vào `docs/knowledge/`, thêm 1 dòng vào bảng `Sync Changelog` trong `KNOWLEDGE_HUB.md` và chuyển `spec.md` sang `Status: Archived`.
