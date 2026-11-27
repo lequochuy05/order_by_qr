@@ -1,6 +1,6 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import com.qros.modules.order.listener.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
@@ -35,8 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OrderSettlementService {
 
-    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
-            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = OrderStatus.ACTIVE_STATUSES;
 
     private final OrderRepository orderRepository;
     private final OrderStateFactory orderStateFactory;
@@ -67,31 +66,54 @@ public class OrderSettlementService {
         validatePayable(order, confirmUnfinishedItems);
 
         BigDecimal subtotal = currentSubtotalAmount(order);
-        BigDecimal promotionDiscount = safe(orderPricingService.calculatePromotionDiscount(subtotal));
+        BigDecimal promotionDiscount = safe(orderPricingService.resolveOrderPromotionDiscount(order, subtotal));
+        if (promotionDiscount.compareTo(BigDecimal.ZERO) == 0) {
+            promotionDiscount = safe(orderPricingService.calculatePromotionDiscount(subtotal));
+        }
+
+        boolean voucherChanged = false;
+        BigDecimal targetDiscount;
 
         if (voucherCode != null && !voucherCode.isBlank()) {
             VoucherPaymentResult voucherResult = voucherCheckoutService.resolveForPayment(voucherCode, subtotal);
-            BigDecimal totalDiscount = promotionDiscount
+            targetDiscount = promotionDiscount
                     .add(safe(voucherResult.appliedDiscountAmount()))
                     .min(subtotal);
-
             order.setVoucherCode(voucherResult.voucherCode());
-            orderPricingService.setOrderMoney(order, subtotal, totalDiscount);
-
-            order = orderRepository.save(order);
-            orderCacheInvalidationService.evictAfterOrderMutation(order);
-            validatePayable(order, confirmUnfinishedItems);
+            voucherChanged = true;
+        } else if (voucherCode != null) {
+            // Explicit empty string means caller wants to clear an attached voucher.
+            targetDiscount = promotionDiscount.min(subtotal);
+            if (order.getVoucherCode() != null && !order.getVoucherCode().isBlank()) {
+                order.setVoucherCode(null);
+                voucherChanged = true;
+            }
         } else if (order.getVoucherCode() != null && !order.getVoucherCode().isBlank()) {
-            order.setVoucherCode(null);
-            orderPricingService.setOrderMoney(order, subtotal, promotionDiscount);
+            // Null voucherCode preserves and re-validates the voucher already attached to the order.
+            VoucherPaymentResult voucherResult =
+                    voucherCheckoutService.resolveForPayment(order.getVoucherCode(), subtotal);
+            targetDiscount = promotionDiscount
+                    .add(safe(voucherResult.appliedDiscountAmount()))
+                    .min(subtotal);
+            if (!voucherResult.voucherCode().equals(order.getVoucherCode())) {
+                order.setVoucherCode(voucherResult.voucherCode());
+                voucherChanged = true;
+            }
+        } else {
+            targetDiscount = promotionDiscount.max(currentDiscountAmount(order)).min(subtotal);
+        }
 
-            order = orderRepository.save(order);
-            orderCacheInvalidationService.evictAfterOrderMutation(order);
-            validatePayable(order, confirmUnfinishedItems);
-        } else if (promotionDiscount.compareTo(currentDiscountAmount(order)) > 0) {
-            BigDecimal totalDiscount = promotionDiscount.min(subtotal);
-            orderPricingService.setOrderMoney(order, subtotal, totalDiscount);
+        boolean needsRecalc = voucherChanged || targetDiscount.compareTo(currentDiscountAmount(order)) != 0;
+        if (!needsRecalc) {
+            OrderPricingService.PriceBreakdown breakdown =
+                    orderPricingService.calculatePriceBreakdown(subtotal, targetDiscount);
+            if (breakdown != null && hasBreakdownChanged(order, breakdown)) {
+                needsRecalc = true;
+            }
+        }
 
+        if (needsRecalc) {
+            orderPricingService.setOrderMoney(order, subtotal, targetDiscount);
             order = orderRepository.save(order);
             orderCacheInvalidationService.evictAfterOrderMutation(order);
             validatePayable(order, confirmUnfinishedItems);
@@ -149,9 +171,27 @@ public class OrderSettlementService {
 
     @Transactional(readOnly = true)
     public boolean belongsToTableCode(Order order, @NonNull String tableCode) {
-        return order != null
-                && order.getTable() != null
+        if (order == null) {
+            return false;
+        }
+        if (order.getTableSession() != null && order.getTableSession().getId() != null) {
+            return tableSessionService.tableEverBelongedToSession(
+                    order.getTableSession().getId(), tableCode);
+        }
+        return order.getTable() != null
                 && tableCode.equalsIgnoreCase(order.getTable().getTableCode());
+    }
+
+    @Transactional(readOnly = true)
+    public boolean verifySelfCheckoutSessionAccess(
+            Order order, @NonNull String tableCode, @NonNull String sessionToken) {
+        if (order == null
+                || order.getTableSession() == null
+                || order.getTableSession().getId() == null) {
+            return false;
+        }
+        return tableSessionService.verifySessionAccessForOrder(
+                order.getTableSession().getId(), tableCode, sessionToken);
     }
 
     @Transactional
@@ -166,22 +206,41 @@ public class OrderSettlementService {
             return order;
         }
 
-        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+        if (order.isCancelled() || order.isCompleted()) {
             throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order must be in AWAITING_PAYMENT status before payment completion. Current: "
-                            + order.getStatus());
+                    ErrorCode.ORDER_PAYMENT_INVALID, "Order cannot be settled in current status: " + order.getStatus());
         }
 
         OrderStatus fromStatus = order.getStatus();
+        boolean hasUnfinishedItems = hasUnfinishedKitchenItems(order);
 
-        transitionToCompleted(order, fromStatus);
         order.setPaymentStatus(PaymentStatus.PAID);
         order.setPaymentMethod(paymentMethod);
         order.setPaymentTime(AppTime.now());
         order.setPaidBy(paidBy);
         order.setPaidAmount(totalPaid);
         order.setBusinessDate(order.getPaymentTime().toLocalDate());
+
+        if (hasUnfinishedItems) {
+            // Early settlement / prepaid takeaway: keep order active in kitchen until all items finish.
+            if (order.getStatus() == OrderStatus.AWAITING_PAYMENT) {
+                order.setStatus(OrderStatus.SERVING);
+            }
+            Order savedOrder = orderRepository.save(order);
+            orderAuditService.recordOrderStatus(
+                    savedOrder, fromStatus, savedOrder.getStatus(), paidBy, auditReason + ":early-payment");
+            orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
+            eventPublisher.publishEvent(new OrderChangeEvent());
+            log.info(
+                    "Order #{} settled early via {} payment; keeping status {} while kitchen finishes items",
+                    savedOrder.getId(),
+                    paymentMethod,
+                    savedOrder.getStatus());
+            return savedOrder;
+        }
+
+        List<String> tableCodes = orderCacheInvalidationService.resolveTableCodes(order);
+        transitionToCompleted(order, fromStatus);
 
         Order savedOrder = orderRepository.save(order);
 
@@ -193,7 +252,7 @@ public class OrderSettlementService {
         } else {
             orderTableSyncService.recalcTableStatus(savedOrder);
         }
-        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder);
+        orderCacheInvalidationService.evictAfterOrderMutation(savedOrder, tableCodes);
         eventPublisher.publishEvent(new OrderSettledEvent(savedOrder.getId(), savedOrder.getBusinessDate()));
         eventPublisher.publishEvent(new OrderChangeEvent());
 
@@ -207,22 +266,28 @@ public class OrderSettlementService {
             throw new BusinessException(ErrorCode.ORDER_ALREADY_PAID, "This order is already settled");
         }
 
-        if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
-            throw new BusinessException(
-                    ErrorCode.ORDER_PAYMENT_INVALID,
-                    "Order must be in AWAITING_PAYMENT status before payment. Current: " + order.getStatus());
+        if (order.isCancelled()) {
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Cancelled orders cannot be paid");
         }
 
-        if (currentFinalAmount(order).compareTo(BigDecimal.ZERO) <= 0) {
+        BigDecimal finalAmount = currentFinalAmount(order);
+        BigDecimal subtotal = currentSubtotalAmount(order);
+        boolean hasBillableItems = order.getOrderItems().stream().anyMatch(OrderItem::isBillable);
+
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Order has invalid negative payable amount");
+        }
+        if (finalAmount.compareTo(BigDecimal.ZERO) == 0
+                && (subtotal.compareTo(BigDecimal.ZERO) <= 0 || !hasBillableItems)) {
             throw new BusinessException(ErrorCode.ORDER_PAYMENT_INVALID, "Order has no payable amount");
         }
 
-        boolean hasUnfinishedItems =
-                order.getOrderItems().stream().anyMatch(item -> item.isPending() || item.isCooking());
+        boolean hasUnfinishedItems = hasUnfinishedKitchenItems(order);
 
         if (hasUnfinishedItems) {
-            boolean allowed = Boolean.TRUE.equals(
-                    systemSettingsService.getSettingsEntity().getAllowSettlementWithUnfinishedItems());
+            boolean allowed = order.isTakeaway()
+                    || Boolean.TRUE.equals(
+                            systemSettingsService.getSettingsEntity().getAllowSettlementWithUnfinishedItems());
             if (!allowed) {
                 throw new BusinessException(
                         ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
@@ -233,12 +298,35 @@ public class OrderSettlementService {
                         ErrorCode.ORDER_HAS_UNFINISHED_ITEMS,
                         "Order has items still being prepared. Set confirmUnfinishedItems=true to proceed");
             }
+            if (order.getStatus() != OrderStatus.AWAITING_PAYMENT
+                    && order.getStatus() != OrderStatus.PENDING
+                    && order.getStatus() != OrderStatus.SERVING) {
+                throw new BusinessException(
+                        ErrorCode.ORDER_PAYMENT_INVALID,
+                        "Order cannot be settled in current status: " + order.getStatus());
+            }
             log.warn("Order #{} settled with unfinished kitchen items (confirmUnfinishedItems=true)", order.getId());
+        } else if (order.getStatus() != OrderStatus.AWAITING_PAYMENT) {
+            throw new BusinessException(
+                    ErrorCode.ORDER_PAYMENT_INVALID,
+                    "Order must be in AWAITING_PAYMENT status before payment. Current: " + order.getStatus());
         }
     }
 
+    private boolean hasUnfinishedKitchenItems(Order order) {
+        return order.getOrderItems().stream().anyMatch(item -> item.isPending() || item.isCooking());
+    }
+
+    private boolean hasBreakdownChanged(Order order, OrderPricingService.PriceBreakdown breakdown) {
+        return safe(order.getServiceChargePercentSnapshot()).compareTo(breakdown.serviceChargePercent()) != 0
+                || safe(order.getServiceChargeAmount()).compareTo(breakdown.serviceChargeAmount()) != 0
+                || safe(order.getTaxPercentSnapshot()).compareTo(breakdown.taxPercent()) != 0
+                || safe(order.getTaxAmount()).compareTo(breakdown.taxAmount()) != 0
+                || currentFinalAmount(order).compareTo(breakdown.finalAmount()) != 0;
+    }
+
     private BigDecimal currentFinalAmount(Order order) {
-        return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
+        return order.getEffectiveFinalAmount();
     }
 
     private BigDecimal currentSubtotalAmount(Order order) {

@@ -2,7 +2,6 @@ package com.qros.modules.ai.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -12,12 +11,11 @@ import com.qros.modules.ai.dto.response.AiRestockSuggestionResponse;
 import com.qros.modules.ai.dto.response.AiRestockSuggestionResponse.RestockItemProposal;
 import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.support.AiPromptBuilder;
-import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.dto.projection.MenuItemDemandProjection;
+import com.qros.modules.analytics.service.AnalyticsLookupService;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.RecipeItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
-import com.qros.modules.inventory.repository.RecipeItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.modules.menu.model.MenuItem;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
@@ -28,23 +26,20 @@ import tools.jackson.databind.ObjectMapper;
 
 class AiInventoryRestockServiceTest {
 
-    private InventoryItemRepository inventoryItemRepository;
-    private RecipeItemRepository recipeItemRepository;
-    private AnalyticsQueryRepository analyticsQueryRepository;
+    private InventoryLookupService inventoryLookupService;
+    private AnalyticsLookupService analyticsLookupService;
     private AiChatGateway aiChatGateway;
     private AiInventoryRestockService service;
 
     @BeforeEach
     void setUp() {
-        inventoryItemRepository = mock(InventoryItemRepository.class);
-        recipeItemRepository = mock(RecipeItemRepository.class);
-        analyticsQueryRepository = mock(AnalyticsQueryRepository.class);
+        inventoryLookupService = mock(InventoryLookupService.class);
+        analyticsLookupService = mock(AnalyticsLookupService.class);
         aiChatGateway = mock(AiChatGateway.class);
 
         service = new AiInventoryRestockService(
-                inventoryItemRepository,
-                recipeItemRepository,
-                analyticsQueryRepository,
+                inventoryLookupService,
+                analyticsLookupService,
                 aiChatGateway,
                 new AiPromptBuilder(),
                 new ObjectMapper(),
@@ -82,10 +77,10 @@ class AiInventoryRestockServiceTest {
                 .quantityRequired(new BigDecimal("0.250"))
                 .build();
 
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(beef, herb));
-        when(analyticsQueryRepository.topSellingItems(any(), any(), anyInt()))
-                .thenReturn(List.of(topSeller(10L, "Phở Bò", 60L)));
-        when(recipeItemRepository.findAllActiveWithMenuAndInventory()).thenReturn(List.of(beefRecipe));
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of(beef, herb));
+        when(analyticsLookupService.menuItemDemandIncludingCombos(any(), any()))
+                .thenReturn(List.of(demandItem(10L, 60L)));
+        when(inventoryLookupService.findAllActiveRecipesWithMenuAndInventory()).thenReturn(List.of(beefRecipe));
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("""
                 {
                   "summary": "Cần nhập gấp Thịt bò Mỹ cho 7 ngày tới.",
@@ -135,9 +130,9 @@ class AiInventoryRestockServiceTest {
                 .active(true)
                 .build();
 
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(milk));
-        when(analyticsQueryRepository.topSellingItems(any(), any(), anyInt())).thenReturn(List.of());
-        when(recipeItemRepository.findAllActiveWithMenuAndInventory()).thenReturn(List.of());
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of(milk));
+        when(analyticsLookupService.menuItemDemandIncludingCombos(any(), any())).thenReturn(List.of());
+        when(inventoryLookupService.findAllActiveRecipesWithMenuAndInventory()).thenReturn(List.of());
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("Tính năng trợ lý AI hiện chưa được bật.");
 
         AiRestockSuggestionResponse response = service.suggestRestock(new AiRestockSuggestionRequest(14, "en"));
@@ -150,36 +145,16 @@ class AiInventoryRestockServiceTest {
         assertThat(response.summary()).contains("14 days");
     }
 
-    private static TopSellingItemProjection topSeller(Long id, String name, long qty) {
-        return new TopSellingItemProjection() {
+    private static MenuItemDemandProjection demandItem(Long id, long qty) {
+        return new MenuItemDemandProjection() {
             @Override
             public Long getMenuItemId() {
                 return id;
             }
 
             @Override
-            public String getItemName() {
-                return name;
-            }
-
-            @Override
-            public String getCategoryName() {
-                return "Món chính";
-            }
-
-            @Override
-            public String getImageUrl() {
-                return null;
-            }
-
-            @Override
             public Long getQuantitySold() {
                 return qty;
-            }
-
-            @Override
-            public BigDecimal getRevenue() {
-                return BigDecimal.valueOf(qty * 50000L);
             }
         };
     }

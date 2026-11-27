@@ -20,22 +20,8 @@ export const useOrderAnalyticsQuery = (filters = {}, options = {}) =>
       filters.to,
       filters.status,
       filters.tableNumber,
+      filters.orderId,
     ],
     queryFn: () => orderService.getOrderAnalytics(filters),
-    ...options,
-  });
-
-export const useActiveOrdersQuery = (options = {}) =>
-  useQuery({
-    queryKey: queryKeys.orders.active,
-    queryFn: () => orderService.getActiveOrders(),
-    ...options,
-  });
-
-export const useCurrentOrderQuery = (tableId, options = {}) =>
-  useQuery({
-    queryKey: queryKeys.orders.detail(`current-${tableId}`),
-    queryFn: () => orderService.getCurrentOrder(tableId),
-    enabled: !!tableId,
     ...options,
   });

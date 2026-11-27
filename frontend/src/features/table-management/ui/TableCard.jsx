@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   BellRing,
   Users,
@@ -9,18 +9,32 @@ import {
   Trash2,
   Clock,
   Link2,
+  CheckCircle2,
+  DoorOpen,
 } from 'lucide-react';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { getOrderFinalAmount } from '@entities/order/lib/orderMoney.js';
-import { getTableStatusMeta, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { getOrderFinalAmount } from '@entities/order';
+import { getTableStatusMeta, TABLE_STATUSES } from '@entities/table';
 import { useTranslation } from '@shared/lib/i18n';
+
+const formatElapsedTime = (createdAt, nowMs, isEn) => {
+  if (!createdAt || nowMs == null) return null;
+  const startMs = new Date(createdAt).getTime();
+  if (Number.isNaN(startMs)) return null;
+  const diffMins = Math.max(0, Math.floor((nowMs - startMs) / 60000));
+  if (diffMins < 60) return isEn ? `${diffMins} mins` : `${diffMins} phút`;
+  const hours = Math.floor(diffMins / 60);
+  return isEn ? `${hours}h ${diffMins % 60}m` : `${hours}h ${diffMins % 60}p`;
+};
 
 const TableCard = ({
   table,
   order,
+  nowMs,
   onDetail,
   onAddItems,
   onPay,
+  onCloseEmpty,
   onEdit,
   onDelete,
   onMerge,
@@ -30,9 +44,15 @@ const TableCard = ({
 }) => {
   const { language, isEn, copy } = useTranslation('tables');
   const finalAmount = getOrderFinalAmount(order);
-  const hasOrder = order && finalAmount > 0;
+  const hasOrder = Boolean(order?.id);
+  const isOrderPaid = order?.paymentStatus === 'PAID';
   const isManager = userRole === 'ADMIN' || userRole === 'MANAGER';
   const canPay = ['ADMIN', 'MANAGER', 'CASHIER'].includes(userRole);
+  const canCloseEmpty =
+    ['ADMIN', 'MANAGER', 'STAFF'].includes(userRole) &&
+    table.status === TABLE_STATUSES.OCCUPIED &&
+    Boolean(table.sessionId) &&
+    !hasOrder;
   const tableTitle = table.displayName || (isEn ? `Table ${table.tableNumber}` : `Bàn ${table.tableNumber}`);
   const memberNumbers = table.memberTableNumbers || [];
   const totalCapacity = table.totalCapacity || table.capacity;
@@ -42,33 +62,7 @@ const TableCard = ({
     table.status === TABLE_STATUSES.WAITING_FOR_PAYMENT ||
     order?.status === 'AWAITING_PAYMENT';
 
-  // Tính toán thời gian đã ngồi, tự động cập nhật mỗi 30s
-  const calcTime = useCallback((createdAt) => {
-    if (!createdAt) return null;
-    const start = new Date(createdAt);
-    const now = new Date();
-    const diffMs = now - start;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 60) return isEn ? `${diffMins} mins` : `${diffMins} phút`;
-    const hours = Math.floor(diffMins / 60);
-    return isEn ? `${hours}h ${diffMins % 60}m` : `${hours}h ${diffMins % 60}p`;
-  }, [isEn]);
-  const [timeElapsed, setTimeElapsed] = useState(() => calcTime(order?.createdAt));
-  useEffect(() => {
-    const refreshTimer = setTimeout(() => {
-      setTimeElapsed(calcTime(order?.createdAt));
-    }, 0);
-    if (!order?.createdAt) {
-      return () => clearTimeout(refreshTimer);
-    }
-    const interval = setInterval(() => {
-      setTimeElapsed(calcTime(order?.createdAt));
-    }, 30_000);
-    return () => {
-      clearTimeout(refreshTimer);
-      clearInterval(interval);
-    };
-  }, [order?.createdAt, calcTime]);
+  const timeElapsed = formatElapsedTime(order?.createdAt, nowMs, isEn);
 
   const statusTheme = (() => {
     if (isWaitingPayment) {
@@ -203,12 +197,26 @@ const TableCard = ({
         >
           <PlusCircle className="shrink-0" size={15} /> <span className="truncate">{isEn ? 'Add items' : 'Thêm món'}</span>
         </button>
-        {hasOrder && canPay && (
+        {hasOrder && isOrderPaid && (
+          <div className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 min-[360px]:col-span-2 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <CheckCircle2 size={15} /> {isEn ? 'Paid • Preparing' : 'Đã thanh toán • Đang ra món'}
+          </div>
+        )}
+        {hasOrder && !isOrderPaid && canPay && (
           <button
             onClick={onPay}
             className="flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md shadow-emerald-600/25 hover:from-emerald-500 hover:to-teal-500 active:scale-95 min-[360px]:col-span-2 transition-all"
           >
             <CreditCard size={15} /> {isEn ? 'Payment' : 'Thanh toán'}
+          </button>
+        )}
+        {canCloseEmpty && onCloseEmpty && (
+          <button
+            type="button"
+            onClick={onCloseEmpty}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-300/80 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-800 transition hover:bg-amber-100 active:scale-95 min-[360px]:col-span-2 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40"
+          >
+            <DoorOpen size={15} /> {isEn ? 'Release empty table' : 'Trả bàn trống'}
           </button>
         )}
       </div>

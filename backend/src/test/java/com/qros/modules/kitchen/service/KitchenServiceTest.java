@@ -16,7 +16,7 @@ import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.model.enums.OrderType;
-import com.qros.modules.order.repository.OrderRepository;
+import com.qros.modules.order.service.OrderLookupService;
 import com.qros.modules.order.service.OrderService;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.shared.time.AppTime;
@@ -33,7 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class KitchenServiceTest {
 
     @Mock
-    private OrderRepository orderRepository;
+    private OrderLookupService orderRepository;
 
     @Mock
     private OrderService orderService;
@@ -141,11 +141,9 @@ class KitchenServiceTest {
     }
 
     @Test
-    void updateBatchItemStatusUpdatesEachItem() {
+    void updateBatchItemStatusDelegatesSingleCoalescedBatchCall() {
         kitchenService.updateBatchItemStatus(List.of(10L, 20L, 30L), OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(10L, OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(20L, OrderItemStatus.COOKING, 99L);
-        verify(orderService).updateItemStatus(30L, OrderItemStatus.COOKING, 99L);
+        verify(orderService).updateBatchItemStatus(List.of(10L, 20L, 30L), OrderItemStatus.COOKING, 99L);
     }
 
     @Test

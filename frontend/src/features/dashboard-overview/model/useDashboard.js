@@ -2,9 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardOverviewService } from '@entities/analytics';
 import { getBusinessToday } from '@shared/lib/businessTime.js';
+import { toNumber } from '@shared/lib/formatters.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-
-const toNumber = (value) => Number(value || 0);
 
 const buildCategoryShares = (dishes) => {
   const totalsByCategory = dishes.reduce((acc, dish) => {

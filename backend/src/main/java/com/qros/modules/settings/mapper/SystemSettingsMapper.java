@@ -77,7 +77,10 @@ public class SystemSettingsMapper {
                 settings.getPaymentNotificationEnabled(),
                 settings.getKitchenOverdueNotificationEnabled(),
                 settings.getAllowSettlementWithUnfinishedItems(),
-                Boolean.TRUE.equals(settings.getCustomerSelfCheckoutEnabled()));
+                Boolean.TRUE.equals(settings.getCustomerSelfCheckoutEnabled()),
+                settings.getCurrency(),
+                settings.getTaxPercent(),
+                settings.getServiceChargePercent());
     }
 
     public void updateEntity(SystemSettings settings, SystemSettingsUpdateRequest request) {

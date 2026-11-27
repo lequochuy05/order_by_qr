@@ -58,6 +58,10 @@ public class MenuItem extends BaseEntity {
     @Column(nullable = false)
     private Boolean available = true;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean manuallyPaused = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cate_id", nullable = false)
     private Category category;

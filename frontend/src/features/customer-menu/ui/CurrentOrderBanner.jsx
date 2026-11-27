@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronRight, Clock3, ReceiptText } from 'lucide-react';
 
 import { fmtVND } from '@shared/lib/formatters.js';
-import { getOrderStatusMeta } from '@entities/order/lib/orderStatus.js';
+import { getOrderStatusMeta } from '@entities/order';
 import { calculateSelfCheckoutBreakdown } from '../lib/selfCheckoutHelpers.js';
 
 const countItems = (order) =>
@@ -11,12 +11,23 @@ const countItems = (order) =>
     0,
   );
 
-const CurrentOrderBanner = ({ order, activePromotion = null, onClick }) => {
+const CurrentOrderBanner = ({
+  order,
+  activePromotion = null,
+  restaurantSettings = null,
+  onClick,
+}) => {
   if (!order) return null;
 
   const status = getOrderStatusMeta(order.status);
   const itemCount = countItems(order);
-  const breakdown = calculateSelfCheckoutBreakdown(order, null, activePromotion);
+  const breakdown = calculateSelfCheckoutBreakdown(
+    order,
+    null,
+    activePromotion,
+    null,
+    restaurantSettings,
+  );
 
   return (
     <button

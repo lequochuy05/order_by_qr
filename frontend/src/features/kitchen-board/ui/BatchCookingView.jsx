@@ -13,11 +13,11 @@ import {
   Tag,
   Trash2,
 } from 'lucide-react';
-import { ORDER_ITEM_STATUSES } from '@entities/order/lib/orderStatus.js';
+import { ORDER_ITEM_STATUSES } from '@entities/order';
 import { useConfirm } from '@shared/hooks/useConfirmModal.js';
 import { fmtTime } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
-import { NoteSafetyBadges } from '@shared/ui';
+import { NoteSafetyBadges } from '@entities/ai';
 import { aggregateBatchCookingItems } from '../lib/kitchenItems.js';
 import { getAvailabilityTargetKey } from '../model/useKitchenOrders.js';
 

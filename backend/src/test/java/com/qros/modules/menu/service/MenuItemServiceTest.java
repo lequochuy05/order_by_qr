@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.qros.infrastructure.storage.StorageService;
-import com.qros.modules.inventory.service.InventoryAvailabilityService;
 import com.qros.modules.menu.dto.response.MenuItemResponse;
 import com.qros.modules.menu.mapper.MenuItemMapper;
 import com.qros.modules.menu.mapper.PublicMenuMapper;
@@ -18,6 +17,7 @@ import com.qros.modules.menu.repository.MenuItemRepository;
 import com.qros.shared.event.DomainEvents.MenuChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.math.BigDecimal;
@@ -65,7 +65,10 @@ class MenuItemServiceTest {
     private ImageFileValidator imageFileValidator;
 
     @Mock
-    private InventoryAvailabilityService inventoryAvailabilityService;
+    private MenuInventoryAvailabilityPort inventoryAvailabilityService;
+
+    @Mock
+    private MenuCatalogOrderUsagePort orderUsagePort;
 
     private MenuItemService menuItemService;
 
@@ -82,7 +85,9 @@ class MenuItemServiceTest {
                 eventPublisher,
                 menuItemOptionService,
                 imageFileValidator,
-                inventoryAvailabilityService);
+                inventoryAvailabilityService,
+                orderUsagePort,
+                TransactionExecutor.direct());
     }
 
     @Test
@@ -160,5 +165,30 @@ class MenuItemServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.CONCURRENT_MODIFICATION);
+    }
+
+    @Test
+    void uploadImageCleansUpUploadedFileWhenConcurrentModificationOccursDuringPersist() throws Exception {
+        MenuItem initial =
+                MenuItem.builder().id(8L).version(2L).img("https://old.img").build();
+        MenuItem updatedConcurrently = MenuItem.builder()
+                .id(8L)
+                .version(3L)
+                .img("https://concurrent.img")
+                .build();
+        org.springframework.web.multipart.MultipartFile file =
+                org.mockito.Mockito.mock(org.springframework.web.multipart.MultipartFile.class);
+
+        when(menuItemRepository.findById(8L))
+                .thenReturn(Optional.of(initial))
+                .thenReturn(Optional.of(updatedConcurrently));
+        when(storageService.upload(file, "order_by_qr/menu_items")).thenReturn("https://new.img");
+
+        assertThatThrownBy(() -> menuItemService.uploadImage(8L, 2L, file))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CONCURRENT_MODIFICATION);
+
+        verify(storageService).delete("https://new.img");
     }
 }

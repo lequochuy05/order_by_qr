@@ -3,6 +3,7 @@ package com.qros.modules.table.controller;
 import com.qros.modules.table.dto.request.TableMergeRequest;
 import com.qros.modules.table.dto.response.TableMergeResponse;
 import com.qros.modules.table.service.TableMergeService;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.service.CurrentUserService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
@@ -10,6 +11,7 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TableSessionController {
 
     private final TableMergeService tableMergeService;
+    private final TableSessionService tableSessionService;
     private final CurrentUserService currentUserService;
 
     @PostMapping("/merge")
@@ -34,6 +37,14 @@ public class TableSessionController {
     @PostMapping("/{sessionId}/cancel-merge")
     public ApiResponse<TableMergeResponse> cancelMerge(@PathVariable @NonNull Long sessionId) {
         return ApiResponse.success("Table merge cancelled", tableMergeService.cancelMerge(sessionId));
+    }
+
+    @PostMapping("/{sessionId}/close-empty")
+    @PreAuthorize("hasAnyRole('MANAGER', 'STAFF')")
+    public ApiResponse<Void> closeEmptySession(@PathVariable @NonNull Long sessionId, Principal principal) {
+        String actorEmail = principal != null ? principal.getName() : null;
+        tableSessionService.closeEmptySession(sessionId, actorEmail);
+        return ApiResponse.success("Empty table session closed", null);
     }
 
     private Long resolveUserId(Principal principal) {

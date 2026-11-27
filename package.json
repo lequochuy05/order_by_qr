@@ -1,6 +1,16 @@
 {
-  "name": "qros-audit",
+  "name": "qros-workspace",
   "version": "1.0.0",
   "type": "module",
-  "private": true
+  "private": true,
+  "scripts": {
+    "check": "bash scripts/run_checks.sh",
+    "backend:verify": "mvn -f backend/pom.xml --batch-mode verify",
+    "backend:format": "mvn -f backend/pom.xml spotless:apply",
+    "frontend:test": "npm --prefix frontend test",
+    "frontend:lint": "npm --prefix frontend run lint",
+    "frontend:build": "npm --prefix frontend run build",
+    "audit:ui": "node scripts/phase4_full_ui_audit.js",
+    "audit:android": "node scripts/android_audit.js"
+  }
 }

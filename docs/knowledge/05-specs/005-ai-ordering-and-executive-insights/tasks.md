@@ -32,4 +32,4 @@
 - [x] Chạy `mvn -f backend/pom.xml spotless:apply && mvn -f backend/pom.xml --batch-mode verify` → pass 100% (`280 / 280`).
 - [x] Chạy `npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build` → pass 100% (`128 / 128`, 0 lint errors, Vite build passed).
 - [x] Cập nhật `spec.md` sang `Implemented (Pending Sync-Back Review)` và tick hoàn tất checklist thực thi.
-- [ ] *(Chỉ tick sau khi người dùng duyệt nghiệm thu)* Chuyển `spec.md` sang `Archived` trong `docs/knowledge/KNOWLEDGE_HUB.md`.
+- [x] *(Chỉ tick sau khi người dùng duyệt nghiệm thu)* Chuyển `spec.md` sang `Archived` trong `docs/knowledge/KNOWLEDGE_HUB.md`.

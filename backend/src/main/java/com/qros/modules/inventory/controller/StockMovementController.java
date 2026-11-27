@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,7 @@ public class StockMovementController {
     private final StockMovementService stockMovementService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<Page<StockMovementResponse>> list(
             @RequestParam(required = false) @Min(value = 1, message = "Inventory item id must be positive") Long inventoryItemId,
             @RequestParam(required = false) @Min(value = 1, message = "Order item id must be positive") Long orderItemId,

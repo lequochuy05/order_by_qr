@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày lập báo cáo: 2026-11-14*
 *Đơn vị thực hiện: Senior QA Automation Lead & Frontend Architect*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.23`/`V1.24` & đợt tái cấu trúc 2026-11-23):** Báo cáo này lưu giữ kết quả kiểm toán lịch sử của đợt nghiệm thu QA 6 vai trò × 3 thiết bị. Để xem kiến trúc, danh mục tính năng, route và chỉ số kiểm thử mới nhất (Java 25 / Spring Boot 4.1.2, 25 Flyway migrations `V1`–`V1.24`, 318 backend tests / 144 frontend tests), xem [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 > **Lưu ý tham chiếu chéo (Cross-Reference):** Báo cáo này ghi nhận các lỗi (`BUG-01`–`BUG-05`) từ đợt kiểm toán toàn diện 6 vai trò × 3 thiết bị ngày `2026-11-14`. Đối với các lỗi lịch sử (`BUG-001`–`BUG-005`) của đợt kiểm toán Phase 1 ngày `2026-11-06`, xem thêm tại `artifacts/ui-audit/BUG_REPORT.md`.
 
 ---

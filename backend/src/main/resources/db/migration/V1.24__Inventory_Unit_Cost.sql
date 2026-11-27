@@ -1,0 +1,2 @@
+ALTER TABLE inventory_items
+    ADD COLUMN IF NOT EXISTS unit_cost NUMERIC(15, 2) NOT NULL DEFAULT 0;

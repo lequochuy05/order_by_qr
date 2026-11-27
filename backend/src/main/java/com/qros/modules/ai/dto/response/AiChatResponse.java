@@ -2,7 +2,7 @@ package com.qros.modules.ai.dto.response;
 
 import java.util.List;
 
-public record AiChatResponse(String reply, List<AiSuggestedItem> suggestions) {
+public record AiChatResponse(String reply, List<AiSuggestedItemResponse> suggestions) {
 
     public AiChatResponse {
         suggestions = suggestions == null ? List.of() : List.copyOf(suggestions);

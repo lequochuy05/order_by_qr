@@ -13,7 +13,7 @@ import com.qros.modules.ai.dto.response.AiInvoiceOcrResponse.ExtractedInvoiceLin
 import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import com.qros.modules.inventory.model.InventoryItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.validation.ImageFileValidator;
@@ -30,18 +30,18 @@ class AiInvoiceOcrServiceTest {
     private static final byte[] VALID_JPEG_HEADER =
             new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00};
 
-    private InventoryItemRepository inventoryItemRepository;
+    private InventoryLookupService inventoryLookupService;
     private AiChatGateway aiChatGateway;
     private AiInvoiceOcrService service;
 
     @BeforeEach
     void setUp() {
-        inventoryItemRepository = mock(InventoryItemRepository.class);
+        inventoryLookupService = mock(InventoryLookupService.class);
         aiChatGateway = mock(AiChatGateway.class);
 
         service = new AiInvoiceOcrService(
                 new ImageFileValidator(),
-                inventoryItemRepository,
+                inventoryLookupService,
                 aiChatGateway,
                 new AiPromptBuilder(),
                 new ObjectMapper(),
@@ -57,7 +57,7 @@ class AiInvoiceOcrServiceTest {
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.FILE_INVALID);
 
-        verifyNoInteractions(inventoryItemRepository, aiChatGateway);
+        verifyNoInteractions(inventoryLookupService, aiChatGateway);
     }
 
     @Test
@@ -84,7 +84,7 @@ class AiInvoiceOcrServiceTest {
                 .active(true)
                 .build();
 
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(beef, milk, tomato));
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of(beef, milk, tomato));
         when(aiChatGateway.chatWithImage(anyString(), anyString(), any(byte[].class), anyString()))
                 .thenReturn("""
                 ```json
@@ -173,7 +173,7 @@ class AiInvoiceOcrServiceTest {
 
     @Test
     void returnsBilingualFallbackWhenVisionGatewayIsDisabled() {
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of());
         when(aiChatGateway.chatWithImage(anyString(), anyString(), any(byte[].class), anyString()))
                 .thenReturn("Tính năng trợ lý AI hiện chưa được bật.");
 

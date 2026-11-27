@@ -14,12 +14,12 @@
 
 ### `US-001`: Quét QR bàn để mở Menu tức thì không cần cài app
 - **Stage:** `STG-01` | **Persona:** `PER-01 (Customer)` | **Priority:** `P0`
-- **Traceability:** PO `F1.1` · Design `SCR-01`, `SCR-05`, `SCR-08` · Rules `BR-01`, `BR-24`
+- **Traceability:** PO `F1.1` · Design `SCR-01`, `SCR-05`, `SCR-07`, `SCR-08`, `SCR-09` · Rules `BR-01`, `BR-24`
 - **Story:** Là một **Thực khách**, tôi muốn quét mã QR trên bàn để mở ngay thực đơn đúng số bàn trên điện thoại mà không cần cài ứng dụng hay đăng nhập, để bắt đầu gọi món trong dưới 90 giây.
 - **Acceptance Criteria:**
   1. **Given** mã QR của bàn hợp lệ và bàn không ở trạng thái *Tạm ngưng*, **When** tôi mở liên kết QR, **Then** màn hình `SCR-05` hiển thị đúng số bàn, thực đơn hiện hành và cho phép đổi ngôn ngữ `VI/EN`.
   2. **Given** bàn đang ở trạng thái *Tạm ngưng* hoặc mã QR bị sửa đổi không hợp lệ, **When** tôi truy cập `SCR-05`, **Then** hệ thống vô hiệu hóa thao tác đặt món và hiển thị thông báo mời liên hệ nhân viên.
-  3. **Given** thiết bị mất kết nối Internet, **When** tôi tải trang hoặc thao tác, **Then** hiển thị `SCR-08` hoặc dải cảnh báo mất kết nối có nút thử lại.
+  3. **Given** thiết bị mất kết nối Internet, đường dẫn không tồn tại hoặc hệ thống gặp sự cố ngoài ý muốn, **When** tôi tải trang hoặc thao tác, **Then** hệ thống hiển thị tương ứng `SCR-08` (Mất kết nối), `SCR-07` (Không tìm thấy trang) hoặc `SCR-09` (Thông báo sự cố thân thiện) kèm nút thử lại hoặc quay về trang chính.
 
 ### `US-002`: Đăng nhập nhân sự & điều hướng đúng không gian theo vai trò
 - **Stage:** `STG-01` | **Persona:** `PER-02..05 (Staff/Chef/Cashier/Manager)` | **Priority:** `P0`
@@ -28,7 +28,9 @@
 - **Acceptance Criteria:**
   1. **Given** tôi nhập đúng tài khoản của `PER-03 (Chef)`, **When** tôi đăng nhập thành công trên `SCR-02`, **Then** hệ thống đưa tôi thẳng tới màn hình Bếp `SCR-12` *(tương tự: `PER-02`/`PER-04` → `SCR-11`, `PER-05` → `SCR-10`)*.
   2. **Given** tôi nhập sai mật khẩu liên tiếp vượt ngưỡng cho phép, **When** tôi thử đăng nhập tiếp, **Then** tài khoản bị khóa tạm thời và `SCR-02` thông báo rõ thời điểm có thể thử lại.
-  3. **Given** tôi là `PER-02 (Staff)` nhưng cố mở màn hình báo cáo doanh thu `SCR-22`, **When** hệ thống kiểm tra quyền, **Then** chuyển hướng ngay sang `SCR-06` (Không có quyền truy cập).
+  3. **Given** tôi là `PER-02 (Staff)` nhưng cố mở màn hình báo cáo doanh thu `SCR-22` hoặc kho nguyên liệu `SCR-18`, **When** hệ thống kiểm tra quyền, **Then** chuyển hướng ngay sang `SCR-06` (Không có quyền truy cập).
+  4. **Given** tôi là `PER-06 (Admin)` đang quản trị nhân sự trên `SCR-21`, **When** tôi cố tự hạ quyền, tự vô hiệu hóa chính mình hoặc khóa tài khoản Chủ quán đang hoạt động cuối cùng, **Then** hệ thống chặn thao tác và hiển thị thông báo bảo vệ quyền quản trị tối thiểu (`BR-04`).
+  5. **Given** tôi đăng nhập cùng một tài khoản nhân sự trên nhiều thiết bị (tối đa 10 thiết bị), **When** thiết bị thứ 2 đăng nhập hoặc thiết bị thứ 1 bấm đăng xuất, **Then** phiên trên các thiết bị còn lại vẫn hoạt động bình thường không bị đá văng; ngược lại, khi đổi mật khẩu, đặt lại mật khẩu hoặc tài khoản bị khóa thì toàn bộ phiên trên mọi thiết bị lập tức mất hiệu lực; riêng màn hình Bếp KDS `SCR-12` được miễn tự động đăng xuất sau 20 phút không tương tác (`BR-03`).
 
 ### `US-003`: Xác thực 2 lớp (2FA OTP) cho tài khoản Chủ nhà hàng
 - **Stage:** `STG-01` | **Persona:** `PER-06 (Admin)` | **Priority:** `P0`
@@ -37,7 +39,7 @@
 - **Acceptance Criteria:**
   1. **Given** tôi nhập đúng email và mật khẩu của `PER-06`, **When** bấm đăng nhập trên `SCR-02`, **Then** hệ thống gửi mã OTP 6 số có thời hạn ngắn và chuyển giao diện sang bước nhập 6 ô OTP.
   2. **Given** tôi nhập đúng mã OTP còn hiệu lực, **When** bấm xác nhận, **Then** tôi được cấp phiên làm việc và chuyển vào Dashboard `SCR-10`.
-  3. **Given** tôi bấm "Gửi lại OTP" quá nhanh liên tiếp, **When** vượt tần suất cho phép, **Then** nút gửi lại tạm khóa kèm đồng hồ đếm ngược thời gian chờ trên `SCR-02`.
+  3. **Given** tôi bấm "Gửi lại OTP" quá nhanh liên tiếp hoặc vượt quá **3 lần gửi lại** trong thời hạn tuyệt đối 5 phút, **When** vượt ngưỡng cho phép, **Then** nút gửi lại tạm khóa kèm đồng hồ đếm ngược hoặc yêu cầu đăng nhập lại từ đầu; nếu dịch vụ gửi email gặp sự cố, hệ thống hủy phiên chờ 2FA và hiển thị thông báo tạm gián đoạn thân thiện (`BR-02`).
 
 ### `US-004`: Khôi phục mật khẩu an toàn & bắt buộc đổi mật khẩu lần đầu
 - **Stage:** `STG-01` | **Persona:** `PER-02..06` | **Priority:** `P1`
@@ -45,8 +47,8 @@
 - **Story:** Là một **Nhân sự**, tôi muốn tự đặt lại mật khẩu qua email khi quên và đổi mật khẩu mặc định khi mới được cấp tài khoản, để đảm bảo an toàn tài khoản cá nhân.
 - **Acceptance Criteria:**
   1. **Given** tôi nhập một địa chỉ email hợp lệ định dạng trên `SCR-03`, **When** gửi yêu cầu khôi phục, **Then** hệ thống luôn hiển thị thông báo xác nhận trung tính (không tiết lộ email có tồn tại hay không).
-  2. **Given** tôi mở liên kết đặt lại mật khẩu còn hiệu lực trên `SCR-04` và nhập mật khẩu mới đạt chuẩn độ mạnh, **When** xác nhận, **Then** mật khẩu được cập nhật, mọi phiên đăng nhập cũ bị hủy hiệu lực và tôi đăng nhập lại được bằng mật khẩu mới.
-  3. **Given** tôi đăng nhập lần đầu bằng tài khoản mới cấp có cờ bắt buộc đổi mật khẩu, **When** đăng nhập thành công, **Then** hệ thống dẫn tới `SCR-26` yêu cầu đổi mật khẩu trước khi thao tác các chức năng khác.
+  2. **Given** tôi mở liên kết đặt lại mật khẩu còn hiệu lực trên `SCR-04` (hoặc nhập OTP khôi phục qua SMS chưa vượt quá 5 lần sai) và nhập mật khẩu mới đạt chuẩn độ mạnh (chấp nhận mọi ký tự đặc biệt, tối đa 72 byte UTF-8), **When** xác nhận, **Then** mật khẩu được cập nhật, mọi phiên đăng nhập cũ bị hủy hiệu lực và tôi đăng nhập lại được bằng mật khẩu mới; nếu nhập sai OTP SMS đủ 5 lần, mã khôi phục lập tức bị vô hiệu hóa.
+  3. **Given** tôi đăng nhập lần đầu bằng tài khoản mới cấp có cờ bắt buộc đổi mật khẩu, **When** đăng nhập thành công, **Then** hệ thống dẫn tới `SCR-26`, tạm khóa chỉnh sửa thông tin cá nhân/ảnh đại diện cho tới khi tôi đổi mật khẩu xong; sau khi đổi mật khẩu thành công, hệ thống tự đăng xuất và chuyển về `SCR-02` để đăng nhập lại bằng mật khẩu mới (`BR-03`).
 
 ---
 
@@ -60,6 +62,7 @@
   1. **Given** tôi đang xem `SCR-05`, **When** tôi chọn một món có nhóm tùy chọn, **Then** hộp thoại tùy chọn mở lên, cập nhật lại giá tạm tính theo topping đã chọn và lưu được ghi chú khẩu vị.
   2. **Given** một món đã hết hàng hoặc tạm ngưng bán, **When** thực đơn hiển thị, **Then** thẻ món gắn nhãn *Hết hàng* và vô hiệu hóa nút thêm vào giỏ.
   3. **Given** danh mục hoặc từ khóa tìm kiếm không có món phù hợp, **When** kết quả trả về rỗng, **Then** hiển thị trạng thái rỗng (`Empty State`) thân thiện với nút xóa bộ lọc.
+  4. **Given** giỏ hàng trên `SCR-05` có Combo hoặc món lẻ, **When** tôi bấm nút `+/-` trên dòng Combo hoặc một món trong giỏ vừa chuyển sang hết hàng trên thực đơn trực tiếp (hoặc khung giờ khuyến mãi Giờ vàng vừa kết thúc), **Then** số lượng Combo tăng/giảm trực tiếp trong giỏ, món vừa hết hàng lập tức hiện nhãn *"Tạm hết món"* và vô hiệu hóa nút gửi đơn cho tới khi loại bỏ, đồng thời hiển thị khuyến mãi Giờ vàng tự động ẩn khi hết khung giờ (`BR-05`).
 
 ### `US-006`: Hỏi Trợ lý AI gợi ý món ăn tại bàn
 - **Stage:** `STG-02` | **Persona:** `PER-01 (Customer)` | **Priority:** `P1`
@@ -77,6 +80,7 @@
   1. **Given** giỏ hàng trên `SCR-05` có ít nhất 1 món hợp lệ, **When** tôi bấm "Gửi đơn", **Then** nút chuyển sang trạng thái đang xử lý (chặn bấm đúp), đơn được tạo thành một đợt gọi mới, giỏ hàng được làm trống và hiển thị xác nhận.
   2. **Given** mạng chập chờn khiến yêu cầu gửi cùng một giỏ hàng bị gửi lặp 2 lần, **When** hệ thống tiếp nhận, **Then** chỉ tạo duy nhất 1 đợt gọi món (không nhân đôi đơn).
   3. **Given** bàn tôi đã gọi đợt 1, **When** tôi chọn thêm đồ uống/món phụ và bấm gửi lần 2, **Then** đợt gọi mới được cộng dồn vào chung hóa đơn hiện tại của phiên bàn.
+  4. **Given** thời điểm hiện tại nằm ngoài khung giờ mở cửa của nhà hàng (bao gồm cả trường hợp quán mở ca qua đêm), **When** tôi gửi đơn QR từ `SCR-05`, **Then** hệ thống từ chối đơn kèm thông báo rõ khung giờ phục vụ, trong khi nhân sự nội bộ đặt món hộ vẫn thao tác bình thường (`BR-05`).
 
 ### `US-008`: Theo dõi tiến độ chế biến từng món trực tiếp tại bàn
 - **Stage:** `STG-02` | **Persona:** `PER-01 (Customer)` | **Priority:** `P1`
@@ -116,6 +120,7 @@
   1. **Given** tôi đang mở `SCR-12`, **When** có đơn mới từ bàn hoặc quầy mang về, **Then** thẻ món xuất hiện ngay (< 1 giây) ở cột *Chờ chế biến* với đủ số bàn, số lượng, topping/ghi chú và phát âm thanh nhắc (nếu đang bật).
   2. **Given** món đang ở cột *Chờ chế biến*, **When** tôi bấm bắt đầu nấu rồi hoàn tất, **Then** món tiến tuần tự *Đang nấu → Hoàn tất*, lưu lịch sử thay đổi trạng thái và thông báo ra sàn phục vụ.
   3. **Given** nhân sự có vai trò `PER-02 (Staff)` hoặc `PER-04 (Cashier)` cố truy cập `SCR-12`, **When** mở màn hình, **Then** bị chặn quyền và chuyển về `SCR-06`.
+  4. **Given** một món đã ở cột *Hoàn tất* hoặc thuộc đơn đã *Đã thanh toán*, **When** tôi xem thẻ món trên `SCR-12`, **Then** cột *Hoàn tất* không có nút hoàn tác về *Đang nấu* (nhằm bảo toàn tồn kho đã tiêu thụ) và nút hủy món bị ẩn đối với đơn đã thanh toán trước (`BR-10`).
 
 ### `US-010`: Chế độ Nấu gom theo mẻ, cảnh báo quá 20 phút & báo hết món
 - **Stage:** `STG-03` | **Persona:** `PER-03 (Chef)` | **Priority:** `P1`
@@ -161,9 +166,10 @@
 - **Traceability:** PO `F4.3` · Design `SCR-11` · Rules `BR-13`, `BR-14`
 - **Story:** Là một **Nhân viên phục vụ / Thu ngân**, tôi muốn gộp 2 hoặc nhiều bàn đang hoạt động vào chung một phiên hóa đơn cho nhóm khách đông và có thể hủy gộp nếu ghép nhầm, để tránh nhầm bill khi thanh toán.
 - **Acceptance Criteria:**
-  1. **Given** bàn T02 và T03 đều không ở trạng thái *Tạm ngưng*, **When** tôi chọn gộp hai bàn trên `SCR-11`, **Then** cả hai bàn dùng chung một phiên phục vụ, bảo toàn toàn bộ món đã gọi trước đó và hiển thị nhãn nhóm gộp rõ ràng trên sơ đồ.
+  1. **Given** bàn T02 và T03 đều không ở trạng thái *Tạm ngưng* (kể cả khi một bàn phụ đang mở phiên trống chưa có đơn), **When** tôi chọn gộp hai bàn trên `SCR-11`, **Then** cả hai bàn dùng chung một phiên phục vụ, tự hấp thụ phiên trống phụ, bảo toàn toàn bộ món đã gọi trước đó và hiển thị nhãn nhóm gộp rõ ràng trên sơ đồ.
   2. **Given** một bàn đang ở trạng thái *Tạm ngưng*, **When** tôi mở hộp thoại gộp bàn, **Then** bàn đó không cho phép chọn gộp.
-  3. **Given** nhóm bàn đã gộp chưa thanh toán, **When** tôi thực hiện hủy gộp, **Then** các bàn tách lại trạng thái độc lập nhất quán.
+  3. **Given** nhóm bàn đã gộp chưa thanh toán, **When** tôi thực hiện hủy gộp, **Then** các bàn phụ được tách về *Trống* và phiên bàn chính vẫn được bảo toàn nếu khách đang sử dụng QR tại bàn chính (`BR-14`).
+  4. **Given** một bàn đang ở trạng thái *Đang có khách* nhưng chưa có đơn hàng mở nào, **When** tôi (`PER-02`/`PER-05`/`PER-06`) bấm **Trả bàn trống** trên `SCR-11` và xác nhận, **Then** phiên bàn trống được đóng và bàn chuyển ngay về trạng thái *Trống* (`BR-13`).
 
 ### `US-015`: Tạo và theo dõi đơn mua mang về (Takeaway)
 - **Stage:** `STG-04` | **Persona:** `PER-02 (Staff)`, `PER-04 (Cashier)` | **Priority:** `P1`
@@ -199,8 +205,10 @@
 - **Traceability:** PO `F3.4` · Design `SCR-11`, `SCR-13`, `SCR-05` · Rules `BR-16`, `BR-17`
 - **Story:** Là một **Thu ngân / Thực khách**, tôi muốn áp dụng mã giảm giá hợp lệ cùng khuyến mãi tự động ngay trên màn hình thanh toán, để biết chính xác số tiền cần trả sau ưu đãi.
 - **Acceptance Criteria:**
-  1. **Given** đơn đủ điều kiện tối thiểu và mã voucher còn hạn, còn lượt dùng, **When** tôi nhập mã và áp dụng, **Then** hệ thống hiển thị rõ mức giảm giá và tổng phải thu (`≥ 0`) bằng chữ số thẳng hàng (`tabular/mono`).
-  2. **Given** mã voucher sai, hết hạn, chưa đến thời gian áp dụng hoặc đã hết lượt dùng, **When** tôi bấm áp dụng, **Then** hệ thống từ chối kèm thông báo lý do cụ thể và giữ nguyên tổng tiền cũ.
+  1. **Given** đơn đủ điều kiện tối thiểu và mã voucher còn hạn, còn lượt dùng, **When** tôi nhập mã và áp dụng (trên cả tab Tiền mặt lẫn VietQR), **Then** hệ thống hiển thị rõ mức giảm giá, **phí dịch vụ**, **thuế VAT** (nếu quán cấu hình) và tổng phải thu (`≥ 0`) bằng chữ số thẳng hàng (`tabular/mono`).
+  2. **Given** mã voucher sai, hết hạn, chưa đến thời gian áp dụng hoặc đã hết lượt dùng (kể cả khi lượt cuối đang được giữ chỗ bởi một giao dịch trực tuyến khác), **When** tôi bấm áp dụng hoặc khởi tạo thanh toán, **Then** hệ thống từ chối kèm thông báo lý do cụ thể và giữ nguyên tổng tiền cũ (`BR-17`).
+  3. **Given** tổng phải thu sau giảm giá bằng **0đ** (nhưng đơn có ít nhất 1 món tính tiền), **When** tôi xác nhận thanh toán, **Then** hệ thống chốt thanh toán trực tiếp mà không yêu cầu sinh mã QR chuyển khoản ngoài (`BR-16`).
+  4. **Given** đơn hàng được đặt trong khung Giờ vàng (áp dụng khuyến mãi tự động) nhưng khách thanh toán sau khi khung giờ khuyến mãi đã kết thúc, **When** tôi mở thanh toán hoặc chốt hóa đơn, **Then** tỷ lệ khuyến mãi Giờ vàng đã chốt (snapshot) trên đơn vẫn được giữ nguyên không bị mất ưu đãi (`BR-17`).
 
 ### `US-017`: Thanh toán tiền mặt có kiểm tra tiền khách đưa & tính tiền thối
 - **Stage:** `STG-05` | **Persona:** `PER-04 (Cashier)` | **Priority:** `P0`
@@ -208,17 +216,17 @@
 - **Story:** Là một **Thu ngân**, tôi muốn nhập số tiền mặt khách đưa để hệ thống tự tính tiền thối, chốt hóa đơn, giải phóng bàn và in hóa đơn, để tránh nhầm lẫn tiền mặt giờ cao điểm.
 - **Acceptance Criteria:**
   1. **Given** tổng hóa đơn là `250.000đ` và tôi nhập tiền khách đưa `300.000đ`, **When** xác nhận thanh toán, **Then** hệ thống hiển thị tiền thối `50.000đ`, chốt đơn *Đã thanh toán*, giải phóng toàn bộ bàn trong phiên (gồm bàn gộp) về *Trống* và mở tùy chọn in hóa đơn.
-  2. **Given** tôi nhập số tiền khách đưa nhỏ hơn `250.000đ`, **When** bấm xác nhận, **Then** hệ thống chặn chốt đơn và báo lỗi ngay tại trường nhập.
-  3. **Given** đơn vẫn còn món chưa hoàn tất tại bếp, **When** tôi mở thanh toán, **Then** hệ thống hiển thị cảnh báo rõ ràng theo chính sách chốt đơn của nhà hàng.
+  2. **Given** tôi nhập số tiền khách đưa nhỏ hơn `250.000đ`, **When** bấm xác nhận (trên giao diện hoặc gửi trực tiếp lên hệ thống), **Then** hệ thống chặn chốt đơn, báo lỗi rõ ràng và luôn tự tính tiền thối xác thực phía hệ thống (`BR-16`).
+  3. **Given** đơn vẫn còn món chưa hoàn tất tại bếp (đơn mang về trên `SCR-13` hoặc bàn tại chỗ trên `SCR-11` khi quán bật cho phép thanh toán sớm), **When** tôi xác nhận thanh toán trước, **Then** đơn chuyển trạng thái thanh toán sang *Đã thanh toán*, khóa gọi thêm/sửa/hủy món và hiển thị nhãn **Đã thanh toán • Đang ra món**, nhưng vẫn giữ tiến độ chế biến của bếp đến khi món cuối cùng hoàn tất mới tự động hoàn tất đơn và giải phóng bàn (`BR-16`).
 
 ### `US-018`: Thanh toán chuyển khoản VietQR tự động đối soát (Quầy & Tự thanh toán tại bàn)
 - **Stage:** `STG-05` | **Persona:** `PER-04 (Cashier)`, `PER-01 (Customer)` | **Priority:** `P0`
 - **Traceability:** PO `F3.2`, `F3.3`, `F6.5` · Design `SCR-11`, `SCR-13`, `SCR-05` · Rules `BR-18`, `BR-19`
 - **Story:** Là một **Thu ngân / Thực khách**, tôi muốn khởi tạo mã VietQR động đúng số tiền hóa đơn để khi chuyển khoản xong hệ thống tự chốt đơn và giải phóng bàn, không phải kiểm tra ảnh chụp màn hình.
 - **Acceptance Criteria:**
-  1. **Given** tôi chọn phương thức chuyển khoản VietQR tại quầy (hoặc khách chọn tự thanh toán trên `SCR-05` khi Chủ quán đã bật tính năng tại `SCR-26`), **When** khởi tạo giao dịch, **Then** màn hình hiển thị mã VietQR đúng số tiền cuối cùng kèm đếm ngược thời hạn.
-  2. **Given** giao dịch chuyển khoản được cổng thanh toán xác nhận hợp lệ, **When** hệ thống tiếp nhận tín hiệu, **Then** đơn tự động chốt *Đã thanh toán*, giải phóng toàn bộ bàn về *Trống* và đóng hộp thoại QR tức thì.
-  3. **Given** cổng thanh toán gửi trùng thông báo xác nhận cho cùng một giao dịch, **When** hệ thống nhận lần 2, **Then** bỏ qua an toàn không cộng trùng doanh thu; nếu khách đổi ý muốn trả tiền mặt thì cho phép hủy mã QR đang chờ trước khi thu tiền mặt.
+  1. **Given** tôi chọn phương thức chuyển khoản VietQR tại quầy (có thể áp voucher ngay trên tab VietQR) hoặc khách chọn tự thanh toán trên `SCR-05` khi Chủ quán đã bật tính năng tại `SCR-26`, **When** khởi tạo giao dịch, **Then** màn hình hiển thị mã VietQR đúng số tiền cuối cùng (gồm thuế/phí dịch vụ nếu có) kèm đếm ngược thời hạn và giữ chỗ lượt dùng voucher; nếu khách tạm đóng ngăn kéo đơn trên `SCR-05`, tiến trình theo dõi trạng thái thanh toán vẫn tiếp tục chạy không bị gián đoạn.
+  2. **Given** giao dịch chuyển khoản được cổng thanh toán xác nhận hợp lệ đúng số tiền, **When** hệ thống tiếp nhận tín hiệu, **Then** đơn tự động chốt *Đã thanh toán*, giải phóng toàn bộ bàn về *Trống* (hoặc chờ bếp xong món cuối nếu thanh toán sớm) và đóng hộp thoại QR tức thì; nếu số tiền chuyển về không khớp giao dịch thì hệ thống từ chối chốt đơn (`BR-18`).
+  3. **Given** cổng thanh toán gửi trùng thông báo xác nhận, hoặc gửi trễ sau khi đơn đã hủy/đã thu tiền mặt, **When** hệ thống xử lý, **Then** không cộng trùng doanh thu và lưu dấu vết yêu cầu hoàn tiền thủ công cho giao dịch trễ; khi khách kiểm tra trạng thái giao dịch tự thanh toán, hệ thống bắt buộc xác thực đúng mã phiên bàn và quyền thành viên bàn (chặn xem chéo bàn khác, `BR-19`).
 
 ### `US-019`: Tra cứu lịch sử hóa đơn & đối soát cuối ca
 - **Stage:** `STG-05` | **Persona:** `PER-04 (Cashier)`, `PER-05 (Manager)` | **Priority:** `P1`
@@ -239,6 +247,7 @@
 - **Acceptance Criteria:**
   1. **Given** tôi thêm/sửa món hoặc tắt bán một món trên `SCR-15`, **When** lưu thành công, **Then** màn hình thực khách `SCR-05` tự động cập nhật ngay; nếu thay đổi giá món thì không làm đổi giá của các món đã đặt trước đó.
   2. **Given** tôi bấm nút "Gợi ý mô tả bằng AI" trên `SCR-15` hoặc `SCR-17`, **When** AI trả kết quả, **Then** nội dung điền vào ô mô tả để tôi chỉnh sửa trước khi lưu; nếu AI gián đoạn thì tôi vẫn tự nhập mô tả và lưu bình thường.
+  3. **Given** tôi tạo hoặc sửa giá bán một món lẻ trên `SCR-15` hoặc gói Combo trên `SCR-17` với mức giá nhỏ hơn `1.000đ`, **When** tôi bấm Lưu, **Then** hệ thống từ chối lưu và hiển thị thông báo lỗi yêu cầu giá bán đạt tối thiểu `1.000đ` (`BR-05`).
 
 ### `US-021`: Quản lý Voucher, Chương trình Khuyến mãi & Tài khoản Nhân sự
 - **Stage:** `STG-06` | **Persona:** `PER-05 (Manager)`, `PER-06 (Admin)` | **Priority:** `P1`
@@ -256,13 +265,13 @@
   1. **Given** tôi chọn khoảng thời gian trên `SCR-10`, `SCR-23` hoặc `SCR-24`, **When** dữ liệu tải xong, **Then** hiển thị chính xác thẻ KPI (`tabular/mono`), biểu đồ trực quan và bảng xếp hạng Top 3 có phân trang.
   2. **Given** khoảng ngày được lọc không có giao dịch nào, **When** tải dữ liệu, **Then** hiển thị `Empty State` rõ ràng, không phát sinh lỗi giao diện.
 
-### `US-023`: Xem Báo cáo Doanh thu chuyên sâu & Dự báo AI (Độc quyền Chủ quán)
-- **Stage:** `STG-06` | **Persona:** `PER-06 (Admin)` | **Priority:** `P1`
+### `US-023`: Xem Báo cáo Doanh thu chuyên sâu & Dự báo AI
+- **Stage:** `STG-06` | **Persona:** `PER-05 (Manager)`, `PER-06 (Admin)` | **Priority:** `P1`
 - **Traceability:** PO `F6.2`, `F6.3` · Design `SCR-22`, `SCR-25` · Rules `BR-22`, `BR-23`
-- **Story:** Là một **Chủ nhà hàng**, tôi muốn xem báo cáo doanh thu chi tiết theo kỳ và biểu đồ dự báo nhu cầu món/nguyên liệu bằng AI trên `SCR-22` và `SCR-25`, để hoạch định tài chính và nhập hàng chủ động.
+- **Story:** Là một **Quản lý hoặc Chủ nhà hàng**, tôi muốn xem báo cáo doanh thu chi tiết theo kỳ (chỉ tính từ các đơn hoàn tất đã thanh toán) và biểu đồ dự báo nhu cầu món/nguyên liệu bằng AI trên `SCR-22` và `SCR-25`, để hoạch định tài chính và nhập hàng chủ động.
 - **Acceptance Criteria:**
-  1. **Given** tôi đăng nhập bằng `PER-06 (Admin)`, **When** mở `SCR-22` và `SCR-25`, **Then** hiển thị đầy đủ dữ liệu doanh thu, so sánh kỳ trước và khuyến nghị dự báo nhu cầu từ AI.
-  2. **Given** bất kỳ vai trò nào thấp hơn (`PER-05 Manager` trở xuống) cố mở `SCR-22` hoặc `SCR-25`, **When** hệ thống kiểm tra quyền, **Then** bị từ chối truy cập và chuyển sang `SCR-06`.
+  1. **Given** tôi đăng nhập bằng `PER-05 (Manager)` hoặc `PER-06 (Admin)`, **When** mở `SCR-22` và `SCR-25`, **Then** hiển thị đầy đủ dữ liệu doanh thu thực thu, so sánh kỳ trước và khuyến nghị dự báo nhu cầu từ AI (tính cả nguyên liệu từ các món nằm trong Combo).
+  2. **Given** nhân sự có vai trò thấp hơn (`PER-04 Cashier`, `PER-03 Chef`, `PER-02 Staff`) cố mở `SCR-22` hoặc `SCR-25`, **When** hệ thống kiểm tra quyền, **Then** bị từ chối truy cập và chuyển sang `SCR-06` (`BR-22`).
 
 ### `US-024`: Tùy chọn cá nhân (VI/EN, Sáng/Tối) & Cấu hình Hệ thống 8 tab
 - **Stage:** `STG-06` | **Persona:** `PER-02..06` (Cá nhân) · `PER-06 (Admin)` (Hệ thống) | **Priority:** `P1`
@@ -322,6 +331,6 @@
 - **Traceability:** PO `F5.8` · Design `SCR-18` · Rules `BR-04`, `BR-11`, `BR-24`, `BR-36`
 - **Story:** Là một **Quản lý hoặc Đầu bếp**, tôi muốn chụp ảnh hoặc tải lên ảnh hóa đơn nhập hàng để hệ thống tự động đọc danh sách nguyên liệu, quy đổi đơn vị phù hợp và cho tôi rà soát trước khi xác nhận nhập kho hàng loạt, để tiết kiệm thời gian nhập liệu thủ công mà vẫn chính xác tồn kho.
 - **Acceptance Criteria:**
-  1. **Given** tôi đăng nhập bằng `PER-03`, `PER-05` hoặc `PER-06` tại `SCR-18` và mở hộp thoại *"Nhập từ hóa đơn AI"*, **When** tôi chụp hoặc chọn ảnh hóa đơn hợp lệ (`JPEG`/`PNG`/`WebP` ≤ 5MB) và bấm quét, **Then** hệ thống hiển thị thông tin nhà cung cấp, bảng các dòng hàng trích xuất đã tự khớp nguyên liệu kho kèm quy đổi đơn vị tự động *(ví dụ: `2 kg` → `2000 g`)* và cảnh báo các dòng chưa khớp hoặc lệch đơn vị để tôi chỉnh sửa trước khi xác nhận. *(Happy Path & Unit Conversion)*
+  1. **Given** tôi đăng nhập bằng `PER-03`, `PER-05` hoặc `PER-06` tại `SCR-18` và mở hộp thoại *"Nhập từ hóa đơn AI"*, **When** tôi chụp hoặc chọn ảnh hóa đơn hợp lệ (`JPEG`/`PNG`/`WebP` ≤ 5MB) và bấm quét, **Then** hệ thống hiển thị thông tin nhà cung cấp, bảng các dòng hàng trích xuất đã tự khớp nguyên liệu kho theo ranh giới từ (tránh khớp nhầm chuỗi con) kèm quy đổi đơn vị tự động *(ví dụ: `2 kg` → `2000 g`)* và gắn cảnh báo lệch đơn vị cho các dòng không quy đổi được hoặc có số lượng quy đổi dưới `0.001` (không làm tròn thành `0.000`) để tôi chỉnh sửa trước khi xác nhận. *(Happy Path & Unit Conversion)*
   2. **Given** kết quả trích xuất đã hiển thị trên bảng rà soát, **When** tôi là `PER-05`/`PER-06` chỉnh lại nguyên liệu/số lượng, tích chọn cập nhật đơn giá vốn và bấm *"Xác nhận nhập kho"*, **Then** toàn bộ các dòng được chọn được cộng tồn kho nguyên tử trong cùng một giao dịch, ghi đầy đủ lịch sử biến động kèm mã hóa đơn và cập nhật giá vốn mới; riêng với `PER-03 (Chef)`, hệ thống chỉ cho phép nhập số lượng tồn kho và chặn cập nhật giá vốn (`BR-36`). *(Review, Atomic Batch & RBAC)*
   3. **Given** tệp tải lên sai định dạng/vượt quá 5MB, dịch vụ AI gián đoạn không đọc được hóa đơn, hoặc nhân sự `PER-02`/`PER-04` cố gọi chức năng quét/nhập kho hàng loạt, **Then** giao diện báo lỗi thân thiện không làm mất dữ liệu (cho phép thêm dòng nhập tay nếu AI gián đoạn), còn `PER-02`/`PER-04` bị chặn quyền truy cập (`BR-04`, `BR-36`). *(Validation, Fallback & Security)*

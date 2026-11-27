@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
 import {
   useChangePasswordMutation,
@@ -34,10 +34,12 @@ const passwordRules = [
   { label: '8+ ký tự', test: (value) => value.length >= 8 },
   { label: 'Chữ hoa', test: (value) => /[A-Z]/.test(value) },
   { label: 'Số', test: (value) => /\d/.test(value) },
-  { label: 'Ký tự đặc biệt', test: (value) => /[!@#$%^&*(),.?":{}|<>]/.test(value) },
+  { label: 'Ký tự đặc biệt', test: (value) => /[^A-Za-z0-9\s]/.test(value) },
 ];
 
-const hasValidPasswordPolicy = (value) => passwordRules.every((rule) => rule.test(value));
+const utf8ByteLength = (value) => new TextEncoder().encode(String(value || '')).length;
+const hasValidPasswordPolicy = (value) =>
+  passwordRules.every((rule) => rule.test(value)) && utf8ByteLength(value) <= 72;
 
 const strengthMeta = [
   { label: 'Yếu', barClass: 'bg-rose-500', textClass: 'text-rose-600' },
@@ -47,7 +49,8 @@ const strengthMeta = [
 ];
 
 const ProfilePage = () => {
-  const { user, updateUser } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isForceChange = searchParams.get('forceChangePassword') === 'true' || Boolean(user?.mustChangePassword);
   const passwordSectionRef = useRef(null);
@@ -127,7 +130,7 @@ const ProfilePage = () => {
       nextErrors.fullName = 'Họ và tên phải có ít nhất 2 ký tự';
     }
 
-    if (profile.phone && !/^(84|0)[0-9]{9}\b/.test(profile.phone)) {
+    if (profile.phone && !/^(84|0)[0-9]{9}$/.test(profile.phone.trim())) {
       nextErrors.phone = 'Số điện thoại không hợp lệ';
     }
 
@@ -141,7 +144,7 @@ const ProfilePage = () => {
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
-    if (!validateProfile() || savingProfile) return;
+    if (isForceChange || !validateProfile() || savingProfile) return;
 
     setSavingProfile(true);
     try {
@@ -166,6 +169,7 @@ const ProfilePage = () => {
   };
 
   const handleAvatarChange = async (event) => {
+    if (isForceChange) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -211,7 +215,10 @@ const ProfilePage = () => {
       nextErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại';
     }
     if (!hasValidPasswordPolicy(passwordForm.newPassword)) {
-      nextErrors.newPassword = 'Mật khẩu cần 8 ký tự, chữ hoa, số và ký tự đặc biệt';
+      nextErrors.newPassword =
+        utf8ByteLength(passwordForm.newPassword) > 72
+          ? 'Mật khẩu không được vượt quá 72 byte (UTF-8)'
+          : 'Mật khẩu cần 8 ký tự, chữ hoa, số và ký tự đặc biệt';
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       nextErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp';
@@ -235,8 +242,9 @@ const ProfilePage = () => {
         newPassword: passwordForm.newPassword,
       });
       setPasswordForm(initialPassword);
-      updateUser({ mustChangePassword: false });
-      showSuccessToast('Mật khẩu đã được thay đổi thành công.');
+      showSuccessToast('Mật khẩu đã được thay đổi thành công. Vui lòng đăng nhập lại.');
+      logout();
+      navigate('/login', { replace: true });
     } catch (err) {
       showErrorToast(err);
     } finally {
@@ -278,6 +286,7 @@ const ProfilePage = () => {
           uploadingAvatar={uploadingAvatar}
           fileInputRef={fileInputRef}
           onAvatarChange={handleAvatarChange}
+          disabled={isForceChange}
         />
 
         <ProfileInfoForm
@@ -287,6 +296,7 @@ const ProfilePage = () => {
           savingProfile={savingProfile}
           profileChanged={profileChanged}
           onSubmit={handleProfileSubmit}
+          disabled={isForceChange}
         />
       </div>
 

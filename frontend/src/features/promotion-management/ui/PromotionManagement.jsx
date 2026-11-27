@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BadgePercent, CalendarDays, Clock3, Loader2 } from 'lucide-react';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
+import { useCrudModal } from '@shared/hooks/useCrudModal.js';
 import { useDebouncedValue } from '@shared/hooks/useDebouncedValue.js';
 import { useTranslation } from '@shared/lib/i18n';
-import { promotionProposalToDraft } from '@shared/lib/aiMerchandisingDrafts.js';
+import { promotionProposalToDraft } from '@entities/ai';
 import { getErrorDetails } from '@shared/lib/errorMessages.js';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 import EditDeleteActions from '@shared/ui/EditDeleteActions.jsx';
@@ -47,13 +48,20 @@ const PromotionManagement = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPromotion, setEditingPromotion] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [formErrors, setFormErrors] = useState({});
   const pageSize = 24;
+
+  const crud = useCrudModal();
+
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    setCurrentPage(0);
+  };
+
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
 
   const statusMetaMap = useMemo(
     () => ({
@@ -99,56 +107,51 @@ const PromotionManagement = () => {
   const { mutateAsync: updatePromotion } = useUpdatePromotionMutation();
   const { mutateAsync: deletePromotion } = useDeletePromotionMutation();
 
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [debouncedSearchTerm, statusFilter]);
-
   const handleSubmit = async (payload) => {
-    if (isSaving) return;
-    setIsSaving(true);
+    if (crud.isSubmitting) return;
+    crud.setSubmitting(true);
 
     try {
-      if (editingPromotion?.id) {
-        await updatePromotion({ id: editingPromotion.id, data: payload });
+      if (crud.editingItem?.id) {
+        await updatePromotion({ id: crud.editingItem.id, data: payload });
         showSuccessToast(copy.updateSuccess);
       } else {
         await createPromotion(payload);
         showSuccessToast(copy.createSuccess);
       }
-      setFormErrors({});
-      setIsModalOpen(false);
+      crud.close();
     } catch (err) {
       const errorMsg = err?.message || '';
       if (
         err?.code === 'PROMOTION_NAME_EXISTS' ||
         errorMsg.includes('Promotion name already exists')
       ) {
-        setFormErrors({ name: copy.errNameExists });
+        crud.setFormErrors({ name: copy.errNameExists });
       } else {
         const details = getErrorDetails(err);
         if (Object.keys(details).length > 0) {
-          setFormErrors(details);
+          crud.setFormErrors(details);
         }
         showErrorToast(err);
       }
     } finally {
-      setIsSaving(false);
+      crud.setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (deletingId) return;
+    if (crud.deletingId) return;
     const confirmed = await confirm(copy.deleteTitle, copy.deleteConfirm);
     if (!confirmed) return;
 
-    setDeletingId(id);
+    crud.setDeletingId(id);
     try {
       await deletePromotion(id);
       showSuccessToast(copy.deleteSuccess);
     } catch (err) {
       showErrorToast(err);
     } finally {
-      setDeletingId(null);
+      crud.setDeletingId(null);
     }
   };
 
@@ -157,27 +160,21 @@ const PromotionManagement = () => {
       <ManagementHeader
         searchPlaceholder={copy.searchPlaceholder}
         searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        onAddClick={() => {
-          setEditingPromotion(null);
-          setFormErrors({});
-          setIsModalOpen(true);
-        }}
+        setSearchTerm={handleSearchChange}
+        onAddClick={() => crud.openCreate()}
         addButtonText={copy.addButton}
         hideAddButton={!canManage}
         showFilter
         filterAllLabel={copy.allStatuses}
         filterValue={statusFilter}
-        setFilterValue={setStatusFilter}
+        setFilterValue={handleStatusFilterChange}
         filterOptions={statusFilterOptions}
       />
 
       {canManage && (
         <AiPromotionSuggestionsPanel
           onUseDraft={(proposal, index) => {
-            setEditingPromotion(promotionProposalToDraft(proposal, index));
-            setFormErrors({});
-            setIsModalOpen(true);
+            crud.openCreate(promotionProposalToDraft(proposal, index));
           }}
         />
       )}
@@ -260,12 +257,8 @@ const PromotionManagement = () => {
                 {canManage && (
                   <EditDeleteActions
                     editLabel={copy.editLabel}
-                    deleting={deletingId === promotion.id}
-                    onEdit={() => {
-                      setEditingPromotion(promotion);
-                      setFormErrors({});
-                      setIsModalOpen(true);
-                    }}
+                    deleting={crud.deletingId === promotion.id}
+                    onEdit={() => crud.openEdit(promotion)}
                     onDelete={() => handleDelete(promotion.id)}
                   />
                 )}
@@ -292,19 +285,16 @@ const PromotionManagement = () => {
       />
 
       <PromotionModal
-        key={isModalOpen ? editingPromotion?.id || editingPromotion?._draftKey || 'new' : 'closed'}
-        isOpen={isModalOpen}
-        onClose={() => {
-          setFormErrors({});
-          setIsModalOpen(false);
-        }}
-        initialData={editingPromotion}
-        onSubmit={handleSubmit}
-        isSubmitting={isSaving}
-        serverErrors={formErrors}
-        onClearServerError={(field) =>
-          setFormErrors((current) => ({ ...current, [field]: null }))
+        key={
+          crud.isOpen ? crud.editingItem?.id || crud.editingItem?._draftKey || 'new' : 'closed'
         }
+        isOpen={crud.isOpen}
+        onClose={crud.close}
+        initialData={crud.editingItem}
+        onSubmit={handleSubmit}
+        isSubmitting={crud.isSubmitting}
+        serverErrors={crud.formErrors}
+        onClearServerError={crud.clearFormError}
       />
     </div>
   );

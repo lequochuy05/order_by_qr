@@ -4,9 +4,7 @@ import com.qros.modules.payment.gateway.PaymentGateway;
 import com.qros.modules.payment.gateway.PaymentGatewayResolver;
 import com.qros.modules.payment.model.PaymentTransaction;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import java.util.List;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -44,14 +42,7 @@ public class PaymentGatewayCancellationService {
 
     private <T> T recordGatewayCall(
             String operation, PaymentTransaction transaction, java.util.function.Supplier<T> action) {
-        Timer.Sample sample = Timer.start(meterRegistry);
-        try {
-            return action.get();
-        } finally {
-            sample.stop(Timer.builder("payment.gateway.latency")
-                    .tag("operation", operation)
-                    .tag("method", Objects.toString(transaction.getPaymentMethod(), "unknown"))
-                    .register(meterRegistry));
-        }
+        return PaymentGatewayMetrics.recordGatewayCall(
+                meterRegistry, operation, transaction.getPaymentMethod(), action);
     }
 }

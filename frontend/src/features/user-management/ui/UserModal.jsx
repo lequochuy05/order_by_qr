@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, Mail, Phone, Power, Shield, User } from 'lucide-react';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { USER_STATUS } from '@shared/lib/formatters.js';
 import { showErrorToast } from '@shared/lib/toast.js';
 import {

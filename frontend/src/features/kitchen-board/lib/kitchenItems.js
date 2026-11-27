@@ -6,9 +6,9 @@ import { ORDER_ITEM_STATUSES } from '../../../entities/order/lib/orderConstants.
 import {
   analyzeCustomerNote,
   RISK_LEVELS,
-} from '../../../shared/lib/noteSafety.js';
+} from '../../../entities/ai/lib/noteSafety.js';
 
-export const DEFAULT_OVERDUE_MINUTES = 20;
+const DEFAULT_OVERDUE_MINUTES = 20;
 export const OVERDUE_MINUTES = DEFAULT_OVERDUE_MINUTES;
 
 const VISIBLE_KITCHEN_STATUSES = [
@@ -74,6 +74,7 @@ export const buildKitchenItems = (orders, now, overdueMinutes = DEFAULT_OVERDUE_
           tableName:
             order.table?.tableNumber || (order.orderType === 'TAKEAWAY' ? 'Mang về' : 'Chưa gán'),
           orderType: order.orderType || 'DINE_IN',
+          orderPaymentStatus: order.paymentStatus || null,
           orderId: order.id,
           orderCreatedAt: order.createdAt,
           createdAt,

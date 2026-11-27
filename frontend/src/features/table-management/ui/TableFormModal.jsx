@@ -8,7 +8,7 @@ import {
   SharedModal,
   TextField,
 } from '@shared/ui';
-import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table/lib/tableStatus.js';
+import { TABLE_STATUS, TABLE_STATUSES } from '@entities/table';
 
 const TABLE_STATUS_OPTIONS = Object.entries(TABLE_STATUS).map(([value, meta]) => ({
   value,

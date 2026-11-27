@@ -2,8 +2,9 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 
 import { ProtectedRoute } from '@features/auth';
-import AdminLayout from '@widgets/admin-layout/AdminLayout.jsx';
+import { AdminLayout } from '@widgets/admin-layout';
 import { ErrorBoundary } from '@shared/ui';
+import { useTranslation } from '@shared/lib/i18n';
 
 const LoginPage = lazy(() => import('@pages/auth/LoginPage.jsx'));
 const ForgotPasswordPage = lazy(() => import('@pages/auth/ForgotPasswordPage.jsx'));
@@ -32,9 +33,14 @@ const UnauthorizedPage = lazy(() => import('@pages/system/UnauthorizedPage.jsx')
 const NotFoundPage = lazy(() => import('@pages/system/NotFoundPage.jsx'));
 const SystemStatusPage = lazy(() => import('@pages/system/SystemStatusPage.jsx'));
 
-const LoadingScreen = () => (
-  <div className="flex min-h-screen items-center justify-center">Đang tải...</div>
-);
+const LoadingScreen = () => {
+  const { isEn } = useTranslation();
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      {isEn ? 'Loading...' : 'Đang tải...'}
+    </div>
+  );
+};
 
 const AuthRoute = () => (
   <ErrorBoundary fullScreen>
@@ -82,12 +88,9 @@ const AppRouter = () => {
             <Route path="/admin/profile" element={<ProfilePage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
 
-            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-              <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
-            </Route>
-
             <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
               <Route path="/admin/dashboard" element={<DashboardPage />} />
+              <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
               <Route path="/admin/categories" element={<CategoryPage />} />
               <Route path="/admin/menu" element={<MenuPage />} />
               <Route path="/admin/combo" element={<ComboPage />} />

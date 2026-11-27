@@ -1,12 +1,15 @@
-import { PAYMENT_METHODS } from '@entities/payment/lib/paymentStatus.js';
+import { PAYMENT_METHODS } from '@shared/lib/paymentConstants.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import {
   getBillableOrderItems,
   getOrderDiscountAmount,
   getOrderFinalAmount,
+  getOrderServiceChargeAmount,
+  getOrderServiceChargePercent,
   getOrderSubtotalAmount,
+  getOrderTaxAmount,
+  getOrderTaxPercent,
 } from './orderMoney.js';
-import useSettingsStore from '@shared/model/settingsStore.js';
 
 const HTML_ESCAPE_MAP = {
   '&': '&amp;',
@@ -23,11 +26,10 @@ const escapeHtml = (value) =>
  * Tạo chuỗi HTML hóa đơn chuyên nghiệp
  * @param {Object} data - { order, table, paidBy, paidAt }
  */
-export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
+export const generateInvoice = ({ order, table, paidBy, paidAt, settings = {} }) => {
   if (!order) return '';
 
-  // Fetch restaurant info from Zustand store (cached)
-  const { settings } = useSettingsStore.getState();
+  // Restaurant settings passed in by caller (pure entity helper)
   const storeName = settings.restaurantName || 'Nhà hàng';
   const storeAddress = settings.restaurantAddress || '';
   const storePhone = settings.restaurantPhone || '';
@@ -40,6 +42,10 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
   const items = getBillableOrderItems(order);
   const subtotalAmount = getOrderSubtotalAmount(order);
   const discountAmount = getOrderDiscountAmount(order);
+  const serviceChargePercent = getOrderServiceChargePercent(order);
+  const serviceChargeAmount = getOrderServiceChargeAmount(order);
+  const taxPercent = getOrderTaxPercent(order);
+  const taxAmount = getOrderTaxAmount(order);
   const finalAmount = getOrderFinalAmount(order);
 
   // 1. Phân loại Combo và Món lẻ
@@ -209,6 +215,26 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
         `
             : ''
         }
+        ${
+          serviceChargeAmount > 0
+            ? `
+        <tr>
+          <td style="padding: 3px 0;">Phí dịch vụ${serviceChargePercent > 0 ? ` (${escapeHtml(serviceChargePercent)}%)` : ''}:</td>
+          <td style="text-align: right;">${escapeHtml(fmtVND(serviceChargeAmount))}</td>
+        </tr>
+        `
+            : ''
+        }
+        ${
+          taxAmount > 0
+            ? `
+        <tr>
+          <td style="padding: 3px 0;">Thuế VAT${taxPercent > 0 ? ` (${escapeHtml(taxPercent)}%)` : ''}:</td>
+          <td style="text-align: right;">${escapeHtml(fmtVND(taxAmount))}</td>
+        </tr>
+        `
+            : ''
+        }
         <tr style="font-size: 16px; font-weight: bold;">
           <td style="padding: 10px 0;">TỔNG THANH TOÁN:</td>
           <td style="text-align: right; padding: 10px 0;">${escapeHtml(fmtVND(finalAmount))}</td>
@@ -234,16 +260,49 @@ export const generateInvoice = ({ order, table, paidBy, paidAt }) => {
 };
 
 /**
- * Thực hiện mở cửa sổ in
+ * Thực hiện in hóa đơn qua iframe ẩn (không bị chặn popup)
  */
 export const printInvoice = (data) => {
   const html = generateInvoice(data);
-  const win = window.open('', 'PRINT_INVOICE', 'width=450,height=600');
+  if (!html || typeof document === 'undefined') return;
 
-  if (win) {
-    win.document.write(html);
-    win.document.close();
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.visibility = 'hidden';
+
+  const cleanup = () => {
+    window.setTimeout(() => {
+      if (iframe.parentNode) {
+        iframe.parentNode.removeChild(iframe);
+      }
+    }, 1000);
+  };
+
+  iframe.onload = () => {
+    try {
+      const printWindow = iframe.contentWindow;
+      if (printWindow) {
+        printWindow.focus();
+        printWindow.print();
+      }
+    } finally {
+      cleanup();
+    }
+  };
+
+  document.body.appendChild(iframe);
+  const frameDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (frameDoc) {
+    frameDoc.open();
+    frameDoc.write(html);
+    frameDoc.close();
   } else {
-    alert('Vui lòng cho phép popup để in hóa đơn!');
+    cleanup();
   }
 };

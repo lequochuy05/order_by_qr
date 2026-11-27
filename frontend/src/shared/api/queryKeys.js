@@ -13,8 +13,6 @@ const createQueryKeys = (entity) => ({
 });
 
 export const queryKeys = {
-  auth: createQueryKeys('auth'),
-
   users: {
     all: ['users'],
     lists: () => [...queryKeys.users.all, 'list'],
@@ -26,10 +24,11 @@ export const queryKeys = {
   analytics: {
     all: ['analytics'],
     dashboard: (filters = {}) => [...queryKeys.analytics.all, 'dashboard', filters],
-    revenue: (filters = {}) => [...queryKeys.analytics.all, 'revenue', filters],
-    salesTrend: (filters = {}) => [...queryKeys.analytics.all, 'sales-trend', filters],
-    topItems: (filters = {}) => [...queryKeys.analytics.all, 'top-items', filters],
-    userPerformance: (filters = {}) => [...queryKeys.analytics.all, 'user-performance', filters],
+    revenue: (from, to) => [...queryKeys.analytics.all, 'revenue', from, to],
+    orders: (from, to, page, size) => [...queryKeys.analytics.all, 'orders', from, to, page, size],
+    staff: (from, to) => [...queryKeys.analytics.all, 'staff', from, to],
+    topDishes: (from, to) => [...queryKeys.analytics.all, 'top-dishes', from, to],
+    dishTrend: (from, to) => [...queryKeys.analytics.all, 'dish-trend', from, to],
   },
 
   vouchers: {
@@ -37,7 +36,6 @@ export const queryKeys = {
     lists: () => [...queryKeys.vouchers.all, 'list'],
     list: (filters = {}) => [...queryKeys.vouchers.lists(), filters],
     detail: (id) => [...queryKeys.vouchers.all, 'detail', id],
-    validate: (code, subtotal) => [...queryKeys.vouchers.all, 'validate', code, subtotal],
   },
 
   promotions: {
@@ -50,7 +48,6 @@ export const queryKeys = {
   tables: {
     all: ['tables'],
     board: ['tables', 'board'],
-    detail: (id) => ['tables', id],
   },
 
   serviceRequests: {
@@ -62,13 +59,13 @@ export const queryKeys = {
   menu: {
     all: ['menu'],
     customer: ['menu', 'customer'],
-    detail: (id) => ['menu', id],
   },
 
   orders: {
     all: ['orders'],
     active: ['orders', 'active'],
     activeTakeaway: ['orders', 'active-takeaway'],
+    kitchen: ['orders', 'kitchen'],
     history: (filters = null) =>
       filters && Object.keys(filters).length > 0
         ? [
@@ -80,15 +77,13 @@ export const queryKeys = {
             filters.to,
             filters.status,
             filters.tableNumber,
+            filters.orderId,
           ]
         : ['orders', 'history'],
-    detail: (id) => ['orders', id],
   },
 
   categories: createQueryKeys('categories'),
   combos: createQueryKeys('combos'),
-  kitchen: createQueryKeys('kitchen'),
-  payments: createQueryKeys('payments'),
   inventory: createQueryKeys('inventory'),
   settings: createQueryKeys('settings'),
 };

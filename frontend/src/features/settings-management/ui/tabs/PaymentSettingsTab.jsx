@@ -7,9 +7,18 @@ import {
   TextField,
   ToggleRow,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
-const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, copy }) => (
+const PaymentSettingsTab = ({
+  settings,
+  setSettings,
+  saving,
+  saveDisabled,
+  onSave,
+  copy,
+  errors = {},
+  onClearError,
+}) => (
   <section className="min-w-0">
     <SectionHeader icon={CreditCard} title={copy.payment.title} subtitle={copy.payment.subtitle} />
 
@@ -41,7 +50,11 @@ const PaymentSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSav
           min="1"
           max="120"
           value={settings.paymentQrExpiresInMinutes}
-          onChange={(value) => setSettingsValue(setSettings, 'paymentQrExpiresInMinutes', value)}
+          error={errors?.paymentQrExpiresInMinutes}
+          onChange={(value) => {
+            setSettingsValue(setSettings, 'paymentQrExpiresInMinutes', value);
+            onClearError?.('paymentQrExpiresInMinutes');
+          }}
           className="max-w-md"
         />
       </SettingsGroup>

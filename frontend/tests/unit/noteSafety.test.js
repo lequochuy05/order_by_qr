@@ -8,7 +8,7 @@ import {
   maxRisk,
   RISK_LEVELS,
   riskRank,
-} from '../../src/shared/lib/noteSafety.js';
+} from '../../src/entities/ai/lib/noteSafety.js';
 
 test('foldVietnameseAccents normalizes Vietnamese characters and đ/Đ', () => {
   assert.equal(foldVietnameseAccents('Đẩy GẤP giúp đơn Bò Né'), 'day gap giup don bo ne');

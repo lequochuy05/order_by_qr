@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.qros.modules.table.dto.request.TableMergeRequest;
 import com.qros.modules.table.dto.response.TableMergeResponse;
 import com.qros.modules.table.service.TableMergeService;
+import com.qros.modules.table.service.TableSessionService;
 import com.qros.modules.user.service.CurrentUserService;
 import com.qros.shared.response.ApiResponse;
 import java.security.Principal;
@@ -20,14 +21,16 @@ import org.junit.jupiter.api.Test;
 class TableSessionControllerTest {
 
     private TableMergeService tableMergeService;
+    private TableSessionService tableSessionService;
     private CurrentUserService currentUserService;
     private TableSessionController controller;
 
     @BeforeEach
     void setUp() {
         tableMergeService = mock(TableMergeService.class);
+        tableSessionService = mock(TableSessionService.class);
         currentUserService = mock(CurrentUserService.class);
-        controller = new TableSessionController(tableMergeService, currentUserService);
+        controller = new TableSessionController(tableMergeService, tableSessionService, currentUserService);
     }
 
     @Test

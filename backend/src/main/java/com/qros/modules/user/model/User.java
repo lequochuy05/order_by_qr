@@ -37,13 +37,13 @@ public class User extends BaseEntity implements UserDetails, PasswordVersionedUs
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 50, nullable = false)
+    @Column(length = 254, nullable = false)
     private String email;
 
-    @Column(length = 150)
+    @Column(length = 500)
     private String avatarUrl;
 
-    @Column(length = 50, nullable = false)
+    @Column(length = 100, nullable = false)
     private String fullName;
 
     @Column(length = 255, nullable = false)

@@ -5,9 +5,8 @@ import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.CategoryRepository;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
+import com.qros.modules.settings.service.SystemSettingsService;
 import com.qros.shared.cache.CacheNames;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -18,25 +17,39 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class MenuContextProvider {
 
-    private final MenuItemRepository menuItemRepository;
-    private final ComboRepository comboRepository;
-    private final CategoryRepository categoryRepository;
+    private final MenuCatalogLookupService menuCatalogLookupService;
     private final InventoryAvailabilityService inventoryAvailabilityService;
+    private final SystemSettingsService systemSettingsService;
+
+    public MenuContextProvider(
+            MenuCatalogLookupService menuCatalogLookupService,
+            InventoryAvailabilityService inventoryAvailabilityService) {
+        this(menuCatalogLookupService, inventoryAvailabilityService, null);
+    }
+
+    @Autowired
+    public MenuContextProvider(
+            MenuCatalogLookupService menuCatalogLookupService,
+            InventoryAvailabilityService inventoryAvailabilityService,
+            SystemSettingsService systemSettingsService) {
+        this.menuCatalogLookupService = menuCatalogLookupService;
+        this.inventoryAvailabilityService = inventoryAvailabilityService;
+        this.systemSettingsService = systemSettingsService;
+    }
 
     @Cacheable(value = CacheNames.AI_MENU_CONTEXT, key = "'current'")
     @Transactional(readOnly = true)
     public String buildCurrentMenuContext() {
         MenuCatalogSnapshot snapshot = loadAvailableCatalog();
-        List<Category> activeCategories = categoryRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc();
+        List<Category> activeCategories = menuCatalogLookupService.findActiveCategories();
 
         return buildMenuContext(
                 snapshot.menuItemsById().values().stream().toList(),
@@ -46,7 +59,7 @@ public class MenuContextProvider {
 
     @Transactional(readOnly = true)
     public MenuCatalogSnapshot loadAvailableCatalog() {
-        List<MenuItem> candidateItems = menuItemRepository.findAllPublicAvailableItems();
+        List<MenuItem> candidateItems = menuCatalogLookupService.findAllPublicAvailableMenuItems();
         List<Long> candidateItemIds = candidateItems.stream()
                 .map(MenuItem::getId)
                 .filter(Objects::nonNull)
@@ -61,20 +74,27 @@ public class MenuContextProvider {
                 .collect(Collectors.toMap(
                         MenuItem::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
 
-        List<Combo> candidateCombos = comboRepository.findAllActiveWithItems();
-        List<Long> candidateComboIds = candidateCombos.stream()
-                .map(Combo::getId)
-                .filter(Objects::nonNull)
-                .toList();
-        Map<Long, Boolean> comboStockAvailability = candidateComboIds.isEmpty()
-                ? Map.of()
-                : inventoryAvailabilityService.getComboAvailabilityByIds(candidateComboIds);
+        boolean showCombos = systemSettingsService == null
+                || !Boolean.FALSE.equals(
+                        systemSettingsService.getSettingsEntity().getShowCombos());
 
-        Map<Long, Combo> availableCombosById = candidateCombos.stream()
-                .filter(this::isComboActiveAndAvailable)
-                .filter(combo -> comboStockAvailability.getOrDefault(combo.getId(), true))
-                .collect(
-                        Collectors.toMap(Combo::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        Map<Long, Combo> availableCombosById = Map.of();
+        if (showCombos) {
+            List<Combo> candidateCombos = menuCatalogLookupService.findAllActiveCombosWithItems();
+            List<Long> candidateComboIds = candidateCombos.stream()
+                    .map(Combo::getId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            Map<Long, Boolean> comboStockAvailability = candidateComboIds.isEmpty()
+                    ? Map.of()
+                    : inventoryAvailabilityService.getComboAvailabilityByIds(candidateComboIds);
+
+            availableCombosById = candidateCombos.stream()
+                    .filter(this::isComboActiveAndAvailable)
+                    .filter(combo -> comboStockAvailability.getOrDefault(combo.getId(), true))
+                    .collect(Collectors.toMap(
+                            Combo::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        }
 
         return new MenuCatalogSnapshot(availableItemsById, availableCombosById);
     }

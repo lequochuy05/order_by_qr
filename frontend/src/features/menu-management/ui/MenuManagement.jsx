@@ -7,8 +7,7 @@ import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';
 
 import { queryClient } from '@shared/api/queryClient.js';
 import { queryKeys } from '@shared/api/queryKeys.js';
-import { useCategoriesPageQuery } from '@entities/category';
-import { comboService } from '@entities/combo';
+import { useActiveCategoriesQuery } from '@entities/category';
 import { menuItemService, useMenuPageQuery } from '@entities/menu-item';
 
 import ManagementHeader from '@shared/ui/ManagementHeader.jsx';
@@ -78,12 +77,9 @@ const MenuManager = () => {
   const { confirm } = useConfirmModal();
   const debouncedSearchTerm = useDebouncedValue(searchTerm);
 
-  // React Query: Categories for filter dropdown
-  const { data: categoryPageData } = useCategoriesPageQuery(
-    { page: 0, size: 1000 },
-    { staleTime: 5 * 60 * 1000 },
-  );
-  const categories = categoryPageData?.content || [];
+  // React Query: Cached active categories for filter dropdown & form selector
+  const { data: activeCategoriesData } = useActiveCategoriesQuery();
+  const categories = Array.isArray(activeCategoriesData) ? activeCategoriesData : [];
 
   // React Query: Menu items
   const { data: pageData, isLoading: loading } = useMenuPageQuery({
@@ -98,7 +94,6 @@ const MenuManager = () => {
   const totalElements = pageData?.totalElements || 0;
 
   const invalidateMenu = () => {
-    comboService.clearCache?.();
     queryClient.invalidateQueries({ queryKey: queryKeys.menu.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.combos.all });
   };

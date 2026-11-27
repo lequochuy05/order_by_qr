@@ -6,7 +6,7 @@ import {
   SettingsGroup,
   ToggleRow,
 } from '../components/FormControls.jsx';
-import { setSettingsValue } from '../settingsUtils.js';
+import { setSettingsValue } from '@features/settings-management/lib/settingsUtils.js';
 
 const CustomerMenuSettingsTab = ({ settings, setSettings, saving, saveDisabled, onSave, copy }) => (
   <section className="min-w-0">

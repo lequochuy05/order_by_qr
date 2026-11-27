@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày kiểm toán: 2026-11-14*
 *Thiết bị kiểm định: Desktop (1440x900), Tablet (768x1024 iPad), Mobile (390x844 iPhone)*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Báo cáo lưu kết quả kiểm toán responsive ngày `2026-11-14`. Để đối chiếu danh mục màn hình (`SCR-01`–`SCR-27`) và kiến trúc UI hiện hành, xem [PROTOTYPE_SCREEN_MAP.md](../docs/knowledge/02-design/PROTOTYPE_SCREEN_MAP.md) và [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md).
+
 ---
 
 ## 1. TỔNG QUAN ĐÁNH GIÁ ĐA THIẾT BỊ (EXECUTIVE RESPONSIVE SUMMARY)

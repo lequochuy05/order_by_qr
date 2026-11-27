@@ -12,6 +12,7 @@ const ProfileInfoForm = ({
   savingProfile,
   profileChanged,
   onSubmit,
+  disabled = false,
 }) => (
   <section className="min-w-0 rounded-3xl border border-[#1E293B] bg-white/90 p-6 shadow-sm backdrop-blur-sm transition-all duration-300 dark:border-[#1E293B] dark:bg-[#0F172A]/90">
     <div className="mb-6 flex min-w-0 items-center gap-3.5">
@@ -33,6 +34,7 @@ const ProfileInfoForm = ({
           <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
           <input
             value={profile.fullName}
+            disabled={disabled}
             onChange={(event) => setProfile((prev) => ({ ...prev, fullName: event.target.value }))}
             className={`w-full rounded-2xl border bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-indigo-500/20 ${
               errors.fullName
@@ -50,6 +52,7 @@ const ProfileInfoForm = ({
           <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
           <input
             value={profile.phone}
+            disabled={disabled}
             onChange={(event) => setProfile((prev) => ({ ...prev, phone: event.target.value }))}
             placeholder="VD: 0912345678"
             className={`w-full rounded-2xl border bg-slate-50/50 py-3 pl-11 pr-4 text-sm font-medium text-slate-900 outline-none transition-all focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:bg-slate-950/60 dark:text-slate-100 dark:focus:bg-slate-900 dark:focus:ring-indigo-500/20 ${
@@ -95,7 +98,7 @@ const ProfileInfoForm = ({
         <SaveButton
           type="submit"
           saving={savingProfile}
-          disabled={savingProfile || !profileChanged}
+          disabled={disabled || savingProfile || !profileChanged}
         />
       </div>
     </form>

@@ -1,6 +1,6 @@
 package com.qros.modules.table.controller;
 
-import com.qros.modules.table.dto.request.CancelServiceRequestDto;
+import com.qros.modules.table.dto.request.CancelTableServiceRequest;
 import com.qros.modules.table.dto.response.TableServiceRequestResponse;
 import com.qros.modules.table.service.TableServiceRequestService;
 import com.qros.shared.constants.ApiRoutes;
@@ -57,7 +57,7 @@ public class TableServiceRequestController {
     @PatchMapping("/{id}/cancel")
     public ApiResponse<TableServiceRequestResponse> cancel(
             @PathVariable @NonNull Long id,
-            @RequestBody(required = false) @Valid CancelServiceRequestDto request,
+            @RequestBody(required = false) @Valid CancelTableServiceRequest request,
             Principal principal) {
         return ApiResponse.success(
                 "Service request cancelled",

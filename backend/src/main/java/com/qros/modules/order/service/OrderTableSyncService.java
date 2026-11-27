@@ -6,7 +6,7 @@ import com.qros.modules.order.model.enums.OrderItemStatus;
 import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.enums.TableStatus;
-import com.qros.modules.table.repository.DiningTableRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.modules.table.service.TableSessionResolver;
 import com.qros.modules.table.service.TableSessionService;
 import com.qros.shared.event.DomainEvents.TableChangeEvent;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OrderTableSyncService {
 
-    private final DiningTableRepository tableRepository;
+    private final TableLookupService tableLookupService;
     private final TableSessionResolver tableSessionResolver;
     private final TableSessionService tableSessionService;
     private final ApplicationEventPublisher eventPublisher;
@@ -82,7 +82,7 @@ public class OrderTableSyncService {
                 .toList();
 
         if (!changed.isEmpty()) {
-            tableRepository.saveAll(changed);
+            tableLookupService.saveAllTables(changed);
             tableSessionService.evictTableSessionCachesForTables(changed);
             eventPublisher.publishEvent(new TableChangeEvent());
         }

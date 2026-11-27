@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchWeather } from '@shared/api/openMeteoApi.js';
-import { formatWeather } from '@shared/lib/weather.js';
+import { fetchWeather } from '../api/openMeteoApi.js';
+import { formatWeather } from '../lib/weather.js';
 
 const getCoords = () => ({
   lat: import.meta.env.VITE_RESTAURANT_LAT

@@ -2,7 +2,7 @@
 
 - **Type:** `New Feature`
 - **Branch / Track:** `Nhánh A (Full SDD)` *(Bắt buộc vì thêm bảng DB/migration `V1.23`, API mới, STOMP topic mới `/topic/service-requests`, màn hình `SCR-27`, quy tắc `BR-25` → `BR-28`, cùng cơ chế concurrency locking, rate limit và phân quyền RBAC)*
-- **Status:** `Implemented (Pending Sync-Back Review)` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
+- **Status:** `Archived` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
 - **Source of Truth:**
   - PO: [journey-features.md](../../01-po/journey-features.md) (`F1.6`, `F4.5`) · [personas.md](../../01-po/personas.md) (`PER-01`, `PER-02`, `PER-04..06`)
   - Design: [PROTOTYPE_SCREEN_MAP.md](../../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-05`, `SCR-11`, `SCR-27`) · [DESIGN_SYSTEM.md](../../02-design/DESIGN_SYSTEM.md)

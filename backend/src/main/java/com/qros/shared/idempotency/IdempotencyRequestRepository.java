@@ -35,7 +35,14 @@ public interface IdempotencyRequestRepository extends JpaRepository<IdempotencyR
                         :createdAt,
                         :expiresAt
                     )
-                    ON CONFLICT (namespace, request_key) DO NOTHING
+                    ON CONFLICT (namespace, request_key) DO UPDATE
+                    SET request_hash = EXCLUDED.request_hash,
+                        status = EXCLUDED.status,
+                        response_json = NULL,
+                        created_at = EXCLUDED.created_at,
+                        completed_at = NULL,
+                        expires_at = EXCLUDED.expires_at
+                    WHERE idempotency_requests.expires_at <= EXCLUDED.created_at
                     """, nativeQuery = true)
     int claimWithStatus(
             @Param("namespace") String namespace,

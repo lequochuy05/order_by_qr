@@ -5,5 +5,13 @@
   "server": {
     "androidScheme": "https",
     "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "plugins": {
+    "CapacitorCookies": {
+      "enabled": true
+    }
   }
 }

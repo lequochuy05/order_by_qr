@@ -10,7 +10,7 @@ import {
   useResolveServiceRequestMutation,
   useServiceRequestsQueueQuery,
 } from '@entities/service-request';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 import { useConfirmModal } from '@shared/hooks/useConfirmModal.js';
 import { useTranslation } from '@shared/lib/i18n';
 import { showErrorToast, showSuccessToast } from '@shared/lib/toast.js';

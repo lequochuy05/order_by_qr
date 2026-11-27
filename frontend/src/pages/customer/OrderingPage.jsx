@@ -1,4 +1,4 @@
-import CustomerMenu from '@features/customer-menu/ui/CustomerMenu.jsx';
+import { CustomerMenu } from '@features/customer-menu';
 import { AiChatAssistant } from '@features/ai-assistant';
 import ErrorBoundary from '@shared/ui/ErrorBoundary.jsx';
 

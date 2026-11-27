@@ -13,7 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class CompletedState implements OrderState {
 
-    private static final Set<OrderStatus> ALLOWED_FROM = Set.of(OrderStatus.AWAITING_PAYMENT);
+    private static final Set<OrderStatus> ALLOWED_FROM =
+            Set.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
 
     /**
      * Transitions the order status to COMPLETED.

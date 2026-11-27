@@ -5,7 +5,6 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
@@ -34,14 +33,6 @@ public class DailySummaryRefreshService {
     }
 
     private void clearAnalyticsCaches() {
-        clear(CacheNames.ANALYTICS);
-        clear(CacheNames.STATS_DASHBOARD);
-    }
-
-    private void clear(String cacheName) {
-        Cache cache = cacheManager.getCache(cacheName);
-        if (cache != null) {
-            cache.clear();
-        }
+        com.qros.shared.cache.CacheHelper.clear(cacheManager, CacheNames.ANALYTICS, CacheNames.STATS_DASHBOARD);
     }
 }

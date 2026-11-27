@@ -9,7 +9,7 @@ import com.qros.modules.inventory.model.RecipeItem;
 import com.qros.modules.inventory.repository.InventoryItemRepository;
 import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecipeService {
 
     private final RecipeItemRepository recipeItemRepository;
-    private final MenuItemRepository menuItemRepository;
+    private final MenuCatalogLookupService menuCatalogLookupService;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeMapper recipeMapper;
     private final InventoryAvailabilityService inventoryAvailabilityService;
@@ -97,6 +98,18 @@ public class RecipeService {
         eventPublisher.publishEvent(new MenuChangeEvent("recipe_deleted", menuItemId));
     }
 
+    @EventListener
+    @Transactional
+    public void onMenuItemDeleted(MenuItemDeletedEvent event) {
+        if (event == null || event.menuItemId() == null) {
+            return;
+        }
+        int deletedCount = recipeItemRepository.softDeleteByMenuItemId(event.menuItemId());
+        if (deletedCount > 0) {
+            eventPublisher.publishEvent(new InventoryChangeEvent("recipe_deleted", event.menuItemId()));
+        }
+    }
+
     private RecipeItem createRecipeItem(MenuItem menuItem, RecipeItemRequest request) {
         InventoryItem inventoryItem = getActiveInventoryItem(request.inventoryItemId());
 
@@ -104,8 +117,8 @@ public class RecipeService {
     }
 
     private MenuItem getMenuItem(Long menuItemId) {
-        return menuItemRepository
-                .findById(menuItemId)
+        return menuCatalogLookupService
+                .findMenuItemById(menuItemId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND));
     }
 

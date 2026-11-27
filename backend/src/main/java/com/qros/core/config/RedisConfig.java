@@ -2,6 +2,7 @@ package com.qros.core.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.qros.shared.cache.CacheNames;
+import com.qros.shared.config.AppProperties;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -143,6 +144,8 @@ public class RedisConfig implements CachingConfigurer {
         cacheConfigurations.put(CacheNames.ORDER_ID_CACHE, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.ORDER_STATS, config.entryTtl(Duration.ofMinutes(2)));
         cacheConfigurations.put(CacheNames.MENU_AVAILABILITY, config.entryTtl(Duration.ofSeconds(60)));
+        cacheConfigurations.put(CacheNames.USER_AUTH, config.entryTtl(Duration.ofSeconds(60)));
+        cacheConfigurations.put(CacheNames.AI_MENU_CONTEXT, config.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

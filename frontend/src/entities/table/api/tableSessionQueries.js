@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
+import { tableService } from './tableService.js';
 import { isTerminalSessionError } from '../lib/sessionErrors.js';
 
 export const useTableSessionQuery = (tableCode, sessionToken, options = {}) =>
@@ -8,13 +8,13 @@ export const useTableSessionQuery = (tableCode, sessionToken, options = {}) =>
     queryFn: async () => {
       if (!tableCode) return null;
 
-      const state = await publicMenuService.getSessionState(tableCode);
+      const state = await tableService.getSessionState(tableCode);
       let currentOrder = null;
       let sessionError = null;
 
       if (sessionToken && state?.hasOpenSession) {
         try {
-          currentOrder = await publicMenuService.getCurrentOrderByTableCode(tableCode, sessionToken);
+          currentOrder = await tableService.getCurrentOrderByTableCode(tableCode, sessionToken);
         } catch (error) {
           if (!isTerminalSessionError(error)) {
             throw error;

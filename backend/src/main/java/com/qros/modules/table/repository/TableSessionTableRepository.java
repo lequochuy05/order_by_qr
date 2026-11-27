@@ -47,6 +47,24 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             """)
     List<TableSessionTable> findActiveBySessionId(@Param("sessionId") Long sessionId);
 
+    @EntityGraph(attributePaths = {"session", "session.table", "table"})
+    @Query("""
+            SELECT membership
+            FROM TableSessionTable membership
+            WHERE membership.session.id = :sessionId
+            ORDER BY membership.primaryTable DESC, membership.table.tableNumber ASC
+            """)
+    List<TableSessionTable> findAllBySessionId(@Param("sessionId") Long sessionId);
+
+    @EntityGraph(attributePaths = {"session", "table"})
+    @Query("""
+            SELECT membership
+            FROM TableSessionTable membership
+            WHERE membership.session.id IN :sessionIds
+            ORDER BY membership.session.id ASC, membership.primaryTable DESC, membership.table.tableNumber ASC
+            """)
+    List<TableSessionTable> findAllBySessionIdIn(@Param("sessionIds") Collection<Long> sessionIds);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"session", "session.table", "table"})
     @Query("""
@@ -90,11 +108,19 @@ public interface TableSessionTableRepository extends JpaRepository<TableSessionT
             SELECT COUNT(membership) > 0
             FROM TableSessionTable membership
             WHERE membership.session.id = :sessionId
-              AND membership.table.tableCode = :tableCode
+              AND LOWER(membership.table.tableCode) = LOWER(:tableCode)
               AND membership.releasedAt IS NULL
             """)
     boolean existsActiveBySessionIdAndTableCode(
             @Param("sessionId") Long sessionId, @Param("tableCode") String tableCode);
+
+    @Query("""
+            SELECT COUNT(membership) > 0
+            FROM TableSessionTable membership
+            WHERE membership.session.id = :sessionId
+              AND LOWER(membership.table.tableCode) = LOWER(:tableCode)
+            """)
+    boolean existsAnyBySessionIdAndTableCode(@Param("sessionId") Long sessionId, @Param("tableCode") String tableCode);
 
     @Query("""
             SELECT membership

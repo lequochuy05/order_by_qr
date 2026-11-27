@@ -67,18 +67,11 @@ case "$MODE" in
   native)
     echo ""
     echo "═══ Native Deploy ═══"
-    echo "  GraalVM Native Image — RAM ~30MB, startup < 1s"
+    echo "  GraalVM 25 Native Image — RAM ~30MB, startup < 1s"
     echo "  ⚠️  Lần đầu build mất 5-10 phút"
     echo ""
 
-    # Build native image
-    echo "📦 Building native image (mất nhiều thời gian)..."
-    cd backend
-    mvn -Pnative native:compile -DskipTests -B
-    cd ..
-    echo "✅ Native binary built: backend/target/qros-backend"
-
-    # Build Docker image
+    # Build multi-stage native Docker image directly from repository root context
     echo "📦 Building native Docker image..."
     docker build -t order-by-qr-backend-native:$DOCKER_TAG -f backend/Dockerfile.native .
     echo "✅ Native Docker image built: order-by-qr-backend-native:$DOCKER_TAG"

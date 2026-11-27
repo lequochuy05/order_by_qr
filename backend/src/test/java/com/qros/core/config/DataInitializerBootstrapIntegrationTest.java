@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.config.AppProperties;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

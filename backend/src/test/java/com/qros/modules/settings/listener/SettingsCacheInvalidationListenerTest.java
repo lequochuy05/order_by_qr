@@ -13,13 +13,16 @@ import org.springframework.cache.CacheManager;
 class SettingsCacheInvalidationListenerTest {
 
     @Test
-    void settingsEventClearsSettingsCache() {
+    void settingsEventClearsSettingsAndPublicMenuCaches() {
         CacheManager cacheManager = mock(CacheManager.class);
-        Cache cache = mock(Cache.class);
-        when(cacheManager.getCache(CacheNames.SETTINGS)).thenReturn(cache);
+        Cache settingsCache = mock(Cache.class);
+        Cache publicMenuCache = mock(Cache.class);
+        when(cacheManager.getCache(CacheNames.SETTINGS)).thenReturn(settingsCache);
+        when(cacheManager.getCache(CacheNames.PUBLIC_MENU)).thenReturn(publicMenuCache);
 
         new SettingsCacheInvalidationListener(cacheManager).onSettingsChange(new SettingsChangeEvent(null));
 
-        verify(cache).clear();
+        verify(settingsCache).clear();
+        verify(publicMenuCache).clear();
     }
 }

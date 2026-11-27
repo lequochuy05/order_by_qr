@@ -2,7 +2,7 @@ const VALID_TYPES = new Set(['MENU_ITEM', 'COMBO']);
 const MAX_SUGGESTIONS = 5;
 const MAX_QUANTITY = 10;
 
-export const normalizeSuggestionType = (rawType) => {
+const normalizeSuggestionType = (rawType) => {
   if (typeof rawType !== 'string') return null;
   const upper = rawType.trim().toUpperCase();
   if (upper === 'COMBO') return 'COMBO';

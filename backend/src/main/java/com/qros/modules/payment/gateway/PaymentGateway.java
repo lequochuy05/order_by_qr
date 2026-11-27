@@ -11,6 +11,10 @@ public interface PaymentGateway {
 
     PaymentGatewayCreateResult createPaymentLink(PaymentTransaction transaction);
 
+    default PaymentGatewayCreateResult createPaymentLink(PaymentTransaction transaction, String returnPath) {
+        return createPaymentLink(transaction);
+    }
+
     void cancelPayment(PaymentTransaction transaction, String reason);
 
     PaymentGatewayStatusResult getPaymentStatus(PaymentTransaction transaction);

@@ -1,6 +1,5 @@
 package com.qros.modules.auth.controller;
 
-import com.qros.core.config.security.CookieRequestOriginValidator;
 import com.qros.modules.auth.dto.internal.LoginResult;
 import com.qros.modules.auth.dto.internal.RefreshResult;
 import com.qros.modules.auth.dto.request.EmailPasswordResetRequest;
@@ -18,8 +17,9 @@ import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import com.qros.shared.rate_limit.ClientAddressResolver;
+import com.qros.shared.ratelimit.ClientAddressResolver;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.security.CookieRequestOriginValidator;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.TokenBlacklistService;
 import jakarta.servlet.http.Cookie;
@@ -178,11 +178,15 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password-email")
-    public ApiResponse<Void> forgotPassword(@RequestParam @NonNull String email, HttpServletRequest request) {
+    public ApiResponse<Void> forgotPassword(
+            @RequestParam(required = false) String email,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String resolvedEmail = resolveContactField(email, body, "email");
         String clientAddress = clientAddressResolver.resolve(request);
-        authRateLimitService.checkForgotPassword(clientAddress, email);
+        authRateLimitService.checkForgotPassword(clientAddress, resolvedEmail);
         try {
-            passwordResetService.createPasswordResetToken(email);
+            passwordResetService.createPasswordResetToken(resolvedEmail);
         } catch (BusinessException e) {
             if (e.getErrorCode() != ErrorCode.EMAIL_NOT_FOUND) throw e;
         }
@@ -200,15 +204,31 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password-phone")
-    public ApiResponse<Void> forgotPasswordPhone(@RequestParam @NonNull String phone, HttpServletRequest request) {
+    public ApiResponse<Void> forgotPasswordPhone(
+            @RequestParam(required = false) String phone,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String resolvedPhone = resolveContactField(phone, body, "phone");
         String clientAddress = clientAddressResolver.resolve(request);
-        authRateLimitService.checkForgotPassword(clientAddress, phone);
+        authRateLimitService.checkForgotPassword(clientAddress, resolvedPhone);
         try {
-            passwordResetService.createOtpAndSendOtp(phone);
+            passwordResetService.createOtpAndSendOtp(resolvedPhone);
         } catch (BusinessException e) {
             if (e.getErrorCode() == ErrorCode.FEATURE_DISABLED) throw e;
         }
         return ApiResponse.success("If the phone number exists, an OTP code has been sent.", null);
+    }
+
+    private String resolveContactField(String queryValue, java.util.Map<String, String> body, String fieldName) {
+        String candidate = queryValue != null && !queryValue.isBlank()
+                ? queryValue.trim()
+                : (body != null && body.get(fieldName) != null
+                        ? body.get(fieldName).trim()
+                        : "");
+        if (candidate.isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, fieldName + " is required");
+        }
+        return candidate;
     }
 
     @PostMapping("/reset-password-phone")

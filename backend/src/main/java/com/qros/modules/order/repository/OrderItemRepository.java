@@ -15,30 +15,37 @@ import org.springframework.data.repository.query.Param;
 
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-    @EntityGraph(
-            attributePaths = {
-                "menuItem",
-                "combo",
-                "combo.items",
-                "combo.items.menuItem",
-                "orderItemOptions",
-                "orderItemOptions.itemOptionValue"
-            })
-    List<OrderItem> findByOrderId(Long orderId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT oi FROM OrderItem oi WHERE oi.id = :id")
     @EntityGraph(
-            attributePaths = {
-                "order",
-                "menuItem",
-                "combo",
-                "orderItemOptions",
-                "orderItemOptions.itemOptionValue",
-                "inventoryReservations",
-                "inventoryReservations.inventoryItem"
-            })
+            attributePaths = {"order", "menuItem", "combo", "orderItemOptions", "orderItemOptions.itemOptionValue"})
     Optional<OrderItem> findDetailByIdForUpdate(@Param("id") Long id);
+
+    @Query("""
+            SELECT COUNT(oi) > 0
+            FROM OrderItem oi
+            JOIN oi.order o
+            WHERE oi.menuItem.id = :menuItemId
+              AND o.status IN (
+                  com.qros.modules.order.model.enums.OrderStatus.PENDING,
+                  com.qros.modules.order.model.enums.OrderStatus.SERVING,
+                  com.qros.modules.order.model.enums.OrderStatus.AWAITING_PAYMENT
+              )
+            """)
+    boolean existsByMenuItemIdInActiveOrders(@Param("menuItemId") Long menuItemId);
+
+    @Query("""
+            SELECT COUNT(oi) > 0
+            FROM OrderItem oi
+            JOIN oi.order o
+            WHERE oi.combo.id = :comboId
+              AND o.status IN (
+                  com.qros.modules.order.model.enums.OrderStatus.PENDING,
+                  com.qros.modules.order.model.enums.OrderStatus.SERVING,
+                  com.qros.modules.order.model.enums.OrderStatus.AWAITING_PAYMENT
+              )
+            """)
+    boolean existsByComboIdInActiveOrders(@Param("comboId") Long comboId);
 
     @Query("""
           SELECT oi.menuItem

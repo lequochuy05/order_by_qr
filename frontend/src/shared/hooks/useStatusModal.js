@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 
-export const useStatusModalStore = create((set) => ({
+const useStatusModalStore = create((set) => ({
   isOpen: false,
   type: 'success',
   title: '',

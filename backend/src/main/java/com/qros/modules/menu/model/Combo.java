@@ -52,6 +52,10 @@ public class Combo extends BaseEntity {
 
     @Builder.Default
     @Column(nullable = false)
+    private Boolean manuallyPaused = false;
+
+    @Builder.Default
+    @Column(nullable = false)
     private Integer displayOrder = 0;
 
     @Builder.Default

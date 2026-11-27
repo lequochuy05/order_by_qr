@@ -1,7 +1,10 @@
+// eslint-disable-next-line no-restricted-imports -- relative path required for Node ESM unit tests
+import { createIdempotencyKey } from '../../../shared/lib/idempotency.js';
+
 export const SERVICE_REQUEST_SLA_MS = 5 * 60 * 1000;
 export const SERVICE_REQUEST_COOLDOWN_SECONDS = 60;
 export const MAX_OPEN_SERVICE_REQUESTS = 3;
-export const MIN_OTHER_NOTE_LENGTH = 2;
+const MIN_OTHER_NOTE_LENGTH = 2;
 export const MAX_SERVICE_REQUEST_NOTE_LENGTH = 200;
 
 export const SERVICE_REQUEST_STATUSES = Object.freeze({
@@ -50,11 +53,11 @@ export const SERVICE_REQUEST_REASONS = Object.freeze([
   },
 ]);
 
-export const SERVICE_REQUEST_REASON_MAP = Object.freeze(
+const SERVICE_REQUEST_REASON_MAP = Object.freeze(
   Object.fromEntries(SERVICE_REQUEST_REASONS.map((reason) => [reason.code, reason])),
 );
 
-export const SERVICE_REQUEST_STATUS_META = Object.freeze({
+const SERVICE_REQUEST_STATUS_META = Object.freeze({
   [SERVICE_REQUEST_STATUSES.PENDING]: {
     color: 'amber',
     labelVi: 'Chờ xử lý',
@@ -104,7 +107,7 @@ export const getServiceRequestStatusMeta = (status, language = 'vi') => {
   };
 };
 
-export const parseServiceRequestTimestamp = (value) => {
+const parseServiceRequestTimestamp = (value) => {
   if (!value) return null;
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   const parsed = Date.parse(value);
@@ -186,9 +189,4 @@ export const sortServiceRequestQueue = (requests = [], statusFilter = 'OPEN') =>
   });
 };
 
-export const generateClientRequestId = () => {
-  if (typeof globalThis.crypto?.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
-  }
-  return `sr-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-};
+export const generateClientRequestId = () => createIdempotencyKey('sr');

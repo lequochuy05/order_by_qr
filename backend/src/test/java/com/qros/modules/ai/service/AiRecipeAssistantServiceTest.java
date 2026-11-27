@@ -16,11 +16,10 @@ import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.support.AiPromptBuilder;
 import com.qros.modules.inventory.model.InventoryItem;
 import com.qros.modules.inventory.model.RecipeItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
-import com.qros.modules.inventory.repository.RecipeItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.modules.menu.model.Category;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -33,23 +32,20 @@ import tools.jackson.databind.ObjectMapper;
 
 class AiRecipeAssistantServiceTest {
 
-    private MenuItemRepository menuItemRepository;
-    private RecipeItemRepository recipeItemRepository;
-    private InventoryItemRepository inventoryItemRepository;
+    private MenuCatalogLookupService menuCatalogLookupService;
+    private InventoryLookupService inventoryLookupService;
     private AiChatGateway aiChatGateway;
     private AiRecipeAssistantService service;
 
     @BeforeEach
     void setUp() {
-        menuItemRepository = mock(MenuItemRepository.class);
-        recipeItemRepository = mock(RecipeItemRepository.class);
-        inventoryItemRepository = mock(InventoryItemRepository.class);
+        menuCatalogLookupService = mock(MenuCatalogLookupService.class);
+        inventoryLookupService = mock(InventoryLookupService.class);
         aiChatGateway = mock(AiChatGateway.class);
 
         service = new AiRecipeAssistantService(
-                menuItemRepository,
-                recipeItemRepository,
-                inventoryItemRepository,
+                menuCatalogLookupService,
+                inventoryLookupService,
                 aiChatGateway,
                 new AiPromptBuilder(),
                 new ObjectMapper(),
@@ -58,7 +54,7 @@ class AiRecipeAssistantServiceTest {
 
     @Test
     void throwsNotFoundWhenMenuItemMissing() {
-        when(menuItemRepository.findById(999L)).thenReturn(Optional.empty());
+        when(menuCatalogLookupService.findMenuItemById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.assistRecipe(new AiRecipeAssistantRequest(999L, null, "vi")))
                 .isInstanceOf(BusinessException.class)
@@ -139,9 +135,9 @@ class AiRecipeAssistantServiceTest {
                 .active(true)
                 .build();
 
-        when(menuItemRepository.findById(15L)).thenReturn(Optional.of(steak));
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(beef));
-        when(recipeItemRepository.findByMenuItemId(15L)).thenReturn(List.of());
+        when(menuCatalogLookupService.findMenuItemById(15L)).thenReturn(Optional.of(steak));
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of(beef));
+        when(inventoryLookupService.findRecipesByMenuItemId(15L)).thenReturn(List.of());
         when(aiChatGateway.chat(any(), anyString(), anyString())).thenReturn("""
                 {
                   "suggestedItems": [
@@ -181,9 +177,9 @@ class AiRecipeAssistantServiceTest {
                 .active(true)
                 .build();
 
-        when(menuItemRepository.findById(20L)).thenReturn(Optional.of(coffee));
-        when(inventoryItemRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(bean));
-        when(recipeItemRepository.findByMenuItemId(20L))
+        when(menuCatalogLookupService.findMenuItemById(20L)).thenReturn(Optional.of(coffee));
+        when(inventoryLookupService.findActiveInventoryItemsOrdered()).thenReturn(List.of(bean));
+        when(inventoryLookupService.findRecipesByMenuItemId(20L))
                 .thenReturn(List.of(RecipeItem.builder()
                         .id(55L)
                         .menuItem(coffee)

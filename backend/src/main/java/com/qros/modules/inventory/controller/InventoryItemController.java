@@ -40,6 +40,7 @@ public class InventoryItemController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<Page<InventoryItemResponse>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String stockFilter,
@@ -48,21 +49,25 @@ public class InventoryItemController {
     }
 
     @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<InventorySummaryResponse> summary() {
         return ApiResponse.success(inventoryItemService.getSummary());
     }
 
     @GetMapping("/active")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<List<InventoryItemResponse>> activeItems() {
         return ApiResponse.success(inventoryItemService.findActiveItems());
     }
 
     @GetMapping("/low-stock")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<List<InventoryItemResponse>> lowStockItems() {
         return ApiResponse.success(inventoryItemService.findLowStockItems());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
     public ApiResponse<InventoryItemResponse> get(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
         return ApiResponse.success(inventoryItemService.findById(id));
@@ -83,7 +88,7 @@ public class InventoryItemController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> delete(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
         inventoryItemService.delete(id);

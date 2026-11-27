@@ -2,7 +2,7 @@
 
 - **Type:** `New Feature`
 - **Branch / Track:** `Nhánh A (Full SDD)` *(Bổ sung migration `V1.24`, 4 nhóm API AI mới có phân quyền RBAC/quota theo `STAFF`/`CHEF`/`MANAGER`/`ADMIN`, các quy tắc `BR-32` → `BR-35`, và cập nhật UI trên `SCR-11`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27`)*
-- **Status:** `Implemented (Pending Sync-Back Review)` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
+- **Status:** `Archived` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
 - **Source of Truth:**
   - PO: [journey-features.md](../../01-po/journey-features.md) (`F2.6`, `F5.6`, `F5.7`, `F6.7`) · [personas.md](../../01-po/personas.md) (`PER-02`..`PER-06`)
   - Design: [PROTOTYPE_SCREEN_MAP.md](../../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-11`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27`) · [DESIGN_SYSTEM.md](../../02-design/DESIGN_SYSTEM.md)

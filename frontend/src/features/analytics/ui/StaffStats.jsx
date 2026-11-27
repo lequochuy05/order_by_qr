@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   PieChart,
   Pie,
@@ -8,33 +9,28 @@ import {
   Legend,
 } from 'recharts';
 import { Loader2, Award, Users } from 'lucide-react';
-import { analyticsService } from '@entities/analytics/api/analyticsService.js';
+import { analyticsService } from '@entities/analytics';
+import { queryKeys } from '@shared/api/queryKeys.js';
 import StatsToolbar from '@shared/ui/StatsToolbar.jsx';
 
 import { fmtVND } from '@shared/lib/formatters.js';
 import useDateRangeFilter from '../model/useDateRangeFilter.js';
 
 const COLORS = ['#6366F1', '#8B5CF6', '#10B981', '#06B6D4', '#F59E0B', '#94A3B8'];
+const EMPTY_LIST = [];
 
 const StaffStats = () => {
   const { dateRange, setDateRange, appliedDateRange, handleApplyFilters } = useDateRangeFilter();
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await analyticsService.getUsers(appliedDateRange.from, appliedDateRange.to);
-        setEmployees(data.sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [appliedDateRange]);
+  const { data: employees = EMPTY_LIST, isPending: loading } = useQuery({
+    queryKey: queryKeys.analytics.staff(appliedDateRange.from, appliedDateRange.to),
+    queryFn: async () => {
+      const data = await analyticsService.getUsers(appliedDateRange.from, appliedDateRange.to);
+      return [...data].sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+    },
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
+  });
 
   const pieData = useMemo(() => {
     if (!employees.length) return [];

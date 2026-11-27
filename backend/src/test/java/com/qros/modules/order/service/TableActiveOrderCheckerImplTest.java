@@ -8,7 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import com.qros.modules.order.listener.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
@@ -16,7 +16,6 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.state.OrderState;
 import com.qros.modules.order.state.OrderStateFactory;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.LinkedHashSet;
@@ -35,7 +34,7 @@ class TableActiveOrderCheckerImplTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private PaymentTransactionRepository paymentTransactionRepository;
+    private OrderPaymentPort orderPaymentPort;
 
     @Mock
     private OrderStateFactory orderStateFactory;
@@ -51,11 +50,7 @@ class TableActiveOrderCheckerImplTest {
     @BeforeEach
     void setUp() {
         checker = new TableActiveOrderCheckerImpl(
-                orderRepository,
-                paymentTransactionRepository,
-                orderStateFactory,
-                orderAuditService,
-                orderCacheInvalidationService);
+                orderRepository, orderPaymentPort, orderStateFactory, orderAuditService, orderCacheInvalidationService);
     }
 
     @Test

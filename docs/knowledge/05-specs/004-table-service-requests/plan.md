@@ -134,8 +134,8 @@
 ---
 
 ## 3. Kiểm tra nhanh theo `CONSTITUTION.md`
-- [ ] **Ranh giới Modular Monolith (`ArchUnit`) & Thông báo tiếng Anh (`BackendMessageLanguageTest`):** `TableServiceRequest` nằm hoàn toàn trong `com.qros.modules.table`, không import `com.qros.modules.order`; giao tiếp sang `notification` qua `DomainEvents`; 100% thông báo lỗi & exception dùng tiếng Anh.
-- [ ] **Bảo mật RBAC / Concurrency / Rate Limit / Idempotency:** Route `/api/v1/table-service-requests/**` và `/topic/service-requests` chặn `CHEF` và anonymous; `claim` dùng `SELECT FOR UPDATE` + `@Version`; chống spam khách bằng `RateLimitingFilter`, cooldown 60s, giới hạn 3 yêu cầu mở, `clientRequestId` và partial unique indexes.
-- [ ] **Flyway:** Chỉ thêm mới `V1.23__Table_Service_Requests.sql`, không chỉnh sửa `V1`–`V1.22`.
-- [ ] **FSD & Design Tokens 2 tầng:** Đúng chiều `app → pages → widgets → features → entities → shared`; không hardcode mã hex mới; dùng token semantic từ `index.css` bảo đảm Light/Dark WCAG AA và đủ 5 trạng thái UI + song ngữ `VI`/`EN`.
-- [ ] **Chiến lược Test gắn vào từng nhóm task:** Mỗi nhóm DB / Backend / Frontend trong `tasks.md` đều có unit/integration test và lệnh DoD đi kèm ngay trong nhóm.
+- [x] **Ranh giới Modular Monolith (`ArchUnit`) & Thông báo tiếng Anh (`BackendMessageLanguageTest`):** `TableServiceRequest` nằm hoàn toàn trong `com.qros.modules.table`, không import `com.qros.modules.order`; giao tiếp sang `notification` qua `DomainEvents`; 100% thông báo lỗi & exception dùng tiếng Anh.
+- [x] **Bảo mật RBAC / Concurrency / Rate Limit / Idempotency:** Route `/api/v1/table-service-requests/**` và `/topic/service-requests` chặn `CHEF` và anonymous; `claim` dùng `SELECT FOR UPDATE` + `@Version`; chống spam khách bằng `RateLimitingFilter`, cooldown 60s, giới hạn 3 yêu cầu mở, `clientRequestId` và partial unique indexes.
+- [x] **Flyway:** Chỉ thêm mới `V1.23__Table_Service_Requests.sql`, không chỉnh sửa `V1`–`V1.22`.
+- [x] **FSD & Design Tokens 2 tầng:** Đúng chiều `app → pages → widgets → features → entities → shared`; không hardcode mã hex mới; dùng token semantic từ `index.css` bảo đảm Light/Dark WCAG AA và đủ 5 trạng thái UI + song ngữ `VI`/`EN`.
+- [x] **Chiến lược Test gắn vào từng nhóm task:** Mỗi nhóm DB / Backend / Frontend trong `tasks.md` đều có unit/integration test và lệnh DoD đi kèm ngay trong nhóm.

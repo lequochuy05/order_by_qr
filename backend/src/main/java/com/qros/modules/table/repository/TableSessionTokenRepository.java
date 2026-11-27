@@ -17,6 +17,10 @@ public interface TableSessionTokenRepository extends JpaRepository<TableSessionT
     @EntityGraph(attributePaths = {"session", "session.table"})
     Optional<TableSessionToken> findFirstByTokenHashAndRevokedAtIsNull(String tokenHash);
 
+    boolean existsBySession_IdAndTokenHash(Long sessionId, String tokenHash);
+
+    boolean existsBySession_Id(Long sessionId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT t FROM TableSessionToken t

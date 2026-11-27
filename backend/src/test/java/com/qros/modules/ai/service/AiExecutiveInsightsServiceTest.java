@@ -14,13 +14,13 @@ import com.qros.modules.ai.dto.response.AiExecutiveSummaryResponse.TopDishMetric
 import com.qros.modules.ai.gateway.AiChatGateway;
 import com.qros.modules.ai.service.ExecutiveInsightsContextProvider.ExecutiveInsightsData;
 import com.qros.modules.ai.support.AiPromptBuilder;
-import com.qros.modules.analytics.repository.AnalyticsQueryRepository;
-import com.qros.modules.analytics.repository.projection.DashboardSummaryProjection;
-import com.qros.modules.analytics.repository.projection.OrderFilterSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TableSummaryProjection;
-import com.qros.modules.analytics.repository.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.dto.projection.DashboardSummaryProjection;
+import com.qros.modules.analytics.dto.projection.OrderFilterSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TableSummaryProjection;
+import com.qros.modules.analytics.dto.projection.TopSellingItemProjection;
+import com.qros.modules.analytics.service.AnalyticsLookupService;
 import com.qros.modules.inventory.model.InventoryItem;
-import com.qros.modules.inventory.repository.InventoryItemRepository;
+import com.qros.modules.inventory.service.InventoryLookupService;
 import com.qros.modules.kitchen.dto.response.KitchenOrderResponse;
 import com.qros.modules.kitchen.dto.response.KitchenOrderResponse.KitchenOrderItemResponse;
 import com.qros.modules.kitchen.service.KitchenService;
@@ -31,7 +31,7 @@ import com.qros.modules.table.model.DiningTable;
 import com.qros.modules.table.model.TableServiceRequest;
 import com.qros.modules.table.model.enums.ServiceRequestReason;
 import com.qros.modules.table.model.enums.ServiceRequestStatus;
-import com.qros.modules.table.repository.TableServiceRequestRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import com.qros.shared.time.AppTime;
@@ -132,10 +132,10 @@ class AiExecutiveInsightsServiceTest {
 
     @Test
     void contextProviderAggregatesRevenueDeltaKitchenSlaServiceRequestsAndInventory() {
-        AnalyticsQueryRepository analyticsRepo = mock(AnalyticsQueryRepository.class);
+        AnalyticsLookupService analyticsRepo = mock(AnalyticsLookupService.class);
         KitchenService kitchenService = mock(KitchenService.class);
-        TableServiceRequestRepository serviceRequestRepo = mock(TableServiceRequestRepository.class);
-        InventoryItemRepository inventoryRepo = mock(InventoryItemRepository.class);
+        TableLookupService serviceRequestRepo = mock(TableLookupService.class);
+        InventoryLookupService inventoryRepo = mock(InventoryLookupService.class);
 
         LocalDate from = LocalDate.of(2026, 11, 20);
         LocalDate to = LocalDate.of(2026, 11, 22);
@@ -201,7 +201,7 @@ class AiExecutiveInsightsServiceTest {
                 .status(ServiceRequestStatus.PENDING)
                 .createdAt(now.minusMinutes(8))
                 .build();
-        when(serviceRequestRepo.findByCreatedAtRange(
+        when(serviceRequestRepo.findServiceRequestsByCreatedAtRange(
                         from.atStartOfDay(), to.plusDays(1).atStartOfDay()))
                 .thenReturn(List.of(pendingOld));
 

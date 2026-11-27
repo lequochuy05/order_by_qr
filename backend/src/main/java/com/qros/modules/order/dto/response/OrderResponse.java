@@ -19,6 +19,10 @@ public record OrderResponse(
         String voucherCode,
         BigDecimal subtotalAmount,
         BigDecimal discountAmount,
+        BigDecimal serviceChargePercent,
+        BigDecimal serviceChargeAmount,
+        BigDecimal taxPercent,
+        BigDecimal taxAmount,
         BigDecimal finalAmount,
         BigDecimal paidAmount,
         LocalDate businessDate,
@@ -29,4 +33,45 @@ public record OrderResponse(
         LocalDateTime paymentTime,
         OrderTableSummaryResponse table,
         List<OrderItemResponse> orderItems,
-        LocalDateTime createdAt) {}
+        LocalDateTime createdAt) {
+
+    public OrderResponse(
+            Long id,
+            OrderStatus status,
+            String voucherCode,
+            BigDecimal subtotalAmount,
+            BigDecimal discountAmount,
+            BigDecimal finalAmount,
+            BigDecimal paidAmount,
+            LocalDate businessDate,
+            OrderType orderType,
+            PaymentStatus paymentStatus,
+            PaymentMethod paymentMethod,
+            String paidByName,
+            LocalDateTime paymentTime,
+            OrderTableSummaryResponse table,
+            List<OrderItemResponse> orderItems,
+            LocalDateTime createdAt) {
+        this(
+                id,
+                status,
+                voucherCode,
+                subtotalAmount,
+                discountAmount,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                finalAmount,
+                paidAmount,
+                businessDate,
+                orderType,
+                paymentStatus,
+                paymentMethod,
+                paidByName,
+                paymentTime,
+                table,
+                orderItems,
+                createdAt);
+    }
+}

@@ -18,37 +18,30 @@ import org.springframework.lang.NonNull;
 
 public interface PaymentTransactionRepository extends JpaRepository<PaymentTransaction, Long> {
 
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderById(@Param("id") @NonNull Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.id = :id")
     Optional<PaymentTransaction> findWithOrderByIdForUpdate(@Param("id") @NonNull Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"order", "order.table"})
+    @EntityGraph(attributePaths = {"order", "order.table", "createdBy"})
     @Query("SELECT t FROM PaymentTransaction t WHERE t.gatewayOrderCode = :gatewayOrderCode")
     Optional<PaymentTransaction> findWithOrderByGatewayOrderCodeForUpdate(
             @Param("gatewayOrderCode") @NonNull Long gatewayOrderCode);
 
     Optional<PaymentTransaction> findFirstByIdempotencyKey(String idempotencyKey);
 
-    Optional<PaymentTransaction> findByExternalReference(String externalReference);
-
-    Optional<PaymentTransaction> findFirstByOrderIdAndStatusOrderByCreatedAtDesc(
-            Long orderId, PaymentTransactionStatus status);
-
-    Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusOrderByCreatedAtDesc(
-            Long orderId, PaymentMethod paymentMethod, PaymentTransactionStatus status);
-
     Optional<PaymentTransaction> findFirstByOrderIdAndPaymentMethodAndStatusInOrderByCreatedAtDesc(
             Long orderId, PaymentMethod paymentMethod, Collection<PaymentTransactionStatus> statuses);
 
-    boolean existsByOrderIdAndStatus(Long orderId, PaymentTransactionStatus status);
-
     boolean existsByOrderIdAndStatusIn(Long orderId, Collection<PaymentTransactionStatus> statuses);
+
+    boolean existsByVoucherCodeSnapshotIgnoreCaseAndStatusIn(
+            String voucherCodeSnapshot, Collection<PaymentTransactionStatus> statuses);
 
     @Query("""
             SELECT COUNT(t) > 0
@@ -84,16 +77,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
         return sumAmountByOrderIdAndStatus(orderId, PaymentTransactionStatus.PAID);
     }
 
-    @Query("""
-                        SELECT t
-                        FROM PaymentTransaction t
-                        WHERE t.status = :status
-                          AND t.expiresAt IS NOT NULL
-                          AND t.expiresAt < :now
-                        """)
-    List<PaymentTransaction> findByStatusAndExpiresAtBefore(
-            @Param("status") PaymentTransactionStatus status, @Param("now") LocalDateTime now);
-
+    @EntityGraph(attributePaths = {"order", "createdBy"})
     @Query("""
                         SELECT t
                         FROM PaymentTransaction t

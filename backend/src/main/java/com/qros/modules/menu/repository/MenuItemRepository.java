@@ -14,27 +14,12 @@ import org.springframework.lang.NonNull;
 
 public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
 
-    @EntityGraph(attributePaths = {"category"})
-    @Query("""
-          SELECT m
-          FROM MenuItem m
-          WHERE m.category.id = :categoryId
-            AND m.active = true
-          ORDER BY m.displayOrder ASC, m.name ASC
-      """)
-    List<MenuItem> findActiveSummariesByCategoryId(@Param("categoryId") Long categoryId);
-
-    @Query("""
-          SELECT COUNT(m)
-          FROM MenuItem m
-          WHERE m.category.id = :categoryId
-            AND m.active = true
-      """)
-    long countByCategoryIdAndActiveTrue(@Param("categoryId") Long categoryId);
-
     boolean existsByCategoryId(Long categoryId);
 
     long countByCategoryId(Long categoryId);
+
+    @EntityGraph(attributePaths = {"category"})
+    List<MenuItem> findByCategoryId(Long categoryId);
 
     @Query("""
           SELECT m.category.id, COUNT(m)

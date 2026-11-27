@@ -30,8 +30,48 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: [
+          '**/vendor-charts-*.js',
+          '**/AdminLayout-*.js',
+          '**/*Management-*.js',
+          '**/CategoryPage-*.js',
+          '**/ComboPage-*.js',
+          '**/DashboardPage-*.js',
+          '**/InventoryPage-*.js',
+          '**/KitchenPage-*.js',
+          '**/MenuPage-*.js',
+          '**/OrderHistoryPage-*.js',
+          '**/ProfilePage-*.js',
+          '**/PromotionPage-*.js',
+          '**/RevenueStatsPage-*.js',
+          '**/ServiceRequestsPage-*.js',
+          '**/SettingsPage-*.js',
+          '**/StaffStatsPage-*.js',
+          '**/TableMapPage-*.js',
+          '**/TakeawayPage-*.js',
+          '**/TopDishesStatsPage-*.js',
+          '**/UserPage-*.js',
+          '**/VoucherPage-*.js',
+          '**/StaffAiAssistant-*.js',
+          '**/AiInvoiceOcrModal-*.js',
+        ],
         navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
         runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith('/assets/') && /\.(?:js|css)$/i.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'lazy-assets-cache',
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              expiration: {
+                maxEntries: 120,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
           {
             urlPattern: isCacheablePublicApiGetRequest,
             handler: 'NetworkFirst',
@@ -78,11 +118,11 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Order by QR - Hệ thống gọi món thông minh',
-        short_name: 'Order by QR',
-        description: 'Hệ thống gọi món bằng mã QR cho nhà hàng',
-        theme_color: '#EA580C',
-        background_color: '#FAFAFA',
+        name: 'QROS — Smart QR Order & Restaurant Operating System',
+        short_name: 'QROS',
+        description: 'Hệ thống đặt món qua mã QR và quản lý vận hành nhà hàng thông minh',
+        theme_color: '#6366F1',
+        background_color: '#F8FAFC',
         display: 'standalone',
         orientation: 'portrait-primary',
         scope: '/',
@@ -116,7 +156,6 @@ export default defineConfig({
       '@pages': path.resolve(__dirname, './src/pages'),
       '@widgets': path.resolve(__dirname, './src/widgets'),
       '@features': path.resolve(__dirname, './src/features'),
-      '@modules': path.resolve(__dirname, './src/features'),
       '@entities': path.resolve(__dirname, './src/entities'),
       '@shared': path.resolve(__dirname, './src/shared'),
     },
@@ -139,6 +178,15 @@ export default defineConfig({
             id.includes('/use-sync-external-store/')
           )
             return 'vendor-react';
+          if (id.includes('/@tanstack/')) return 'vendor-query';
+          if (id.includes('/@stomp/') || id.includes('/sockjs-client/')) return 'vendor-realtime';
+          if (
+            id.includes('/recharts/') ||
+            id.includes('/d3-') ||
+            id.includes('/victory-vendor/') ||
+            id.includes('/react-smooth/')
+          )
+            return 'vendor-charts';
           if (id.includes('/lucide-react/') || id.includes('/react-icons/')) return 'vendor-icons';
           if (id.includes('/qrcode.react/')) return 'vendor-qrcode';
           if (id.includes('/axios/') || id.includes('/zustand/')) return 'vendor-data';

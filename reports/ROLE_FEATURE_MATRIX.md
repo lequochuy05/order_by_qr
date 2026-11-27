@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày kiểm tra: 2026-11-14*
 *Cơ sở pháp lý & Kỹ thuật: Bóc tách trực tiếp từ `frontend/src/app/router.jsx`, `AdminSidebar.jsx` và `backend/.../UserRole.java`*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Ma trận dưới đây phản ánh đợt kiểm tra ngày `2026-11-14`. Phiên bản hiện hành đã bổ sung thêm `/admin/promotions` (`ADMIN`/`MANAGER`), `/admin/service-requests` (`ADMIN`/`MANAGER`/`CASHIER`/`STAFF`), khách tự thanh toán VietQR và bộ AI mở rộng — xem ma trận phân quyền hiện hành tại [SYSTEM_DESIGN.md §7](../docs/knowledge/04-tech/SYSTEM_DESIGN.md) và [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md).
+
 ---
 
 ## 1. ĐỊNH NGHĨA 6 VAI TRÒ NGƯỜI DÙNG (6 SYSTEM ROLES)

@@ -1,7 +1,7 @@
 package com.qros.modules.table.controller;
 
-import com.qros.modules.table.dto.request.CancelServiceRequestDto;
-import com.qros.modules.table.dto.request.CreateServiceRequestDto;
+import com.qros.modules.table.dto.request.CancelTableServiceRequest;
+import com.qros.modules.table.dto.request.CreateTableServiceRequest;
 import com.qros.modules.table.dto.response.CustomerServiceRequestsStateResponse;
 import com.qros.modules.table.dto.response.TableServiceRequestResponse;
 import com.qros.modules.table.service.TableServiceRequestService;
@@ -43,7 +43,7 @@ public class PublicTableServiceRequestController {
 
     @PostMapping("/tables/{tableCode}/service-requests")
     public ApiResponse<TableServiceRequestResponse> createServiceRequest(
-            @PathVariable @NonNull String tableCode, @Valid @RequestBody @NonNull CreateServiceRequestDto request) {
+            @PathVariable @NonNull String tableCode, @Valid @RequestBody @NonNull CreateTableServiceRequest request) {
         return ApiResponse.success(
                 "Service request submitted", tableServiceRequestService.createCustomerRequest(tableCode, request));
     }
@@ -52,7 +52,7 @@ public class PublicTableServiceRequestController {
     public ApiResponse<TableServiceRequestResponse> cancelServiceRequest(
             @PathVariable @NonNull String tableCode,
             @PathVariable @NonNull Long id,
-            @Valid @RequestBody @NonNull CancelServiceRequestDto request) {
+            @Valid @RequestBody @NonNull CancelTableServiceRequest request) {
         return ApiResponse.success(
                 "Service request cancelled", tableServiceRequestService.cancelByCustomer(tableCode, id, request));
     }

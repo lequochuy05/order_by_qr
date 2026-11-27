@@ -18,7 +18,7 @@ public record ComboRequest(
 
         @Size(max = 500, message = "Description cannot exceed 500 characters") String description,
 
-        @NotNull(message = "Price cannot be empty") @DecimalMin(value = "0.0", message = "Price cannot be negative") BigDecimal price,
+        @NotNull(message = "Price cannot be empty") @DecimalMin(value = "1000.0", message = "Price must be at least 1,000 VND") BigDecimal price,
 
         Boolean active,
         Boolean available,

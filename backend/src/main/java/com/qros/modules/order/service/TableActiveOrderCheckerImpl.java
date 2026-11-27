@@ -1,6 +1,6 @@
 package com.qros.modules.order.service;
 
-import com.qros.modules.order.infrastructure.OrderCacheInvalidationService;
+import com.qros.modules.order.listener.OrderCacheInvalidationService;
 import com.qros.modules.order.model.Order;
 import com.qros.modules.order.model.OrderItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
@@ -8,14 +8,14 @@ import com.qros.modules.order.model.enums.OrderStatus;
 import com.qros.modules.order.repository.OrderRepository;
 import com.qros.modules.order.repository.projection.ActiveOrderLockProjection;
 import com.qros.modules.order.state.OrderStateFactory;
-import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
-import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.table.model.TableSession;
 import com.qros.modules.table.service.TableActiveOrderChecker;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,13 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class TableActiveOrderCheckerImpl implements TableActiveOrderChecker {
 
-    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES =
-            List.of(OrderStatus.PENDING, OrderStatus.SERVING, OrderStatus.AWAITING_PAYMENT);
-    private static final List<String> ACTIVE_ORDER_STATUS_NAMES =
-            ACTIVE_ORDER_STATUSES.stream().map(Enum::name).toList();
+    private static final List<OrderStatus> ACTIVE_ORDER_STATUSES = OrderStatus.ACTIVE_STATUSES;
+    private static final List<String> ACTIVE_ORDER_STATUS_NAMES = OrderStatus.ACTIVE_STATUS_NAMES;
 
     private final OrderRepository orderRepository;
-    private final PaymentTransactionRepository paymentTransactionRepository;
+    private final OrderPaymentPort orderPaymentPort;
     private final OrderStateFactory orderStateFactory;
     private final OrderAuditService orderAuditService;
     private final OrderCacheInvalidationService orderCacheInvalidationService;
@@ -40,6 +38,14 @@ public class TableActiveOrderCheckerImpl implements TableActiveOrderChecker {
     @Override
     public boolean hasActiveOrders(Long tableId) {
         return orderRepository.existsByTableIdAndStatusIn(tableId, ACTIVE_ORDER_STATUSES);
+    }
+
+    @Override
+    public Set<Long> findTableIdsWithActiveOrders(Collection<Long> tableIds) {
+        if (tableIds == null || tableIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(orderRepository.findDistinctActiveTableIdsIn(tableIds, ACTIVE_ORDER_STATUSES));
     }
 
     @Override
@@ -57,8 +63,7 @@ public class TableActiveOrderCheckerImpl implements TableActiveOrderChecker {
 
     @Override
     public boolean hasPaymentInProgressForSession(Long sessionId) {
-        return paymentTransactionRepository.existsByOrderTableSessionIdAndStatusIn(
-                sessionId, List.of(PaymentTransactionStatus.CREATING, PaymentTransactionStatus.PENDING));
+        return orderPaymentPort.hasPendingPaymentForTableSession(sessionId);
     }
 
     @Override

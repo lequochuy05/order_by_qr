@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
-import { calculatePayosTimeLeft } from '@entities/payment/lib/paymentExpiry.js';
-import { PAYMENT_TRANSACTION_STATUSES } from '@entities/payment/lib/paymentStatus.js';
-import { useWebSocket } from '@shared/hooks/useWebSocket.js';
+import { publicMenuService } from '@entities/public-menu';
+import {
+  PAYMENT_TRANSACTION_STATUSES,
+  calculatePayosTimeLeft,
+  usePayosTransactionMonitor,
+} from '@entities/payment';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
+import { createIdempotencyKey } from '@shared/lib/idempotency.js';
 import {
   calculateSelfCheckoutBreakdown,
   createSelfCheckoutWithRetry,
@@ -15,11 +18,6 @@ import {
 
 const PAYOS_FIRST_SYNC_DELAY_MS = 2500;
 const PAYOS_SYNC_INTERVAL_MS = 6000;
-
-const createIdempotencyKey = () =>
-  crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 const readSelfCheckoutDraft = (storageKey) => {
   if (!storageKey) return null;
@@ -44,20 +42,12 @@ const writeSelfCheckoutDraft = (storageKey, data) => {
   }
 };
 
-const sameId = (left, right) =>
-  left != null && right != null && String(left) === String(right);
-
-const getPaymentEventOrderId = (message) =>
-  message?.orderId ?? message?.id ?? message?.data?.orderId;
-
-const getPaymentEventTransactionId = (message) =>
-  message?.transactionId ?? message?.data?.transactionId;
-
 const useCustomerSelfCheckout = ({
   tableCode,
   sessionToken,
   order,
   activePromotion = null,
+  restaurantSettings = null,
   onPaymentSuccess,
 }) => {
   const storageKey = useMemo(
@@ -90,17 +80,42 @@ const useCustomerSelfCheckout = ({
   );
   const [payosLoading, setPayosLoading] = useState(false);
   const [payosError, setPayosError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(() => initialTimeLeft);
 
   const successHandledRef = useRef(false);
-  const syncingRef = useRef(false);
+  const activeStorageKeyRef = useRef(storageKey);
+
+  // Sync/reset draft cleanly when the active order changes while keeping monitor alive across sheet toggle
+  useEffect(() => {
+    if (activeStorageKeyRef.current === storageKey) return;
+    activeStorageKeyRef.current = storageKey;
+    successHandledRef.current = false;
+
+    const draft = readSelfCheckoutDraft(storageKey);
+    const hasActiveQr = Boolean(draft?.transactionId && draft?.qrCode);
+    const timeLeft = hasActiveQr ? calculatePayosTimeLeft(draft.expiresAt) : 0;
+
+    setIsCheckoutOpen(hasActiveQr);
+    setVoucherCode(draft?.voucherCode || order?.voucherCode || '');
+    setAppliedVoucher(draft?.appliedVoucher?.applicable ? draft.appliedVoucher : null);
+    setVoucherError('');
+    setPayosData(hasActiveQr ? draft : null);
+    setPayosStatus(hasActiveQr ? (timeLeft > 0 ? 'waiting' : 'expired') : 'idle');
+    setPayosError('');
+  }, [order?.voucherCode, storageKey]);
 
   const unfinishedItems = useMemo(() => hasUnfinishedOrderItems(order), [order]);
   const canCreateQr = !unfinishedItems;
 
   const summary = useMemo(
-    () => calculateSelfCheckoutBreakdown(order, appliedVoucher, activePromotion, payosData),
-    [activePromotion, appliedVoucher, order, payosData],
+    () =>
+      calculateSelfCheckoutBreakdown(
+        order,
+        appliedVoucher,
+        activePromotion,
+        payosData,
+        restaurantSettings,
+      ),
+    [activePromotion, appliedVoucher, order, payosData, restaurantSettings],
   );
 
   const normalizedInputCode = voucherCode.trim().toUpperCase();
@@ -125,94 +140,31 @@ const useCustomerSelfCheckout = ({
     onPaymentSuccess?.();
   }, [onPaymentSuccess, storageKey]);
 
-  // Countdown timer while QR is waiting
-  useEffect(() => {
-    if (payosStatus !== 'waiting' || !payosData?.expiresAt) return undefined;
+  const handlePayosExpired = useCallback(() => {
+    setPayosStatus('expired');
+  }, []);
 
-    const updateTimer = () => {
-      const remaining = calculatePayosTimeLeft(payosData.expiresAt);
-      setTimeLeft(remaining);
-      if (remaining <= 0) {
-        setPayosStatus('expired');
-      }
-    };
-    updateTimer();
-    const timerId = window.setInterval(updateTimer, 1000);
-    return () => window.clearInterval(timerId);
-  }, [payosData?.expiresAt, payosStatus]);
+  const handleRemoteCancelled = useCallback(() => {
+    setPayosStatus('idle');
+    setPayosData(null);
+    writeSelfCheckoutDraft(storageKey, null);
+  }, [storageKey]);
 
-  // Real-time payment completion event on /topic/tables
-  useWebSocket(
-    payosStatus === 'waiting' ? '/topic/tables' : null,
-    (message) => {
-      if (message?.event !== 'PAYMENT_SUCCESS') return;
-      const eventOrderId = getPaymentEventOrderId(message);
-      const eventTransactionId = getPaymentEventTransactionId(message);
-      if (
-        sameId(eventOrderId, order?.id) ||
-        sameId(eventTransactionId, payosData?.transactionId)
-      ) {
-        markPaymentSucceeded();
-      }
-    },
-    { scope: 'public' },
-  );
-
-  // Periodic fallback status sync with PayOS gateway while waiting
-  useEffect(() => {
-    if (
-      payosStatus !== 'waiting' ||
-      !payosData?.transactionId ||
-      !tableCode ||
-      !sessionToken
-    ) {
-      return undefined;
-    }
-
-    let stopped = false;
-
-    const syncStatus = async () => {
-      if (syncingRef.current || successHandledRef.current) return;
-      syncingRef.current = true;
-      try {
-        const tx = await publicMenuService.syncSelfCheckoutStatus(
-          tableCode,
-          payosData.transactionId,
-          sessionToken,
-        );
-        if (stopped) return;
-
-        if (tx?.status === PAYMENT_TRANSACTION_STATUSES.PAID) {
-          markPaymentSucceeded();
-        } else if (tx?.status === PAYMENT_TRANSACTION_STATUSES.EXPIRED) {
-          setPayosStatus('expired');
-        } else if (tx?.status === PAYMENT_TRANSACTION_STATUSES.CANCELLED) {
-          setPayosStatus('idle');
-          setPayosData(null);
-          writeSelfCheckoutDraft(storageKey, null);
-        }
-      } catch {
-        // Ignore transient sync failures; next interval or WS will handle
-      } finally {
-        syncingRef.current = false;
-      }
-    };
-
-    const firstTimeout = window.setTimeout(syncStatus, PAYOS_FIRST_SYNC_DELAY_MS);
-    const intervalId = window.setInterval(syncStatus, PAYOS_SYNC_INTERVAL_MS);
-    return () => {
-      stopped = true;
-      window.clearTimeout(firstTimeout);
-      window.clearInterval(intervalId);
-    };
-  }, [
-    markPaymentSucceeded,
-    payosData?.transactionId,
-    payosStatus,
-    sessionToken,
-    storageKey,
-    tableCode,
-  ]);
+  usePayosTransactionMonitor({
+    isWaiting: payosStatus === 'waiting' && Boolean(tableCode) && Boolean(sessionToken),
+    subscribeWebSocket: payosStatus === 'waiting',
+    orderId: order?.id,
+    transactionId: payosData?.transactionId,
+    wsScope: 'public',
+    firstSyncDelayMs: PAYOS_FIRST_SYNC_DELAY_MS,
+    syncIntervalMs: PAYOS_SYNC_INTERVAL_MS,
+    syncTransaction: (txId) =>
+      publicMenuService.syncSelfCheckoutStatus(tableCode, txId, sessionToken),
+    shouldSkipSync: () => successHandledRef.current,
+    onPaid: markPaymentSucceeded,
+    onExpired: handlePayosExpired,
+    onCancelled: handleRemoteCancelled,
+  });
 
   const handleVoucherInputChange = useCallback((value) => {
     setVoucherCode(value);
@@ -299,7 +251,6 @@ const useCustomerSelfCheckout = ({
             : null,
       };
       setPayosData(data);
-      setTimeLeft(nextTimeLeft);
       setPayosStatus(nextTimeLeft > 0 ? 'waiting' : 'expired');
       writeSelfCheckoutDraft(storageKey, draftPayload);
     } catch (error) {
@@ -338,7 +289,6 @@ const useCustomerSelfCheckout = ({
       );
       setPayosData(null);
       setPayosStatus('idle');
-      setTimeLeft(0);
       writeSelfCheckoutDraft(storageKey, null);
     } catch (error) {
       setPayosError(buildErrorMessage(error, { includeDetails: false }));
@@ -362,12 +312,12 @@ const useCustomerSelfCheckout = ({
     payosStatus,
     payosLoading,
     payosError,
-    timeLeft,
     handleVoucherInputChange,
     handleApplyVoucher,
     handleClearVoucher,
     handleCreateQr,
     handleCancelQr,
+    handlePayosExpired,
   };
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { authService } from '@shared/api/authService.js';
-import { AuthRainBackground } from '@shared/ui';
+import { authService } from '@entities/session';
+import { AuthRainBackground } from '@features/auth';
 import { Mail, ArrowLeft, Loader2, AlertCircle, CheckCircle, KeyRound, ShieldAlert } from 'lucide-react';
 
 const ForgotPasswordPage = () => {

@@ -9,14 +9,14 @@
 
 | # | Luật kỹ thuật | Nguồn chân lý (Link) | Cơ chế kiểm tra |
 |---|---|---|---|
-| 1 | Ranh giới Modular Monolith (`core`, `modules`, `infrastructure`, `shared`) | [SYSTEM_DESIGN.md §3](../04-tech/SYSTEM_DESIGN.md#3-kiến-trúc-backend-modular-monolith) | **Auto** (`BackendDependencyRulesTest` / ArchUnit) |
+| 1 | Ranh giới Modular Monolith (`core`, `modules`, `infrastructure`, `shared`), 0 vòng phụ thuộc giữa 15 module, 0 cross-module repository import & 0 vòng phụ thuộc Spring bean | [SYSTEM_DESIGN.md §3](../04-tech/SYSTEM_DESIGN.md#3-kiến-trúc-backend-modular-monolith) | **Auto** (`BackendDependencyRulesTest` / ArchUnit 1.5.1 — 11 rules) |
 | 2 | Toàn bộ thông điệp lỗi/phản hồi backend dùng tiếng Anh | [CLAUDE.md](../../../CLAUDE.md) | **Auto** (`BackendMessageLanguageTest`) |
 | 3 | Format mã nguồn Java & `pom.xml` (Palantir Java Format) | [backend/pom.xml](../../../backend/pom.xml) | **Auto** (`spotless:check` trong `mvn verify`) |
 | 4 | Lint, unit test & production build Frontend | [frontend/package.json](../../../frontend/package.json) | **Auto** (`npm test`, `npm run lint`, `npm run build`) |
 | 5 | 6-Role RBAC (`RoleHierarchy`), Security Routes & Admin 2FA | [SYSTEM_DESIGN.md §7](../04-tech/SYSTEM_DESIGN.md#7-kiến-trúc-bảo-mật--phân-quyền-security--6-role-rbac) | **Auto** (`CoreApiSecurityIntegrationTest`, `SecurityConfigRegressionTest`, `Admin2faServiceTest`) + **Manual (review PR)** |
 | 6 | Chống trùng đơn (Idempotency) & Optimistic Locking kho | [SYSTEM_DESIGN.md §5, §6](../04-tech/SYSTEM_DESIGN.md#5-thiết-kế-cơ-sở-dữ-liệu-database-design) | **Auto** (`IdempotencyServiceTest`, unit tests theo module) + **Manual (review PR)** |
-| 7 | Flyway chỉ thêm migration mới (`V1.23+`), cấm sửa migration đã áp dụng | [SYSTEM_DESIGN.md §5](../04-tech/SYSTEM_DESIGN.md#5-thiết-kế-cơ-sở-dữ-liệu-database-design) | **Manual (review PR)** *(Flyway chỉ bắt lỗi checksum trên DB đã chạy bản cũ; DB test sạch sẽ không bắt)* |
-| 8 | Chiều phụ thuộc FSD (`app → pages → widgets → features → entities → shared`) & tái sử dụng `shared/ui/` | [SYSTEM_DESIGN.md §4](../04-tech/SYSTEM_DESIGN.md#4-kiến-trúc-frontend-feature-sliced-design) | **Manual (review PR)** |
+| 7 | Flyway chỉ thêm migration mới (`V1.27+`), cấm sửa migration đã áp dụng | [SYSTEM_DESIGN.md §5](../04-tech/SYSTEM_DESIGN.md#5-thiết-kế-cơ-sở-dữ-liệu-database-design) | **Auto** (`PostgresFlywayAndDomainIT` trên Testcontainers PG16) + **Manual (review PR)** *(Flyway bắt checksum drift trên DB đã chạy bản cũ)* |
+| 8 | Chiều phụ thuộc FSD (`app → pages → widgets → features → entities → shared`), 0 cross-slice, Public API barrels (`index.js`) & tái sử dụng `shared/ui/` | [SYSTEM_DESIGN.md §4](../04-tech/SYSTEM_DESIGN.md#4-kiến-trúc-frontend-feature-sliced-design) | **Auto** (`frontend/eslint.config.js` — FSD layer, cross-slice & barrel rules) + **Manual (review PR)** |
 | 9 | Dùng Design Tokens 2 tầng (`index.css`), không hardcode hex, đạt tương phản Light/Dark WCAG 2.1 AA | [DESIGN_SYSTEM.md](../02-design/DESIGN_SYSTEM.md) | **Auto** (`frontend/tests/unit/designSystem.test.js`) + **Manual (review PR / visual check)** |
 | 10 | Đầy đủ song ngữ `VI`/`EN` (`useTranslation`) cho mọi màn hình vận hành | [frontend/README.md](../../../frontend/README.md) | **Manual (review PR)** |
 
@@ -24,16 +24,16 @@
 
 ## 2. Definition of Done (DoD) — Khớp 100% CI ([ci.yml](../../../.github/workflows/ci.yml))
 
-Mọi thay đổi code trước khi hoàn tất phải vượt qua đúng bộ lệnh CI:
+Mọi thay đổi code trước khi hoàn tất phải vượt qua đúng bộ lệnh CI (hoặc chạy nhanh `npm run check` / `bash scripts/run_checks.sh`):
 
 - **Backend** *(CI chạy trên Java 25)*:
   ```bash
   mvn -f backend/pom.xml --batch-mode verify
   ```
-  *(Bao gồm `spotless:check`, `ArchUnit`, `BackendMessageLanguageTest`, 56 bộ unit & integration test)*
+  *(Bao gồm `spotless:check`, `ArchUnit` 11 rules, `HibernateEntityMetadataTest`, `BackendMessageLanguageTest`, **357** Surefire unit/MVC tests + **7** Failsafe Testcontainers PG16 & Redis 7 `*IT.java` = **364 test cases**)*
 - **Frontend** *(CI chạy trên Node 22)*:
   ```bash
   npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build
   ```
-  *(Bao gồm 15 bộ unit test `node:test`, ESLint, và Vite production build)*
+  *(Bao gồm **160 test cases** `node:test`, ESLint FSD strict rules, và Vite production build + Capacitor `build:capacitor`)*
 - **Knowledge Alignment:** Nếu thay đổi đụng bất kỳ ID nào (`F*.*`, `SCR-*`, `BR-*`, `US-*`, API, WebSocket, bảng DB) → bắt buộc tạo **Sync-Back Proposal** chờ người dùng duyệt trước khi ghi vào `02-design/`, `03-ba/`, `04-tech/` và `KNOWLEDGE_HUB.md`.

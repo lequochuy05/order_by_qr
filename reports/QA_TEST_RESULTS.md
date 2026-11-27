@@ -3,6 +3,8 @@
 *Phiên bản hệ thống: 1.0.0-SNAPSHOT | Ngày thực hiện: 2026-11-14*
 *Khung kiểm thử: Playwright v1.65.0 (Chromium Headless) | Môi trường: Linux (CachyOS)*
 
+> **Historical QA Snapshot (`2026-11-14`, mốc trước `V1.22`–`V1.24`):** Báo cáo ghi nhận đợt kiểm thử Playwright E2E tại ngày `2026-11-14` (26 named routes + `*`). Đối với danh mục route mới nhất (28 named routes + `*`, gồm `/admin/promotions` & `/admin/service-requests`) và bộ test CI hiện hành (318 backend tests / 144 frontend unit tests), xem [KNOWLEDGE_HUB.md](../docs/knowledge/KNOWLEDGE_HUB.md) và [SYSTEM_DESIGN.md](../docs/knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## 1. BẢNG TỔNG HỢP CHỈ SỐ KIỂM THỬ (EXECUTIVE QA METRICS)

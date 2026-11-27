@@ -1,6 +1,5 @@
 package com.qros.modules.order.model;
 
-import com.qros.modules.inventory.model.OrderItemInventoryReservation;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.MenuItem;
 import com.qros.modules.order.model.enums.OrderItemStatus;
@@ -12,6 +11,8 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -43,10 +44,12 @@ public class OrderItem extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_item_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private MenuItem menuItem;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "combo_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private Combo combo;
 
     @Column(nullable = false, precision = 15, scale = 2)
@@ -86,10 +89,6 @@ public class OrderItem extends BaseEntity {
     @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<OrderItemOption> orderItemOptions = new LinkedHashSet<>();
 
-    @Builder.Default
-    @OneToMany(mappedBy = "orderItem", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<OrderItemInventoryReservation> inventoryReservations = new LinkedHashSet<>();
-
     public void addOption(OrderItemOption option) {
         if (option == null) {
             return;
@@ -97,15 +96,6 @@ public class OrderItem extends BaseEntity {
 
         orderItemOptions.add(option);
         option.setOrderItem(this);
-    }
-
-    public void addInventoryReservation(OrderItemInventoryReservation reservation) {
-        if (reservation == null) {
-            return;
-        }
-
-        inventoryReservations.add(reservation);
-        reservation.setOrderItem(this);
     }
 
     public boolean isMenuItem() {

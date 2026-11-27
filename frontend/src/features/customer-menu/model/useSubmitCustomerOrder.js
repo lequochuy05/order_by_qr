@@ -2,11 +2,11 @@ import { useCallback, useRef, useState } from 'react';
 
 import { useSubmitOrderMutation } from '@entities/order';
 import { queryClient } from '@shared/api/queryClient.js';
+import { createIdempotencyKey } from '@shared/lib/idempotency.js';
 
 const PENDING_ORDER_REQUEST_KEY = 'qros:pending-order-request';
 
-const createClientRequestId = () =>
-  crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const createClientRequestId = () => createIdempotencyKey();
 
 const buildOrderPayload = (tableCode, sessionToken, cart) => ({
   tableCode,

@@ -22,7 +22,7 @@ import com.qros.modules.order.model.enums.OrderType;
 import com.qros.modules.table.model.TableServiceRequest;
 import com.qros.modules.table.model.enums.ServiceRequestReason;
 import com.qros.modules.table.model.enums.ServiceRequestStatus;
-import com.qros.modules.table.repository.TableServiceRequestRepository;
+import com.qros.modules.table.service.TableLookupService;
 import com.qros.shared.time.AppTime;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -50,7 +50,7 @@ public class AiNoteTriageService {
     private static final int MAX_PROMPT_NOTES = 30;
 
     private final KitchenService kitchenService;
-    private final TableServiceRequestRepository tableServiceRequestRepository;
+    private final TableLookupService tableLookupService;
     private final AiChatGateway aiChatGateway;
     private final AiPromptBuilder promptBuilder;
     private final ObjectMapper objectMapper;
@@ -58,13 +58,13 @@ public class AiNoteTriageService {
 
     public AiNoteTriageService(
             KitchenService kitchenService,
-            TableServiceRequestRepository tableServiceRequestRepository,
+            TableLookupService tableLookupService,
             AiChatGateway aiChatGateway,
             AiPromptBuilder promptBuilder,
             ObjectMapper objectMapper,
             MeterRegistry meterRegistry) {
         this.kitchenService = kitchenService;
-        this.tableServiceRequestRepository = tableServiceRequestRepository;
+        this.tableLookupService = tableLookupService;
         this.aiChatGateway = aiChatGateway;
         this.promptBuilder = promptBuilder;
         this.objectMapper = objectMapper;
@@ -75,6 +75,10 @@ public class AiNoteTriageService {
     }
 
     public AiNoteTriageResponse triage(AiNoteTriageRequest request) {
+        return triage(request, null);
+    }
+
+    public AiNoteTriageResponse triage(AiNoteTriageRequest request, Runnable quotaCheck) {
         String language = normalizeLanguage(request != null ? request.language() : null);
         LocalDateTime now = AppTime.now();
 
@@ -84,6 +88,10 @@ public class AiNoteTriageService {
                     ? "No active kitchen or service request notes currently need triage."
                     : "Hiện chưa có ghi chú bếp hoặc yêu cầu phục vụ nào cần phân loại.";
             return new AiNoteTriageResponse(language, emptySummary, 0, 0, List.of(), now, false);
+        }
+
+        if (quotaCheck != null) {
+            quotaCheck.run();
         }
 
         List<CandidateNote> prioritizedCandidates = candidates.stream()
@@ -97,11 +105,13 @@ public class AiNoteTriageService {
                 .toList();
 
         String notesContext = buildNotesContext(prioritizedCandidates);
-        String systemPrompt = promptBuilder.buildNoteTriagePrompt(notesContext, language);
-        String rawReply = aiChatGateway.chat(
-                new AiChatRequest("Triage active kitchen and table service notes for safety & priority.", List.of()),
-                systemPrompt,
-                "");
+        // Keep untrusted customer notes out of system_instruction to mitigate indirect prompt injection.
+        String systemPrompt = promptBuilder.buildNoteTriagePrompt("", language);
+        String userPayload = "Triage active kitchen and table service notes for safety & priority.\n"
+                + "<untrusted_customer_data>\n"
+                + notesContext
+                + "</untrusted_customer_data>";
+        String rawReply = aiChatGateway.chat(new AiChatRequest(userPayload, List.of()), systemPrompt, "");
         aiRequestsCounter.increment();
 
         if (!AiJsonExtractor.isUsableModelOutput(rawReply)) {
@@ -145,7 +155,7 @@ public class AiNoteTriageService {
             }
         }
 
-        List<TableServiceRequest> openRequests = tableServiceRequestRepository.findByStatusesOrderByCreatedAtAsc(
+        List<TableServiceRequest> openRequests = tableLookupService.findServiceRequestsByStatuses(
                 List.of(ServiceRequestStatus.PENDING, ServiceRequestStatus.CLAIMED), null, null);
         if (openRequests != null) {
             for (TableServiceRequest req : openRequests) {

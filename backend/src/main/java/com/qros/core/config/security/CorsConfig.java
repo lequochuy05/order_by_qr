@@ -1,6 +1,7 @@
 package com.qros.core.config.security;
 
-import com.qros.core.config.AppProperties;
+import com.qros.shared.config.AppProperties;
+import com.qros.shared.security.CorsOrigins;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

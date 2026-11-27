@@ -20,9 +20,7 @@ import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.ItemOption;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.CategoryRepository;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -185,9 +183,7 @@ class AiAssistantServiceTest {
 
     @Test
     void menuContextProviderExcludesOutOfStockItemsAndTagsIdsForCatalogLookup() {
-        MenuItemRepository menuItemRepo = mock(MenuItemRepository.class);
-        ComboRepository comboRepo = mock(ComboRepository.class);
-        CategoryRepository categoryRepo = mock(CategoryRepository.class);
+        MenuCatalogLookupService menuLookup = mock(MenuCatalogLookupService.class);
         InventoryAvailabilityService availabilityService = mock(InventoryAvailabilityService.class);
 
         Category drinks = Category.builder().id(2L).name("Đồ uống").active(true).build();
@@ -209,14 +205,13 @@ class AiAssistantServiceTest {
                 .available(true)
                 .build();
 
-        when(categoryRepo.findByActiveTrueOrderByDisplayOrderAscNameAsc()).thenReturn(List.of(drinks));
-        when(menuItemRepo.findAllPublicAvailableItems()).thenReturn(List.of(inStock, lowIngredients));
+        when(menuLookup.findActiveCategories()).thenReturn(List.of(drinks));
+        when(menuLookup.findAllPublicAvailableMenuItems()).thenReturn(List.of(inStock, lowIngredients));
         when(availabilityService.getMenuItemAvailability(List.of(12L, 13L))).thenReturn(Map.of(12L, true, 13L, false));
-        when(comboRepo.findAllActiveWithItems()).thenReturn(List.of());
+        when(menuLookup.findAllActiveCombosWithItems()).thenReturn(List.of());
         when(availabilityService.getComboAvailabilityByIds(anyList())).thenReturn(Map.of());
 
-        MenuContextProvider provider =
-                new MenuContextProvider(menuItemRepo, comboRepo, categoryRepo, availabilityService);
+        MenuContextProvider provider = new MenuContextProvider(menuLookup, availabilityService);
 
         String context = provider.buildCurrentMenuContext();
         MenuCatalogSnapshot snapshot = provider.loadAvailableCatalog();

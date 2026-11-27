@@ -12,7 +12,7 @@ import {
 import {
   comboProposalToDraft,
   promotionProposalToDraft,
-} from '../../src/shared/lib/aiMerchandisingDrafts.js';
+} from '../../src/entities/ai/lib/aiMerchandisingDrafts.js';
 
 test('aiRestockHelpers resolves live target and builds StockModal preset', () => {
   const liveItems = [{ id: 10, name: 'Thịt bò Úc', unit: 'kg', quantityOnHand: 1.5, unitCost: 220000 }];

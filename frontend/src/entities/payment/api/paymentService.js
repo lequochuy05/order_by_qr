@@ -1,8 +1,6 @@
 import api from '@shared/api/httpClient.js';
+import { createIdempotencyKey } from '@shared/lib/idempotency.js';
 import { createPaymentWithRetry } from '../lib/paymentRetry.js';
-
-const createIdempotencyKey = () =>
-  crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export const paymentService = {
   createPayment: async (

@@ -8,14 +8,15 @@ import com.qros.modules.inventory.repository.RecipeItemRepository;
 import com.qros.modules.menu.model.Combo;
 import com.qros.modules.menu.model.ComboItem;
 import com.qros.modules.menu.model.MenuItem;
-import com.qros.modules.menu.repository.ComboRepository;
-import com.qros.modules.menu.repository.MenuItemRepository;
+import com.qros.modules.menu.service.MenuCatalogLookupService;
+import com.qros.modules.menu.service.MenuInventoryAvailabilityPort;
 import com.qros.shared.event.DomainEvents.ComboChangeEvent;
 import com.qros.shared.event.DomainEvents.MenuChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -30,19 +31,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class InventoryAvailabilityService {
+public class InventoryAvailabilityService implements MenuInventoryAvailabilityPort {
 
     private static final int QUANTITY_SCALE = 3;
 
     private final RecipeItemRepository recipeItemRepository;
-    private final MenuItemRepository menuItemRepository;
-    private final ComboRepository comboRepository;
+    private final MenuCatalogLookupService menuCatalogLookupService;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public InventoryReservationResult checkMenuItemAvailability(
             @NonNull Long menuItemId, @NonNull BigDecimal quantity) {
-        if (!menuItemRepository.existsById(menuItemId)) {
+        if (!menuCatalogLookupService.menuItemExists(menuItemId)) {
             throw new BusinessException(ErrorCode.MENU_ITEM_NOT_FOUND);
         }
 
@@ -103,7 +103,7 @@ public class InventoryAvailabilityService {
             return Map.of();
         }
 
-        List<Combo> combos = comboRepository.findAllByIdInWithItems(ids);
+        List<Combo> combos = menuCatalogLookupService.findCombosByIdsWithItems(ids);
         List<Long> menuItemIds = extractComboMenuItemIds(combos);
 
         Map<Long, List<RecipeItem>> recipesByMenuItem = recipesByMenuItem(menuItemIds);
@@ -117,39 +117,64 @@ public class InventoryAvailabilityService {
         if (menuItem.getId() == null) {
             return;
         }
+        syncCombosForMenuItems(List.of(menuItem));
+    }
 
-        List<Combo> affectedCombos = comboRepository.findAllByMenuItemIdsWithItems(List.of(menuItem.getId()));
+    @Override
+    @Transactional
+    public void syncCombosForMenuItems(Collection<MenuItem> menuItems) {
+        if (menuItems == null || menuItems.isEmpty()) {
+            return;
+        }
+
+        List<MenuItem> validMenuItems = menuItems.stream()
+                .filter(Objects::nonNull)
+                .filter(item -> item.getId() != null)
+                .toList();
+        if (validMenuItems.isEmpty()) {
+            return;
+        }
+
+        List<Long> menuItemIds =
+                validMenuItems.stream().map(MenuItem::getId).distinct().toList();
+        List<Combo> affectedCombos = menuCatalogLookupService.findCombosByMenuItemIdsWithItems(menuItemIds);
         if (affectedCombos.isEmpty()) {
             return;
         }
 
-        boolean menuItemOrderable = Boolean.TRUE.equals(menuItem.getActive())
-                && Boolean.TRUE.equals(menuItem.getAvailable())
-                && canPrepareMenuItem(menuItem.getId(), BigDecimal.ONE);
-
         List<Long> allComboMenuItemIds = extractComboMenuItemIds(affectedCombos);
         Map<Long, List<RecipeItem>> recipesByMenuItem = recipesByMenuItem(allComboMenuItemIds);
 
+        Map<Long, Boolean> orderableByItemId = new HashMap<>();
+        for (MenuItem item : validMenuItems) {
+            boolean categoryActive = item.getCategory() == null
+                    || (!item.getCategory().isDeleted()
+                            && Boolean.TRUE.equals(item.getCategory().getActive()));
+            boolean itemOrderable = Boolean.TRUE.equals(item.getActive())
+                    && Boolean.TRUE.equals(item.getAvailable())
+                    && categoryActive
+                    && canPrepareMenuItem(item.getId(), BigDecimal.ONE, recipesByMenuItem);
+            orderableByItemId.put(item.getId(), itemOrderable);
+        }
+
+        List<Combo> dirtyCombos = new ArrayList<>();
         for (Combo combo : affectedCombos) {
-            if (!menuItemOrderable) {
-                if (Boolean.TRUE.equals(combo.getAvailable())) {
-                    combo.setAvailable(false);
-                    comboRepository.save(combo);
-                    eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", combo.getId()));
-                }
-            } else {
-                boolean canPrepare = canPrepareCombo(combo, recipesByMenuItem);
-                if (canPrepare && !Boolean.TRUE.equals(combo.getAvailable())) {
-                    combo.setAvailable(true);
-                    comboRepository.save(combo);
-                    eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", combo.getId()));
-                } else if (!canPrepare && Boolean.TRUE.equals(combo.getAvailable())) {
-                    combo.setAvailable(false);
-                    comboRepository.save(combo);
-                    eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", combo.getId()));
-                }
+            boolean anyChangedItemBlocked = combo.getItems() != null
+                    && combo.getItems().stream()
+                            .filter(item -> item != null && !item.isDeleted() && item.getMenuItem() != null)
+                            .map(item -> item.getMenuItem().getId())
+                            .anyMatch(id -> Boolean.FALSE.equals(orderableByItemId.get(id)));
+
+            boolean targetAvailable = !anyChangedItemBlocked
+                    && canPrepareCombo(combo, recipesByMenuItem)
+                    && !Boolean.TRUE.equals(combo.getManuallyPaused());
+            if (targetAvailable != Boolean.TRUE.equals(combo.getAvailable())) {
+                combo.setAvailable(targetAvailable);
+                dirtyCombos.add(combo);
             }
         }
+
+        persistDirtyCombos(dirtyCombos);
     }
 
     @Transactional
@@ -192,23 +217,26 @@ public class InventoryAvailabilityService {
             return;
         }
 
-        List<MenuItem> menuItems = menuItemRepository.findAllByIdIn(validMenuItemIds);
+        List<MenuItem> menuItems = menuCatalogLookupService.findMenuItemsByIds(validMenuItemIds);
         Map<Long, List<RecipeItem>> recipesByMenuItem = recipesByMenuItem(validMenuItemIds);
 
+        List<MenuItem> dirtyMenuItems = new ArrayList<>();
         for (MenuItem menuItem : menuItems) {
             boolean hasStock = canPrepareMenuItem(menuItem.getId(), BigDecimal.ONE, recipesByMenuItem);
             if (!hasStock && Boolean.TRUE.equals(menuItem.getAvailable())) {
                 menuItem.setAvailable(false);
-                menuItemRepository.save(menuItem);
-                eventPublisher.publishEvent(new MenuChangeEvent("availability_updated", menuItem.getId()));
-            } else if (hasStock && allowAutoEnableWhenSufficient && !Boolean.TRUE.equals(menuItem.getAvailable())) {
+                dirtyMenuItems.add(menuItem);
+            } else if (hasStock
+                    && allowAutoEnableWhenSufficient
+                    && !Boolean.TRUE.equals(menuItem.getAvailable())
+                    && !Boolean.TRUE.equals(menuItem.getManuallyPaused())) {
                 menuItem.setAvailable(true);
-                menuItemRepository.save(menuItem);
-                eventPublisher.publishEvent(new MenuChangeEvent("availability_updated", menuItem.getId()));
+                dirtyMenuItems.add(menuItem);
             }
         }
+        persistDirtyMenuItems(dirtyMenuItems);
 
-        List<Combo> affectedCombos = comboRepository.findAllByMenuItemIdsWithItems(validMenuItemIds);
+        List<Combo> affectedCombos = menuCatalogLookupService.findCombosByMenuItemIdsWithItems(validMenuItemIds);
         if (affectedCombos.isEmpty()) {
             return;
         }
@@ -216,18 +244,39 @@ public class InventoryAvailabilityService {
         List<Long> allComboMenuItemIds = extractComboMenuItemIds(affectedCombos);
         Map<Long, List<RecipeItem>> comboRecipesByMenuItem = recipesByMenuItem(allComboMenuItemIds);
 
+        List<Combo> dirtyCombos = new ArrayList<>();
         for (Combo combo : affectedCombos) {
             boolean canPrepare = canPrepareCombo(combo, comboRecipesByMenuItem);
             if (!canPrepare && Boolean.TRUE.equals(combo.getAvailable())) {
                 combo.setAvailable(false);
-                comboRepository.save(combo);
-                eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", combo.getId()));
-            } else if (canPrepare && allowAutoEnableWhenSufficient && !Boolean.TRUE.equals(combo.getAvailable())) {
+                dirtyCombos.add(combo);
+            } else if (canPrepare
+                    && allowAutoEnableWhenSufficient
+                    && !Boolean.TRUE.equals(combo.getAvailable())
+                    && !Boolean.TRUE.equals(combo.getManuallyPaused())) {
                 combo.setAvailable(true);
-                comboRepository.save(combo);
-                eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", combo.getId()));
+                dirtyCombos.add(combo);
             }
         }
+        persistDirtyCombos(dirtyCombos);
+    }
+
+    private void persistDirtyMenuItems(List<MenuItem> dirtyMenuItems) {
+        if (dirtyMenuItems.isEmpty()) {
+            return;
+        }
+        menuCatalogLookupService.saveAllMenuItems(dirtyMenuItems);
+        Object eventId = dirtyMenuItems.size() == 1 ? dirtyMenuItems.get(0).getId() : "batch";
+        eventPublisher.publishEvent(new MenuChangeEvent("availability_updated", eventId));
+    }
+
+    private void persistDirtyCombos(List<Combo> dirtyCombos) {
+        if (dirtyCombos.isEmpty()) {
+            return;
+        }
+        menuCatalogLookupService.saveAllCombos(dirtyCombos);
+        Object eventId = dirtyCombos.size() == 1 ? dirtyCombos.get(0).getId() : "batch";
+        eventPublisher.publishEvent(new ComboChangeEvent("availability_updated", eventId));
     }
 
     public boolean areAllComboItemsOrderable(Combo combo) {
@@ -252,7 +301,11 @@ public class InventoryAvailabilityService {
             return menuItem != null
                     && !menuItem.isDeleted()
                     && Boolean.TRUE.equals(menuItem.getActive())
-                    && Boolean.TRUE.equals(menuItem.getAvailable());
+                    && Boolean.TRUE.equals(menuItem.getAvailable())
+                    && (menuItem.getCategory() == null
+                            || (!menuItem.getCategory().isDeleted()
+                                    && Boolean.TRUE.equals(
+                                            menuItem.getCategory().getActive())));
         });
     }
 
@@ -390,24 +443,14 @@ public class InventoryAvailabilityService {
     }
 
     private BigDecimal normalizePositiveQuantity(BigDecimal value) {
-        BigDecimal quantity = normalizeQuantity(value);
-
-        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(ErrorCode.INVENTORY_QUANTITY_INVALID);
-        }
-
-        return quantity;
+        return InventoryQuantitySupport.normalizePositiveQuantity(value);
     }
 
     private BigDecimal normalizeQuantity(BigDecimal value) {
-        if (value == null) {
-            return BigDecimal.ZERO.setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
-        }
-
-        return value.setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
+        return InventoryQuantitySupport.normalizeQuantity(value);
     }
 
     private BigDecimal quantityFrom(Integer value) {
-        return BigDecimal.valueOf(value == null ? 1 : value).setScale(QUANTITY_SCALE, RoundingMode.HALF_UP);
+        return InventoryQuantitySupport.quantityFrom(value);
     }
 }

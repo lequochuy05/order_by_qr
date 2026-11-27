@@ -136,6 +136,10 @@ test('calculateSelfCheckoutBreakdown separates promotion discount and voucher di
     voucherDiscountAmount: 20000,
     promotionName: 'Giờ vàng trưa',
     promotionPercent: 15,
+    serviceChargePercent: 0,
+    serviceChargeAmount: 0,
+    taxPercent: 0,
+    taxAmount: 0,
     finalAmount: 150000,
   });
 
@@ -153,9 +157,24 @@ test('calculateSelfCheckoutBreakdown separates promotion discount and voucher di
       voucherDiscountAmount: 20000,
       promotionName: 'Giờ vàng trưa',
       promotionPercent: 15,
+      serviceChargePercent: 0,
+      serviceChargeAmount: 0,
+      taxPercent: 0,
+      taxAmount: 0,
       finalAmount: 150000,
     },
   );
+
+  const taxed = calculateSelfCheckoutBreakdown(
+    { id: 13, subtotalAmount: 100000, discountAmount: 0, finalAmount: 100000 },
+    { code: 'OFF20K', applicable: true, appliedDiscountAmount: 20000 },
+    null,
+    null,
+    { serviceChargePercent: 5, taxPercent: 10 },
+  );
+  assert.equal(taxed.serviceChargeAmount, 4000);
+  assert.equal(taxed.taxAmount, 8400);
+  assert.equal(taxed.finalAmount, 92400);
 });
 
 test('getVoucherValidationError translates known statuses', () => {

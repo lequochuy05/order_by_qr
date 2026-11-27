@@ -8,8 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.modules.table.dto.request.CancelServiceRequestDto;
-import com.qros.modules.table.dto.request.CreateServiceRequestDto;
+import com.qros.modules.table.dto.request.CancelTableServiceRequest;
+import com.qros.modules.table.dto.request.CreateTableServiceRequest;
 import com.qros.modules.table.dto.response.TableServiceRequestResponse;
 import com.qros.modules.table.mapper.TableServiceRequestMapper;
 import com.qros.modules.table.model.DiningTable;
@@ -23,7 +23,7 @@ import com.qros.modules.table.repository.DiningTableRepository;
 import com.qros.modules.table.repository.TableServiceRequestRepository;
 import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.event.DomainEvents.ServiceRequestChangeEvent;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
@@ -54,7 +54,7 @@ class TableServiceRequestServiceTest {
     private TableSessionResolver tableSessionResolver;
 
     @Mock
-    private UserRepository userRepository;
+    private UserLookupService userRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -100,7 +100,7 @@ class TableServiceRequestServiceTest {
 
         TableServiceRequestResponse response = service.createCustomerRequest(
                 "BAN_05",
-                new CreateServiceRequestDto(
+                new CreateTableServiceRequest(
                         "tok-1", ServiceRequestReason.REQUEST_BILL, "  Xin bill giúp ạ  ", "cid-1"));
 
         assertThat(response.id()).isEqualTo(11L);
@@ -130,7 +130,8 @@ class TableServiceRequestServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createCustomerRequest(
-                        "BAN_05", new CreateServiceRequestDto("tok-1", ServiceRequestReason.OTHER, " a ", "cid-other")))
+                        "BAN_05",
+                        new CreateTableServiceRequest("tok-1", ServiceRequestReason.OTHER, " a ", "cid-other")))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
                     assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
                     assertThat(ex.getDetails()).containsKey("note");
@@ -163,7 +164,7 @@ class TableServiceRequestServiceTest {
 
         assertThatThrownBy(() -> service.createCustomerRequest(
                         "BAN_05",
-                        new CreateServiceRequestDto("tok-1", ServiceRequestReason.CLEAN_TABLE, null, "cid-2")))
+                        new CreateTableServiceRequest("tok-1", ServiceRequestReason.CLEAN_TABLE, null, "cid-2")))
                 .isInstanceOfSatisfying(BusinessException.class, ex -> {
                     assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_COOLDOWN);
                     assertThat(ex.getDetails().get("retryAfterSeconds")).isInstanceOf(Integer.class);
@@ -195,7 +196,7 @@ class TableServiceRequestServiceTest {
         when(tableSessionResolver.displayName(List.of(table))).thenReturn("Table 05");
 
         TableServiceRequestResponse response = service.createCustomerRequest(
-                "BAN_05", new CreateServiceRequestDto("tok-1", ServiceRequestReason.WATER_ICE, null, "cid-dup"));
+                "BAN_05", new CreateTableServiceRequest("tok-1", ServiceRequestReason.WATER_ICE, null, "cid-dup"));
 
         assertThat(response.id()).isEqualTo(77L);
         verify(serviceRequestRepository, never()).save(any());
@@ -219,7 +220,8 @@ class TableServiceRequestServiceTest {
                 .thenReturn(true);
 
         assertThatThrownBy(() -> service.createCustomerRequest(
-                        "BAN_05", new CreateServiceRequestDto("tok-1", ServiceRequestReason.WATER_ICE, null, "cid-x")))
+                        "BAN_05",
+                        new CreateTableServiceRequest("tok-1", ServiceRequestReason.WATER_ICE, null, "cid-x")))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_DUPLICATE_ACTIVE));
@@ -232,7 +234,7 @@ class TableServiceRequestServiceTest {
 
         assertThatThrownBy(() -> service.createCustomerRequest(
                         "BAN_05",
-                        new CreateServiceRequestDto("tok-1", ServiceRequestReason.UTENSILS_NAPKINS, null, "cid-x")))
+                        new CreateTableServiceRequest("tok-1", ServiceRequestReason.UTENSILS_NAPKINS, null, "cid-x")))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_OPEN_LIMIT_REACHED));
@@ -259,7 +261,7 @@ class TableServiceRequestServiceTest {
         when(tableSessionResolver.displayName(List.of(table))).thenReturn("Table 05");
 
         TableServiceRequestResponse cancelled =
-                service.cancelByCustomer("BAN_05", 12L, new CancelServiceRequestDto("tok-1", "No longer needed"));
+                service.cancelByCustomer("BAN_05", 12L, new CancelTableServiceRequest("tok-1", "No longer needed"));
 
         assertThat(cancelled.status()).isEqualTo(ServiceRequestStatus.CANCELLED);
         assertThat(cancelled.cancelledByType()).isEqualTo("CUSTOMER");
@@ -274,7 +276,7 @@ class TableServiceRequestServiceTest {
                 .build();
         when(serviceRequestRepository.findByIdForUpdate(13L)).thenReturn(Optional.of(claimed));
 
-        assertThatThrownBy(() -> service.cancelByCustomer("BAN_05", 13L, new CancelServiceRequestDto("tok-1", null)))
+        assertThatThrownBy(() -> service.cancelByCustomer("BAN_05", 13L, new CancelTableServiceRequest("tok-1", null)))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_INVALID_STATE));
@@ -344,8 +346,8 @@ class TableServiceRequestServiceTest {
                         BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_NOT_ASSIGNED_TO_USER));
 
-        assertThatThrownBy(
-                        () -> service.cancelByStaff(30L, new CancelServiceRequestDto(null, "test"), "staffb@qros.test"))
+        assertThatThrownBy(() ->
+                        service.cancelByStaff(30L, new CancelTableServiceRequest(null, "test"), "staffb@qros.test"))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
                         ex -> assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.SERVICE_REQUEST_NOT_ASSIGNED_TO_USER));

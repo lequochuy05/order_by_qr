@@ -1,6 +1,7 @@
 package com.qros.modules.payment.service;
 
 import com.qros.modules.order.model.Order;
+import com.qros.modules.order.service.OrderDiscountService;
 import com.qros.modules.order.service.OrderSettlementService;
 import com.qros.modules.payment.model.PaymentTransaction;
 import com.qros.modules.payment.model.enums.PaymentTransactionStatus;
@@ -8,7 +9,6 @@ import com.qros.modules.payment.repository.PaymentTransactionRepository;
 import com.qros.modules.promotion.dto.internal.DiscountResult;
 import com.qros.modules.promotion.dto.internal.VoucherPaymentResult;
 import com.qros.modules.promotion.model.Voucher;
-import com.qros.modules.promotion.service.OrderDiscountService;
 import com.qros.modules.promotion.service.VoucherCheckoutService;
 import com.qros.modules.promotion.service.VoucherService;
 import com.qros.shared.event.DomainEvents.*;
@@ -84,6 +84,11 @@ public class PaymentCompletionService {
             return order;
         }
 
+        if (order.isCancelled()) {
+            markLatePaymentOnCancelledOrder(transaction);
+            return order;
+        }
+
         if (transaction.getStatus() != PaymentTransactionStatus.PAID) {
             markTransactionPaid(transaction);
         }
@@ -98,8 +103,15 @@ public class PaymentCompletionService {
                 totalBill);
 
         if (totalPaid.compareTo(totalBill) < 0) {
-            notifyPaymentSuccess(transaction);
-            paymentsCompletedCounter.increment();
+            transaction.setFailureReason(
+                    "Partial payment received (" + totalPaid + " / " + totalBill + "); manual reconciliation required");
+            transactionRepository.save(transaction);
+            log.warn(
+                    "Payment transaction {} is partial for order {} (paid={}, bill={}); not settling order",
+                    transaction.getId(),
+                    order.getId(),
+                    totalPaid,
+                    totalBill);
             return order;
         }
 
@@ -146,6 +158,7 @@ public class PaymentCompletionService {
             transaction.setBusinessDate(transaction.getPaidAt().toLocalDate());
         }
 
+        releaseVoucherReservationIfHeld(transaction);
         transaction.setFailureReason("Duplicate payment: order already completed, requires manual refund");
         transactionRepository.save(transaction);
 
@@ -153,6 +166,40 @@ public class PaymentCompletionService {
                 "Payment transaction {} marked as duplicate for already settled order {}",
                 transaction.getId(),
                 transaction.getOrder() != null ? transaction.getOrder().getId() : null);
+    }
+
+    private void markLatePaymentOnCancelledOrder(PaymentTransaction transaction) {
+        if (transaction.getStatus() != PaymentTransactionStatus.PAID) {
+            transaction.setStatus(PaymentTransactionStatus.PAID);
+        }
+
+        if (transaction.getPaidAt() == null) {
+            transaction.setPaidAt(AppTime.now());
+        }
+
+        if (transaction.getBusinessDate() == null) {
+            transaction.setBusinessDate(transaction.getPaidAt().toLocalDate());
+        }
+
+        releaseVoucherReservationIfHeld(transaction);
+        transaction.setFailureReason("Late payment received for cancelled/inactive order; manual refund required");
+        transactionRepository.save(transaction);
+
+        log.error(
+                "Late payment confirmed for cancelled order {} on transaction {}; manual refund required",
+                transaction.getOrder() != null ? transaction.getOrder().getId() : null,
+                transaction.getId());
+    }
+
+    private void releaseVoucherReservationIfHeld(PaymentTransaction transaction) {
+        if (Boolean.TRUE.equals(transaction.getVoucherUsageReserved())
+                && !Boolean.TRUE.equals(transaction.getVoucherUsageClaimed())) {
+            String code = transaction.getVoucherCodeSnapshot() != null
+                    ? transaction.getVoucherCodeSnapshot()
+                    : (transaction.getOrder() != null ? transaction.getOrder().getVoucherCode() : null);
+            voucherService.releaseReservedUsageByCode(code);
+            transaction.setVoucherUsageReserved(false);
+        }
     }
 
     private Order settleOrderIfNeeded(Order order, PaymentTransaction transaction, BigDecimal totalPaid) {
@@ -172,7 +219,7 @@ public class PaymentCompletionService {
     }
 
     private BigDecimal currentFinalAmount(Order order) {
-        return order.getFinalAmount() != null ? order.getFinalAmount() : BigDecimal.ZERO;
+        return order.getEffectiveFinalAmount();
     }
 
     private VoucherClaimResult claimVoucherUsage(
@@ -197,7 +244,11 @@ public class PaymentCompletionService {
         }
 
         Voucher voucher = resolvedVoucherResult.voucher();
-        if (!voucherService.tryIncrementUsage(voucher.getId())) {
+        boolean claimed = Boolean.TRUE.equals(transaction.getVoucherUsageReserved())
+                ? voucherService.tryConfirmReservedUsage(voucher.getId())
+                : voucherService.tryIncrementUsage(voucher.getId());
+        if (!claimed) {
+            releaseVoucherReservationIfHeld(transaction);
             transaction.setFailureReason(
                     "Voucher capacity was exhausted after payment confirmation; manual refund required");
             transactionRepository.save(transaction);
@@ -209,6 +260,7 @@ public class PaymentCompletionService {
             return VoucherClaimResult.reconciliationRequired();
         }
 
+        transaction.setVoucherUsageReserved(false);
         transaction.setVoucherUsageClaimed(true);
         transactionRepository.save(transaction);
         return VoucherClaimResult.allowed(resolvedVoucherResult);

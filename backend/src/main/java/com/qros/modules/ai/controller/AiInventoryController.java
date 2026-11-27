@@ -56,7 +56,7 @@ public class AiInventoryController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "language", required = false, defaultValue = "vi") String language,
             @NonNull Principal principal) {
-        aiQuotaService.checkOperationsAi(principal.getName());
-        return ApiResponse.success(aiInvoiceOcrService.parseInvoice(file, language));
+        return ApiResponse.success(aiInvoiceOcrService.parseInvoice(
+                file, language, () -> aiQuotaService.checkOperationsAi(principal.getName())));
     }
 }

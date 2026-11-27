@@ -1,37 +1,23 @@
 import api from '@shared/api/httpClient.js';
-import { createCachedRequest, createKeyedCachedRequest } from '@shared/lib/cacheUtils.js';
+import {
+  createCachedRequest,
+  createKeyedCachedRequest,
+  stableStringify,
+} from '@shared/lib/cacheUtils.js';
+import { normalizePageContent } from '@shared/lib/pagination.js';
 
-const COMBO_LIST_CACHE_MS = 15_000;
-const COMBO_DETAIL_CACHE_MS = 10_000;
-
-const stableStringify = (value) => {
-  if (!value) return 'all';
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (typeof value === 'object')
-    return `{${Object.keys(value)
-      .sort()
-      .map((k) => `${k}:${stableStringify(value[k])}`)
-      .join(',')}}`;
-  return String(value);
-};
-
-const normalizePageContent = (data) => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.content)) return data.content;
-  return [];
-};
-
-const { requestFn: getComboList, clearCache: clearComboListCache } = createCachedRequest(
+// In-flight deduplication only (cacheMs = 0); React Query owns caching & WebSocket invalidation.
+const { requestFn: getComboList } = createCachedRequest(
   () =>
     api
       .get('/combos', {
         params: { size: 1000, sort: 'displayOrder,asc' },
       })
       .then(normalizePageContent),
-  COMBO_LIST_CACHE_MS,
+  0,
 );
 
-const { requestFn: getComboPage, clearCache: clearComboPageCache } = createKeyedCachedRequest(
+const { requestFn: getComboPage } = createKeyedCachedRequest(
   (params = {}) => {
     const page = Number(params.page || 0);
     const size = Number(params.size || 24);
@@ -39,58 +25,26 @@ const { requestFn: getComboPage, clearCache: clearComboPageCache } = createKeyed
       params: { page, size, sort: 'displayOrder,asc', ...params },
     });
   },
-  COMBO_LIST_CACHE_MS,
+  0,
   stableStringify,
 );
 
-const { requestFn: getComboDetail, clearCache: clearComboDetailCache } = createKeyedCachedRequest(
+const { requestFn: getComboDetail } = createKeyedCachedRequest(
   (id) => api.get(`/combos/${id}`),
-  COMBO_DETAIL_CACHE_MS,
+  0,
   (id) => String(id),
 );
 
-const clearComboCache = () => {
-  clearComboListCache();
-  clearComboPageCache();
-  clearComboDetailCache();
-};
-
 export const comboService = {
-  clearCache: clearComboCache,
   getAll: (options) => getComboList(options),
   getPage: (params, options) => getComboPage(params, options),
   getById: (id, options) => getComboDetail(id, options),
-  create: async (data) => {
-    clearComboCache();
-    const res = await api.post('/combos', data);
-    clearComboCache();
-    return res;
-  },
-  update: async (id, data) => {
-    clearComboCache();
-    const res = await api.put(`/combos/${id}`, data);
-    clearComboCache();
-    return res;
-  },
-  delete: async (id, version) => {
-    clearComboCache();
-    // L-fix: version required by backend DELETE endpoint for optimistic locking.
-    await api.delete(`/combos/${id}`, { params: { version } });
-    clearComboCache();
-  },
-  toggleActive: async (id, version) => {
-    clearComboCache();
-    const res = await api.patch(`/combos/${id}/toggle-active`, null, { params: { version } });
-    clearComboCache();
-    return res;
-  },
-  // toggleAvailable fix: backend endpoint existed but was never exposed in the service.
-  // Without this, admins had to open the full edit modal just to toggle stock availability.
-  toggleAvailable: async (id, version) => {
-    clearComboCache();
+  create: (data) => api.post('/combos', data),
+  update: (id, data) => api.put(`/combos/${id}`, data),
+  delete: (id, version) => api.delete(`/combos/${id}`, { params: { version } }),
+  toggleActive: (id, version) => api.patch(`/combos/${id}/toggle-active`, null, { params: { version } }),
+  toggleAvailable: (id, version) => {
     const config = version != null ? { params: { version } } : undefined;
-    const res = await api.patch(`/combos/${id}/toggle-available`, null, config);
-    clearComboCache();
-    return res;
+    return api.patch(`/combos/${id}/toggle-available`, null, config);
   },
 };

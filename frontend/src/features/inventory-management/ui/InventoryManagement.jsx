@@ -1,5 +1,5 @@
 import { Loader2, Plus } from 'lucide-react';
-import { useAuth } from '@features/auth';
+import { useAuth } from '@entities/session';
 
 import { STOCK_FILTER_OPTIONS } from '../lib/inventoryConstants.js';
 import useInventoryManagement from '../model/useInventoryManagement.js';

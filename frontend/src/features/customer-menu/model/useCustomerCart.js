@@ -2,16 +2,86 @@ import { useCallback, useMemo, useState } from 'react';
 
 const EMPTY_CART = { items: {}, combos: {} };
 
+const resolveLiveItemPrice = (cartItem, liveItem) => {
+  if (!liveItem) return cartItem.price;
+  const basePrice = Number(liveItem.price ?? cartItem.price ?? 0);
+  const selectedIds = cartItem.selectedOptionValueIds;
+  if (!Array.isArray(selectedIds) || selectedIds.length === 0) {
+    return basePrice;
+  }
+  if (!Array.isArray(liveItem.itemOptions) || liveItem.itemOptions.length === 0) {
+    return cartItem.price;
+  }
+  const extraPriceByValueId = new Map();
+  liveItem.itemOptions.forEach((group) => {
+    (group.values || group.optionValues || []).forEach((val) => {
+      if (val?.id != null) {
+        extraPriceByValueId.set(Number(val.id), Number(val.extraPrice || 0));
+      }
+    });
+  });
+  if (extraPriceByValueId.size === 0) return cartItem.price;
+  const optionExtra = selectedIds.reduce(
+    (sum, valId) => sum + (extraPriceByValueId.get(Number(valId)) || 0),
+    0,
+  );
+  return basePrice + optionExtra;
+};
+
 const useCustomerCart = ({
   orderingUnavailable,
   orderPaymentLocked,
   restaurantSettings,
+  menuItemsById = null,
+  combosById = null,
   showError,
   loadCrossSellRecommendations,
   paymentLockedMessage,
 }) => {
-  const [cart, setCart] = useState(EMPTY_CART);
+  const [rawCart, setRawCart] = useState(EMPTY_CART);
   const [selectedItemForOptions, setSelectedItemForOptions] = useState(null);
+
+  const cart = useMemo(() => {
+    const hasMenuCatalog = menuItemsById instanceof Map && menuItemsById.size > 0;
+    const hasComboCatalog = combosById instanceof Map && combosById.size > 0;
+    if (!hasMenuCatalog && !hasComboCatalog) {
+      return rawCart;
+    }
+
+    const reconciledItems = {};
+    Object.entries(rawCart.items).forEach(([cartId, item]) => {
+      const lookupId = item.actualId ?? Number(cartId);
+      const liveItem = hasMenuCatalog ? menuItemsById.get(lookupId) : null;
+      if (hasMenuCatalog) {
+        reconciledItems[cartId] = {
+          ...item,
+          name: liveItem?.name ?? item.name,
+          price: resolveLiveItemPrice(item, liveItem),
+          available: liveItem ? liveItem.available !== false : false,
+        };
+      } else {
+        reconciledItems[cartId] = item;
+      }
+    });
+
+    const reconciledCombos = {};
+    Object.entries(rawCart.combos).forEach(([comboId, combo]) => {
+      const lookupId = combo.actualId ?? Number(comboId);
+      const liveCombo = hasComboCatalog ? combosById.get(lookupId) : null;
+      if (hasComboCatalog) {
+        reconciledCombos[comboId] = {
+          ...combo,
+          name: liveCombo?.name ?? combo.name,
+          price: liveCombo?.price ?? combo.price,
+          available: liveCombo ? liveCombo.available !== false : false,
+        };
+      } else {
+        reconciledCombos[comboId] = combo;
+      }
+    });
+
+    return { items: reconciledItems, combos: reconciledCombos };
+  }, [rawCart, menuItemsById, combosById]);
 
   const assertCanOrder = useCallback(
     (product) => {
@@ -63,7 +133,7 @@ const useCustomerCart = ({
       // OUTSIDE the updater. Updater functions must be pure; async calls inside
       // them run twice in React StrictMode and risk stale-closure bugs.
       const shouldLoadCrossSell = !isCombo && qty === 1;
-      setCart((current) => {
+      setRawCart((current) => {
         const group = isCombo ? 'combos' : 'items';
         const updatedGroup = { ...current[group] };
 
@@ -96,7 +166,7 @@ const useCustomerCart = ({
       const sortedValueIds = [...selectedValueIds].sort((a, b) => Number(a) - Number(b));
       const cartId = `${product.id}_${sortedValueIds.join('_')}`;
 
-      setCart((current) => {
+      setRawCart((current) => {
         const currentQty = current.items[cartId]?.qty || 0;
 
         return {
@@ -122,7 +192,8 @@ const useCustomerCart = ({
   );
 
   const handleUpdateCartItemQty = useCallback((cartId, qty) => {
-    setCart((current) => {
+    setRawCart((current) => {
+      if (!current.items[cartId]) return current;
       const updatedItems = { ...current.items };
       if (qty <= 0) {
         delete updatedItems[cartId];
@@ -133,14 +204,29 @@ const useCustomerCart = ({
     });
   }, []);
 
+  const handleUpdateCartComboQty = useCallback((comboId, qty) => {
+    setRawCart((current) => {
+      if (!current.combos[comboId]) return current;
+      const updatedCombos = { ...current.combos };
+      if (qty <= 0) {
+        delete updatedCombos[comboId];
+      } else {
+        updatedCombos[comboId] = { ...updatedCombos[comboId], qty };
+      }
+      return { ...current, combos: updatedCombos };
+    });
+  }, []);
+
   const handleUpdateNote = useCallback((id, note, isCombo = false) => {
-    setCart((current) => {
+    const safeNote = String(note ?? '').slice(0, 255);
+    setRawCart((current) => {
       const group = isCombo ? 'combos' : 'items';
+      if (!current[group][id]) return current;
       return {
         ...current,
         [group]: {
           ...current[group],
-          [id]: { ...current[group][id], note },
+          [id]: { ...current[group][id], note: safeNote },
         },
       };
     });
@@ -158,7 +244,7 @@ const useCustomerCart = ({
     return itemTotal + comboTotal;
   }, [cart]);
 
-  const resetCart = useCallback(() => setCart(EMPTY_CART), []);
+  const resetCart = useCallback(() => setRawCart(EMPTY_CART), []);
 
   return {
     cart,
@@ -168,6 +254,7 @@ const useCustomerCart = ({
     handleAddToCart,
     handleAddWithOptions,
     handleUpdateCartItemQty,
+    handleUpdateCartComboQty,
     handleUpdateNote,
     calculateTotal: () => total,
     resetCart,

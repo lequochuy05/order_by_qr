@@ -14,12 +14,12 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -29,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,6 +49,8 @@ public class CategoryService {
     private final StorageService storageService;
     private final TransactionSideEffectService sideEffects;
     private final ImageFileValidator imageFileValidator;
+    private final TransactionExecutor transactionExecutor;
+    private final MenuInventoryAvailabilityPort inventoryAvailabilityService;
 
     @Cacheable(value = CacheNames.CATEGORIES, key = "'all_active'")
     public List<CategoryResponse> getAllActive() {
@@ -121,6 +124,7 @@ public class CategoryService {
         category.setImg(normalizeBlank(req.img()));
         category.setDescription(normalizeBlank(req.description()));
 
+        Boolean previousActive = category.getActive();
         if (req.active() != null) {
             category.setActive(req.active());
         }
@@ -130,6 +134,9 @@ public class CategoryService {
         }
 
         Category saved = saveCategory(category);
+        if (req.active() != null && !req.active().equals(previousActive)) {
+            inventoryAvailabilityService.syncCombosForMenuItems(menuItemRepository.findByCategoryId(saved.getId()));
+        }
         eventPublisher.publishEvent(new CategoryChangeEvent("updated", saved.getId()));
 
         // N+1 fix: toSummaryResponse avoids lazy-loading the full menuItems collection.
@@ -161,35 +168,59 @@ public class CategoryService {
         eventPublisher.publishEvent(new CategoryChangeEvent("deleted", id));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public CategoryImageResponse uploadImage(@NonNull Long id, @NonNull Long version, @NonNull MultipartFile file) {
         imageFileValidator.validate(file);
 
-        Category category = getEntityById(id);
-        // M-fix: assert version before upload to prevent overwriting an image on a stale entity.
-        assertVersionMatches(category.getVersion(), version);
-        String oldUrl = category.getImg();
+        // Pre-validate entity existence and optimistic version in a short read-only transaction
+        // so we fail fast before spending network I/O and never hold a JDBC connection during upload.
+        transactionExecutor.readOnly(() -> {
+            Category category = getEntityById(id);
+            assertVersionMatches(category.getVersion(), version);
+            return null;
+        });
+
+        String newUrl = uploadImageOutsideTransaction(id, file);
 
         try {
-            String newUrl = storageService.upload(file, CATEGORY_IMAGE_FOLDER);
+            return transactionExecutor.write(() -> {
+                Category category = getEntityById(id);
+                assertVersionMatches(category.getVersion(), version);
+                String oldUrl = category.getImg();
 
-            sideEffects.afterRollback(() -> storageService.delete(newUrl), "delete rolled back category image " + id);
+                category.setImg(newUrl);
+                categoryRepo.saveAndFlush(category);
 
-            category.setImg(newUrl);
-            categoryRepo.save(category);
+                if (isCustomImage(oldUrl)) {
+                    sideEffects.afterCommit(
+                            () -> storageService.delete(oldUrl), "delete replaced category image " + id);
+                }
 
-            if (isCustomImage(oldUrl)) {
-                sideEffects.afterCommit(() -> storageService.delete(oldUrl), "delete replaced category image " + id);
-            }
+                eventPublisher.publishEvent(new CategoryChangeEvent("image_updated", id));
+                return new CategoryImageResponse(newUrl);
+            });
+        } catch (RuntimeException e) {
+            deleteUploadedImageSilently(newUrl, id);
+            throw e;
+        }
+    }
 
-            eventPublisher.publishEvent(new CategoryChangeEvent("image_updated", id));
-
-            return new CategoryImageResponse(newUrl);
+    private String uploadImageOutsideTransaction(Long id, MultipartFile file) {
+        try {
+            return storageService.upload(file, CATEGORY_IMAGE_FOLDER);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             log.error("Error uploading category image ID {}: {}", id, e.getMessage(), e);
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "Unable to upload image", e);
+        }
+    }
+
+    private void deleteUploadedImageSilently(String uploadedUrl, Long id) {
+        try {
+            storageService.delete(uploadedUrl);
+        } catch (Exception cleanupException) {
+            log.warn("Failed to clean up rolled back category image ID {}: {}", id, cleanupException.getMessage());
         }
     }
 
@@ -217,31 +248,19 @@ public class CategoryService {
     }
 
     private String normalizeBlank(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+        return MenuTextSupport.normalizeBlank(value);
     }
 
     private String normalizeRequired(String value, String message) {
-        String trimmed = normalizeBlank(value);
-        if (trimmed == null) {
-            throw new BusinessException(ErrorCode.BUSINESS_ERROR, message);
-        }
-        return trimmed;
+        return MenuTextSupport.normalizeRequired(value, message);
     }
 
     private void assertVersionMatches(Long currentVersion, Long expectedVersion) {
-        if (expectedVersion == null) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "Category version is required. Please refresh and try again.");
-        }
-
-        if (!Objects.equals(currentVersion, expectedVersion)) {
-            throw new BusinessException(
-                    ErrorCode.CONCURRENT_MODIFICATION,
-                    "This category was changed by another request. Please refresh and try again.");
-        }
+        com.qros.shared.validation.OptimisticVersionGuard.requireMatch(
+                currentVersion, expectedVersion, "Category", "category");
     }
 
     private boolean isCustomImage(String image) {
-        return image != null && !image.isBlank() && image.startsWith("http");
+        return MenuTextSupport.isHttpImage(image);
     }
 }

@@ -1,14 +1,15 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Clock3, Sparkles, WifiOff } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { useCustomerMenuQuery, useRecommendationsQuery } from '@entities/public-menu';
-import { publicMenuService } from '@entities/public-menu/api/publicMenuService.js';
+import { publicMenuService } from '@entities/public-menu';
 import { useStatusModal } from '@shared/hooks/useStatusModal.js';
-import useFlyToCart from '@shared/hooks/useFlyToCart.js';
+import useFlyToCart from '../model/useFlyToCart.js';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
-import { ErrorBoundary, ItemOptionsModal, PullToRefresh, SpotlightGrid } from '@shared/ui';
+import { ErrorBoundary, PullToRefresh, SpotlightGrid } from '@shared/ui';
+import { ItemOptionsModal } from '@entities/menu-item';
 import CategoryFilter from './CategoryFilter.jsx';
 import CartModal from './CartModal.jsx';
 import CurrentOrderBanner from './CurrentOrderBanner.jsx';
@@ -25,6 +26,7 @@ import useCrossSellRecommendations from '../model/useCrossSellRecommendations.js
 import useCustomerCart from '../model/useCustomerCart.js';
 import useCustomerMenuRealtime from '../model/useCustomerMenuRealtime.js';
 import useCustomerMenuSession from '../model/useCustomerMenuSession.js';
+import useCustomerSelfCheckout from '../model/useCustomerSelfCheckout.js';
 import useRestaurantWeather from '../model/useRestaurantWeather.js';
 import useSubmitCustomerOrder from '../model/useSubmitCustomerOrder.js';
 import useTableServiceRequest from '../model/useTableServiceRequest.js';
@@ -43,10 +45,16 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showCurrentOrderSheet, setShowCurrentOrderSheet] = useState(false);
+  const [promoClock, setPromoClock] = useState(() => Date.now());
   const { statusModal, showSuccess, showError } = useStatusModal();
   const timeContext = getTimeContext();
   const { weatherLine, isLoading: loadingWeather } = useRestaurantWeather();
   const { flyItem, cartRef, fly, clearFly } = useFlyToCart();
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setPromoClock(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const { data: menuData, isLoading: loadingMenu, isError: isMenuError, error: menuError, refetch: refetchMenu } = useCustomerMenuQuery();
   const restaurantSettings = normalizeRestaurantSettings(menuData?.settings);
@@ -68,7 +76,10 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
   const menuItems = useMemo(() => menuData?.menuItems || [], [menuData?.menuItems]);
   const combos = useMemo(() => menuData?.combos || [], [menuData?.combos]);
   const promotions = useMemo(() => menuData?.promotions || [], [menuData?.promotions]);
-  const activePromotion = useMemo(() => selectBestActivePromotion(promotions), [promotions]);
+  const activePromotion = useMemo(
+    () => selectBestActivePromotion(promotions, new Date(promoClock)),
+    [promotions, promoClock],
+  );
   const orderingUnavailable =
     restaurantSettings.maintenanceMode || restaurantSettings.orderingEnabled === false;
   const orderPaymentLocked = session.paymentInProgress;
@@ -112,6 +123,8 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
     orderingUnavailable,
     orderPaymentLocked,
     restaurantSettings,
+    menuItemsById,
+    combosById,
     showError,
     loadCrossSellRecommendations: crossSell.loadCrossSellRecommendations,
     paymentLockedMessage: PAYMENT_LOCKED_MESSAGE,
@@ -164,10 +177,21 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
     }
   }, [session, showSuccess, showError, tableCode]);
 
+  const currentOrder = session.data?.currentOrder;
   const handleSelfCheckoutSuccess = useCallback(async () => {
     showSuccess('Thanh toán thành công! Cảm ơn quý khách đã dùng bữa.');
     await Promise.allSettled([session.refetch(), refetchMenu()]);
   }, [refetchMenu, session, showSuccess]);
+
+  // Lifted out of CurrentOrderSheet so closing the sheet never stops active PayOS monitoring.
+  const selfCheckout = useCustomerSelfCheckout({
+    tableCode,
+    sessionToken: session.sessionToken,
+    order: currentOrder,
+    activePromotion,
+    restaurantSettings,
+    onPaymentSuccess: handleSelfCheckoutSuccess,
+  });
 
   const handleAddAiSuggestion = useCallback(
     (suggestion) => {
@@ -244,7 +268,6 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
     ],
   );
 
-  const currentOrder = session.data?.currentOrder;
   const displayItems =
     selectedCategory === 'all'
       ? menuItems
@@ -316,6 +339,7 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
                 <CurrentOrderBanner
                   order={currentOrder}
                   activePromotion={activePromotion}
+                  restaurantSettings={restaurantSettings}
                   onClick={() => setShowCurrentOrderSheet(true)}
                 />
               </div>
@@ -359,12 +383,14 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
               />
-              <ComboSection
-                combos={combos}
-                cart={customerCart.cart}
-                onAddToCart={customerCart.handleAddToCart}
-                onFly={fly}
-              />
+              {restaurantSettings.showCombos !== false && (
+                <ComboSection
+                  combos={combos}
+                  cart={customerCart.cart}
+                  onAddToCart={customerCart.handleAddToCart}
+                  onFly={fly}
+                />
+              )}
               <RecommendationSection
                 recommendations={recommendations}
                 selectedCategory={selectedCategory}
@@ -392,8 +418,10 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
             onClose={() => setShowOrderModal(false)}
             cart={customerCart.cart}
             activePromotion={activePromotion}
+            restaurantSettings={restaurantSettings}
             fmtVND={fmtVND}
             handleUpdateCartItemQty={customerCart.handleUpdateCartItemQty}
+            handleUpdateCartComboQty={customerCart.handleUpdateCartComboQty}
             handleUpdateNote={customerCart.handleUpdateNote}
             crossSellItems={crossSell.crossSellItems}
             setCrossSellItems={crossSell.setCrossSellItems}
@@ -447,13 +475,11 @@ const CustomerMenuContent = ({ tableCode, sig, renderAiAssistant }) => {
           <CurrentOrderSheet
             isOpen={showCurrentOrderSheet}
             order={currentOrder}
-            activePromotion={activePromotion}
+            checkout={selfCheckout}
             onClose={closeCurrentOrderSheet}
             onRequestPayment={handleRequestPayment}
-            onPaymentSuccess={handleSelfCheckoutSuccess}
             tableStatus={session.data?.tableInfo?.status}
             tableCode={tableCode}
-            sessionToken={session.sessionToken}
             restaurantSettings={restaurantSettings}
           />
           {flyItem && <FlyingImageOverlay item={flyItem} onEnd={clearFly} />}

@@ -20,6 +20,8 @@ public interface VoucherValidationProjection {
 
     Integer getUsedCount();
 
+    Integer getReservedCount();
+
     LocalDateTime getValidFrom();
 
     LocalDateTime getValidTo();

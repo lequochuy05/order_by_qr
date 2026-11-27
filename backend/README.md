@@ -2,11 +2,11 @@
 
 Backend QROS là ứng dụng Spring Boot cung cấp REST API, WebSocket realtime, xác thực JWT (kèm 2FA OTP cho Admin), tích hợp thanh toán và các tác vụ nền cho hệ thống đặt món bằng QR.
 
-- Java: `21`
-- Spring Boot: `3.5.14`
-- Database: PostgreSQL, quản lý schema bằng Flyway (`22` migrations: `V1` -> `V1.21`)
+- Java: `25 LTS` (Virtual Threads `spring.threads.virtual.enabled: true` + `G1GC`)
+- Spring Boot: `4.1.2`
+- Database: PostgreSQL, quản lý schema bằng Flyway (`27` migrations: `V1` -> `V1.26`, `35` bảng)
 - Cache: Caffeine (mặc định ở `dev`) / Redis (`prod`)
-- Auth: JWT access token + HTTP-only refresh cookie (path `/api/v1`)
+- Auth: JWT access token + HTTP-only refresh cookie đa thiết bị (path `/api/v1`, tối đa 10 thiết bị/user)
 
 ## Kiến trúc
 
@@ -14,30 +14,30 @@ Backend QROS là ứng dụng Spring Boot cung cấp REST API, WebSocket realtim
 src/main/java/com/qros/
 ├── QrosApplication.java
 ├── core/
-│   └── config/              # App config, CORS, Security, Redis, WebSocket, timezone, seed dev
+│   └── config/              # Security/RBAC, Redis, WebSocket, OpenAPI, timezone, dev bootstrap
 ├── infrastructure/
-│   ├── cache/               # Cache abstraction + Caffeine/Redis implementation
-│   ├── mail/                # SmtpEmailService (Brevo REST API over HTTPS + SMTP fallback)
-│   ├── sms/                 # SMS OTP service
+│   ├── mail/                # EmailService + SmtpEmailService (Brevo REST API HTTPS + SMTP fallback)
+│   ├── sms/                 # SmsService + TwilioSmsService + SmsProperties
 │   └── storage/             # Cloudinary upload service
 ├── modules/
-│   ├── ai/                  # Gemini chat assistant, menu description & staff query
-│   ├── analytics/           # Revenue, employee, dish stats and forecasts
+│   ├── ai/                  # Gemini chat, staff query/note triage, executive insights, inventory AI/OCR, merchandising AI, menu description
+│   ├── analytics/           # Revenue, employee, dish stats, projections & forecasts
 │   ├── auth/                # Login, 2FA OTP, refresh, logout, password reset
-│   ├── inventory/           # Inventory items, recipes, stock movements, reservations
-│   ├── kitchen/             # Kitchen board and item status updates
-│   ├── menu/                # Categories, menu items, combos
-│   ├── notification/        # Application events -> WebSocket topics
-│   ├── order/               # Order lifecycle, pricing, audit, state machine
-│   ├── payment/             # PayOS payment links, webhook, cleanup job
-│   ├── promotion/           # Voucher validation and usage tracking
-│   ├── publicapi/           # Public customer menu/order/session/settings/AI APIs
+│   ├── inventory/           # Inventory items, batch stock-in, recipes, stock movements, reservations
+│   ├── kitchen/             # Kitchen board and item status updates (Kanban & Batch Cooking)
+│   ├── menu/                # Categories, menu items, item options, combos
+│   ├── notification/        # Application events -> WebSocket topics (12 STOMP topics)
+│   ├── order/               # Order lifecycle, pricing, discounts, audit, state machine, idempotency
+│   ├── payment/             # Cash/PayOS payment links, customer self-checkout, webhook, cleanup job
+│   ├── promotion/           # Promotions, voucher validation and usage tracking
+│   ├── publicapi/           # PublicCatalogService facade & public menu APIs
 │   ├── recommendation/      # Popular, similar, cross-sell recommendations
-│   ├── settings/            # Restaurant/system settings
-│   ├── table/               # Dining tables, QR generation, table sessions & merge
+│   ├── settings/            # Restaurant/system settings (bao gồm cờ tự thanh toán)
+│   ├── table/               # Dining tables, QR generation, table sessions, merge & table service requests
 │   └── user/                # Staff account and profile management
 └── shared/
     ├── cache/               # Cache names/constants
+    ├── config/              # AppProperties (shared @ConfigurationProperties)
     ├── constants/           # Shared domain/application constants
     ├── entity/              # BaseEntity auditing
     ├── enums/               # Shared enums
@@ -45,13 +45,15 @@ src/main/java/com/qros/
     ├── exception/           # Global exception handling
     ├── idempotency/         # Durable order/request idempotency service
     ├── observability/       # Metrics, logging and tracing helpers
-    ├── rate_limit/          # Rate limiting filter
+    ├── ratelimit/           # Rate limiting filter
     ├── response/            # ApiResponse / ErrorResponse
-    ├── security/            # JWT filter, JwtService
+    ├── security/            # JWT filter, JwtService, CorsOrigins, CookieRequestOriginValidator
     ├── time/                # AppTime
     ├── transaction/         # Side effects after transaction commit
     └── validation/          # Custom validators
 ```
+
+> **Kiến trúc Modular Monolith chuẩn DAG (ArchUnit 1.5.1 — 11 rules):** Không có vòng phụ thuộc giữa 15 module nghiệp vụ, không có vòng phụ thuộc constructor giữa các Spring bean, không truy cập chéo repository giữa các module (giao tiếp qua lookup service/port công khai của module sở hữu), và `shared`/`infrastructure`/`modules` không phụ thuộc ngược lên `core`.
 
 `QrosApplication` bật `@EnableCaching`, `@EnableJpaAuditing`, `@EnableAsync`, `@EnableScheduling` và `@ConfigurationPropertiesScan`.
 
@@ -71,7 +73,7 @@ src/main/java/com/qros/
 | Mail | `SmtpEmailService` — Brevo REST API (HTTPS) khi có `BREVO_API_KEY`, fallback Spring Boot Mail (SMTP) |
 | Config & Formatting | `spring-dotenv`, Spotless (Maven `validate` phase), GraalVM `native` profile |
 | Metrics | Spring Actuator, Micrometer Prometheus |
-| Test | JUnit 5, Mockito, Spring Boot Test, ArchUnit |
+| Test | JUnit 5, Mockito, Spring Boot Test, **Testcontainers (PostgreSQL 16 + Redis 7)** via `maven-failsafe-plugin`, ArchUnit |
 
 ## Cấu hình môi trường
 
@@ -125,21 +127,21 @@ Từ thư mục `backend/`:
 mvn spring-boot:run
 ```
 
-Chạy với profile `dev` (bật `app.security.enable-default-admin=true`). `DataInitializer` sẽ kiểm tra và seed riêng từng tài khoản mẫu qua `seedUserIfNotExists` cho đủ 5 vai trò nếu chưa tồn tại:
+Chạy với profile `dev`:
 
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-Tài khoản seed mặc định cho môi trường `dev`:
-
-```text
-- ADMIN:   admin@gmail.com   / admin123   (Yêu cầu mã 2FA OTP từ log/Redis/email)
-- MANAGER: manager@gmail.com / manager123 (Quản trị thực đơn, nhân sự, kho)
-- CASHIER: cashier@gmail.com / cashier123 (Sơ đồ bàn, thanh toán, lịch sử hóa đơn)
-- STAFF:   staff@gmail.com   / staff123   (Sơ đồ bàn, gọi món, gộp bàn, takeaway)
-- CHEF:    chef@gmail.com    / chef123    (KDS Bếp realtime, Kanban, nấu gom món, kho)
-```
+> **Lưu ý khởi tạo tài khoản Admin (`DataInitializer`):** Mặc định backend **không tự tạo tài khoản mẫu** để đảm bảo an toàn. Ở môi trường local (`dev`), bạn có thể bật bootstrap duy nhất 1 tài khoản `ADMIN` bằng cách đặt trong `.env`:
+>
+> ```env
+> DEV_ADMIN_BOOTSTRAP_ENABLED=true
+> DEV_ADMIN_EMAIL=admin@example.com
+> DEV_ADMIN_PASSWORD=<strong-dev-password>
+> ```
+>
+> Sau khi đăng nhập bằng tài khoản `ADMIN`, tạo thêm các tài khoản `MANAGER`, `CASHIER`, `STAFF`, `CHEF` trực tiếp qua màn hình `/admin/staffs` (hoặc `POST /api/v1/users`).
 
 Ứng dụng chạy mặc định tại:
 
@@ -155,7 +157,7 @@ Flyway migrations nằm tại:
 src/main/resources/db/migration/
 ```
 
-Hiện có **22 migrations** theo thứ tự phiên bản từ `V1__Initial.sql` đến `V1.21__Settlement_Validation_And_Cash_Tendered.sql`:
+Hiện có **27 migrations** theo thứ tự phiên bản từ `V1__Initial.sql` đến `V1.26__Wave2_Schema_Constraints_Indexes_And_Promo_Snapshot.sql` (tổng cộng **35 bảng**):
 
 ```text
 V1__Initial.sql
@@ -180,6 +182,11 @@ V1.18__Payment_Voucher_Usage_Claim.sql
 V1.19__User_Must_Change_Password.sql
 V1.20__Add_Admin_And_Cashier_Roles.sql
 V1.21__Settlement_Validation_And_Cash_Tendered.sql
+V1.22__Customer_Self_Checkout_Toggle.sql
+V1.23__Table_Service_Requests.sql
+V1.24__Inventory_Unit_Cost.sql
+V1.25__Audit_Hardening_Tax_Voucher_Menu_Pause.sql
+V1.26__Wave2_Schema_Constraints_Indexes_And_Promo_Snapshot.sql
 ```
 
 Cấu hình hiện tại:
@@ -198,7 +205,7 @@ Backend dùng access token JWT trong header:
 Authorization: Bearer <access-token>
 ```
 
-Refresh token được lưu trong HTTP-only cookie với path `/api/v1`. Với tài khoản `ADMIN`, luồng đăng nhập yêu cầu xác thực 2FA OTP qua `SmtpEmailService` (Brevo REST API khi có `BREVO_API_KEY`, fallback SMTP; đồng thời ghi `[2FA OTP]` vào log và lưu ticket tại Redis `qros:2fa:ticket:*`).
+Refresh token được lưu trong HTTP-only cookie với path `/api/v1` theo **nhiều session family độc lập trên mỗi tài khoản** (`auth:refresh:user:{id}:session:{fid}`, tối đa 10 thiết bị/user): đăng xuất chỉ thu hồi family hiện tại, còn đổi mật khẩu / đặt lại mật khẩu / khóa tài khoản thu hồi **toàn bộ** family trên mọi thiết bị. Với tài khoản `ADMIN`, luồng đăng nhập yêu cầu xác thực 2FA OTP gửi qua `EmailService` (`SmtpEmailService`: Brevo REST API khi có `BREVO_API_KEY`, fallback SMTP) và lưu ticket tại Redis (`qros:2fa:ticket:*`) kèm khóa cooldown gửi lại 60 giây nguyên tử bảo toàn số lần nhập sai (`attempts`); **mã OTP không bao giờ được ghi ra log backend**.
 
 ### 5 vai trò nhân sự & phân cấp quyền (`RoleHierarchy`)
 
@@ -211,18 +218,18 @@ ROLE_MANAGER > ROLE_CHEF
 
 | Role | Quyền chính |
 | --- | --- |
-| `ADMIN` | Toàn quyền hệ thống (kế thừa `MANAGER`), xác thực 2FA OTP; độc quyền cập nhật cấu hình hệ thống (`PUT /api/v1/settings`, `POST /api/v1/settings/logo`), xóa đơn/kho, xem báo cáo doanh thu (`GET /api/v1/analytics/revenue`), dự báo (`GET /api/v1/analytics/forecast/**`) và metrics `GET /actuator/prometheus` |
-| `MANAGER` | Quản trị thực đơn, danh mục, combo, voucher, nhân sự, bàn, kho, bếp, thanh toán, lịch sử hóa đơn, thống kê món bán chạy/nhân sự và sinh mô tả món AI |
+| `ADMIN` | Toàn quyền hệ thống (kế thừa `MANAGER`), xác thực 2FA OTP; độc quyền cập nhật cấu hình hệ thống (`PUT /api/v1/settings`, `POST /api/v1/settings/logo`), xóa sâu đơn/nguyên liệu (`DELETE /api/v1/orders/**`, `DELETE /api/v1/inventory/**`) và metrics `GET /actuator/prometheus` |
+| `MANAGER` | Quản trị thực đơn, danh mục, combo, voucher, khuyến mãi, nhân sự, bàn, kho, bếp, thanh toán, lịch sử hóa đơn, **báo cáo doanh thu (`GET /api/v1/analytics/revenue`), dự báo AI (`GET /api/v1/analytics/forecast/**`)**, thống kê món bán chạy/nhân sự và toàn bộ trợ lý AI vận hành/kho/merchandising |
 | `CASHIER` | Vận hành sơ đồ bàn, thanh toán (`/api/v1/payments/**`), tra cứu lịch sử & tổng hợp hóa đơn (`/api/v1/analytics/orders/history`, `/summary`), kế thừa quyền `STAFF` |
 | `STAFF` | Vận hành sơ đồ bàn, mở bàn, gọi món tại bàn, gộp/tách bàn, quản lý đơn mang về, đọc dữ liệu phục vụ vận hành và hỏi trợ lý AI nhân viên |
-| `CHEF` | Vận hành màn hình Bếp KDS (`/api/v1/kitchen`), cập nhật trạng thái món, theo dõi kho nguyên liệu và hỏi trợ lý AI nhân viên |
+| `CHEF` | Vận hành màn hình Bếp KDS (`/api/v1/kitchen`), cập nhật trạng thái món, theo dõi/nhập/điều chỉnh kho nguyên liệu và hỏi trợ lý AI nhân viên |
 
 ### Nhóm route theo `SecurityRoutes`
 
 - **Public:** `/api/v1/auth/login`, `/api/v1/auth/verify-2fa`, `/api/v1/auth/resend-2fa`, `/api/v1/auth/refresh`, `/api/v1/auth/logout`, `/api/v1/auth/forgot-password-*`, `/api/v1/auth/reset-password-*`, `/api/v1/vouchers/validate`, `/api/v1/recommendations/**`, `/api/v1/public/**` (bao gồm `/api/v1/public/ai/chat`, `/api/v1/public/settings`), `/api/v1/webhooks/**`, `/ws/**`, `/actuator/health`.
 - **Self profile:** `/api/v1/users/me`, `/api/v1/users/me/password`, `/api/v1/users/me/avatar`.
-- **Admin-only:** `PUT /api/v1/settings`, `POST /api/v1/settings/logo`, `DELETE /api/v1/orders/**`, `DELETE /api/v1/inventory/**`, `GET /api/v1/analytics/revenue`, `GET /api/v1/analytics/forecast/**`, `GET /actuator/prometheus`.
-- **Manager-only write (kế thừa bởi `ADMIN`):** quản trị user, menu, category, combo, inventory, table, voucher, `POST /api/v1/ai/menu-item/description`.
+- **Admin-only:** `PUT /api/v1/settings`, `POST /api/v1/settings/logo`, `DELETE /api/v1/orders/**`, `DELETE /api/v1/inventory/**`, `GET /actuator/prometheus`.
+- **Manager-only write & analytics (kế thừa bởi `ADMIN`):** quản trị user, menu, category, combo, inventory, table, voucher, promotion, `GET /api/v1/analytics/revenue`, `GET /api/v1/analytics/forecast/**`, `POST /api/v1/ai/menu-item/description`, `/api/v1/ai/insights/summary`, `/api/v1/ai/merchandising/**`.
 - **Payment & Cashier analytics (`ADMIN`, `MANAGER`, `CASHIER`):** `/api/v1/payments/**` (không mở cho `STAFF`/`CHEF`), `/api/v1/analytics/orders/history`, `/api/v1/analytics/orders/summary`.
 - **Operation:** orders, tables, table-sessions, kitchen, inventory, `POST /api/v1/ai/staff/query`.
 
@@ -231,23 +238,23 @@ ROLE_MANAGER > ROLE_CHEF
 | Nhóm | Endpoint chính | Mô tả |
 | --- | --- | --- |
 | Auth | `/api/v1/auth/*` | Login, 2FA (`verify-2fa`, `resend-2fa`), refresh, logout, forgot/reset mật khẩu |
-| Public customer | `/api/v1/public/*` | Menu public, table by code, table session, current order, order preview/create |
+| Public customer | `/api/v1/public/*` | Menu public, table by code, table session, current order, order preview/create, yêu cầu hỗ trợ bàn (`/tables/{tableCode}/service-requests`), tự thanh toán VietQR (`/tables/{tableCode}/self-checkout`) |
 | Public settings | `/api/v1/public/settings` | Lấy cấu hình công khai cho trang khách hàng |
 | AI (Customer) | `POST /api/v1/public/ai/chat` | Trợ lý AI Gemini công khai tư vấn món ăn cho khách hàng |
-| AI (Manager/Admin) | `POST /api/v1/ai/menu-item/description` | Sinh mô tả món ăn bằng AI (`MANAGER`/`ADMIN`) |
-| AI (Staff) | `POST /api/v1/ai/staff/query` | Trợ lý AI tra cứu vận hành cho nhân sự (`STAFF`/`CHEF`/`CASHIER`/`MANAGER`/`ADMIN`) |
+| AI (Staff & Kitchen) | `POST /api/v1/ai/staff/query`, `POST /api/v1/ai/staff/analyze-notes` | Trợ lý AI tra cứu vận hành & phân loại ghi chú dị ứng/ưu tiên món |
+| AI (Manager/Admin) | `POST /api/v1/ai/menu-item/description`, `/api/v1/ai/insights/summary`, `/api/v1/ai/inventory/*` (`restock-suggestions`, `recipe-assistant`, `invoice-ocr`), `/api/v1/ai/merchandising/*` (`combo-suggestions`, `promotion-suggestions`) | Sinh mô tả món, tóm tắt kinh doanh AI, gợi ý nhập kho/công thức/OCR hóa đơn và gợi ý combo/khuyến mãi |
 | Categories | `/api/v1/categories` | CRUD danh mục, search, upload ảnh |
 | Menu items | `/api/v1/menu-items` | CRUD món, lọc theo danh mục, upload ảnh |
 | Combos | `/api/v1/combos` | CRUD combo, active combos, toggle active |
-| Inventory | `/api/v1/inventory/*` | Nguyên liệu, công thức, nhập/xuất kho, reservation |
-| Tables | `/api/v1/tables` | CRUD bàn, lấy theo code, regenerate QR |
+| Inventory | `/api/v1/inventory/*` | Nguyên liệu, công thức, nhập/xuất kho, nhập kho theo lô (`POST /api/v1/inventory/items/batch-stock-in`), reservation |
+| Tables & Service Requests | `/api/v1/tables`, `/api/v1/table-service-requests` | CRUD bàn, lấy theo code, regenerate QR, hàng đợi tiếp nhận/xử lý/hủy yêu cầu gọi phục vụ tại bàn |
 | Table sessions | `/api/v1/table-sessions` | Quản lý phiên bàn, gộp bàn / tách bàn |
 | Orders | `/api/v1/orders`, `/api/v1/orders/items` | Tạo đơn, active, current order, preview, reconcile, thao tác item trong đơn |
 | Kitchen | `/api/v1/kitchen` | Danh sách món bếp, update item status/prepared |
 | Payments | `/api/v1/payments` | Thanh toán tiền mặt/PayOS (`ADMIN`/`MANAGER`/`CASHIER`), hủy link, đồng bộ trạng thái |
 | Webhooks | `/api/v1/webhooks/payos` | PayOS callback |
 | Vouchers & Promotions | `/api/v1/vouchers`, `/api/v1/promotions` | CRUD voucher/khuyến mãi, validate code công khai (`/api/v1/vouchers/validate`) |
-| Analytics & Forecast | `/api/v1/analytics`, `/api/v1/analytics/forecast` | Doanh thu (`ADMIN`), dự báo (`ADMIN`), lịch sử/tổng hợp đơn (`ADMIN`/`MANAGER`/`CASHIER`), nhân viên, top món, dashboard |
+| Analytics & Forecast | `/api/v1/analytics`, `/api/v1/analytics/forecast` | Doanh thu & dự báo (`ADMIN`/`MANAGER`), lịch sử/tổng hợp đơn (`ADMIN`/`MANAGER`/`CASHIER`), nhân viên, top món, dashboard |
 | Settings | `/api/v1/settings` | Xem cấu hình; cập nhật cấu hình & logo (`ADMIN`) |
 | Users | `/api/v1/users` | Hồ sơ cá nhân, avatar, quản trị nhân viên, reset password |
 | Recommendations | `/api/v1/recommendations` | API recommendation public/admin |
@@ -276,13 +283,14 @@ Application prefix:
 
 Heartbeat được cấu hình 10 giây mỗi chiều.
 
-Topics frontend đang subscribe:
+Topics frontend đang subscribe (12 topics):
 
 | Topic | Mục đích | Bảo vệ |
 | --- | --- | --- |
 | `/topic/tables` | Trạng thái bàn, đơn, thanh toán tối thiểu cho admin/khách | Public |
 | `/topic/kitchen` | Cập nhật bảng bếp KDS | `ROLE_MANAGER`, `ROLE_CHEF` (cùng `ROLE_ADMIN` qua hierarchy; không mở cho `STAFF`/`CASHIER`) |
 | `/topic/orders` | Cập nhật đơn hàng nội bộ cho quản trị/vận hành | `ROLE_MANAGER`, `ROLE_STAFF`, `ROLE_CHEF` (cùng `ROLE_ADMIN`, `ROLE_CASHIER` qua hierarchy) |
+| `/topic/service-requests` | Hàng đợi yêu cầu hỗ trợ tại bàn realtime | `ROLE_MANAGER`, `ROLE_STAFF` (cùng `ROLE_ADMIN`, `ROLE_CASHIER` qua hierarchy) |
 | `/topic/users` | Cập nhật nhân viên | `ROLE_MANAGER` (cùng `ROLE_ADMIN` qua hierarchy) |
 | `/topic/vouchers` | Cập nhật voucher | `ROLE_MANAGER`, `ROLE_STAFF` |
 | `/topic/promotions` | Cập nhật chương trình khuyến mãi | `ROLE_MANAGER`, `ROLE_STAFF` |
@@ -335,11 +343,11 @@ Nhánh hủy:
 PENDING | SERVING | AWAITING_PAYMENT -> CANCELLED
 ```
 
-Order item status:
+Order item status (đơn hướng, không hoàn tác từ `FINISHED`, cấm hủy/sửa sau khi đơn đã thanh toán):
 
 ```text
 PENDING -> COOKING -> FINISHED
-PENDING | COOKING | FINISHED -> CANCELLED
+PENDING | COOKING -> CANCELLED
 ```
 
 Logic chuyển trạng thái được gom trong `modules/order/state` và `OrderStatusService`. Lịch sử thay đổi được ghi vào các bảng audit tương ứng.
@@ -401,7 +409,13 @@ mvn spotless:apply
 mvn spotless:check
 ```
 
-Chạy test:
+Chạy đầy đủ unit test + Testcontainers integration tests (`*IT.java` trên PostgreSQL 16 & Redis 7) + Spotless check:
+
+```bash
+mvn --batch-mode verify
+```
+
+Chạy nhanh chỉ unit tests (Surefire):
 
 ```bash
 mvn test
@@ -425,15 +439,16 @@ Build GraalVM native image (với profile `native`):
 mvn -Pnative native:compile
 ```
 
-Bộ kiểm thử gồm **44 file test** tại `backend/src/test/java/com/qros/`, bao phủ kiến trúc, bảo mật, AI, đơn hàng, thanh toán và gộp bàn — tiêu biểu:
+Bộ kiểm thử gồm **80 file test (364 test cases: 357 Surefire unit/MVC + 7 Failsafe Testcontainers PG16 & Redis 7 `*IT.java`)** tại `backend/src/test/java/com/qros/`, tổ chức khớp 1-1 theo package production (`architecture`, `core`, `infrastructure`, `integration`, `modules/*`, `shared/*`), bao phủ kiến trúc, bảo mật, AI, đơn hàng, thanh toán, kho và gộp bàn — tiêu biểu:
 
-- `BackendDependencyRulesTest` (ArchUnit kiểm soát ranh giới layer)
-- `BackendMessageLanguageTest` (đảm bảo thông báo backend chuẩn tiếng Anh)
-- `SecurityConfigRegressionTest`, `Admin2faServiceTest`, `WebSocketConfigTest`, `TimeZoneConfigTest`
-- `GeminiChatGatewayTest`, `AiQuotaServiceTest`
-- `TableMergeServiceTest`, `TableSessionServiceTest`, `IdempotencyServiceTest`
-- `DiscountServiceTest`, `OrderCreationServiceTest`, `OrderPricingServiceTest`, `OrderServiceImplTest`, `OrderStatusServiceTest`
-- `PayosServiceImplTest`, `RecommendationServiceTest`
+- `BackendDependencyRulesTest` (ArchUnit 1.5.1 — 11 luật kiểm soát ranh giới layer, 0 vòng phụ thuộc module, 0 cross-module repo imports & 0 vòng phụ thuộc constructor giữa các Spring bean)
+- `HibernateEntityMetadataTest` (khởi dựng offline Hibernate 7.4 `MetadataSources` kiểm tra `@NotFound` & `@SQLDelete`) & `BackendMessageLanguageTest` (thông báo chuẩn tiếng Anh)
+- `PostgresFlywayAndDomainIT` & `RedisAuthAndConcurrencyIT` (Testcontainers PostgreSQL 16 + Redis 7 kiểm chứng toàn bộ 27 Flyway migrations `V1`–`V1.26`, `CHECK` constraints, idempotency, multi-device refresh tokens, atomic 2FA & rate limit)
+- `SecurityConfigRegressionTest`, `CoreApiSecurityIntegrationTest`, `RbacHardeningSecurityTest`, `AuthHardeningRegressionTest`, `Admin2faServiceTest`, `WebSocketConfigTest`, `CacheConfigurationTest`, `AppTimeTest`, `Wave2HardeningRegressionTest`
+- `GeminiChatGatewayTest`, `AiQuotaServiceTest`, `AiInsightsServiceTest`, `AiInventoryServiceTest`, `AiMerchandisingServiceTest`, `AiStaffNoteTriageServiceTest`
+- `TableMergeServiceTest`, `TableSessionServiceTest`, `TableServiceRequestServiceTest`, `IdempotencyServiceTest`
+- `DiscountCalculatorTest`, `AuditHardeningFinancialTest`, `OrderCreationServiceTest`, `OrderPricingServiceTest`, `OrderStatusServiceTest`, `PublicCatalogServiceTest`
+- `PaymentServiceTest`, `PaymentHardeningRegressionTest`, `SelfCheckoutServiceTest`, `RecommendationServiceTest`
 
 ## Docker
 
@@ -451,4 +466,4 @@ Nếu đang đứng trong thư mục `backend/`:
 docker build -t order-by-qr-backend:latest ..
 ```
 
-Container expose cổng `8080`, chạy bằng Spring Boot layered jar và JVM timezone `Asia/Ho_Chi_Minh`.
+Container expose cổng `8080`, chạy bằng Spring Boot layered jar với **Java 25 Virtual Threads**, **`G1GC` + C2 JIT** và JVM timezone `Asia/Ho_Chi_Minh`.

@@ -28,6 +28,7 @@ const resolveTableServiceRequestSummary = (table, serviceRequestsByTable = {}) =
 const TableGrid = ({
   tables,
   orders = [],
+  nowMs,
   onAction,
   userRole,
   serviceRequestsByTable = {},
@@ -56,9 +57,11 @@ const TableGrid = ({
             key={table.id}
             table={table}
             order={tableOrder}
+            nowMs={nowMs}
             onDetail={() => onAction({ type: 'DETAIL', table, order: tableOrder })}
             onAddItems={() => onAction({ type: 'ADD_ITEM', table })}
             onPay={() => onAction({ type: 'PAY', table, order: tableOrder })}
+            onCloseEmpty={() => onAction({ type: 'CLOSE_EMPTY', table })}
             onMerge={() => onAction({ type: 'MERGE', table })}
             onEdit={() => onAction({ type: 'EDIT', table })}
             onDelete={() => onAction({ type: 'DELETE', table })}

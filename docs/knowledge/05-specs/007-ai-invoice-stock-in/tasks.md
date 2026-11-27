@@ -24,3 +24,4 @@
 - [x] Chạy `mvn -f backend/pom.xml spotless:apply && mvn -f backend/pom.xml --batch-mode verify` → pass 100%.
 - [x] Chạy `npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build` → pass 100%.
 - [x] Chuyển `spec.md`, `tasks.md`, `KNOWLEDGE_HUB.md` (`007-ai-invoice-stock-in`) sang `Implemented (Pending Sync-Back Review)`.
+- [x] *(Sau khi người dùng duyệt Gate 5)* Đóng trạng thái `Archived` trong `spec.md` và `KNOWLEDGE_HUB.md`.

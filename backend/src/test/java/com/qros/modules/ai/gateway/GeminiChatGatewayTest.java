@@ -110,7 +110,7 @@ class GeminiChatGatewayTest {
     }
 
     @Test
-    void customModelUrlIsPreservedWithApiKeyAppended() {
+    void customModelUrlIsPreservedWithoutApiKeyQueryParam() {
         GeminiProperties properties = new GeminiProperties(
                 true,
                 "key123",
@@ -127,7 +127,8 @@ class GeminiChatGatewayTest {
 
         assertThat(resolved)
                 .isEqualTo(
-                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=key123");
+                        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent");
+        assertThat(resolved).doesNotContain("key=");
     }
 
     @Test

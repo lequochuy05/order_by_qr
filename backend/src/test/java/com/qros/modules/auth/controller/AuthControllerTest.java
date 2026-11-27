@@ -11,7 +11,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.qros.core.config.security.CookieRequestOriginValidator;
 import com.qros.modules.auth.dto.internal.AuthenticatedUser;
 import com.qros.modules.auth.dto.internal.LoginResult;
 import com.qros.modules.auth.dto.request.LoginRequest;
@@ -25,11 +24,12 @@ import com.qros.modules.auth.service.PasswordResetService;
 import com.qros.modules.auth.service.RefreshTokenService;
 import com.qros.modules.auth.store.RedisRefreshTokenStore;
 import com.qros.modules.user.model.enums.UserRole;
-import com.qros.modules.user.repository.UserRepository;
+import com.qros.modules.user.service.UserLookupService;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
-import com.qros.shared.rate_limit.ClientAddressResolver;
+import com.qros.shared.ratelimit.ClientAddressResolver;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.security.CookieRequestOriginValidator;
 import com.qros.shared.security.JwtProperties;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.TokenBlacklistService;
@@ -56,7 +56,7 @@ class AuthControllerTest {
         RefreshTokenService refreshTokenService = new RefreshTokenService(
                 new RedisRefreshTokenStore(redisTemplate),
                 new JwtService(jwtProperties),
-                mock(UserRepository.class),
+                mock(UserLookupService.class),
                 jwtProperties);
 
         AuthService authService = mock(AuthService.class);
@@ -109,8 +109,10 @@ class AuthControllerTest {
                 mock(CookieRequestOriginValidator.class),
                 mock(TokenBlacklistService.class));
 
-        ApiResponse<Void> response =
-                controller.forgotPassword("unknown@example.com", mock(jakarta.servlet.http.HttpServletRequest.class));
+        ApiResponse<Void> response = controller.forgotPassword(
+                null,
+                java.util.Map.of("email", "unknown@example.com"),
+                mock(jakarta.servlet.http.HttpServletRequest.class));
 
         assertThat(response).isNotNull();
         assertThat(response.isSuccess()).isTrue();

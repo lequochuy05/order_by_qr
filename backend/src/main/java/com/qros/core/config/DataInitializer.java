@@ -4,6 +4,7 @@ import com.qros.modules.user.model.User;
 import com.qros.modules.user.model.enums.UserRole;
 import com.qros.modules.user.model.enums.UserStatus;
 import com.qros.modules.user.repository.UserRepository;
+import com.qros.shared.config.AppProperties;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

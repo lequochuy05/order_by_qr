@@ -1,6 +1,6 @@
 export const MAX_INVOICE_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_BATCH_STOCK_IN_LINES = 50;
-export const ALLOWED_INVOICE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_INVOICE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 const roundTo = (value, decimals) => {
   const num = Number(value);
@@ -15,7 +15,7 @@ const formatPlainNumber = (value) => {
   return String(num);
 };
 
-export const normalizeUnitCode = (rawUnit) => {
+const normalizeUnitCode = (rawUnit) => {
   if (!rawUnit || typeof rawUnit !== 'string') return '';
   const folded = rawUnit
     .normalize('NFD')

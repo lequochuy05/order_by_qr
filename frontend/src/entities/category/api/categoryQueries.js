@@ -7,6 +7,14 @@ import { categoryService } from './categoryService.js';
  * Each unique combination of { q, page, size } gets its own cache entry,
  * but all share the `categories.all` prefix for bulk invalidation.
  */
+export const useActiveCategoriesQuery = (options = {}) =>
+  useQuery({
+    queryKey: [...queryKeys.categories.all, 'active'],
+    queryFn: () => categoryService.getActive(),
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+
 export const useCategoriesPageQuery = ({ q, page = 0, size = 24 } = {}, options = {}) =>
   useQuery({
     queryKey: [...queryKeys.categories.all, 'page', { q, page, size }],

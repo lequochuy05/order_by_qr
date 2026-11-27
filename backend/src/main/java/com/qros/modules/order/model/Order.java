@@ -17,6 +17,8 @@ import java.util.Set;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.NotFound;
+import org.hibernate.annotations.NotFoundAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
@@ -31,7 +33,7 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-@SQLDelete(sql = "UPDATE orders SET is_deleted = true WHERE id = ?")
+@SQLDelete(sql = "UPDATE orders SET is_deleted = true, version = version + 1 WHERE id = ? AND version = ?")
 @SQLRestriction("is_deleted = false")
 public class Order extends BaseEntity {
 
@@ -59,8 +61,28 @@ public class Order extends BaseEntity {
     @Builder.Default
     private BigDecimal discountAmount = BigDecimal.ZERO;
 
+    @Column(name = "applied_promotion_percent", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal appliedPromotionPercent = BigDecimal.ZERO;
+
     @Column(length = 50)
     private String voucherCode;
+
+    @Column(name = "service_charge_percent_snapshot", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal serviceChargePercentSnapshot = BigDecimal.ZERO;
+
+    @Column(name = "service_charge_amount", nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal serviceChargeAmount = BigDecimal.ZERO;
+
+    @Column(name = "tax_percent_snapshot", nullable = false, precision = 5, scale = 2)
+    @Builder.Default
+    private BigDecimal taxPercentSnapshot = BigDecimal.ZERO;
+
+    @Column(name = "tax_amount", nullable = false, precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal taxAmount = BigDecimal.ZERO;
 
     @Column(nullable = false, precision = 15, scale = 2)
     @Builder.Default
@@ -90,12 +112,14 @@ public class Order extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "paid_by")
+    @NotFound(action = NotFoundAction.IGNORE)
     private User paidBy;
 
     private LocalDateTime paymentTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "table_id")
+    @NotFound(action = NotFoundAction.IGNORE)
     private DiningTable table;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -151,11 +175,18 @@ public class Order extends BaseEntity {
     }
 
     public boolean canAcceptNewItems() {
-        return status == OrderStatus.PENDING || status == OrderStatus.SERVING;
+        return !isPaid() && (status == OrderStatus.PENDING || status == OrderStatus.SERVING);
     }
 
     public boolean canBePaid() {
-        return status == OrderStatus.AWAITING_PAYMENT && paymentStatus == PaymentStatus.PENDING;
+        return paymentStatus == PaymentStatus.PENDING
+                && (status == OrderStatus.AWAITING_PAYMENT
+                        || status == OrderStatus.PENDING
+                        || status == OrderStatus.SERVING);
+    }
+
+    public BigDecimal getEffectiveFinalAmount() {
+        return finalAmount != null ? finalAmount : BigDecimal.ZERO;
     }
 
     public boolean canBeCancelled() {

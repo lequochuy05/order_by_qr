@@ -1,6 +1,8 @@
 # MASTER PROMPT: AUTOMATED UI/UX DISCOVERY, PLAYWRIGHT QA AUDIT & RESPONSIVE SCREENSHOT COLLECTION
 **Hệ thống: QROS — Nền tảng Đặt món qua mã QR & Quản lý Nhà hàng Đa vai trò**
 
+> **Nguồn chân lý sản phẩm & kỹ thuật:** Đối chiếu danh mục màn hình, quy tắc nghiệp vụ và kiến trúc mới nhất tại [docs/knowledge/KNOWLEDGE_HUB.md](knowledge/KNOWLEDGE_HUB.md) và [docs/knowledge/04-tech/SYSTEM_DESIGN.md](knowledge/04-tech/SYSTEM_DESIGN.md).
+
 ---
 
 ## 1. MỤC TIÊU VÀ TƯ CÁCH THỰC THI (MISSION & IDENTITY)
@@ -23,20 +25,15 @@ Khảo sát và kiểm thử độc lập cho toàn bộ **6 vai trò** theo đ�
 
 | Role | Định danh hệ thống | Cơ chế xác thực | Phạm vi truy cập & Tính năng chính |
 |---|---|---|---|
-| **1. Customer** | `CUSTOMER` (Guest) | Quét QR bàn (`/:tableCode/menu`), Public Menu (`/menu`), Session Storage | Xem thực đơn, lọc danh mục, chọn món & tùy chọn topping/ghi chú, giỏ hàng, đặt món, theo dõi trạng thái đơn hàng. |
-| **2. Staff** | `STAFF` | JWT Form Login (`/login`) | Quản lý sơ đồ bàn (`/admin/tables`), gọi món tại bàn, gộp/tách bàn, đơn mang về (`/admin/takeaway`), hồ sơ cá nhân (`/admin/profile`). |
+| **1. Customer** | `CUSTOMER` (Guest) | Quét QR bàn (`/:tableCode/menu`), Public Menu (`/menu`), Session Storage | Xem thực đơn, lọc danh mục, chọn món & tùy chọn topping/ghi chú, giỏ hàng, đặt món, gọi phục vụ tại bàn, tự thanh toán VietQR, theo dõi trạng thái đơn hàng. |
+| **2. Staff** | `STAFF` | JWT Form Login (`/login`) | Quản lý sơ đồ bàn (`/admin/tables`), hàng đợi yêu cầu hỗ trợ bàn (`/admin/service-requests`), gọi món tại bàn, gộp/tách bàn, đơn mang về (`/admin/takeaway`), hồ sơ cá nhân (`/admin/profile`). |
 | **3. Chef** | `CHEF` | JWT Form Login (`/login`) | Bếp / KDS (`/admin/kitchen`) realtime WebSocket/STOMP, cập nhật trạng thái món (Chờ nấu → Đang nấu → Hoàn thành), kiểm tra kho nguyên liệu (`/admin/inventory`). |
-| **4. Cashier** | `CASHIER` | JWT Form Login (`/login`) | Sơ đồ bàn (`/admin/tables`), thanh toán hóa đơn (Tiền mặt / VietQR PayOS), in hóa đơn, áp dụng voucher, lịch sử hóa đơn (`/admin/history`), đơn mang về (`/admin/takeaway`). |
-| **5. Manager** | `MANAGER` | JWT Form Login (`/login`) | Dashboard tổng quan (`/admin/dashboard`), quản lý Thực đơn / Món ăn (`/admin/menu`), Danh mục (`/admin/categories`), Combo (`/admin/combo`), Khuyến mãi/Voucher (`/admin/voucher`), Kho nguyên liệu (`/admin/inventory`), Lịch sử hóa đơn (`/admin/history`), Nhân sự (`/admin/staffs`), Báo cáo món bán chạy (`/admin/statistics/top-dishes`), Báo cáo hiệu suất nhân viên (`/admin/statistics/staff`), Toàn quyền Bàn & Bếp. |
-| **6. Admin** | `ADMIN` | JWT Form Login (`/login`) | Toàn bộ quyền của Manager + Báo cáo Doanh thu chi tiết (`/admin/statistics/revenue`), Quản trị người dùng & phân quyền hệ thống cấp cao nhất, Cấu hình hệ thống (`/admin/settings`). |
+| **4. Cashier** | `CASHIER` | JWT Form Login (`/login`) | Sơ đồ bàn (`/admin/tables`), hàng đợi yêu cầu hỗ trợ bàn (`/admin/service-requests`), thanh toán hóa đơn (Tiền mặt / VietQR PayOS), in hóa đơn, áp dụng voucher, lịch sử hóa đơn (`/admin/history`), đơn mang về (`/admin/takeaway`). |
+| **5. Manager** | `MANAGER` | JWT Form Login (`/login`) | Dashboard tổng quan (`/admin/dashboard`), quản lý Thực đơn / Món ăn (`/admin/menu`), Danh mục (`/admin/categories`), Combo (`/admin/combo`), Voucher (`/admin/voucher`), Khuyến mãi (`/admin/promotions`), Kho nguyên liệu (`/admin/inventory`), Lịch sử hóa đơn (`/admin/history`), Nhân sự (`/admin/staffs`), Báo cáo món bán chạy (`/admin/statistics/top-dishes`), Báo cáo hiệu suất nhân viên (`/admin/statistics/staff`), Toàn quyền Bàn, Yêu cầu bàn & Bếp. |
+| **6. Admin** | `ADMIN` | JWT Form Login + 2FA OTP (`/login`) | Toàn bộ quyền của Manager + Báo cáo Doanh thu chi tiết (`/admin/statistics/revenue`), Quản trị người dùng & phân quyền hệ thống cấp cao nhất, Cấu hình hệ thống (`/admin/settings`). |
 
 > **Lưu ý nghiệp vụ:**
-> - Tài khoản nhân sự mẫu lấy từ cơ sở dữ liệu (`sample_data_2026_10_14_to_2026_11_14.sql`):
->   - Admin: `admin@gmail.com`
->   - Manager: `manager@gmail.com`
->   - Staff: `staff@gmail.com`
->   - Cashier: `cashier@gmail.com`
->   - Chef: `chef@gmail.com`
+> - Hệ thống mặc định **không tự seed tài khoản mẫu**. Ở môi trường local (`dev`), bật `DEV_ADMIN_BOOTSTRAP_ENABLED=true`, `DEV_ADMIN_EMAIL`, `DEV_ADMIN_PASSWORD` trong `.env` để khởi tạo tài khoản `ADMIN`, sau đó tạo các tài khoản kiểm thử `MANAGER`, `STAFF`, `CASHIER`, `CHEF` qua `/admin/staffs`. Khi chạy script `scripts/phase4_full_ui_audit.js`, truyền biến môi trường `AUDIT_ADMIN_EMAIL` và `AUDIT_ADMIN_PASSWORD` (fallback `DEV_ADMIN_EMAIL` / `DEV_ADMIN_PASSWORD`).
 > - Khách hàng (Customer) kiểm thử bằng bàn mẫu `T01` tại URL: `http://localhost:5173/T01/menu`.
 > - **Phạm vi mở rộng (Extended Audit Scope):**
 >   - **Bilingual i18n (`vi`/`en`):** Kiểm thử chuyển đổi ngôn ngữ Tiếng Việt (`vi`) và Tiếng Anh (`en`) trên các màn hình chính, đảm bảo không bị tràn chữ (text overflow) hay thiếu khóa dịch (`i18n`).
@@ -81,7 +78,7 @@ Thực thi tuần tự 5 pha, hoàn thành mục tiêu và nghiệm thu từng p
 1. **Khởi động dịch vụ phụ trợ:**
    - Kiểm tra và kích hoạt container Redis: `docker start qros-redis` (port `6379`).
    - Kiểm tra kết nối cơ sở dữ liệu PostgreSQL (Neon Cloud / Local DB) qua cấu hình `.env`.
-2. **Khởi động Backend (Spring Boot 3.5.x - Java 21):**
+2. **Khởi động Backend (Spring Boot 4.1.2 - Java 25 LTS):**
    - Chạy nền profile `dev`: `mvn -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=dev`
    - Chờ kiểm tra sức khỏe tại: `http://localhost:8080/actuator/health` (HTTP 200 OK).
 3. **Khởi động Frontend (React 19 - Vite 7):**
@@ -107,7 +104,7 @@ Thực thi tuần tự 5 pha, hoàn thành mục tiêu và nghiệm thu từng p
 
 ### GIAI ĐOẠN 3: XÂY DỰNG BỘ CÔNG CỤ AUTOMATION PLAYWRIGHT
 
-Xây dựng/nâng cấp bộ kịch bản tự động hóa (`scripts/audit_playwright.js` hoặc runner chuyên dụng):
+Xây dựng/nâng cấp bộ kịch bản tự động hóa (`scripts/phase4_full_ui_audit.js` và `scripts/android_audit.js`):
 1. **Helper modules:**
    - `loginAs(role)`: Xử lý đăng nhập tự động theo từng vai trò, quản lý token/cookie.
    - `setupCustomerSession(tableCode)`: Thiết lập session bàn cho khách hàng.
@@ -240,4 +237,4 @@ Nhiệm vụ chỉ được coi là hoàn tất khi thỏa mãn đầy đủ cá
   4. `reports/QA_TEST_RESULTS.md`
   5. `reports/RESPONSIVE_AUDIT.md`
   6. `reports/BUG_REPORT.md`
-- [x] **Kịch bản tự động:** Bàn giao bộ mã nguồn script Playwright hoàn chỉnh (`scripts/audit_playwright.js` và `scripts/android_audit.js`) để có thể tái chạy (re-run) bất kỳ lúc nào trong CI/CD.
+- [x] **Kịch bản tự động:** Bàn giao bộ mã nguồn script Playwright hoàn chỉnh (`scripts/phase4_full_ui_audit.js` và `scripts/android_audit.js`) để có thể tái chạy (re-run) bất kỳ lúc nào trong CI/CD.

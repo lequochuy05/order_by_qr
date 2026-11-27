@@ -1,13 +1,12 @@
 package com.qros.core.config;
 
-import com.qros.core.config.security.CorsOrigins;
+import com.qros.shared.config.AppProperties;
+import com.qros.shared.security.CorsOrigins;
 import com.qros.shared.security.JwtService;
 import com.qros.shared.security.PasswordVersionedUserDetails;
 import com.qros.shared.security.TokenBlacklistService;
-import com.qros.shared.time.AppTime;
-import java.time.LocalDateTime;
+import com.qros.shared.security.UserAccountValidator;
 import java.util.Collection;
-import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -222,7 +221,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             throw new AccessDeniedException("WebSocket token has expired due to password change");
         }
 
-        if (userDetails instanceof com.qros.modules.user.model.User user && user.isMustChangePassword()) {
+        if (userDetails instanceof PasswordVersionedUserDetails versioned && versioned.isMustChangePassword()) {
             throw new AccessDeniedException("Password change required before connecting to WebSocket");
         }
 
@@ -231,23 +230,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     private boolean isFreshForPasswordVersion(String token, UserDetails userDetails) {
-        if (!(userDetails instanceof PasswordVersionedUserDetails passwordVersionedUser)) {
-            return true;
-        }
-
-        LocalDateTime passwordChangedAt = passwordVersionedUser.getPasswordChangedAt();
-        if (passwordChangedAt == null) {
-            return true;
-        }
-
-        Date issuedAt = jwtService.extractIssuedAt(token);
-        if (issuedAt == null) {
-            return false;
-        }
-
-        long issuedAtSec = issuedAt.getTime() / 1000;
-        long passwordChangedAtSec = passwordChangedAt.atZone(AppTime.ZONE).toEpochSecond();
-        return issuedAtSec >= passwordChangedAtSec;
+        return UserAccountValidator.isFreshForPasswordVersion(token, userDetails, jwtService);
     }
 
     /**
@@ -283,9 +266,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     }
 
     private boolean isUsableAccount(UserDetails userDetails) {
-        return userDetails.isEnabled()
-                && userDetails.isAccountNonLocked()
-                && userDetails.isAccountNonExpired()
-                && userDetails.isCredentialsNonExpired();
+        return UserAccountValidator.isUsableAccount(userDetails);
     }
 }
