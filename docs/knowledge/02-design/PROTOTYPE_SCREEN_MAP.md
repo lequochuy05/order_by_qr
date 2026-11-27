@@ -1,7 +1,7 @@
 # Prototype Screen Map & Interaction Inventory — QROS (`02-design`)
 
 > **Tầng Knowledge:** `02-design` (Design System & Prototype)  
-> **Kế thừa bắt buộc từ (`01-po`):** [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.7`) · [vision.md](../01-po/vision.md)  
+> **Kế thừa bắt buộc từ (`01-po`):** [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.8`) · [vision.md](../01-po/vision.md)  
 > **Hệ thống thiết kế áp dụng:** [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) · [figma-tokens.json](./figma-tokens.json)  
 > **Bàn giao cho (`03-ba`):** [PRD_BY_USER_STAGE.md](../03-ba/PRD_BY_USER_STAGE.md) · [USER_STORIES.md](../03-ba/USER_STORIES.md)
 
@@ -20,9 +20,9 @@
 
 ---
 
-## 2. Bản đồ 27 Màn hình Prototype (`SCR-01` → `SCR-27`)
+## 2. Bản đồ 28 Màn hình Prototype (`SCR-01` → `SCR-28`)
 
-*Toàn bộ màn hình được thiết kế trực tiếp từ 6 User Stages (`STG-01` → `STG-06`) và 6 Epics (`F1.1` → `F6.7`) của [01-po/journey-features.md](../01-po/journey-features.md).*
+*Toàn bộ màn hình được thiết kế trực tiếp từ 6 User Stages (`STG-01` → `STG-06`) và 6 Epics (`F1.1` → `F6.8`) của [01-po/journey-features.md](../01-po/journey-features.md).*
 
 ### Nhóm A — Cổng vào, Xác thực, Menu Khách & Màn hình Hệ thống (`STG-01`, `STG-02`)
 
@@ -65,12 +65,13 @@
 | `SCR-24` | Thống kê Hiệu suất Nhân sự | `/admin/statistics/staff` | `STG-06` | `PER-05`, `PER-06` | `F6.3` | Bảng tổng hợp số đơn phục vụ & doanh số theo từng nhân viên theo khung thời gian |
 | `SCR-25` | Dự báo Nhu cầu & Doanh thu (AI) | Tích hợp trong `/admin/dashboard` & `/admin/statistics/revenue` | `STG-06` | `PER-05`, `PER-06` | `F6.2` | Biểu đồ dự báo doanh số các ngày tới kèm thẻ khuyến nghị nhập nguyên liệu từ AI |
 | `SCR-26` | Hồ sơ cá nhân & Cài đặt Hệ thống | `/admin/profile`, `/admin/settings` | `STG-01`, `STG-06` | `PER-02..06` (Cá nhân) · `PER-06` (Hệ thống) | `F6.4`, `F6.5` | Hồ sơ cá nhân & đổi mật khẩu *(khóa sửa thông tin/ảnh đại diện khi đang bị yêu cầu đổi mật khẩu bắt buộc và tự đăng xuất về màn hình đăng nhập sau khi đổi mật khẩu thành công)*; trang Cài đặt gồm **8 tab**: 1 tab Tùy chọn cá nhân *(Ngôn ngữ VI/EN, Sáng/Tối)* cho mọi nhân sự + 7 tab Hệ thống *(Thông tin quán & Logo, Wi-Fi quán, Thực đơn khách hàng, Thanh toán & công tắc Tự thanh toán tại bàn, Hóa đơn/Thuế/Phí dịch vụ, Thông báo/Âm thanh, Vận hành)* dành riêng cho Chủ quán, tự động chuyển tới tab đầu tiên có lỗi nhập liệu và hiển thị thông báo lỗi tại chỗ trên đầy đủ cả 7 tab |
+| `SCR-28` | Gói dịch vụ & Nâng cấp Pro (Billing) | `/admin/billing` | `STG-06` | `PER-05` (Xem) · `PER-06` (Kích hoạt/Thanh toán) | `F6.8` | Thẻ trạng thái gói hiện tại (*Miễn phí / Dùng thử Pro / Pro đang hoạt động*), ngày hết hạn và thanh tiến độ hạn mức Bàn & Nhân sự; bảng so sánh quyền lợi gói **Free** vs **Pro Tháng** vs **Pro Năm** kèm nút *"Dùng thử Pro 14 ngày"* và *"Nâng cấp qua VietQR"*; hộp thoại quét mã VietQR nâng cấp gói có đếm ngược hiệu lực, nút *"Kiểm tra thanh toán"* và tự mở khóa trực tiếp khi chuyển khoản hoàn tất; bảng lịch sử hóa đơn nâng cấp; đồng thời cung cấp nhãn **`PRO`** và hộp thoại Soft Paywall (*UpgradeProModal*) tái sử dụng trên `SCR-10`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27` (đủ 5 trạng thái UI chuẩn, Light/Dark WCAG AA, `VI`/`EN`) |
 
 ---
 
 ## 3. Quy chuẩn 5 Trạng thái UI bắt buộc (Bàn giao cho BA viết đặc tả `03-ba`)
 
-Mọi màn hình `SCR-01` → `SCR-27` trong bản mẫu Prototype đều định nghĩa sẵn **5 trạng thái hiển thị chuẩn** theo [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) để BA chuyển hóa trực tiếp thành Acceptance Criteria:
+Mọi màn hình `SCR-01` → `SCR-28` trong bản mẫu Prototype đều định nghĩa sẵn **5 trạng thái hiển thị chuẩn** theo [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) để BA chuyển hóa trực tiếp thành Acceptance Criteria:
 
 1. **Default / Populated:** Hiển thị đầy đủ nội dung, tôn trọng hệ màu Light/Dark và hỗ trợ chuyển đổi song ngữ `VI`/`EN`.
 2. **Loading:** Dùng hiệu ứng khung xương (skeleton shimmer) cho bảng/thẻ và trạng thái đang xử lý trên nút bấm (vô hiệu hóa bấm đúp).

@@ -3,15 +3,15 @@
 > **Tầng Knowledge:** `03-ba` (Business Analysis — Product Requirements Definition)  
 > **Sinh bởi Skill:** `.agents/skills/ba-prd/SKILL.md`  
 > **Kế thừa bắt buộc từ:**
-> - **PO (`01-po/`):** [project-intake.md](../01-po/project-intake.md) · [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.7` — 37 tính năng) · [blueprint.md](../01-po/blueprint.md)
-> - **Design (`02-design/`):** [DESIGN_SYSTEM.md](../02-design/DESIGN_SYSTEM.md) · [PROTOTYPE_SCREEN_MAP.md](../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-01` → `SCR-27`)  
+> - **PO (`01-po/`):** [project-intake.md](../01-po/project-intake.md) · [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.8` — 38 tính năng) · [blueprint.md](../01-po/blueprint.md)
+> - **Design (`02-design/`):** [DESIGN_SYSTEM.md](../02-design/DESIGN_SYSTEM.md) · [PROTOTYPE_SCREEN_MAP.md](../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-01` → `SCR-28`)  
 > **Bàn giao cho:** [USER_STORIES.md](./USER_STORIES.md) · [SYSTEM_DESIGN.md](../04-tech/SYSTEM_DESIGN.md)
 
 ---
 
 ## 1. Tổng quan Phân tích Yêu cầu theo 6 Giai đoạn Người dùng (User Stages)
 
-Tài liệu cụ thể hóa toàn bộ logic nghiệp vụ, **36 quy tắc nghiệp vụ (`BR-01` → `BR-36`)**, máy trạng thái, điều kiện hợp lệ và trường hợp biên dựa đồng thời trên **mục tiêu sản phẩm của PO (`01-po/`)** và **27 màn hình Prototype của Design (`02-design/`)**:
+Tài liệu cụ thể hóa toàn bộ logic nghiệp vụ, **38 quy tắc nghiệp vụ (`BR-01` → `BR-38`)**, máy trạng thái, điều kiện hợp lệ và trường hợp biên dựa đồng thời trên **mục tiêu sản phẩm của PO (`01-po/`)** và **28 màn hình Prototype của Design (`02-design/`)**:
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
     S5 --> S6["STG-06<br/>Quản trị & Phân tích"]
 ```
 
-### Ma trận Phân quyền Nghiệp vụ 6 Vai trò (Tham chiếu xuyên suốt `BR-01` → `BR-36`)
+### Ma trận Phân quyền Nghiệp vụ 6 Vai trò (Tham chiếu xuyên suốt `BR-01` → `BR-38`)
 
 | Nhóm quyền nghiệp vụ | `PER-01` Khách | `PER-02` Phục vụ | `PER-03` Bếp | `PER-04` Thu ngân | `PER-05` Quản lý | `PER-06` Chủ quán |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -39,6 +39,7 @@ flowchart LR
 | AI Tóm tắt ca & Phân tích điều hành (`SCR-10`) | — | — | — | — | ✅ | ✅ |
 | Báo cáo doanh thu chi tiết & dự báo nhu cầu AI (`SCR-22`, `SCR-25`) | — | — | — | — | ✅ | ✅ |
 | Cài đặt hệ thống 7 tab (`SCR-26`) & xóa dữ liệu nhạy cảm (hóa đơn, nguyên liệu) | — | — | — | — | — | ✅ *(kèm 2FA)* |
+| Gói dịch vụ & Nâng cấp Pro (`SCR-28`: xem gói, dùng thử 14 ngày, thanh toán VietQR) | — | — *(xem trạng thái gói)* | — *(xem trạng thái gói)* | — *(xem trạng thái gói)* | ✅ *(xem gói & hóa đơn)* | ✅ *(dùng thử & thanh toán)* |
 
 ---
 
@@ -179,7 +180,7 @@ flowchart LR
 ---
 
 ### `STG-06` — Quản trị Thực đơn, Kho, Nhân sự, Thống kê & Dự báo AI
-- **Truy vết:** Personas `PER-05`, `PER-06` · PO Features `F5.1`–`F5.8`, `F6.1`–`F6.7` · Screens `SCR-10`, `SCR-15..26`
+- **Truy vết:** Personas `PER-05`, `PER-06` · PO Features `F5.1`–`F5.8`, `F6.1`–`F6.8` · Screens `SCR-10`, `SCR-15..26`, `SCR-28`
 - **Luồng chính:**
   1. Quản lý (`PER-05`) & Chủ quán (`PER-06`) quản trị Danh mục (`SCR-16`), Thực đơn & công thức định lượng BOM (`SCR-15`), Combo (`SCR-17`), Kho nguyên liệu (`SCR-18`), Voucher (`SCR-19`), Khuyến mãi (`SCR-20`), Nhân sự (`SCR-21`) và theo dõi Dashboard (`SCR-10`), Món bán chạy (`SCR-23`), Hiệu suất nhân sự (`SCR-24`).
   2. Trên Dashboard `SCR-10`, Quản lý & Chủ quán có thể chọn khung thời gian (*Hôm nay / 7 ngày / 30 ngày*) và bấm *"Phân tích nhanh bằng AI"* để nhận tóm tắt điều hành (doanh thu so với kỳ trước, món dẫn dắt, đơn hủy, cảnh báo chậm bếp > 20 phút, tồn đọng yêu cầu phục vụ > 5 phút, nguyên liệu sắp hết) kèm cảnh báo rủi ro phân tầng và 2–3 hành động khuyến nghị.
@@ -212,6 +213,13 @@ flowchart LR
     1. *Kiểm soát tệp ảnh & bảo mật:* Chỉ chấp nhận ảnh hợp lệ định dạng `JPEG`, `PNG` hoặc `WebP` dung lượng tối đa **5MB** (kiểm tra cả định dạng thực tế của tệp); ảnh hóa đơn chỉ phân tích tạm để trích xuất dữ liệu, không lưu trữ công khai ra bên ngoài.
     2. *Trích xuất, tự khớp kho & quy đổi đơn vị:* Hệ thống đọc tên nhà cung cấp, số/ngày hóa đơn và từng dòng hàng (*tên món trên hóa đơn, số lượng, đơn vị, đơn giá, thành tiền*); đối chiếu với danh mục nguyên liệu đang hoạt động trong kho theo ranh giới từ (yêu cầu khớp tối thiểu 2 từ cho tên ghép để tránh khớp nhầm chuỗi con), tự động quy đổi đơn vị đo tương thích (`kg ↔ g`, `l ↔ ml`) theo đúng số lượng và đơn giá sau quy đổi, đồng thời gắn nhãn cảnh báo lệch đơn vị rõ ràng nếu đơn vị không quy đổi được hoặc số lượng sau quy đổi bị làm tròn dưới ngưỡng `0.001` (không làm tròn thành `0.000`).
     3. *Bắt buộc rà soát trước khi ghi kho (Human-in-the-Loop) & phân quyền giá vốn:* Kết quả AI **tuyệt đối không tự động cộng tồn kho**. Người dùng (`PER-03` Bếp, `PER-05` Quản lý, `PER-06` Chủ quán) rà soát, chọn/bỏ chọn dòng, chỉnh lại nguyên liệu/số lượng trước khi bấm xác nhận nhập kho hàng loạt nguyên tử (toàn bộ dòng hợp lệ thành công cùng lúc hoặc không ghi dòng nào nếu lỗi, tối đa 50 dòng/lần). Riêng tùy chọn **cập nhật Giá vốn đơn vị từ hóa đơn** **chỉ dành cho `PER-05` và `PER-06`** (`PER-03` chỉ được nhập số lượng tồn kho, bị chặn nếu cố gửi yêu cầu sửa giá vốn).
+  - **`BR-37` (Phân tầng gói dịch vụ `FREE` / `PRO`, Soft Paywall & Kiểm soát quyền 2 lớp — `F6.8`):**
+    1. *Phạm vi gói Cơ bản (`FREE`):* Bảo đảm trọn vẹn luồng bán hàng cốt lõi (QR Menu, đặt món tại bàn, KDS 3 trạng thái, sơ đồ bàn, mang về, tiền mặt & VietQR tại quầy, báo cáo cơ bản), với hạn mức tối đa **10 bàn hoạt động** và **5 tài khoản nhân sự hoạt động**.
+    2. *Phạm vi mở khóa gói Nâng cao (`PRO` — gồm trạng thái `TRIALING` và `ACTIVE` còn hạn):* Mở khóa toàn bộ **Bộ công cụ AI vận hành** (*Tóm tắt ca, Đề xuất Combo/Khuyến mãi, Dự báo nhập kho, Gợi ý BOM/Giá vốn, Quét hóa đơn AI, Phân tích ghi chú dị ứng AI*), **Trợ lý AI Khách hàng** trên `SCR-05`, **Thao tác ghi Kho & Định mức BOM** trên `SCR-18`, và **Không giới hạn bàn & tài khoản nhân sự**.
+    3. *Bảo vệ 2 lớp & Hạ gói an toàn (Graceful Downgrade):* Giao diện áp dụng *Soft Paywall* (hiển thị nhãn `PRO` và mở hộp thoại giới thiệu nâng cấp khi bấm vào tính năng đang khóa); đồng thời hệ thống bắt buộc kiểm tra điều kiện gói tại tầng máy chủ (chặn mọi yêu cầu vượt gói kèm mã thông báo yêu cầu nâng cấp `PRO`). Khi gói `PRO` hết hạn, dữ liệu kho, công thức BOM, bàn và nhân sự đã tạo **tuyệt đối không bị xóa** — màn hình kho giữ chế độ chỉ đọc và chỉ khóa các thao tác tạo mới/ghi dữ liệu/gọi AI cho tới khi gia hạn.
+  - **`BR-38` (Dùng thử Pro 14 ngày & Nâng cấp tự động qua VietQR — `F6.8`):**
+    1. *Phân quyền & dùng thử 1 lần:* Chỉ Chủ quán (`PER-06`) được kích hoạt dùng thử Pro 14 ngày miễn phí (tối đa **1 lần duy nhất** cho nhà hàng, bị từ chối nếu đã từng dùng thử hoặc đang có gói `PRO` còn hiệu lực), khởi tạo giao dịch thanh toán nâng cấp, hủy giao dịch chờ hoặc đồng bộ trạng thái thanh toán; Quản lý (`PER-05`) được xem thông tin gói và lịch sử hóa đơn trên `SCR-28`.
+    2. *Thanh toán nâng cấp chống trùng & cộng dồn thời hạn:* Mỗi lượt tạo mã VietQR nâng cấp gói (*Pro Tháng — 30 ngày* hoặc *Pro Năm — 365 ngày*) phải chống tạo giao dịch trùng và xác thực chặt chữ ký đối soát giao dịch chuyển khoản. Nhận thông báo xác nhận trùng không làm cộng ngày 2 lần; nếu nhà hàng đang còn hạn `PRO` khi gia hạn sớm thì thời hạn mới được **cộng nối tiếp từ mốc hết hạn hiện tại** thay vì làm mất số ngày còn dư. Ngay sau khi kích hoạt hoặc gia hạn thành công, trạng thái gói mới phải đồng bộ tức thì tới mọi thiết bị nhân sự và thực đơn khách hàng.
 - **Trường hợp biên & Xử lý lỗi:**
   - Lọc báo cáo vào khoảng ngày chưa có doanh thu → hiển thị trạng thái rỗng (`Empty State`) thân thiện thay vì biểu đồ vỡ hoặc lỗi.
   - Tải ảnh món hoặc logo vượt kích thước / sai định dạng → báo lỗi rõ tại trường tải ảnh và giữ nguyên ảnh cũ.

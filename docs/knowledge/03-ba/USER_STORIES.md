@@ -3,10 +3,10 @@
 > **Tầng Knowledge:** `03-ba` (Business Analysis — User Stories & Acceptance Criteria)  
 > **Sinh bởi Skill:** `.agents/skills/ba-user-story/SKILL.md`  
 > **Kế thừa bắt buộc từ:**
-> - **PO (`01-po/`):** [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.7`)
-> - **Design (`02-design/`):** [PROTOTYPE_SCREEN_MAP.md](../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-01` → `SCR-27`) · [DESIGN_SYSTEM.md](../02-design/DESIGN_SYSTEM.md)
-> - **BA PRD (`03-ba/`):** [PRD_BY_USER_STAGE.md](./PRD_BY_USER_STAGE.md) (`BR-01` → `BR-36`)  
-> **Bàn giao cho:** [SYSTEM_DESIGN.md](../04-tech/SYSTEM_DESIGN.md) (Tầng 4 — SE thiết kế kỹ thuật) & QA *(Tổng: 34 User Stories `US-001` → `US-034`)*
+> - **PO (`01-po/`):** [personas.md](../01-po/personas.md) (`PER-01` → `PER-06`) · [journey-features.md](../01-po/journey-features.md) (`STG-01` → `STG-06`, `F1.1` → `F6.8`)
+> - **Design (`02-design/`):** [PROTOTYPE_SCREEN_MAP.md](../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-01` → `SCR-28`) · [DESIGN_SYSTEM.md](../02-design/DESIGN_SYSTEM.md)
+> - **BA PRD (`03-ba/`):** [PRD_BY_USER_STAGE.md](./PRD_BY_USER_STAGE.md) (`BR-01` → `BR-38`)  
+> **Bàn giao cho:** [SYSTEM_DESIGN.md](../04-tech/SYSTEM_DESIGN.md) (Tầng 4 — SE thiết kế kỹ thuật) & QA *(Tổng: 36 User Stories `US-001` → `US-036`)*
 
 ---
 
@@ -334,3 +334,20 @@
   1. **Given** tôi đăng nhập bằng `PER-03`, `PER-05` hoặc `PER-06` tại `SCR-18` và mở hộp thoại *"Nhập từ hóa đơn AI"*, **When** tôi chụp hoặc chọn ảnh hóa đơn hợp lệ (`JPEG`/`PNG`/`WebP` ≤ 5MB) và bấm quét, **Then** hệ thống hiển thị thông tin nhà cung cấp, bảng các dòng hàng trích xuất đã tự khớp nguyên liệu kho theo ranh giới từ (tránh khớp nhầm chuỗi con) kèm quy đổi đơn vị tự động *(ví dụ: `2 kg` → `2000 g`)* và gắn cảnh báo lệch đơn vị cho các dòng không quy đổi được hoặc có số lượng quy đổi dưới `0.001` (không làm tròn thành `0.000`) để tôi chỉnh sửa trước khi xác nhận. *(Happy Path & Unit Conversion)*
   2. **Given** kết quả trích xuất đã hiển thị trên bảng rà soát, **When** tôi là `PER-05`/`PER-06` chỉnh lại nguyên liệu/số lượng, tích chọn cập nhật đơn giá vốn và bấm *"Xác nhận nhập kho"*, **Then** toàn bộ các dòng được chọn được cộng tồn kho nguyên tử trong cùng một giao dịch, ghi đầy đủ lịch sử biến động kèm mã hóa đơn và cập nhật giá vốn mới; riêng với `PER-03 (Chef)`, hệ thống chỉ cho phép nhập số lượng tồn kho và chặn cập nhật giá vốn (`BR-36`). *(Review, Atomic Batch & RBAC)*
   3. **Given** tệp tải lên sai định dạng/vượt quá 5MB, dịch vụ AI gián đoạn không đọc được hóa đơn, hoặc nhân sự `PER-02`/`PER-04` cố gọi chức năng quét/nhập kho hàng loạt, **Then** giao diện báo lỗi thân thiện không làm mất dữ liệu (cho phép thêm dòng nhập tay nếu AI gián đoạn), còn `PER-02`/`PER-04` bị chặn quyền truy cập (`BR-04`, `BR-36`). *(Validation, Fallback & Security)*
+
+### `US-035`: Xem gói dịch vụ, dùng thử Pro 14 ngày & nâng cấp tự động qua VietQR (`SCR-28`)
+- **Stage:** `STG-06` | **Persona:** `PER-06 (Admin)`, `PER-05 (Manager)` | **Priority:** `P1`
+- **Traceability:** PO `F6.8` · Design `SCR-28` · Rules `BR-04`, `BR-24`, `BR-37`, `BR-38`
+- **Story:** Là một **Chủ nhà hàng**, tôi muốn xem gói dịch vụ hiện tại và mức sử dụng bàn/nhân sự trên `SCR-28`, kích hoạt dùng thử Pro 14 ngày hoặc thanh toán nâng cấp Pro Tháng/Năm qua VietQR, để mở khóa tức thì bộ công cụ AI và kho BOM mà không cần duyệt thủ công.
+- **Acceptance Criteria:**
+  1. **Given** nhà hàng đang ở gói `FREE` và chưa từng dùng thử, **When** tôi là `PER-06` bấm **"Dùng thử Pro 14 ngày miễn phí"** trên `SCR-28` hoặc trong hộp thoại nâng cấp, **Then** gói chuyển ngay sang `PRO (TRIALING)` có hiệu lực 14 ngày, các tính năng Pro mở khóa tức thì trên toàn hệ thống, và nếu bấm kích hoạt dùng thử lần thứ hai thì bị từ chối (`BR-38`). *(Trial Activation & One-Time Guard)*
+  2. **Given** tôi là `PER-06` chọn gói **Pro Tháng** hoặc **Pro Năm** trên `SCR-28` và bấm thanh toán VietQR, **When** tôi quét mã chuyển khoản thành công (hoặc bấm *"Kiểm tra thanh toán"* đồng bộ giao dịch đã trả), **Then** hóa đơn chuyển sang *Đã thanh toán*, gói nâng lên `PRO (ACTIVE)` kèm cộng dồn 30/365 ngày hiệu lực, lịch sử hóa đơn được lưu và mọi màn hình đang mở tự động mở khóa tính năng Pro không cần tải lại trang (`BR-38`). *(VietQR Auto-Upgrade & Idempotency)*
+  3. **Given** tôi đăng nhập bằng `PER-05 (Manager)`, **When** tôi mở `SCR-28`, **Then** tôi xem được gói hiện tại, hạn mức sử dụng và lịch sử hóa đơn nhưng các nút kích hoạt dùng thử / khởi tạo thanh toán nâng cấp bị ẩn/chặn ở máy chủ (`BR-04`, `BR-38`). *(RBAC)*
+
+### `US-036`: Kiểm soát tính năng Pro 2 lớp (Soft Paywall UI + Backend Guard) & Hạ gói an toàn
+- **Stage:** `STG-02`, `STG-03`, `STG-06` | **Persona:** `PER-01..06` | **Priority:** `P0`
+- **Traceability:** PO `F6.8` · Design `SCR-05`, `SCR-10`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27`, `SCR-28` · Rules `BR-24`, `BR-37`
+- **Story:** Là một **Quản lý hoặc Nhân sự**, tôi muốn nhìn thấy rõ tính năng nào thuộc gói Pro kèm hướng dẫn nâng cấp thân thiện khi quán đang ở gói Free, đồng thời vẫn xem được dữ liệu kho cũ an toàn khi gói hết hạn.
+- **Acceptance Criteria:**
+  1. **Given** nhà hàng đang ở gói `FREE` (hoặc gói `PRO` đã hết hạn), **When** nhân sự/quản lý mở `SCR-10`, `SCR-17`, `SCR-18` hoặc `SCR-20`, **Then** các nút tính năng AI và thao tác ghi Kho/BOM hiển thị nhãn **`PRO`**; khi bấm vào sẽ mở hộp thoại `UpgradeProModal` thay vì báo lỗi kỹ thuật; riêng `SCR-18` vẫn cho phép xem danh sách nguyên liệu và lịch sử biến động kho cũ ở chế độ chỉ đọc (`BR-37`). *(Soft Paywall & Graceful Downgrade)*
+  2. **Given** nhà hàng đang ở gói `FREE`, **When** bất kỳ client nào gửi yêu cầu trực tiếp tới endpoint AI vận hành, AI chat khách hàng, ghi kho/BOM hoặc tạo vượt quá 10 bàn / 5 tài khoản nhân sự, **Then** máy chủ từ chối với mã lỗi yêu cầu nâng cấp gói `PRO` / vượt hạn mức gói; đồng thời `SCR-05` tự động ẩn nút trợ lý AI khách hàng (`BR-37`). *(Server-Side Enforcement)*
