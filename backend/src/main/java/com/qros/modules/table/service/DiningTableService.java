@@ -17,11 +17,13 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.subscription.SubscriptionEntitlementPort;
 import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import java.util.Comparator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -46,6 +48,7 @@ public class DiningTableService {
     private final TableSessionTableRepository membershipRepository;
     private final TableActiveOrderChecker activeOrderChecker;
     private final TransactionExecutor transactionExecutor;
+    private final ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider;
 
     public DiningTableService(
             DiningTableRepository tableRepo,
@@ -67,7 +70,33 @@ public class DiningTableService {
                 sessionRepository,
                 membershipRepository,
                 activeOrderChecker,
-                TransactionExecutor.direct());
+                TransactionExecutor.direct(),
+                null);
+    }
+
+    public DiningTableService(
+            DiningTableRepository tableRepo,
+            TableCodeGenerator tableCodeGenerator,
+            TableQrService tableQrService,
+            DiningTableMapper diningTableMapper,
+            ApplicationEventPublisher eventPublisher,
+            TransactionSideEffectService sideEffects,
+            TableSessionRepository sessionRepository,
+            TableSessionTableRepository membershipRepository,
+            TableActiveOrderChecker activeOrderChecker,
+            TransactionExecutor transactionExecutor) {
+        this(
+                tableRepo,
+                tableCodeGenerator,
+                tableQrService,
+                diningTableMapper,
+                eventPublisher,
+                sideEffects,
+                sessionRepository,
+                membershipRepository,
+                activeOrderChecker,
+                transactionExecutor,
+                null);
     }
 
     @Autowired
@@ -81,7 +110,8 @@ public class DiningTableService {
             TableSessionRepository sessionRepository,
             TableSessionTableRepository membershipRepository,
             TableActiveOrderChecker activeOrderChecker,
-            TransactionExecutor transactionExecutor) {
+            TransactionExecutor transactionExecutor,
+            ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider) {
         this.tableRepo = tableRepo;
         this.tableCodeGenerator = tableCodeGenerator;
         this.tableQrService = tableQrService;
@@ -92,6 +122,7 @@ public class DiningTableService {
         this.membershipRepository = membershipRepository;
         this.activeOrderChecker = activeOrderChecker;
         this.transactionExecutor = transactionExecutor != null ? transactionExecutor : TransactionExecutor.direct();
+        this.entitlementPortProvider = entitlementPortProvider;
     }
 
     @Cacheable(value = CacheNames.TABLES, key = "'all_sorted'")
@@ -136,6 +167,7 @@ public class DiningTableService {
             allEntries = true)
     public DiningTableResponse create(@NonNull CreateDiningTableRequest req) {
         transactionExecutor.readOnly(() -> {
+            assertTablePlanLimit();
             if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
                 throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
             }
@@ -147,6 +179,7 @@ public class DiningTableService {
 
         try {
             return transactionExecutor.write(() -> {
+                assertTablePlanLimit();
                 if (tableRepo.existsByTableNumberIgnoreCase(req.tableNumber())) {
                     throw new BusinessException(ErrorCode.TABLE_NUMBER_EXISTS);
                 }
@@ -315,6 +348,16 @@ public class DiningTableService {
                 || membershipRepository.existsActiveOpenMembershipByTableId(tableId, TableSessionStatus.OPEN);
         boolean hasActiveOrders = activeOrderChecker.hasActiveOrders(tableId);
         return new TableUsage(hasOpenSession, hasActiveOrders);
+    }
+
+    private void assertTablePlanLimit() {
+        if (entitlementPortProvider == null) {
+            return;
+        }
+        SubscriptionEntitlementPort port = entitlementPortProvider.getIfAvailable();
+        if (port != null) {
+            port.assertTableLimitNotExceeded(tableRepo.countByStatusNot(TableStatus.INACTIVE));
+        }
     }
 
     private record TableUsage(boolean hasOpenSession, boolean hasActiveOrders) {

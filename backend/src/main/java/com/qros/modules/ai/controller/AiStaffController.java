@@ -9,6 +9,8 @@ import com.qros.modules.ai.service.AiQuotaService;
 import com.qros.modules.ai.service.AiStaffService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.subscription.PlanFeature;
+import com.qros.shared.subscription.RequiresPlanFeature;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ public class AiStaffController {
 
     @PostMapping("/analyze-notes")
     @PreAuthorize("hasAnyRole('MANAGER','STAFF','CHEF')")
+    @RequiresPlanFeature(PlanFeature.AI_OPERATIONS_SUITE)
     public ApiResponse<AiNoteTriageResponse> analyzeNotes(
             @Valid @RequestBody(required = false) AiNoteTriageRequest request, @NonNull Principal principal) {
         return ApiResponse.success(

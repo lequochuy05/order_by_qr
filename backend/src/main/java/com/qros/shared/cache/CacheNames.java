@@ -11,6 +11,7 @@ public final class CacheNames {
     public static final String TABLES = "tables";
     public static final String STATS_DASHBOARD = "stats_dashboard";
     public static final String SETTINGS = "settings";
+    public static final String SUBSCRIPTION = "subscription";
     public static final String VOUCHERS = "vouchers";
     public static final String PROMOTIONS = "promotions";
     public static final String USERS = "users";

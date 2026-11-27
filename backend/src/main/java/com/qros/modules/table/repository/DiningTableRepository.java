@@ -1,6 +1,7 @@
 package com.qros.modules.table.repository;
 
 import com.qros.modules.table.model.DiningTable;
+import com.qros.modules.table.model.enums.TableStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -32,4 +33,6 @@ public interface DiningTableRepository extends JpaRepository<DiningTable, Long> 
     Optional<DiningTable> findByTableCodeForUpdate(@Param("tableCode") String tableCode);
 
     List<DiningTable> findAllByOrderByTableNumberAsc();
+
+    long countByStatusNot(TableStatus status);
 }

@@ -38,7 +38,9 @@ public final class SecurityRoutes {
         ApiRoutes.WEBHOOKS + "/**"
     };
 
-    public static final String[] SELF_GET = {ApiRoutes.USERS + "/me"};
+    public static final String[] SELF_GET = {
+        ApiRoutes.USERS + "/me", ApiRoutes.SUBSCRIPTION + "/current", ApiRoutes.SUBSCRIPTION + "/plans"
+    };
 
     public static final String[] SELF_PATCH = {ApiRoutes.USERS + "/me", ApiRoutes.USERS + "/me/password"};
 
@@ -46,13 +48,21 @@ public final class SecurityRoutes {
 
     public static final String[] ADMIN_GET = {"/actuator/prometheus"};
 
-    public static final String[] ADMIN_POST = {ApiRoutes.SETTINGS + "/logo"};
+    public static final String[] ADMIN_POST = {
+        ApiRoutes.SETTINGS + "/logo",
+        ApiRoutes.SUBSCRIPTION + "/trial",
+        ApiRoutes.SUBSCRIPTION + "/checkout",
+        ApiRoutes.SUBSCRIPTION + "/invoices/*/sync",
+        ApiRoutes.SUBSCRIPTION + "/invoices/*/cancel"
+    };
 
     public static final String[] ADMIN_PUT = {ApiRoutes.SETTINGS};
 
     public static final String[] ADMIN_DELETE = {ApiRoutes.ORDERS + "/*", ApiRoutes.INVENTORY_ITEMS + "/*"};
 
-    public static final String[] MANAGER_GET = {ApiRoutes.USERS, ApiRoutes.USERS + "/*"};
+    public static final String[] MANAGER_GET = {
+        ApiRoutes.USERS, ApiRoutes.USERS + "/*", ApiRoutes.SUBSCRIPTION + "/invoices"
+    };
 
     public static final String[] CASHIER_ORDER_HISTORY_GET = {
         ApiRoutes.ANALYTICS + "/orders/history", ApiRoutes.ANALYTICS + "/orders/summary"

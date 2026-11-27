@@ -11,6 +11,8 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.subscription.PlanFeature;
+import com.qros.shared.subscription.SubscriptionEntitlementPort;
 import com.qros.shared.transaction.TransactionExecutor;
 import com.qros.shared.transaction.TransactionSideEffectService;
 import com.qros.shared.validation.ImageFileValidator;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
@@ -43,6 +46,7 @@ public class SystemSettingsService {
     private final ImageFileValidator imageFileValidator;
     private final TransactionExecutor transactionExecutor;
     private final SystemSettingsSnapshotCache snapshotCache;
+    private final ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider;
 
     public SystemSettingsService(
             SystemSettingsRepository settingsRepository,
@@ -60,6 +64,28 @@ public class SystemSettingsService {
                 storageService,
                 imageFileValidator,
                 transactionExecutor,
+                null,
+                null);
+    }
+
+    public SystemSettingsService(
+            SystemSettingsRepository settingsRepository,
+            SystemSettingsMapper settingsMapper,
+            ApplicationEventPublisher eventPublisher,
+            TransactionSideEffectService sideEffects,
+            StorageService storageService,
+            ImageFileValidator imageFileValidator,
+            TransactionExecutor transactionExecutor,
+            SystemSettingsSnapshotCache snapshotCache) {
+        this(
+                settingsRepository,
+                settingsMapper,
+                eventPublisher,
+                sideEffects,
+                storageService,
+                imageFileValidator,
+                transactionExecutor,
+                snapshotCache,
                 null);
     }
 
@@ -72,7 +98,8 @@ public class SystemSettingsService {
             StorageService storageService,
             ImageFileValidator imageFileValidator,
             TransactionExecutor transactionExecutor,
-            SystemSettingsSnapshotCache snapshotCache) {
+            SystemSettingsSnapshotCache snapshotCache,
+            ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider) {
         this.settingsRepository = settingsRepository;
         this.settingsMapper = settingsMapper;
         this.eventPublisher = eventPublisher;
@@ -81,6 +108,7 @@ public class SystemSettingsService {
         this.imageFileValidator = imageFileValidator;
         this.transactionExecutor = transactionExecutor;
         this.snapshotCache = snapshotCache;
+        this.entitlementPortProvider = entitlementPortProvider;
     }
 
     @Transactional(readOnly = true)
@@ -92,7 +120,17 @@ public class SystemSettingsService {
     @Transactional(readOnly = true)
     @Cacheable(value = CacheNames.SETTINGS, key = "'public'")
     public PublicSettingsResponse getPublicSettings() {
-        return settingsMapper.toPublicResponse(loadSettingsEntity());
+        return settingsMapper
+                .toPublicResponse(loadSettingsEntity())
+                .withAiCustomerAssistantEnabled(isAiCustomerAssistantEnabled());
+    }
+
+    private boolean isAiCustomerAssistantEnabled() {
+        if (entitlementPortProvider == null) {
+            return true;
+        }
+        SubscriptionEntitlementPort port = entitlementPortProvider.getIfAvailable();
+        return port == null || port.isFeatureEnabled(PlanFeature.AI_CUSTOMER_ASSISTANT);
     }
 
     @Transactional
@@ -105,7 +143,8 @@ public class SystemSettingsService {
         settingsMapper.updateEntity(settings, request);
 
         SystemSettings saved = settingsRepository.saveAndFlush(settings);
-        PublicSettingsResponse publicSettings = settingsMapper.toPublicResponse(saved);
+        PublicSettingsResponse publicSettings =
+                settingsMapper.toPublicResponse(saved).withAiCustomerAssistantEnabled(isAiCustomerAssistantEnabled());
 
         // Cache invalidation and notification listeners both consume this event after commit.
         eventPublisher.publishEvent(new SettingsChangeEvent(publicSettings));

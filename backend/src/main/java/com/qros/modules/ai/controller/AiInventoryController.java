@@ -11,6 +11,8 @@ import com.qros.modules.ai.service.AiQuotaService;
 import com.qros.modules.ai.service.AiRecipeAssistantService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.subscription.PlanFeature;
+import com.qros.shared.subscription.RequiresPlanFeature;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping(ApiRoutes.AI + "/inventory")
+@RequiresPlanFeature(PlanFeature.AI_OPERATIONS_SUITE)
 @RequiredArgsConstructor
 public class AiInventoryController {
 

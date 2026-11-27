@@ -6,6 +6,8 @@ import com.qros.modules.ai.service.AiExecutiveInsightsService;
 import com.qros.modules.ai.service.AiQuotaService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
+import com.qros.shared.subscription.PlanFeature;
+import com.qros.shared.subscription.RequiresPlanFeature;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(ApiRoutes.AI + "/insights")
+@RequiresPlanFeature(PlanFeature.AI_OPERATIONS_SUITE)
 @RequiredArgsConstructor
 public class AiInsightsController {
 

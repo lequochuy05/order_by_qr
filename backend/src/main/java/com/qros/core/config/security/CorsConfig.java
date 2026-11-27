@@ -22,8 +22,8 @@ public class CorsConfig {
 
         config.setAllowedOrigins(CorsOrigins.parse(appProperties.getCors().getAllowedOrigins()));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(
-                List.of("Authorization", "Content-Type", "Accept", "X-Session-Token", "X-Table-Token"));
+        config.setAllowedHeaders(List.of(
+                "Authorization", "Content-Type", "Accept", "Idempotency-Key", "X-Session-Token", "X-Table-Token"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
