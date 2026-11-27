@@ -1,0 +1,97 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional existing GitHub Release tag (e.g. v1.0.0) to attach QROS-ios-unsigned.ipa'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios-ipa:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Capacitor web bundle and sync iOS project
+        working-directory: frontend
+        run: npm run build:ios
+
+      - name: Resolve Swift Package Manager dependencies
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -resolvePackageDependencies
+
+      - name: Build unsigned iOS Release app (ARM64)
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ../build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package Payload into QROS-ios-unsigned.ipa
+        working-directory: frontend/ios
+        run: |
+          APP_PATH="build/Build/Products/Release-iphoneos/App.app"
+          test -d "$APP_PATH"
+          rm -rf output
+          mkdir -p output/Payload
+          cp -R "$APP_PATH" output/Payload/App.app
+          (cd output && zip -qry QROS-ios-unsigned.ipa Payload)
+          ls -lh output/QROS-ios-unsigned.ipa
+          shasum -a 256 output/QROS-ios-unsigned.ipa
+
+      - name: Upload QROS-ios-unsigned.ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QROS-ios-unsigned-ipa
+          path: frontend/ios/output/QROS-ios-unsigned.ipa
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Attach IPA to GitHub Release (if release tag provided or tag push)
+        if: inputs.release_tag != '' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          TAG="${INPUT_RELEASE_TAG:-$REF_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "frontend/ios/output/QROS-ios-unsigned.ipa#QROS-${TAG}-ios-unsigned.ipa" \
+              --clobber
+          else
+            echo "Release $TAG does not exist yet; IPA is still available in Actions Artifacts."
+          fi

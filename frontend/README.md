@@ -18,7 +18,7 @@ Frontend QROS là React/Vite SPA (hỗ trợ PWA và đóng gói Android bằng 
 | Realtime | `@stomp/stompjs`, SockJS |
 | Chart | Recharts 3 |
 | QR | qrcode.react |
-| PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core` & `@capacitor/android` (`^8.6.2`) |
+| PWA & Mobile | `vite-plugin-pwa`, `@capacitor/core`, `@capacitor/android` & `@capacitor/ios` (`^8.6`) |
 | Testing | Node.js `node:test` (`npm test`, `npm run test:coverage` — 22 suites / 160 tests) |
 | Tooling | ESLint 9 (FSD layer, cross-slice & Public API barrel rules), Prettier, Vite manual chunks |
 
@@ -171,6 +171,9 @@ Trang thường dùng:
 | `npm run cap:sync` | Đồng bộ web build sang project Capacitor Android (`cap sync android`) |
 | `npm run cap:open` | Mở project Android trong Android Studio (`cap open android`) |
 | `npm run build:android` | Build chế độ Capacitor rồi đồng bộ sang Android (`npm run build:capacitor && cap sync android`) |
+| `npm run cap:sync:ios` | Đồng bộ web build sang project Capacitor iOS (`cap sync ios`) |
+| `npm run cap:open:ios` | Mở project iOS trong Xcode trên macOS (`cap open ios`) |
+| `npm run build:ios` | Build chế độ Capacitor rồi đồng bộ sang iOS (`npm run build:capacitor && cap sync ios`) |
 | `npm run format` | Định dạng mã nguồn bằng Prettier (`src/**/*.{js,jsx,css,json}`) |
 | `npm run format:check` | Kiểm tra định dạng Prettier không ghi đè file |
 
@@ -329,15 +332,22 @@ Auth user state dùng React Context (`@entities/session`) thay vì Zustand.
 - Tích hợp `vite-plugin-pwa` để đăng ký Service Worker, manifest và hỗ trợ cài đặt trực tiếp lên màn hình chính (Home Screen) trên điện thoại/tablet; Workbox áp dụng `globIgnores` loại trừ chunk admin/chart giúp giảm dung lượng precache ban đầu xuống **`1.47 MB`** (`69` entries).
 - Có sẵn trang `/offline` khi thiết bị mất kết nối mạng.
 
-### Đóng gói Android (Capacitor 8)
+### Đóng gói Android & iOS (Capacitor 8)
 
-- Sử dụng `@capacitor/core` và `@capacitor/android` (`^8.6.2`) để đóng gói bản web SPA thành ứng dụng Android gốc cho thiết bị POS/Tablet/Bếp.
-- Quy trình build nhanh:
+- **Android (`frontend/android/`):** Dùng `@capacitor/android` đóng gói bản web SPA thành `.apk` cho POS/Tablet/Bếp:
 
 ```bash
 npm run build:android
 npm run cap:open
 ```
+
+- **iOS (`frontend/ios/` — Swift Package Manager):** Dùng `@capacitor/ios`, hỗ trợ quyền Camera/Thư viện ảnh cho OCR hóa đơn và `CapacitorCookies` cho cookie Refresh Token trên WKWebView:
+  - Trên **macOS (Xcode):**
+    ```bash
+    npm run build:ios
+    npm run cap:open:ios
+    ```
+  - **Không cần máy Mac (GitHub Actions `macos-latest`):** Mở tab **Actions → Build iOS IPA → Run workflow** (file `.github/workflows/ios-build.yml`, có thể nhập `release_tag` như `v1.0.0` để tự gắn vào GitHub Releases) để tải **`QROS-ios-unsigned.ipa`** rồi cài lên iPhone/iPad qua **Sideloadly** hoặc **AltStore** (Apple ID thường, hạn 7 ngày/lần).
 
 ## Build và preview
 

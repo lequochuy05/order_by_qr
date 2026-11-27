@@ -125,7 +125,7 @@ const widgetSliceRules = widgetSlices.map((slice) => ({
 }))
 
 export default defineConfig([
-  globalIgnores(['dist', 'dev-dist', 'android']),
+  globalIgnores(['dist', 'dev-dist', 'android', 'ios']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
