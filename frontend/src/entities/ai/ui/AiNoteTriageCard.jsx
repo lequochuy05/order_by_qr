@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  Crown,
   Loader2,
   ShieldAlert,
   Sparkles,
@@ -17,7 +18,7 @@ import { useTranslation } from '@shared/lib/i18n';
 import { RISK_LEVELS } from '../lib/noteSafety.js';
 import NoteSafetyBadges from './NoteSafetyBadges.jsx';
 
-const AiNoteTriageCard = ({ namespace = 'kitchen' }) => {
+const AiNoteTriageCard = ({ namespace = 'kitchen', locked = false, onRequestUpgrade = null }) => {
   const { language, isEn } = useTranslation(namespace);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,6 +26,10 @@ const AiNoteTriageCard = ({ namespace = 'kitchen' }) => {
   const [result, setResult] = useState(null);
 
   const handleAnalyze = async () => {
+    if (locked) {
+      onRequestUpgrade?.();
+      return;
+    }
     if (loading) return;
     setExpanded(true);
     setLoading(true);
@@ -66,6 +71,12 @@ const AiNoteTriageCard = ({ namespace = 'kitchen' }) => {
                   ? 'AI Allergy & Note Triage'
                   : 'AI Cảnh báo dị ứng & Ưu tiên ghi chú'}
               </h2>
+              {locked && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300">
+                  <Crown size={10} />
+                  <span>PRO</span>
+                </span>
+              )}
               {result && (
                 <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300">
                   {result.aiGenerated ? 'Gemini AI' : isEn ? 'Safety Rules' : 'Bộ lọc an toàn'}

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { aiInventoryService } from '@entities/ai';
+import { ProBadge } from '@entities/subscription';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
@@ -19,7 +20,7 @@ import {
   getUrgencyMeta,
 } from '@features/inventory-management/lib/aiRestockHelpers.js';
 
-const AiRestockPanel = ({ onQuickRestock }) => {
+const AiRestockPanel = ({ onQuickRestock, locked = false, onRequestUpgrade = null }) => {
   const { language, isEn } = useTranslation('inventory');
   const [expanded, setExpanded] = useState(false);
   const [forecastDays, setForecastDays] = useState(7);
@@ -29,6 +30,10 @@ const AiRestockPanel = ({ onQuickRestock }) => {
   const [result, setResult] = useState(null);
 
   const handleAnalyze = async () => {
+    if (locked) {
+      onRequestUpgrade?.();
+      return;
+    }
     if (loading) return;
     setExpanded(true);
     setLoading(true);
@@ -67,6 +72,7 @@ const AiRestockPanel = ({ onQuickRestock }) => {
               <h2 className="text-sm font-black text-slate-900 sm:text-base dark:text-white">
                 {isEn ? 'AI Smart Restock Forecast' : 'AI Gợi ý nhập kho thông minh'}
               </h2>
+              {locked && <ProBadge size="xs" />}
               {result && (
                 <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-300">
                   {result.aiGenerated ? 'Gemini AI' : isEn ? 'Local Forecast' : 'Dự báo định mức'}

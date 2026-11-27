@@ -1,4 +1,5 @@
 import { Boxes, Camera, ClipboardList, History, Loader2, RefreshCw } from 'lucide-react';
+import { ProBadge } from '@entities/subscription';
 
 import TabButton from './TabButton.jsx';
 
@@ -11,7 +12,9 @@ const InventoryToolbar = ({
   menuItems,
   menuItemsLoading,
   onOpenInvoiceOcr,
+  invoiceOcrLocked = false,
   onOpenRecipe,
+  recipeLocked = false,
   onRefresh,
 }) => (
   <div className="rounded-3xl border border-[#1E293B] bg-white/90 p-4 shadow-sm backdrop-blur-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90">
@@ -56,7 +59,8 @@ const InventoryToolbar = ({
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-indigo-200/90 bg-indigo-50 px-3.5 text-xs font-bold text-indigo-700 transition hover:bg-indigo-600 hover:text-white active:scale-95 dark:border-indigo-700/50 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white"
           >
             <Camera size={15} />
-            Nhập từ hóa đơn AI
+            <span>Nhập từ hóa đơn AI</span>
+            {invoiceOcrLocked && <ProBadge size="xs" />}
           </button>
         )}
         <button
@@ -70,7 +74,8 @@ const InventoryToolbar = ({
           ) : (
             <ClipboardList size={15} />
           )}{' '}
-          Định mức
+          <span>Định mức</span>
+          {recipeLocked && <ProBadge size="xs" />}
         </button>
         <button
           type="button"

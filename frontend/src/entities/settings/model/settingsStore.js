@@ -35,6 +35,7 @@ export const defaultSettings = {
   kitchenOverdueNotificationEnabled: true,
   allowSettlementWithUnfinishedItems: false,
   customerSelfCheckoutEnabled: false,
+  aiCustomerAssistantEnabled: true,
 };
 
 export const normalizeSettings = (data = {}) => ({
@@ -52,6 +53,7 @@ export const normalizeSettings = (data = {}) => ({
   wifiPassword: data.wifiPassword ?? '',
   allowSettlementWithUnfinishedItems: data.allowSettlementWithUnfinishedItems ?? false,
   customerSelfCheckoutEnabled: data.customerSelfCheckoutEnabled ?? false,
+  aiCustomerAssistantEnabled: data.aiCustomerAssistantEnabled ?? true,
 });
 
 const useSettingsStore = create((set, get) => ({
