@@ -29,6 +29,8 @@ public interface DomainEvents {
 
     record SettingsChangeEvent(Object publicSettings) {}
 
+    record SubscriptionChangeEvent(String planTier, String status) {}
+
     record InventoryChangeEvent(String type, Object id) {}
 
     record ServiceRequestChangeEvent(String action, Long requestId, Long tableId) {}

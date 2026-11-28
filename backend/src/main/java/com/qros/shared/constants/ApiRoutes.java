@@ -29,6 +29,7 @@ public final class ApiRoutes {
     public static final String PROMOTIONS = PREFIX + "/promotions";
     public static final String VOUCHERS = PREFIX + "/vouchers";
     public static final String SETTINGS = PREFIX + "/settings";
+    public static final String SUBSCRIPTION = PREFIX + "/subscription";
     public static final String PUBLIC = PREFIX + "/public";
     public static final String PUBLIC_SETTINGS = PUBLIC + "/settings";
     public static final String RECOMMENDATIONS = PREFIX + "/recommendations";

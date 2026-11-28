@@ -217,6 +217,14 @@ app:
     brand-name: QROS
     copyright: 2026 QROS
     brevo-api-key: ${BREVO_API_KEY:}
+  subscription:
+    enforcement-enabled: ${SUBSCRIPTION_ENFORCEMENT_ENABLED:true}
+    monthly-price-vnd: ${SUBSCRIPTION_MONTHLY_PRICE_VND:2000}
+    yearly-price-vnd: ${SUBSCRIPTION_YEARLY_PRICE_VND:5000}
+    trial-days: ${SUBSCRIPTION_TRIAL_DAYS:14}
+    free-max-tables: ${SUBSCRIPTION_FREE_MAX_TABLES:10}
+    free-max-users: ${SUBSCRIPTION_FREE_MAX_USERS:5}
+    invoice-expires-in-minutes: ${SUBSCRIPTION_INVOICE_EXPIRES_MINUTES:15}
 
 payos:
   client-id: ${PAYOS_CLIENT_ID}

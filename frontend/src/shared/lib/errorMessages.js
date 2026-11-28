@@ -106,6 +106,15 @@ const ERROR_CODE_MESSAGES = {
   PAYMENT_IDEMPOTENCY_CONFLICT: 'Yêu cầu thanh toán này đã được xử lý trước đó.',
   PAYMENT_WEBHOOK_INVALID: 'Dữ liệu xác nhận thanh toán không hợp lệ.',
 
+  PRO_PLAN_REQUIRED:
+    'Tính năng này thuộc gói QROS Pro. Vui lòng kích hoạt dùng thử hoặc nâng cấp gói Pro để sử dụng.',
+  PLAN_LIMIT_EXCEEDED:
+    'Quán đã đạt giới hạn của gói Miễn phí. Vui lòng nâng cấp gói Pro để mở không giới hạn.',
+  SUBSCRIPTION_TRIAL_ALREADY_USED: 'Nhà hàng đã sử dụng lượt dùng thử Pro 14 ngày trước đó.',
+  SUBSCRIPTION_ALREADY_ACTIVE: 'Nhà hàng hiện đang sử dụng gói Pro còn hiệu lực.',
+  SUBSCRIPTION_INVOICE_NOT_FOUND: 'Không tìm thấy hóa đơn gói dịch vụ.',
+  SUBSCRIPTION_INVOICE_INVALID_STATE: 'Trạng thái hóa đơn gói dịch vụ không phù hợp để thao tác.',
+
   FILE_INVALID: 'Tệp tải lên không hợp lệ.',
   FILE_UPLOAD_FAILED: 'Không thể tải tệp lên.',
 };

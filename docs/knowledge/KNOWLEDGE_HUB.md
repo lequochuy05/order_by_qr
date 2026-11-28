@@ -8,10 +8,10 @@
 
 ```mermaid
 flowchart TB
-    PO["1. PO Skill (.agents/skills/po-product-discovery)<br/>Output: docs/knowledge/01-po/ (PER-01..06 · STG-01..06 · F1.1..F6.7 — 37 features)"]
-    DES["2. Design Skill (.agents/skills/design-system-prototype)<br/>Input Gate: 01-po/ · Output: docs/knowledge/02-design/ (SCR-01..27)"]
-    BA1["3a. BA PRD Skill (.agents/skills/ba-prd)<br/>Input Gate: 01-po/ + 02-design/ · Output: 03-ba/PRD_BY_USER_STAGE.md (BR-01..36)"]
-    BA2["3b. BA User Story Skill (.agents/skills/ba-user-story)<br/>Input Gate: 01-po/ + 02-design/ + PRD · Output: 03-ba/USER_STORIES.md (US-001..34)"]
+    PO["1. PO Skill (.agents/skills/po-product-discovery)<br/>Output: docs/knowledge/01-po/ (PER-01..06 · STG-01..06 · F1.1..F6.8 — 38 features)"]
+    DES["2. Design Skill (.agents/skills/design-system-prototype)<br/>Input Gate: 01-po/ · Output: docs/knowledge/02-design/ (SCR-01..28)"]
+    BA1["3a. BA PRD Skill (.agents/skills/ba-prd)<br/>Input Gate: 01-po/ + 02-design/ · Output: 03-ba/PRD_BY_USER_STAGE.md (BR-01..38)"]
+    BA2["3b. BA User Story Skill (.agents/skills/ba-user-story)<br/>Input Gate: 01-po/ + 02-design/ + PRD · Output: 03-ba/USER_STORIES.md (US-001..36)"]
     SE["4. System Design / SE Skill (.agents/skills/se-system-design)<br/>Input Gate: 01-po/ + 02-design/ + 03-ba/ · Output: 04-tech/SYSTEM_DESIGN.md"]
     SDD["5. SDD Coding & Sync Skill (.agents/skills/sdd-coding-sync)<br/>Phương pháp Spec-Driven Development · Output: 05-specs/ → Sinh Code"]
 
@@ -91,6 +91,7 @@ flowchart TB
 | [005-ai-ordering-and-executive-insights/](./05-specs/005-ai-ordering-and-executive-insights/spec.md) | **New Feature (`Nhánh A`)** — AI Đặt món trực tiếp từ Chat (`F1.5`, `SCR-05`, `BR-29..30`, `US-028`) & AI Tóm tắt điều hành Dashboard (`F6.6`, `SCR-10`, `BR-31`, `US-029`) | ✅ `Archived` |
 | [006-ai-operations-suite/](./05-specs/006-ai-operations-suite/spec.md) | **New Feature (`Nhánh A`)** — AI Nhập kho BOM+Dự báo (`F5.6`), AI Đề xuất Combo & Khung giờ KM (`F6.7`), AI Dị ứng & Ghi chú (`F2.6`), AI BOM & Giá vốn (`F5.7`, `V1.24`) | ✅ `Archived` |
 | [007-ai-invoice-stock-in/](./05-specs/007-ai-invoice-stock-in/spec.md) | **New Feature (`Nhánh A`)** — Nhập kho từ ảnh hóa đơn bằng Gemini Vision (`F5.8`, `SCR-18`, `BR-36`, `US-034`) | ✅ `Archived` |
+| [008-pro-subscription-paywall/](./05-specs/008-pro-subscription-paywall/spec.md) | **New Feature (`Nhánh A`)** — Hệ thống Nâng cấp Gói Pro & Paywall Free/Pro + PayOS VietQR (`F6.8`, `SCR-28`, `BR-37..38`, `US-035..036`, `V1.27`) | ✅ `Implemented (Pending Sync-Back Review)` |
 
 ---
 
@@ -103,7 +104,7 @@ flowchart TB
 | **`STG-03`** | Tiếp nhận Bếp (KDS) & Giữ/Trừ kho | `PER-03`, `PER-05` | `F2.1`–`F2.6`, `F5.1`–`F5.8` | `SCR-12`, `SCR-18` | `BR-09` → `BR-12`, `BR-32`, `BR-34` → `BR-36` | `US-009` → `US-012`, `US-030`, `US-032` → `US-034` | `kitchen`, `inventory`, `ai`, `notification` |
 | **`STG-04`** | Phục vụ tại bàn, Hàng đợi yêu cầu, Gộp bàn & Mang về | `PER-02`, `PER-04`, `PER-05`, `PER-06` | `F4.1`–`F4.5`, `F2.6` | `SCR-11`, `SCR-13`, `SCR-27` | `BR-13` → `BR-15`, `BR-27` → `BR-28`, `BR-34` | `US-013` → `US-015`, `US-026` → `US-027`, `US-032` | `table`, `order`, `ai`, `notification` |
 | **`STG-05`** | Thanh toán Tiền mặt / VietQR & Đóng bàn | `PER-01`, `PER-04`, `PER-05` | `F3.1`–`F3.5`, `F6.5` | `SCR-05`, `SCR-11`, `SCR-13`, `SCR-14` | `BR-16` → `BR-19` | `US-016` → `US-019` | `payment`, `promotion`, `table`, `order`, `analytics` |
-| **`STG-06`** | Quản trị Thực đơn, Kho, Nhân sự, Thống kê & AI | `PER-05`, `PER-06` | `F5.1`–`F5.8`, `F6.1`–`F6.7` | `SCR-10`, `SCR-15..26` | `BR-20` → `BR-24`, `BR-31`–`BR-33`, `BR-35`–`BR-36` | `US-020` → `US-024`, `US-029`–`US-031`, `US-033`–`US-034` | `menu`, `inventory`, `promotion`, `user`, `analytics`, `ai`, `settings` |
+| **`STG-06`** | Quản trị Thực đơn, Kho, Nhân sự, Thống kê & AI | `PER-05`, `PER-06` | `F5.1`–`F5.8`, `F6.1`–`F6.8` | `SCR-10`, `SCR-15..26`, `SCR-28` | `BR-20` → `BR-24`, `BR-31`–`BR-33`, `BR-35`–`BR-38` | `US-020` → `US-024`, `US-029`–`US-031`, `US-033`–`US-036` | `menu`, `inventory`, `promotion`, `user`, `analytics`, `ai`, `settings`, `subscription` |
 
 ---
 

@@ -55,6 +55,13 @@ public class CaffeineCacheConfig {
                         .maximumSize(500)
                         .recordStats()
                         .build());
+        manager.registerCustomCache(
+                CacheNames.SUBSCRIPTION,
+                Caffeine.newBuilder()
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .maximumSize(100)
+                        .recordStats()
+                        .build());
         return manager;
     }
 }

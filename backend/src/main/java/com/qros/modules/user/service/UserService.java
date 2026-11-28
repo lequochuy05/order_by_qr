@@ -11,11 +11,14 @@ import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.*;
 import com.qros.shared.exception.BusinessException;
 import com.qros.shared.exception.ErrorCode;
+import com.qros.shared.subscription.SubscriptionEntitlementPort;
 import com.qros.shared.time.AppTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.lang.NonNull;
@@ -35,6 +38,7 @@ public class UserService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserMapper userMapper;
     private final UserAuthSessionPort userAuthSessionPort;
+    private final ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider;
 
     public UserService(
             UserRepository userRepository,
@@ -42,11 +46,23 @@ public class UserService {
             ApplicationEventPublisher eventPublisher,
             UserMapper userMapper,
             UserAuthSessionPort userAuthSessionPort) {
+        this(userRepository, passwordEncoder, eventPublisher, userMapper, userAuthSessionPort, null);
+    }
+
+    @Autowired
+    public UserService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            ApplicationEventPublisher eventPublisher,
+            UserMapper userMapper,
+            UserAuthSessionPort userAuthSessionPort,
+            ObjectProvider<SubscriptionEntitlementPort> entitlementPortProvider) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
         this.userMapper = userMapper;
         this.userAuthSessionPort = userAuthSessionPort;
+        this.entitlementPortProvider = entitlementPortProvider;
     }
 
     @Transactional
@@ -59,6 +75,9 @@ public class UserService {
     @CacheEvict(value = CacheNames.USERS, allEntries = true)
     public UserResponse create(@NonNull CreateUserRequest req, String actorEmail) {
         validateManagerHierarchyRestrictions(actorEmail, req.role(), "create");
+        if (req.status() == null || req.status() == UserStatus.ACTIVE) {
+            assertUserPlanLimit();
+        }
         String email = req.email().trim().toLowerCase();
         String phone = StringUtils.hasText(req.phone()) ? req.phone().trim() : null;
         if (userRepository.existsByEmailIgnoreCase(email)) {
@@ -83,6 +102,16 @@ public class UserService {
         eventPublisher.publishEvent(new UserChangeEvent());
         eventPublisher.publishEvent(new UserAuthChangeEvent(u.getEmail(), null));
         return userMapper.toDto(u);
+    }
+
+    private void assertUserPlanLimit() {
+        if (entitlementPortProvider == null) {
+            return;
+        }
+        SubscriptionEntitlementPort port = entitlementPortProvider.getIfAvailable();
+        if (port != null) {
+            port.assertUserLimitNotExceeded(userRepository.countByStatus(UserStatus.ACTIVE));
+        }
     }
 
     private static final List<UserRole> ADMIN_ROLES = List.of(UserRole.ADMIN, UserRole.MANAGER);

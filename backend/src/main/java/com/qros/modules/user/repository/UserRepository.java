@@ -42,4 +42,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.role IN :roles AND u.status = :status ORDER BY u.id")
     List<User> findByRoleInAndStatusForUpdate(@Param("roles") List<UserRole> roles, @Param("status") UserStatus status);
+
+    long countByStatus(UserStatus status);
 }

@@ -172,6 +172,7 @@ export const WebSocketInvalidator = () => {
     (message) => {
       if (message === 'UPDATED' || (typeof message === 'object' && message !== null)) {
         queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.subscription.all });
         refreshSettings();
         if (canSubscribePublicCatalog) handleCatalogUpdate(message);
       }

@@ -11,6 +11,7 @@ const ForgotPasswordPage = lazy(() => import('@pages/auth/ForgotPasswordPage.jsx
 const ResetPasswordPage = lazy(() => import('@pages/auth/ResetPasswordPage.jsx'));
 const OrderingPage = lazy(() => import('@pages/customer/OrderingPage.jsx'));
 const DashboardPage = lazy(() => import('@pages/admin/DashboardPage.jsx'));
+const BillingPage = lazy(() => import('@pages/admin/BillingPage.jsx'));
 const ProfilePage = lazy(() => import('@pages/admin/ProfilePage.jsx'));
 const SettingsPage = lazy(() => import('@pages/admin/SettingsPage.jsx'));
 const CategoryPage = lazy(() => import('@pages/admin/CategoryPage.jsx'));
@@ -90,6 +91,7 @@ const AppRouter = () => {
 
             <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
               <Route path="/admin/dashboard" element={<DashboardPage />} />
+              <Route path="/admin/billing" element={<BillingPage />} />
               <Route path="/admin/statistics/revenue" element={<RevenueStatsPage />} />
               <Route path="/admin/categories" element={<CategoryPage />} />
               <Route path="/admin/menu" element={<MenuPage />} />

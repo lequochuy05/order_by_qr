@@ -28,6 +28,8 @@ import com.qros.modules.inventory.controller.InventoryItemController;
 import com.qros.modules.inventory.service.InventoryItemService;
 import com.qros.modules.settings.controller.PublicSettingsController;
 import com.qros.modules.settings.service.SystemSettingsService;
+import com.qros.modules.subscription.controller.SubscriptionController;
+import com.qros.modules.subscription.service.SubscriptionService;
 import com.qros.modules.table.controller.PublicTableServiceRequestController;
 import com.qros.modules.table.controller.TableServiceRequestController;
 import com.qros.modules.table.service.TableServiceRequestService;
@@ -69,8 +71,10 @@ import org.springframework.test.web.servlet.MockMvc;
             AiStaffController.class,
             AiInventoryController.class,
             AiMerchandisingController.class,
-            InventoryItemController.class
-        })
+            InventoryItemController.class,
+            SubscriptionController.class
+        },
+        properties = "app.cors.allowed-origins=http://localhost:5173")
 @ContextConfiguration(classes = CoreApiSecurityIntegrationTest.TestApplication.class)
 @ImportAutoConfiguration({SecurityAutoConfiguration.class, ServletWebSecurityAutoConfiguration.class})
 @Import({
@@ -86,6 +90,7 @@ import org.springframework.test.web.servlet.MockMvc;
     AiInventoryController.class,
     AiMerchandisingController.class,
     InventoryItemController.class,
+    SubscriptionController.class,
     CoreApiSecurityIntegrationTest.PropertiesConfiguration.class
 })
 class CoreApiSecurityIntegrationTest {
@@ -128,6 +133,9 @@ class CoreApiSecurityIntegrationTest {
 
     @MockitoBean
     private InventoryItemService inventoryItemService;
+
+    @MockitoBean
+    private SubscriptionService subscriptionService;
 
     @MockitoBean
     private AiQuotaService aiQuotaService;
@@ -444,6 +452,94 @@ class CoreApiSecurityIntegrationTest {
 
         verify(inventoryItemService).batchStockIn(any(), eq(false));
         verify(inventoryItemService, org.mockito.Mockito.times(2)).batchStockIn(any(), eq(true));
+    }
+
+    @Test
+    void subscriptionEndpointsEnforceSelfManagerAndAdminRbac() throws Exception {
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/current")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/plans")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/invoices")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/trial")).andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/current")
+                        .with(user("staff@example.test").roles("STAFF")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/plans")
+                        .with(user("chef@example.test").roles("CHEF")))
+                .andExpect(status().isOk());
+
+        for (String deniedInvoiceRole : java.util.List.of("STAFF", "CHEF", "CASHIER")) {
+            mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/invoices")
+                            .with(user("u@example.test").roles(deniedInvoiceRole)))
+                    .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(get(ApiRoutes.SUBSCRIPTION + "/invoices")
+                        .with(user("manager@example.test").roles("MANAGER")))
+                .andExpect(status().isOk());
+
+        for (String deniedAdminRole : java.util.List.of("STAFF", "CHEF", "CASHIER", "MANAGER")) {
+            mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/trial")
+                            .with(user("u@example.test").roles(deniedAdminRole)))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/checkout")
+                            .with(user("u@example.test").roles(deniedAdminRole))
+                            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"billingCycle":"MONTHLY"}
+                                    """))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/invoices/1/sync")
+                            .with(user("u@example.test").roles(deniedAdminRole)))
+                    .andExpect(status().isForbidden());
+
+            mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/invoices/1/cancel")
+                            .with(user("u@example.test").roles(deniedAdminRole)))
+                    .andExpect(status().isForbidden());
+        }
+
+        mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/trial")
+                        .with(user("admin@example.test").roles("ADMIN")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/checkout")
+                        .with(user("admin@example.test").roles("ADMIN"))
+                        .header("Idempotency-Key", "sub-key-1")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"billingCycle":"MONTHLY","returnPath":"/admin/billing"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/invoices/1/sync")
+                        .with(user("admin@example.test").roles("ADMIN")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ApiRoutes.SUBSCRIPTION + "/invoices/1/cancel")
+                        .with(user("admin@example.test").roles("ADMIN")))
+                .andExpect(status().isOk());
+
+        verify(subscriptionService).activateTrial("admin@example.test");
+        verify(subscriptionService).createCheckout(any(), eq("sub-key-1"), eq("admin@example.test"));
+        verify(subscriptionService).syncInvoiceStatus(1L);
+        verify(subscriptionService).cancelInvoice(1L);
+    }
+
+    @Test
+    void corsPreflightAllowsIdempotencyKeyHeaderForSubscriptionCheckout() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options(
+                                ApiRoutes.SUBSCRIPTION + "/checkout")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "authorization,content-type,idempotency-key"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                        .string(
+                                "Access-Control-Allow-Headers",
+                                org.hamcrest.Matchers.containsStringIgnoringCase("Idempotency-Key")));
     }
 
     @TestConfiguration

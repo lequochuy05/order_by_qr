@@ -69,6 +69,11 @@ public class DomainEventListener {
         }
     }
 
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSubscriptionChange(SubscriptionChangeEvent event) {
+        notificationService.notifySettingsChange();
+    }
+
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onInventoryChange(InventoryChangeEvent event) {
         notificationService.notifyInventoryChange(event.type(), event.id());

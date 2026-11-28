@@ -1,7 +1,13 @@
+import { useState } from 'react';
 import { AlertCircle, BellRing, WifiOff } from 'lucide-react';
 
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { AiNoteTriageCard } from '@entities/ai';
+import {
+  PLAN_FEATURES,
+  UpgradeProModal,
+  useSubscription,
+} from '@entities/subscription';
 import EmptyState from '@shared/ui/EmptyState.jsx';
 import useServiceRequestsQueue from '../model/useServiceRequestsQueue.js';
 import ServiceRequestCard from './ServiceRequestCard.jsx';
@@ -33,6 +39,12 @@ const ServiceRequestQueue = () => {
     handleResolve,
     handleCancel,
   } = useServiceRequestsQueue();
+
+  const { hasFeature } = useSubscription();
+  const canUseAiOps = hasFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const isAdmin = currentUser?.role === 'ADMIN';
+  const canViewBilling = isAdmin || currentUser?.role === 'MANAGER';
 
   return (
     <div className="w-full min-w-0 space-y-5 p-0 sm:p-3 lg:p-6">
@@ -93,7 +105,11 @@ const ServiceRequestQueue = () => {
         summary={summary}
       />
 
-      <AiNoteTriageCard namespace="serviceRequests" />
+      <AiNoteTriageCard
+        namespace="serviceRequests"
+        locked={!canUseAiOps}
+        onRequestUpgrade={() => setUpgradeOpen(true)}
+      />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -147,6 +163,14 @@ const ServiceRequestQueue = () => {
           ))}
         </div>
       )}
+
+      <UpgradeProModal
+        isOpen={upgradeOpen}
+        feature={PLAN_FEATURES.AI_OPERATIONS_SUITE}
+        isAdmin={isAdmin}
+        canViewBilling={canViewBilling}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </div>
   );
 };

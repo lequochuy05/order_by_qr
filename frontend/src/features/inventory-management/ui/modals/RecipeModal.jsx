@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { aiInventoryService } from '@entities/ai';
+import { ProBadge } from '@entities/subscription';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
@@ -45,6 +46,8 @@ const RecipeModal = ({
   isSubmitting = false,
   loading = false,
   isManager = true,
+  aiBomLocked = false,
+  onRequestAiUpgrade = null,
 }) => {
   const { language, isEn } = useTranslation('inventory');
   const [aiState, setAiState] = useState({
@@ -67,6 +70,10 @@ const RecipeModal = ({
   const marginMeta = getMarginStatusMeta(localAnalysis.marginStatus, language);
 
   const handleAnalyzeBom = async () => {
+    if (aiBomLocked) {
+      onRequestAiUpgrade?.();
+      return;
+    }
     if (!selectedMenuItemId || aiState.loading) return;
     const targetMenuId = selectedMenuItemId;
     setAiState({
@@ -161,6 +168,7 @@ const RecipeModal = ({
               : isEn
                 ? 'AI BOM & Food Cost'
                 : 'AI Gợi ý định mức & Giá vốn'}
+            {aiBomLocked && <ProBadge size="xs" />}
           </button>
         </div>
 

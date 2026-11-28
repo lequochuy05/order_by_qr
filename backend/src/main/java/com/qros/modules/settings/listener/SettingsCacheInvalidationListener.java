@@ -3,6 +3,7 @@ package com.qros.modules.settings.listener;
 import com.qros.shared.cache.CacheHelper;
 import com.qros.shared.cache.CacheNames;
 import com.qros.shared.event.DomainEvents.SettingsChangeEvent;
+import com.qros.shared.event.DomainEvents.SubscriptionChangeEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -20,5 +21,10 @@ public class SettingsCacheInvalidationListener {
         CacheHelper.clear(cacheManager, CacheNames.SETTINGS);
         // Public catalog visibility flags (showUnavailableItems, showCombos) come from settings.
         CacheHelper.clear(cacheManager, CacheNames.PUBLIC_MENU);
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void onSubscriptionChange(SubscriptionChangeEvent event) {
+        CacheHelper.clear(cacheManager, CacheNames.SETTINGS, CacheNames.SUBSCRIPTION);
     }
 }

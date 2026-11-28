@@ -17,6 +17,7 @@ import './unit/restaurantSettings.test.js';
 import './unit/selfCheckout.test.js';
 import './unit/serviceRequests.test.js';
 import './unit/sessionStartCoordinator.test.js';
+import './unit/subscription.test.js';
 import './unit/systemErrors.test.js';
 import './unit/useCrudModal.test.js';
 import './unit/wave2Hardening.test.js';

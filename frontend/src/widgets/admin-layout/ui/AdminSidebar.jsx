@@ -4,6 +4,7 @@ import { useAuth } from '@entities/session';
 import { useServiceRequestsQueueQuery } from '@entities/service-request';
 import { useAdminPreferences } from '@shared/hooks/useAdminPreferences.js';
 import { useSettingsQuery } from '@entities/settings';
+import { useSubscription } from '@entities/subscription';
 import {
   LayoutDashboard,
   Layers,
@@ -24,6 +25,7 @@ import {
   ShieldAlert,
   BadgePercent,
   BellRing,
+  Crown,
 } from 'lucide-react';
 
 const menuItems = [
@@ -117,6 +119,13 @@ const menuItems = [
     ],
   },
   {
+    title: 'Gói dịch vụ',
+    path: '/admin/billing',
+    icon: <Crown size={20} />,
+    roles: ['ADMIN', 'MANAGER'],
+    badgeKey: 'subscriptionTier',
+  },
+  {
     title: 'Cài đặt',
     icon: <Settings size={20} />,
     roles: ['ADMIN', 'MANAGER', 'CASHIER', 'STAFF', 'CHEF'],
@@ -135,6 +144,9 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
   const { data: settings } = useSettingsQuery({
     enabled: Boolean(user && !user.mustChangePassword),
     staleTime: 5 * 60 * 1000,
+  });
+  const { isPro } = useSubscription({
+    enabled: Boolean(user && !user.mustChangePassword),
   });
   const canSeeServiceRequests = Boolean(
     user?.role &&
@@ -318,6 +330,17 @@ const AdminSidebar = ({ isOpen, isCompactViewport = false }) => {
                           {itemBadgeCount}
                         </span>
                       )}
+                      {item.badgeKey === 'subscriptionTier' && (
+                        <span
+                          className={`ml-auto inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black uppercase ${
+                            isPro
+                              ? 'bg-amber-400 text-slate-950'
+                              : 'bg-slate-700 text-slate-200'
+                          }`}
+                        >
+                          {isPro ? 'PRO' : 'FREE'}
+                        </span>
+                      )}
                     </>
                   )}
 
@@ -389,6 +412,7 @@ const englishMenuLabels = {
   'Món ăn bán chạy': 'Top dishes',
   'Nhân viên': 'Staff',
   'Bán mang về': 'Takeaway',
+  'Gói dịch vụ': 'Billing & Plan',
   'Cài đặt': 'Settings',
   'Thông tin cá nhân': 'Profile',
   'Cài đặt nhà hàng': 'Restaurant settings',

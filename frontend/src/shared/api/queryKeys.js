@@ -86,4 +86,10 @@ export const queryKeys = {
   combos: createQueryKeys('combos'),
   inventory: createQueryKeys('inventory'),
   settings: createQueryKeys('settings'),
+  subscription: {
+    all: ['subscription'],
+    current: ['subscription', 'current'],
+    plans: ['subscription', 'plans'],
+    invoices: ['subscription', 'invoices'],
+  },
 };

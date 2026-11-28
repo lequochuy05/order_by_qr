@@ -9,11 +9,24 @@ import {
 } from 'lucide-react';
 
 import { aiMerchandisingService } from '@entities/ai';
+import { useAuth } from '@entities/session';
+import {
+  PLAN_FEATURES,
+  ProBadge,
+  UpgradeProModal,
+  useSubscription,
+} from '@entities/subscription';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
 
 const AiComboSuggestionsPanel = ({ onUseDraft }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const canViewBilling = isAdmin || user?.role === 'MANAGER';
+  const { hasFeature } = useSubscription();
+  const canUseAiOps = hasFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { language, isEn } = useTranslation('combos');
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,6 +34,10 @@ const AiComboSuggestionsPanel = ({ onUseDraft }) => {
   const [result, setResult] = useState(null);
 
   const handleAnalyze = async () => {
+    if (!canUseAiOps) {
+      setUpgradeOpen(true);
+      return;
+    }
     if (loading) return;
     setExpanded(true);
     setLoading(true);
@@ -56,6 +73,7 @@ const AiComboSuggestionsPanel = ({ onUseDraft }) => {
               <h2 className="text-sm font-black text-slate-900 sm:text-base dark:text-white">
                 {isEn ? 'AI Combo Bundle Builder' : 'AI Đề xuất tạo Combo'}
               </h2>
+              {!canUseAiOps && <ProBadge size="xs" />}
               {result && (
                 <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-300">
                   {result.aiGenerated ? 'Gemini AI' : isEn ? 'Order Co-occurrence' : 'Dữ liệu gọi kèm'}
@@ -199,6 +217,14 @@ const AiComboSuggestionsPanel = ({ onUseDraft }) => {
           )}
         </div>
       )}
+
+      <UpgradeProModal
+        isOpen={upgradeOpen}
+        feature={PLAN_FEATURES.AI_OPERATIONS_SUITE}
+        isAdmin={isAdmin}
+        canViewBilling={canViewBilling}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </section>
   );
 };

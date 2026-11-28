@@ -1,5 +1,11 @@
+import { useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { useAuth } from '@entities/session';
+import {
+  PLAN_FEATURES,
+  UpgradeProModal,
+  useSubscription,
+} from '@entities/subscription';
 
 import { STOCK_FILTER_OPTIONS } from '../lib/inventoryConstants.js';
 import useInventoryManagement from '../model/useInventoryManagement.js';
@@ -23,8 +29,21 @@ const LoadingState = () => (
 
 const InventoryManagement = () => {
   const { user } = useAuth();
-  const isManager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const isAdmin = user?.role === 'ADMIN';
+  const isManager = isAdmin || user?.role === 'MANAGER';
   const inventory = useInventoryManagement();
+  const { hasFeature } = useSubscription();
+  const [upgradeFeature, setUpgradeFeature] = useState(null);
+
+  const canUseAiOps = hasFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+
+  const guardAiOps = (fn) => (...args) => {
+    if (!canUseAiOps) {
+      setUpgradeFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+      return;
+    }
+    fn?.(...args);
+  };
 
   return (
     <div className="w-full min-w-0 space-y-4 p-0 sm:space-y-6 sm:p-3 lg:p-6">
@@ -33,7 +52,7 @@ const InventoryManagement = () => {
         searchTerm={inventory.searchTerm}
         setSearchTerm={inventory.setSearchTerm}
         onAddClick={isManager ? inventory.openCreate : undefined}
-        addButtonText={isManager ? "Thêm nguyên liệu" : undefined}
+        addButtonText={isManager ? 'Thêm nguyên liệu' : undefined}
         addButtonIcon={isManager ? Plus : undefined}
         hideAddButton={!isManager}
         showFilter
@@ -45,7 +64,11 @@ const InventoryManagement = () => {
 
       <InventorySummaryCards summary={inventory.summary} />
 
-      <AiRestockPanel onQuickRestock={inventory.handleQuickRestock} />
+      <AiRestockPanel
+        onQuickRestock={inventory.handleQuickRestock}
+        locked={!canUseAiOps}
+        onRequestUpgrade={() => setUpgradeFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE)}
+      />
 
       <InventoryToolbar
         activeTab={inventory.activeTab}
@@ -55,7 +78,8 @@ const InventoryManagement = () => {
         onMenuItemFocus={() => inventory.ensureMenuItems()}
         menuItems={inventory.menuItems}
         menuItemsLoading={inventory.menuItemsLoading}
-        onOpenInvoiceOcr={inventory.openInvoiceOcr}
+        onOpenInvoiceOcr={guardAiOps(inventory.openInvoiceOcr)}
+        invoiceOcrLocked={!canUseAiOps}
         onOpenRecipe={inventory.openRecipe}
         onRefresh={() => inventory.refreshInventoryView(true)}
       />
@@ -126,6 +150,8 @@ const InventoryManagement = () => {
           isSubmitting={inventory.isRecipeSubmitting}
           loading={inventory.recipeLoading}
           isManager={isManager}
+          aiBomLocked={!canUseAiOps}
+          onRequestAiUpgrade={() => setUpgradeFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE)}
         />
       )}
 
@@ -138,6 +164,14 @@ const InventoryManagement = () => {
           onSuccess={inventory.handleInventorySaved}
         />
       )}
+
+      <UpgradeProModal
+        isOpen={Boolean(upgradeFeature)}
+        feature={upgradeFeature}
+        isAdmin={isAdmin}
+        canViewBilling={isManager}
+        onClose={() => setUpgradeFeature(null)}
+      />
     </div>
   );
 };

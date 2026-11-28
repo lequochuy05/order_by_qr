@@ -13,6 +13,13 @@ import {
 } from 'lucide-react';
 
 import { analyticsService } from '@entities/analytics';
+import { useAuth } from '@entities/session';
+import {
+  PLAN_FEATURES,
+  ProBadge,
+  UpgradeProModal,
+  useSubscription,
+} from '@entities/subscription';
 import { buildErrorMessage } from '@shared/lib/errorMessages.js';
 import { fmtTime, fmtVND } from '@shared/lib/formatters.js';
 import { useTranslation } from '@shared/lib/i18n';
@@ -30,6 +37,12 @@ const PRESET_OPTIONS = [
 ];
 
 const AiExecutiveSummaryCard = ({ businessToday }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+  const canViewBilling = isAdmin || user?.role === 'MANAGER';
+  const { hasFeature } = useSubscription();
+  const canUseAiOps = hasFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { isEn, language } = useTranslation('dashboard');
   const [preset, setPreset] = useState('7d');
   const [summary, setSummary] = useState(null);
@@ -59,6 +72,10 @@ const AiExecutiveSummaryCard = ({ businessToday }) => {
   });
 
   const handleAnalyze = (nextPreset = preset) => {
+    if (!canUseAiOps) {
+      setUpgradeOpen(true);
+      return;
+    }
     setErrorMessage('');
     mutation.mutate({ targetPreset: nextPreset, targetLanguage: language });
   };
@@ -87,6 +104,7 @@ const AiExecutiveSummaryCard = ({ businessToday }) => {
             <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
               {isEn ? 'AI Shift & Executive Briefing' : 'AI Tóm tắt ca & Phân tích điều hành'}
             </h3>
+            {!canUseAiOps && <ProBadge size="xs" />}
             {summary && (
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
@@ -454,6 +472,14 @@ const AiExecutiveSummaryCard = ({ businessToday }) => {
           </div>
         </div>
       )}
+
+      <UpgradeProModal
+        isOpen={upgradeOpen}
+        feature={PLAN_FEATURES.AI_OPERATIONS_SUITE}
+        isAdmin={isAdmin}
+        canViewBilling={canViewBilling}
+        onClose={() => setUpgradeOpen(false)}
+      />
     </section>
   );
 };

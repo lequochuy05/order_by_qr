@@ -115,6 +115,13 @@ public enum ErrorCode {
     PAYMENT_IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT, "Payment idempotency conflict"),
     PAYMENT_WEBHOOK_INVALID(HttpStatus.BAD_REQUEST, "Invalid payment webhook"),
 
+    PRO_PLAN_REQUIRED(HttpStatus.PAYMENT_REQUIRED, "This feature requires an active Pro subscription"),
+    PLAN_LIMIT_EXCEEDED(HttpStatus.PAYMENT_REQUIRED, "Current subscription plan limit has been reached"),
+    SUBSCRIPTION_TRIAL_ALREADY_USED(HttpStatus.CONFLICT, "Free Pro trial has already been used for this restaurant"),
+    SUBSCRIPTION_ALREADY_ACTIVE(HttpStatus.CONFLICT, "An active Pro subscription is already enabled"),
+    SUBSCRIPTION_INVOICE_NOT_FOUND(HttpStatus.NOT_FOUND, "Subscription invoice not found"),
+    SUBSCRIPTION_INVOICE_INVALID_STATE(HttpStatus.BAD_REQUEST, "Invalid subscription invoice state"),
+
     FILE_INVALID(HttpStatus.BAD_REQUEST, "Invalid file"),
     FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to upload file");
 

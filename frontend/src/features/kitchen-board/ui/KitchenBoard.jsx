@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { useAuth } from '@entities/session';
+import {
+  PLAN_FEATURES,
+  UpgradeProModal,
+  useSubscription,
+} from '@entities/subscription';
 import { ErrorBoundary } from '@shared/ui';
 import { AiNoteTriageCard } from '@entities/ai';
 import { showBrowserNotification } from '@shared/lib/browserNotification.js';
@@ -27,6 +32,11 @@ const KitchenBoardContent = () => {
   const [viewMode, setViewMode] = useState('kanban');
   const [recipeTarget, setRecipeTarget] = useState(null);
   const [isQuick86Open, setIsQuick86Open] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { hasFeature } = useSubscription();
+  const canUseAiOps = hasFeature(PLAN_FEATURES.AI_OPERATIONS_SUITE);
+  const isAdmin = user?.role === 'ADMIN';
+  const canViewBilling = isAdmin || user?.role === 'MANAGER';
   const [lastAvailabilityUpdate, setLastAvailabilityUpdate] = useState(null);
   const settings = useSettingsStore((state) => state.settings);
   const overdueMinutes = Number(settings.kitchenOverdueThresholdMinutes || 20);
@@ -136,7 +146,11 @@ const KitchenBoardContent = () => {
       {['ADMIN', 'MANAGER', 'CHEF'].includes(user?.role) && (
         <div className="space-y-4">
           <AiStaffPanel />
-          <AiNoteTriageCard namespace="kitchen" />
+          <AiNoteTriageCard
+            namespace="kitchen"
+            locked={!canUseAiOps}
+            onRequestUpgrade={() => setUpgradeOpen(true)}
+          />
         </div>
       )}
 
@@ -201,6 +215,14 @@ const KitchenBoardContent = () => {
         isTogglingAvailability={Boolean(
           recipeAvailabilityKey && kitchen.togglingAvailabilityKeys.has(recipeAvailabilityKey),
         )}
+      />
+
+      <UpgradeProModal
+        isOpen={upgradeOpen}
+        feature={PLAN_FEATURES.AI_OPERATIONS_SUITE}
+        isAdmin={isAdmin}
+        canViewBilling={canViewBilling}
+        onClose={() => setUpgradeOpen(false)}
       />
     </div>
   );
