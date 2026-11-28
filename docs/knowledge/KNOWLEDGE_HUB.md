@@ -51,7 +51,7 @@ flowchart TB
 | [market.md](./01-po/market.md) | Phân tích 4 nhóm đối thủ thay thế & 5 lợi thế khác biệt của QROS | ✅ Sẵn sàng |
 | [blueprint.md](./01-po/blueprint.md) | Business Model Canvas, Service Blueprint *(Frontstage / Backstage / Support)* & quản trị rủi ro kinh doanh | ✅ Sẵn sàng |
 | [roadmap.md](./01-po/roadmap.md) | Lộ trình sản phẩm 4 giai đoạn (MVP → Enterprise), Product Release Gates & quản trị rủi ro | ✅ Sẵn sàng |
-| [journey-features.md](./01-po/journey-features.md) | Hành trình 6 User Stages (`STG-01` → `STG-06`), 6 Epics (`F1.1` → `F6.7` — 37 features, gồm `F2.6`, `F5.6`–`F5.8`, `F6.6`–`F6.7`) & ma trận phụ thuộc nghiệp vụ | ✅ Sẵn sàng |
+| [journey-features.md](./01-po/journey-features.md) | Hành trình 6 User Stages (`STG-01` → `STG-06`), 6 Epics (`F1.1` → `F6.8` — 38 features, gồm `F2.6`, `F5.6`–`F5.8`, `F6.6`–`F6.8`) & ma trận phụ thuộc nghiệp vụ | ✅ Sẵn sàng |
 
 ### Tầng 2 — Product Design (`02-design/`) · Skill: `design-system-prototype`
 *Input bắt buộc: `01-po/` · Thuần ngôn ngữ UI/UX & Design Tokens.*
@@ -60,7 +60,7 @@ flowchart TB
 |---|---|---|
 | [DESIGN_SYSTEM.md](./02-design/DESIGN_SYSTEM.md) | QROS Master Design System v3.0 (*Evondev Signature*), Token 2 tầng, Light/Dark WCAG 2.1 AA, Typography & Patterns | ✅ Sẵn sàng |
 | [figma-tokens.json](./02-design/figma-tokens.json) | Bộ Design Tokens chuẩn JSON đồng bộ Figma ↔ Dev | ✅ Sẵn sàng |
-| [PROTOTYPE_SCREEN_MAP.md](./02-design/PROTOTYPE_SCREEN_MAP.md) | Bản đồ 27 màn hình (`SCR-01` → `SCR-27`, gồm cập nhật `SCR-05`, `SCR-10`–`SCR-12`, `SCR-17`–`SCR-18`, `SCR-20`, `SCR-27`) gắn 1-1 với `PER-01..06`, `F1.1..F6.7` & 5 trạng thái UI chuẩn | ✅ Sẵn sàng |
+| [PROTOTYPE_SCREEN_MAP.md](./02-design/PROTOTYPE_SCREEN_MAP.md) | Bản đồ 28 màn hình (`SCR-01` → `SCR-28`, gồm `SCR-28` Billing & Soft Paywall trên `SCR-05`, `SCR-10`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27`) gắn 1-1 với `PER-01..06`, `F1.1..F6.8` & 5 trạng thái UI chuẩn | ✅ Sẵn sàng |
 | [figma/](./02-design/figma/) | Figma plugins & scripts sinh canvas/hifi auth | ✅ Sẵn sàng |
 
 ### Tầng 3 — Business Analysis (`03-ba/`) · Skills: `ba-prd` & `ba-user-story`
@@ -68,15 +68,15 @@ flowchart TB
 
 | Tài liệu | Nội dung cốt lõi | Trạng thái |
 |---|---|---|
-| [PRD_BY_USER_STAGE.md](./03-ba/PRD_BY_USER_STAGE.md) | Phân tích chi tiết **6 User Stages** (`STG-01` → `STG-06`), Ma trận phân quyền, **36 Business Rules** (`BR-01` → `BR-36`), State Machines & Edge Cases | ✅ Sẵn sàng |
-| [USER_STORIES.md](./03-ba/USER_STORIES.md) | Backlog **34 User Stories** (`US-001` → `US-034`) chuẩn `Given/When/Then`, phủ 100% `F1.1..F6.7` & `SCR-01..27` | ✅ Sẵn sàng |
+| [PRD_BY_USER_STAGE.md](./03-ba/PRD_BY_USER_STAGE.md) | Phân tích chi tiết **6 User Stages** (`STG-01` → `STG-06`), Ma trận phân quyền, **38 Business Rules** (`BR-01` → `BR-38`), State Machines & Edge Cases | ✅ Sẵn sàng |
+| [USER_STORIES.md](./03-ba/USER_STORIES.md) | Backlog **36 User Stories** (`US-001` → `US-036`) chuẩn `Given/When/Then`, phủ 100% `F1.1..F6.8` & `SCR-01..28` | ✅ Sẵn sàng |
 
 ### Tầng 4 — System Design & Engineering (`04-tech/`) · Skill: `se-system-design`
 *Input bắt buộc: `01-po/` + `02-design/` + `03-ba/`*
 
 | Tài liệu | Nội dung cốt lõi | Trạng thái |
 |---|---|---|
-| [SYSTEM_DESIGN.md](./04-tech/SYSTEM_DESIGN.md) | Ánh xạ `US/BR/SCR` → Kiến trúc Modular Monolith (Spring Boot 4.1.2 / Java 25) + FSD (React 19.2 / Capacitor 8.6), 35 bảng DB (`V1`–`V1.26`), 12 STOMP topics, 6-Role RBAC & CI Quality Gates | ✅ Sẵn sàng |
+| [SYSTEM_DESIGN.md](./04-tech/SYSTEM_DESIGN.md) | Ánh xạ `US/BR/SCR` → Kiến trúc Modular Monolith (Spring Boot 4.1.2 / Java 25) + FSD (React 19.2 / Capacitor 8.6), 37 bảng DB (`V1`–`V1.27`), 12 STOMP topics, 6-Role RBAC & CI Quality Gates | ✅ Sẵn sàng |
 
 ### Tầng 5 — Spec-Driven Execution & Sync (`05-specs/`) · Skill: `sdd-coding-sync`
 *Áp dụng phương pháp Spec-Driven Development (lấy cảm hứng từ GitHub Spec Kit). Luồng chuẩn là **chiều thuận sinh ra code** (`Nhánh A`). Thư mục này chỉ là **lịch sử thực thi** (`Draft → In Progress → Implemented → Archived`), không phải bản sao thứ hai của `03-ba/` hay `04-tech/`. Riêng `001-`..`003-` là **Baseline Spec dựng ngược từ code có sẵn** để minh họa quy trình duyệt Sync-Back.*
@@ -91,7 +91,7 @@ flowchart TB
 | [005-ai-ordering-and-executive-insights/](./05-specs/005-ai-ordering-and-executive-insights/spec.md) | **New Feature (`Nhánh A`)** — AI Đặt món trực tiếp từ Chat (`F1.5`, `SCR-05`, `BR-29..30`, `US-028`) & AI Tóm tắt điều hành Dashboard (`F6.6`, `SCR-10`, `BR-31`, `US-029`) | ✅ `Archived` |
 | [006-ai-operations-suite/](./05-specs/006-ai-operations-suite/spec.md) | **New Feature (`Nhánh A`)** — AI Nhập kho BOM+Dự báo (`F5.6`), AI Đề xuất Combo & Khung giờ KM (`F6.7`), AI Dị ứng & Ghi chú (`F2.6`), AI BOM & Giá vốn (`F5.7`, `V1.24`) | ✅ `Archived` |
 | [007-ai-invoice-stock-in/](./05-specs/007-ai-invoice-stock-in/spec.md) | **New Feature (`Nhánh A`)** — Nhập kho từ ảnh hóa đơn bằng Gemini Vision (`F5.8`, `SCR-18`, `BR-36`, `US-034`) | ✅ `Archived` |
-| [008-pro-subscription-paywall/](./05-specs/008-pro-subscription-paywall/spec.md) | **New Feature (`Nhánh A`)** — Hệ thống Nâng cấp Gói Pro & Paywall Free/Pro + PayOS VietQR (`F6.8`, `SCR-28`, `BR-37..38`, `US-035..036`, `V1.27`) | ✅ `Implemented (Pending Sync-Back Review)` |
+| [008-pro-subscription-paywall/](./05-specs/008-pro-subscription-paywall/spec.md) | **New Feature (`Nhánh A`)** — Hệ thống Nâng cấp Gói Pro & Paywall Free/Pro + PayOS VietQR (`F6.8`, `SCR-28`, `BR-37..38`, `US-035..036`, `V1.27`) | ✅ `Archived` |
 
 ---
 
@@ -109,13 +109,13 @@ flowchart TB
 ---
 
 ## 4. Cổng kiểm soát bàn giao (Handoff Readiness Checklist)
-- [x] **Gate 1 (`01-po` → `02-design`):** 9 tài liệu thuần tư duy PO (`PER-01..06`, `STG-01..06`, `F1.1..F6.7` — 37 features), 0 thuật ngữ code.
-- [x] **Gate 2 (`01-po` + `02-design` → `03-ba`):** Đủ Design System (`DESIGN_SYSTEM.md`, `figma-tokens.json`) và 27 màn hình Prototype (`SCR-01..27`) thuần UI/UX.
-- [x] **Gate 3 (`03-ba` → `04-tech`):** Đủ PRD theo 6 User Stages (`BR-01..36`) và 34 User Stories (`US-001..34`) phủ 100% mã từ PO & Design, thuần nghiệp vụ.
-- [x] **Gate 4 (`04-tech` → `05-specs` / Sinh Code):** Đủ `SYSTEM_DESIGN.md` ánh xạ 1-1 `STG/US/BR/SCR` xuống kiến trúc thực tế (Spring Boot 4.1.2 / Java 25, React 19.2, 35 bảng `V1`–`V1.26`, 12 STOMP topics) và `CONSTITUTION.md` (DoD khớp CI).
+- [x] **Gate 1 (`01-po` → `02-design`):** 9 tài liệu thuần tư duy PO (`PER-01..06`, `STG-01..06`, `F1.1..F6.8` — 38 features), 0 thuật ngữ code.
+- [x] **Gate 2 (`01-po` + `02-design` → `03-ba`):** Đủ Design System (`DESIGN_SYSTEM.md`, `figma-tokens.json`) và 28 màn hình Prototype (`SCR-01..28`) thuần UI/UX.
+- [x] **Gate 3 (`03-ba` → `04-tech`):** Đủ PRD theo 6 User Stages (`BR-01..38`) và 36 User Stories (`US-001..36`) phủ 100% mã từ PO & Design, thuần nghiệp vụ.
+- [x] **Gate 4 (`04-tech` → `05-specs` / Sinh Code):** Đủ `SYSTEM_DESIGN.md` ánh xạ 1-1 `STG/US/BR/SCR` xuống kiến trúc thực tế (Spring Boot 4.1.2 / Java 25, React 19.2, 37 bảng `V1`–`V1.27`, 12 STOMP topics) và `CONSTITUTION.md` (DoD khớp CI).
 - [x] **Gate 5 (`05-specs` → Đã duyệt Sync-Back & Lưu trữ):**
   - **Baseline Sync-Back Demo (giữ nguyên phục vụ trình bày):** `001-customer-self-checkout` (`SB-01` → `SB-04`), `002-customer-table-order` (`SB-05` → `SB-07`), `003-role-based-auth-login` (`SB-08` → `SB-10`) giữ trạng thái `Pending Sync-Back Review`.
-  - **Tính năng mới đã triển khai (`Nhánh A`):** `004-table-service-requests`, `005-ai-ordering-and-executive-insights`, `006-ai-operations-suite`, `007-ai-invoice-stock-in` đã hoàn tất mã nguồn, kiểm thử, đồng bộ ngược và đóng trạng thái lưu trữ (`Archived`).
+  - **Tính năng mới đã triển khai (`Nhánh A`):** `004-table-service-requests`, `005-ai-ordering-and-executive-insights`, `006-ai-operations-suite`, `007-ai-invoice-stock-in`, `008-pro-subscription-paywall` đã hoàn tất mã nguồn, kiểm thử, đồng bộ ngược và đóng trạng thái lưu trữ (`Archived`).
 
 ---
 
@@ -131,3 +131,4 @@ flowchart TB
 | `2026-11-26` | `Audit Hardening (Waves 1–3 · 42 Issues)` | Đồng bộ `SB-11` → `SB-18` (`PROTOTYPE_SCREEN_MAP.md` [`SCR-05/11/13/14/22/25/26`], `PRD_BY_USER_STAGE.md` [`BR-02..05`, `BR-10..11`, `BR-13..14`, `BR-16..19`, `BR-21..22`], `USER_STORIES.md` [`US-002..004`, `US-014`, `US-016..018`, `US-023`], `SYSTEM_DESIGN.md` [`V1.25`, RBAC, locking, PayOS, tax/service charge, infra & CI 347+153 tests]) | ✅ Đã duyệt bởi User *(2026-11-26)* |
 | `2026-11-26` | `Wave 2 Pre-Release Hardening (34 Issues · W2-1..W2-7)` | Đồng bộ `SB-19` → `SB-24` (`PROTOTYPE_SCREEN_MAP.md` [`SCR-05/11/12/14/15/17/26`], `PRD_BY_USER_STAGE.md` [`BR-02..03`, `BR-05`, `BR-07`, `BR-10..11`, `BR-14`, `BR-16..18`, `BR-27`, `BR-36`], `USER_STORIES.md` [`US-002/005/007/009/016/017/020/034`], `SYSTEM_DESIGN.md` [`V1.26`, multi-device sessions, operating hours, Happy-Hour snapshot, G1GC/Virtual Threads, PWA/Capacitor, Testcontainers PG16+Redis7 364+160 tests]) | ✅ Đã duyệt bởi User *(2026-11-26)* |
 | `2026-11-26` | `004`–`007` *(Gate 5 Closure)* | Đóng trạng thái `Archived` cho `004-table-service-requests`, `005-ai-ordering-and-executive-insights`, `006-ai-operations-suite`, `007-ai-invoice-stock-in` (`spec.md` + `tasks.md`) và hoàn tất **Gate 5** trong `KNOWLEDGE_HUB.md` *(giữ nguyên `001`–`003` làm Baseline Demo)* | ✅ Đã duyệt bởi User *(2026-11-26)* |
+| `2026-11-28` | `008-pro-subscription-paywall` | Đồng bộ `F6.8` (`01-po/journey-features.md`), `BR-37` (`03-ba/PRD_BY_USER_STAGE.md`), `US-035..036` (`03-ba/USER_STORIES.md`) mở lại thao tác Kho/BOM thủ công cho gói `FREE` (giữ khóa `PRO` cho bộ tính năng AI & hạn mức bàn/nhân sự), cập nhật chỉ mục `F6.8`/`SCR-28`/`BR-38`/`US-036`/`V1.27` và đóng trạng thái `Archived` cho `008-pro-subscription-paywall` | ✅ Đã duyệt bởi User *(2026-11-28)* |

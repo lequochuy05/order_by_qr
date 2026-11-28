@@ -24,4 +24,4 @@
 - [x] Viết `frontend/tests/unit/subscription.test.js`, đăng ký trong `run-tests.js`, và chạy `npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build` → pass 100%.
 
 ## Nhóm 4 — Verification & Closure
-- [x] Chuyển trạng thái `008-pro-subscription-paywall` trong `spec.md`, `tasks.md` và `KNOWLEDGE_HUB.md` sang `Implemented (Pending Sync-Back Review)`.
+- [x] Chuyển trạng thái `008-pro-subscription-paywall` trong `spec.md`, `tasks.md` và `KNOWLEDGE_HUB.md` sang `Archived` sau khi người dùng duyệt đồng bộ ngược tài liệu Knowledge (`F6.8`, `BR-37`, `US-035..036`).

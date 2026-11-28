@@ -2,7 +2,7 @@
 
 - **Type:** `New Feature`
 - **Branch / Track:** `Nhánh A (Full SDD)` *(Tích hợp module `subscription`, migration `V1.27`, định tuyến webhook PayOS nâng cấp gói không cycle, bộ kiểm tra quyền gói `@RequiresPlanFeature` 2 lớp và màn hình `SCR-28`)*
-- **Status:** `Implemented (Pending Sync-Back Review)` *(Draft → In Progress → Implemented (Pending Sync-Back Review) → Archived)*
+- **Status:** `Archived` *(Draft → In Progress → Implemented → Archived)*
 - **Source of Truth:**
   - PO: [journey-features.md](../../01-po/journey-features.md) (`F6.8`) · [personas.md](../../01-po/personas.md) (`PER-01`–`PER-06`)
   - Design: [PROTOTYPE_SCREEN_MAP.md](../../02-design/PROTOTYPE_SCREEN_MAP.md) (`SCR-28`, `SCR-05`, `SCR-10`, `SCR-12`, `SCR-17`, `SCR-18`, `SCR-20`, `SCR-27`) · [DESIGN_SYSTEM.md](../../02-design/DESIGN_SYSTEM.md)
