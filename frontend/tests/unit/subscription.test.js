@@ -23,7 +23,7 @@ test('isProActive and hasPlanFeature evaluate FREE, PRO, and enforcement-disable
   };
   assert.equal(isProActive(freeSub), false);
   assert.equal(hasPlanFeature(freeSub, PLAN_FEATURES.AI_OPERATIONS_SUITE), false);
-  assert.equal(hasPlanFeature(freeSub, PLAN_FEATURES.INVENTORY_BOM), false);
+  assert.equal(hasPlanFeature(freeSub, PLAN_FEATURES.AI_CUSTOMER_ASSISTANT), false);
 
   const proSub = {
     planTier: 'PRO',
@@ -33,13 +33,12 @@ test('isProActive and hasPlanFeature evaluate FREE, PRO, and enforcement-disable
     enabledFeatures: [
       PLAN_FEATURES.AI_OPERATIONS_SUITE,
       PLAN_FEATURES.AI_CUSTOMER_ASSISTANT,
-      PLAN_FEATURES.INVENTORY_BOM,
       PLAN_FEATURES.UNLIMITED_RESOURCES,
     ],
   };
   assert.equal(isProActive(proSub), true);
   assert.equal(hasPlanFeature(proSub, PLAN_FEATURES.AI_OPERATIONS_SUITE), true);
-  assert.equal(hasPlanFeature(proSub, PLAN_FEATURES.INVENTORY_BOM), true);
+  assert.equal(hasPlanFeature(proSub, PLAN_FEATURES.AI_CUSTOMER_ASSISTANT), true);
 
   const bypassSub = {
     planTier: 'FREE',
@@ -72,8 +71,8 @@ test('formatBillingCycleLabel and getFeaturePaywallCopy return localized VI and 
   assert.equal(formatBillingCycleLabel(BILLING_CYCLES.YEARLY, 'en'), 'Pro Yearly (365 days)');
   assert.equal(formatBillingCycleLabel(BILLING_CYCLES.TRIAL, 'vi'), 'Dùng thử 14 ngày');
 
-  const bomCopyVi = getFeaturePaywallCopy(PLAN_FEATURES.INVENTORY_BOM, 'vi');
-  assert.match(bomCopyVi.title, /Kho & Định lượng BOM/);
+  const limitsCopyVi = getFeaturePaywallCopy(PLAN_FEATURES.UNLIMITED_RESOURCES, 'vi');
+  assert.match(limitsCopyVi.title, /Bàn & Nhân sự/);
   const aiCopyEn = getFeaturePaywallCopy(PLAN_FEATURES.AI_OPERATIONS_SUITE, 'en');
   assert.match(aiCopyEn.title, /AI Operations Suite/);
 });

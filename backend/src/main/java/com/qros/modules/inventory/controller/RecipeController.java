@@ -5,8 +5,6 @@ import com.qros.modules.inventory.dto.response.RecipeItemResponse;
 import com.qros.modules.inventory.service.RecipeService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
-import com.qros.shared.subscription.PlanFeature;
-import com.qros.shared.subscription.RequiresPlanFeature;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -38,7 +36,6 @@ public class RecipeController {
 
     @PutMapping("/{menuItemId}")
     @PreAuthorize("hasRole('MANAGER')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<List<RecipeItemResponse>> updateRecipe(
             @PathVariable @Min(value = 1, message = "Menu item id must be positive") Long menuItemId,
             @Valid @RequestBody RecipeUpdateRequest request) {
@@ -47,7 +44,6 @@ public class RecipeController {
 
     @DeleteMapping("/{menuItemId}")
     @PreAuthorize("hasRole('MANAGER')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<Void> deleteRecipe(
             @PathVariable @Min(value = 1, message = "Menu item id must be positive") Long menuItemId) {
         recipeService.deleteRecipe(menuItemId);

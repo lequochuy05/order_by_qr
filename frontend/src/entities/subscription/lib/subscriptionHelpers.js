@@ -6,7 +6,6 @@ export const PLAN_TIERS = {
 export const PLAN_FEATURES = {
   AI_OPERATIONS_SUITE: 'AI_OPERATIONS_SUITE',
   AI_CUSTOMER_ASSISTANT: 'AI_CUSTOMER_ASSISTANT',
-  INVENTORY_BOM: 'INVENTORY_BOM',
   UNLIMITED_RESOURCES: 'UNLIMITED_RESOURCES',
 };
 
@@ -73,15 +72,8 @@ export const getFeaturePaywallCopy = (feature, language = 'vi') => {
       return {
         title: isEn ? 'Unlock AI Operations Suite (Pro)' : 'Mở khóa Bộ trợ lý AI Vận hành (Pro)',
         description: isEn
-          ? 'Automate shift executive summaries, smart restock forecasts, Gemini Vision invoice stock-in, BOM costing checks, allergy triage, and combo/promotion suggestions.'
-          : 'Mở khóa AI Tóm tắt ca điều hành, Dự báo nhập kho BOM, Quét hóa đơn nhập kho bằng Gemini Vision, Kiểm tra giá vốn BOM, Cảnh báo dị ứng và Đề xuất Combo/Khuyến mãi.',
-      };
-    case PLAN_FEATURES.INVENTORY_BOM:
-      return {
-        title: isEn ? 'Unlock Inventory & BOM Controls (Pro)' : 'Mở khóa Quản trị Kho & Định lượng BOM (Pro)',
-        description: isEn
-          ? 'Free plan keeps your existing stock records read-only. Upgrade to Pro to add ingredients, perform stock-ins, adjust inventory, and edit dish BOM recipes.'
-          : 'Gói Miễn phí vẫn giữ nguyên dữ liệu kho ở chế độ chỉ đọc. Nâng cấp Pro để thêm/sửa nguyên liệu, nhập kho, kiểm kê và thiết lập định mức món ăn (BOM).',
+          ? 'Automate shift executive summaries, smart restock forecasts, Gemini Vision invoice stock-in, AI BOM costing suggestions, allergy triage, and combo/promotion suggestions.'
+          : 'Mở khóa AI Tóm tắt ca điều hành, Dự báo nhập kho BOM, Quét hóa đơn nhập kho bằng Gemini Vision, AI Gợi ý định mức & Giá vốn, Cảnh báo dị ứng và Đề xuất Combo/Khuyến mãi.',
       };
     case PLAN_FEATURES.UNLIMITED_RESOURCES:
       return {
@@ -94,8 +86,8 @@ export const getFeaturePaywallCopy = (feature, language = 'vi') => {
       return {
         title: isEn ? 'Upgrade to QROS Pro' : 'Nâng cấp gói QROS Pro',
         description: isEn
-          ? 'Unlock AI assistants, BOM inventory control, and unlimited restaurant scaling.'
-          : 'Mở khóa trọn bộ AI nhà hàng, quản trị kho định lượng BOM và không giới hạn quy mô bàn/nhân sự.',
+          ? 'Unlock all AI assistants (customer & operations) and unlimited dining tables & staff accounts.'
+          : 'Mở khóa trọn bộ Trợ lý AI (khách hàng & vận hành) và không giới hạn quy mô bàn/nhân sự.',
       };
   }
 };

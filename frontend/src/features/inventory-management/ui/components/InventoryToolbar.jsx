@@ -14,7 +14,6 @@ const InventoryToolbar = ({
   onOpenInvoiceOcr,
   invoiceOcrLocked = false,
   onOpenRecipe,
-  recipeLocked = false,
   onRefresh,
 }) => (
   <div className="rounded-3xl border border-[#1E293B] bg-white/90 p-4 shadow-sm backdrop-blur-sm transition-colors dark:border-[#1E293B] dark:bg-[#0F172A]/90">
@@ -75,7 +74,6 @@ const InventoryToolbar = ({
             <ClipboardList size={15} />
           )}{' '}
           <span>Định mức</span>
-          {recipeLocked && <ProBadge size="xs" />}
         </button>
         <button
           type="button"

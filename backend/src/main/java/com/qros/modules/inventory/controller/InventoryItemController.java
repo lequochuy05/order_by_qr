@@ -10,8 +10,6 @@ import com.qros.modules.inventory.dto.response.InventorySummaryResponse;
 import com.qros.modules.inventory.service.InventoryItemService;
 import com.qros.shared.constants.ApiRoutes;
 import com.qros.shared.response.ApiResponse;
-import com.qros.shared.subscription.PlanFeature;
-import com.qros.shared.subscription.RequiresPlanFeature;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -77,14 +75,12 @@ public class InventoryItemController {
 
     @PostMapping
     @PreAuthorize("hasRole('MANAGER')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<InventoryItemResponse> create(@Valid @RequestBody InventoryItemRequest request) {
         return ApiResponse.success("Inventory item created successfully", inventoryItemService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<InventoryItemResponse> update(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody InventoryItemRequest request) {
@@ -93,7 +89,6 @@ public class InventoryItemController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<Void> delete(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id) {
         inventoryItemService.delete(id);
@@ -103,7 +98,6 @@ public class InventoryItemController {
 
     @PostMapping("/{id}/stock-in")
     @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<InventoryItemResponse> stockIn(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody StockInRequest request) {
@@ -112,7 +106,6 @@ public class InventoryItemController {
 
     @PostMapping("/batch-stock-in")
     @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<BatchStockInResponse> batchStockIn(
             @Valid @RequestBody BatchStockInRequest request, Authentication authentication) {
         boolean canUpdateUnitCost = authentication != null
@@ -125,7 +118,6 @@ public class InventoryItemController {
 
     @PostMapping("/{id}/adjust")
     @PreAuthorize("hasAnyRole('MANAGER', 'CHEF')")
-    @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
     public ApiResponse<InventoryItemResponse> adjustStock(
             @PathVariable @Min(value = 1, message = "Inventory item id must be positive") Long id,
             @Valid @RequestBody StockAdjustmentRequest request) {

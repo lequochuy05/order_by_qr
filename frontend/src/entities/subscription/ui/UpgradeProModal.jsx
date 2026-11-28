@@ -10,12 +10,12 @@ import { useSubscription } from '../model/useSubscription.js';
 
 const PRO_HIGHLIGHTS = [
   {
-    vi: 'Trọn bộ Trợ lý AI: Khách đặt món 1 chạm, Tóm tắt ca, Quét hóa đơn Vision, Dự báo kho BOM & Đề xuất Combo',
-    en: 'Full AI Suite: 1-tap AI ordering, Executive summaries, Vision invoice OCR, BOM restock & Combo suggestions',
+    vi: 'Trọn bộ AI Vận hành: Tóm tắt ca, Quét hóa đơn Vision, Dự báo nhập kho BOM, Gợi ý BOM/Giá vốn, Cảnh báo dị ứng & Đề xuất Combo',
+    en: 'Full Operations AI: Executive summaries, Vision invoice OCR, BOM restock, AI BOM suggestions, Allergy triage & Combo ideas',
   },
   {
-    vi: 'Quản trị Kho nguyên liệu & Công thức định lượng (BOM) theo thời gian thực',
-    en: 'Full Inventory & Dish BOM recipe management with live Food Cost % tracking',
+    vi: 'Trợ lý AI Khách hàng tư vấn & đặt món trực tiếp 1 chạm trên QR Menu',
+    en: 'Customer AI Chat Assistant with 1-tap cart ordering on QR Menu',
   },
   {
     vi: 'Không giới hạn số lượng bàn ăn & tài khoản nhân sự vận hành',

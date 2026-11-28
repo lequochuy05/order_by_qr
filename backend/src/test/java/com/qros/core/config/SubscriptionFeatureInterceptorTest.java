@@ -44,10 +44,10 @@ class SubscriptionFeatureInterceptorTest {
         verifyNoInteractions(entitlementPort);
 
         HandlerMethod methodAnnotated =
-                new HandlerMethod(new OpenController(), OpenController.class.getMethod("writeBom"));
+                new HandlerMethod(new OpenController(), OpenController.class.getMethod("customerAiChat"));
         doThrow(new BusinessException(ErrorCode.PRO_PLAN_REQUIRED))
                 .when(entitlementPort)
-                .assertFeatureEnabled(PlanFeature.INVENTORY_BOM);
+                .assertFeatureEnabled(PlanFeature.AI_CUSTOMER_ASSISTANT);
 
         assertThatThrownBy(() -> interceptor.preHandle(req, res, methodAnnotated))
                 .isInstanceOf(BusinessException.class)
@@ -63,8 +63,8 @@ class SubscriptionFeatureInterceptorTest {
     static class OpenController {
         public void ping() {}
 
-        @RequiresPlanFeature(PlanFeature.INVENTORY_BOM)
-        public void writeBom() {}
+        @RequiresPlanFeature(PlanFeature.AI_CUSTOMER_ASSISTANT)
+        public void customerAiChat() {}
     }
 
     @RequiresPlanFeature(PlanFeature.AI_OPERATIONS_SUITE)

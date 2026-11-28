@@ -92,7 +92,7 @@ class SubscriptionServiceTest {
         when(subscriptionRepository.findById(1L)).thenReturn(Optional.of(freeSub));
 
         assertThat(service.isFeatureEnabled(PlanFeature.AI_OPERATIONS_SUITE)).isFalse();
-        assertThatThrownBy(() -> service.assertFeatureEnabled(PlanFeature.INVENTORY_BOM))
+        assertThatThrownBy(() -> service.assertFeatureEnabled(PlanFeature.AI_CUSTOMER_ASSISTANT))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.PRO_PLAN_REQUIRED);

@@ -123,8 +123,8 @@ const BillingManagement = () => {
       await activateTrial();
       showSuccessToast(
         isEn
-          ? '14-day QROS Pro trial activated! All AI & Inventory BOM features are unlocked.'
-          : 'Đã kích hoạt dùng thử QROS Pro 14 ngày! Toàn bộ tính năng AI & Kho BOM đã được mở khóa.',
+          ? '14-day QROS Pro trial activated! All AI features and unlimited scaling are unlocked.'
+          : 'Đã kích hoạt dùng thử QROS Pro 14 ngày! Toàn bộ tính năng AI và mở rộng không giới hạn đã được mở khóa.',
       );
     } catch (error) {
       showErrorToast(error);
@@ -181,8 +181,8 @@ const BillingManagement = () => {
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {isEn
-              ? 'Manage your QROS plan tier, resource limits, AI/BOM entitlements, and VietQR upgrade invoices.'
-              : 'Quản lý gói dịch vụ QROS, hạn mức bàn/nhân sự, mở khóa AI & Kho BOM và lịch sử thanh toán VietQR.'}
+              ? 'Manage your QROS plan tier, resource limits, AI entitlements, and VietQR upgrade invoices.'
+              : 'Quản lý gói dịch vụ QROS, hạn mức bàn/nhân sự, mở khóa bộ tính năng AI và lịch sử thanh toán VietQR.'}
           </p>
         </div>
 
@@ -269,8 +269,8 @@ const BillingManagement = () => {
                               : 'Đang hoạt động'
                           : status === 'EXPIRED'
                             ? isEn
-                              ? 'Pro Expired (Read-only BOM)'
-                              : 'Hết hạn Pro (Chỉ đọc kho)'
+                              ? 'Pro Expired (Free active)'
+                              : 'Hết hạn Pro (Về gói Free)'
                             : isEn
                               ? 'Basic Active'
                               : 'Gói cơ bản'}
@@ -432,19 +432,19 @@ const BillingManagement = () => {
                       ? 'QR Menu, KDS 3-stage board, Cash & VietQR at counter'
                       : 'QR Menu, Bếp KDS 3 trạng thái, Tiền mặt & VietQR tại quầy',
                     isEn
-                      ? 'Existing inventory records stay read-only'
-                      : 'Xem dữ liệu kho cũ ở chế độ chỉ đọc',
+                      ? 'Full manual Inventory, Stock-in & Dish BOM recipes'
+                      : 'Quản lý kho, nhập kho/kiểm kê & định mức BOM thủ công đầy đủ',
                   ]
                 : [
                     isEn
-                      ? 'All AI Operations: Insights, Restock, Invoice OCR, BOM Costing, Allergy Triage, Combos'
-                      : 'Trọn bộ AI Vận hành: Tóm tắt ca, Dự báo kho, Quét hóa đơn Vision, BOM & Giá vốn, Dị ứng, Combo',
+                      ? 'All AI Operations: Insights, Restock, Vision Invoice OCR, AI BOM Suggestions, Allergy Triage, Combos'
+                      : 'Trọn bộ AI Vận hành: Tóm tắt ca, Dự báo kho, Quét hóa đơn Vision, Gợi ý BOM/Giá vốn, Dị ứng, Combo',
                     isEn
                       ? 'Customer AI Chat Assistant with 1-tap cart ordering'
                       : 'Trợ lý AI Khách hàng đặt món trực tiếp 1 chạm',
                     isEn
-                      ? 'Full Inventory Stock-In, Batch Import & BOM Recipe editing'
-                      : 'Toàn quyền Quản trị Kho, Nhập hàng loạt & Định mức BOM',
+                      ? 'All manual inventory, POS & KDS features included'
+                      : 'Bao gồm toàn bộ tính năng vận hành, POS, KDS & Kho BOM',
                     isEn
                       ? 'Unlimited dining tables & staff accounts'
                       : 'Không giới hạn số bàn & tài khoản nhân sự',

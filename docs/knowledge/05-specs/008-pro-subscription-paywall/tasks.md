@@ -13,7 +13,7 @@
 
 ## Nhóm 2 — Backend Module `subscription`, Guards, PayOS Webhook & Tests
 - [x] Triển khai `com.qros.modules.subscription` (entities, repositories, `SubscriptionPayosGateway`, `SubscriptionService`, DTOs, `SubscriptionController`) + `SecurityRoutes` / `SecurityConfig`.
-- [x] Triển khai `SubscriptionFeatureInterceptor` + `WebMvcConfig`, gắn `@RequiresPlanFeature` lên AI & Inventory write endpoints, gắn limit check lên tạo bàn & nhân sự, đồng bộ `PublicSettingsResponse.aiCustomerAssistantEnabled` & `DomainEventListener`.
+- [x] Triển khai `SubscriptionFeatureInterceptor` + `WebMvcConfig`, gắn `@RequiresPlanFeature` lên toàn bộ AI endpoints (mở hoàn toàn thao tác kho/BOM thủ công ở `InventoryItemController` và `RecipeController` cho gói `FREE`), gắn limit check lên tạo bàn & nhân sự, đồng bộ `PublicSettingsResponse.aiCustomerAssistantEnabled` & `DomainEventListener`.
 - [x] Định tuyến webhook PayOS trong `PayosWebhookController` qua `SubscriptionWebhookPort` (idempotent, 0 cycle).
 - [x] Viết tests (`SubscriptionServiceTest`, `SubscriptionFeatureInterceptorTest`, cập nhật `CoreApiSecurityIntegrationTest`, `PayosWebhookControllerTest`) và chạy `mvn -f backend/pom.xml spotless:apply && mvn -f backend/pom.xml --batch-mode verify` → pass 100%.
 

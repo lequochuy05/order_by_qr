@@ -21,14 +21,14 @@
   - `dto/`: `SubscriptionCheckoutRequest`, `SubscriptionResponse`, `SubscriptionPlanResponse`, `SubscriptionInvoiceResponse`
   - `controller/`: `SubscriptionController`
 - `com.qros.core.config.SubscriptionFeatureInterceptor` + `WebMvcConfig` (chặn `@RequiresPlanFeature`).
-- Gắn `@RequiresPlanFeature` vào `AiInsightsController`, `AiInventoryController`, `AiMerchandisingController`, `AiStaffController#analyzeNotes`, `AiChatController`, `InventoryItemController` (write endpoints), `RecipeController#updateRecipe`.
+- Gắn `@RequiresPlanFeature` vào `AiInsightsController`, `AiInventoryController`, `AiMerchandisingController`, `AiStaffController#analyzeNotes`, `AiAssistantController` (không khóa các thao tác kho/BOM thủ công ở `InventoryItemController` và `RecipeController`).
 - Gắn `SubscriptionUsagePort` cho `modules.table` và `modules.user` + check limit khi tạo mới bàn/tài khoản ở gói `FREE`.
 - Cập nhật `PayosWebhookController` định tuyến `subscriptionWebhookPort.tryHandleWebhook(result)` trước `paymentService.confirmPaymentFromWebhook(result)`.
 - Cập nhật `PublicSettingsResponse` / `SystemSettingsService` bổ sung cờ `aiCustomerAssistantEnabled` + `DomainEventListener` xử lý `SubscriptionChangeEvent`.
 
 ## 3. Frontend FSD (`SCR-28` & Soft Paywall)
-- `frontend/src/entities/subscription/`: `subscriptionService.js`, `subscriptionQueries.js`, `subscriptionMutations.js`, `subscriptionHelpers.js`, `useSubscription.js`, `index.js`.
-- `frontend/src/features/subscription-billing/`: `ProBadge.jsx`, `UpgradeProModal.jsx`, `SubscriptionQrModal.jsx`, `BillingManagement.jsx`, `index.js`.
+- `frontend/src/entities/subscription/`: `subscriptionService.js`, `subscriptionQueries.js`, `subscriptionMutations.js`, `subscriptionHelpers.js`, `useSubscription.js`, `ProBadge.jsx`, `UpgradeProModal.jsx`, `index.js`.
+- `frontend/src/features/subscription-billing/`: `SubscriptionQrModal.jsx`, `BillingManagement.jsx`, `index.js`.
 - `frontend/src/pages/admin/BillingPage.jsx`, route `/admin/billing`, Sidebar menu item + plan pill.
-- Gắn Soft Paywall trên `SCR-18`, `SCR-10`, `SCR-17`, `SCR-20`, `SCR-12`, `SCR-27`, ẩn AI Chat trên `SCR-05` khi `aiCustomerAssistantEnabled === false`.
+- Gắn Soft Paywall trên các tính năng AI của `SCR-18` (`AiRestockPanel`, *Nhập từ hóa đơn AI*, nút *AI Gợi ý định mức & Giá vốn* trong `RecipeModal` — giữ mở toàn bộ thao tác kho/BOM thủ công cho gói `FREE`), `SCR-10`, `SCR-17`, `SCR-20`, `SCR-12`, `SCR-27`, và ẩn AI Chat trên `SCR-05` khi `aiCustomerAssistantEnabled === false`.
 - Cập nhật `WebSocketInvalidator.jsx` invalidate `['subscription']` khi nhận event trên `/topic/settings`, và `errorMessages.js` dịch `PRO_PLAN_REQUIRED`, `PLAN_LIMIT_EXCEEDED`, `SUBSCRIPTION_TRIAL_ALREADY_USED`.
