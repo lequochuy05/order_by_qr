@@ -21,8 +21,8 @@ Trước khi thiết kế hoặc cập nhật kiến trúc hệ thống, **BẮT
 > **Hard Rule:** Mọi endpoint API, WebSocket topic, bảng DB và quy tắc bảo mật phải truy vết được ngược về `US-xxx` và `BR-xx` trong `03-ba/`. Nếu phát hiện yêu cầu mâu thuẫn kỹ thuật, phải phản hồi cập nhật lại `03-ba/` thay vì tự ý code khác đặc tả.
 
 ## Quy trình thực thi
-1. **Đối chiếu Traceability (§1.3):** Lập bảng ánh xạ đầy đủ từng `STG-01`..`06` / `US-001`..`xxx` / `BR-01`..`xx` / `SCR-01`..`26` xuống module Backend (`com.qros.modules.*`), feature Frontend (`frontend/src/features/*`), bảng SQL và STOMP topic.
-2. **Kiến trúc & Ràng buộc phi chức năng:** Thiết kế High-Level Architecture, Modular Monolith (Spring Boot 4.1.2 / Java 25, ArchUnit), Frontend FSD (React 19.2 / Vite 7 / Tailwind v4 / Capacitor 8.6), Idempotency, Optimistic Locking, Caching (Caffeine/Redis), Security (JWT/Cookie/2FA/6-Role RBAC đúng thứ tự `PER-01`..`PER-06`).
+1. **Đối chiếu Traceability (§1.3):** Lập bảng ánh xạ đầy đủ từng `STG-01`..`06` / `US-001`..`xxx` / `BR-01`..`xx` / `SCR-01`..`xx` *(hiện tới `SCR-28`, tra `KNOWLEDGE_HUB.md`)* xuống module Backend (`com.qros.modules.*`), feature Frontend (`frontend/src/features/*`), bảng SQL và STOMP topic.
+2. **Kiến trúc & Ràng buộc phi chức năng:** Thiết kế High-Level Architecture, Modular Monolith (Spring Boot 4.1.2 / Java 25, ArchUnit), Frontend FSD (React 19.2 / Vite 7 / Tailwind v4 / Capacitor 8.6), Idempotency, Optimistic/Pessimistic Locking, Caching (Caffeine/Redis), Security (JWT/Cookie/2FA và phân quyền **5 system roles trong `UserRole`** (`ADMIN`, `MANAGER`, `CASHIER`, `STAFF`, `CHEF`) + **1 public guest persona (`PER-01` Customer qua phiên QR/bàn)**, không có `ROLE_CUSTOMER` ở backend).
 3. **Hợp đồng giao tiếp & Triển khai:** Đặc tả REST API, WebSocket STOMP, Sequence Diagrams cho luồng trọng yếu, Quality Gates khớp CI (`.github/workflows/ci.yml`) và hạ tầng triển khai (Vercel, Render/Docker, Neon, Redis, Android APK).
 
 ## Output Contract & Handoff

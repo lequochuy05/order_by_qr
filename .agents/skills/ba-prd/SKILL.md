@@ -32,7 +32,7 @@ Phân tích toàn bộ hệ thống theo chuỗi **6 User Stages** liên tục (
 Với **mỗi User Stage**, bắt buộc đặc tả đủ 6 mục:
 1. **Mục tiêu giai đoạn & Truy vết:** Liên kết `STG-*` ↔ `PER-*` ↔ `F*.*` ↔ `SCR-*`.
 2. **Luồng nghiệp vụ chi tiết (Main Flow & Alternate Flows):** Từng bước hành động của người dùng trên màn hình `SCR-*` và phản hồi hệ thống.
-3. **Quy tắc nghiệp vụ (Business Rules — `BR-xx`):** Định nghĩa rạch ròi điều kiện, công thức tính toán, phân quyền 6 vai trò và ràng buộc dữ liệu.
+3. **Quy tắc nghiệp vụ (Business Rules — `BR-xx`):** Định nghĩa rạch ròi điều kiện, công thức tính toán, phân quyền 5 vai trò nội bộ và quyền truy cập public của Khách hàng (`PER-01`) cùng các ràng buộc dữ liệu.
 4. **Máy trạng thái (State Machine):** Các trạng thái hợp lệ và điều kiện chuyển trạng thái (Bàn ăn, Món tại Bếp, Thanh toán).
 5. **Trường hợp biên & Xử lý lỗi (Edge Cases & Failure Modes):** Mất mạng/offline, bấm gửi đơn lặp, hết tồn kho giữa chừng, gộp bàn có đơn đang chờ, tín hiệu xác nhận chuyển khoản trễ/trùng, nhập sai OTP quá số lần.
 6. **Yêu cầu phi chức năng gắn với Stage:** Độ trễ đồng bộ, bảo mật, đa ngôn ngữ (`VI`/`EN`), 5 trạng thái UI & Light/Dark WCAG AA theo `DESIGN_SYSTEM.md`.

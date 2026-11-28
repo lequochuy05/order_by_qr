@@ -34,10 +34,10 @@ Không vai trò nào được phép làm việc độc lập mà bỏ qua nguồ
 - Thay vào đó, agent phải xuất **Sync-Back Proposal** liệt kê các ID bị ảnh hưởng và diff đề xuất; chỉ ghi sau khi người dùng duyệt, đồng thời bổ sung **1 dòng vào bảng `Sync Changelog`** trong `docs/knowledge/KNOWLEDGE_HUB.md`.
 
 ## 4. Quy ước Mã Truy Vết (Traceability IDs)
-Mọi tài liệu mới hoặc chỉnh sửa phải duy trì chuỗi truy vết xuyên suốt:
-- PO Feature: `F1.1` .. `F6.7` (6 Epics · 37 features trong `01-po/journey-features.md`)
+Mọi tài liệu mới hoặc chỉnh sửa phải duy trì chuỗi truy vết xuyên suốt (tra chỉ mục hiện hành tại `docs/knowledge/KNOWLEDGE_HUB.md`):
+- PO Feature: `F1.1` .. `F6.8` (6 Epics · 38 features trong `01-po/journey-features.md`, mở rộng tiếp `F*.*`)
 - User Stage: `STG-01` .. `STG-06`
-- Persona / Role: `PER-01` (Customer), `PER-02` (Staff), `PER-03` (Chef), `PER-04` (Cashier), `PER-05` (Manager), `PER-06` (Admin)
-- Design Screen: `SCR-01` .. `SCR-27`
-- Business Rule: `BR-01` .. `BR-36` (mở rộng tiếp `BR-xx`)
-- User Story: `US-001` .. `US-034` (mở rộng tiếp `US-xxx`)
+- Persona / Role: `PER-01` (Customer — public guest qua phiên QR/bàn), và 5 vai trò nội bộ (`UserRole`): `PER-02` (`STAFF`), `PER-03` (`CHEF`), `PER-04` (`CASHIER`), `PER-05` (`MANAGER`), `PER-06` (`ADMIN`)
+- Design Screen: `SCR-01` .. `SCR-28` (mở rộng tiếp `SCR-xx` trong `02-design/PROTOTYPE_SCREEN_MAP.md`)
+- Business Rule: `BR-01` .. `BR-38` (mở rộng tiếp `BR-xx`)
+- User Story: `US-001` .. `US-036` (mở rộng tiếp `US-xxx`)
